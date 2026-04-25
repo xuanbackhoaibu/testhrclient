@@ -1,0 +1,20 @@
+export const ROUTES = {
+  login: '/login',
+  authCallback: '/auth/callback',
+  root: '/',
+  dashboard: '/dashboard',
+  employees: '/employees',
+  legalEntities: '/organization/legal-entities',
+  orgUnits: '/organization/org-units',
+  positions: '/organization/positions',
+  movements: '/movements',
+  contracts: '/contracts',
+  leave: '/leave',
+  attendance: '/attendance',
+  onboarding: '/onboarding',
+  offboarding: '/offboarding',
+  imports: '/imports',
+  auditLogs: '/audit-logs',
+  settings: '/settings',
+} as const;
+
