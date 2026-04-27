@@ -15,18 +15,21 @@
 
 ## Required Server Files
 
-Create these files under the deploy root, for example `/opt/hacom/hr-web-client`:
+Create the deploy root and runtime env folder separately:
 
 ```text
-env/.env.hr.develop
-env/.env.hr-web.develop
-env/.env.versions
-deploy/compose/develop.yml
-deploy/scripts/deploy-develop.sh
-deploy/scripts/smoke-develop.sh
+/hdd3/apps/hr/apps/hr-web-client
+/hdd3/apps/hr/env/develop/hr-web-client.env
 ```
 
-Use `deploy/env/*.example` as templates. Real secrets must stay on the server or in GitHub secrets.
+Set GitHub variable `SERVER_RUNTIME_ENV_FILE` to:
+
+```text
+/hdd3/apps/hr/env/develop/hr-web-client.env
+```
+
+Use `env/server-test/hr-web-client.env` from the workspace as the server
+runtime template. Real secrets must stay on the server or in GitHub secrets.
 
 ## Build-Time Variables
 
@@ -44,8 +47,13 @@ The GitHub workflow passes Vite config as Docker build args:
 ## Deploy
 
 ```bash
-docker compose -p hr-dev --env-file env/.env.hr.develop --env-file env/.env.versions -f deploy/compose/develop.yml pull hr-web-client
-docker compose -p hr-dev --env-file env/.env.hr.develop --env-file env/.env.versions -f deploy/compose/develop.yml up -d --no-deps --wait hr-web-client
+SERVER_RUNTIME_ENV_FILE=/hdd3/apps/hr/env/develop/hr-web-client.env \
+HR_WEB_ENV_FILE=/hdd3/apps/hr/env/develop/hr-web-client.env \
+docker compose -p hr-dev --env-file /hdd3/apps/hr/env/develop/hr-web-client.env --env-file /hdd3/apps/hr/env/develop/.hr-web-client.versions -f deploy/compose/develop.yml pull hr-web-client
+
+SERVER_RUNTIME_ENV_FILE=/hdd3/apps/hr/env/develop/hr-web-client.env \
+HR_WEB_ENV_FILE=/hdd3/apps/hr/env/develop/hr-web-client.env \
+docker compose -p hr-dev --env-file /hdd3/apps/hr/env/develop/hr-web-client.env --env-file /hdd3/apps/hr/env/develop/.hr-web-client.versions -f deploy/compose/develop.yml up -d --no-deps --wait hr-web-client
 ```
 
 Or:

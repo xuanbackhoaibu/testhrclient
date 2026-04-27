@@ -32,6 +32,7 @@ env:
   IMAGE_REPOSITORY: ghcr.io/hacom-holding-dx/hr-web-client
   IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag != '' && inputs.image_tag || github.sha }}
   DEPLOY_DIR: ${{ vars.SERVER_APPS_ROOT != '' && vars.SERVICE_NAME != '' && format('{0}/{1}', vars.SERVER_APPS_ROOT, vars.SERVICE_NAME) || '/opt/hacom/hr-web-client' }}
+  SERVER_RUNTIME_ENV_FILE: ${{ vars.SERVER_RUNTIME_ENV_FILE }}
 
 jobs:
   test-build:
@@ -150,6 +151,7 @@ jobs:
             SERVER_SSH_KNOWN_HOSTS
             GHCR_PULL_TOKEN
             DEPLOY_DIR
+            SERVER_RUNTIME_ENV_FILE
           )
           for name in "${required[@]}"; do
             test -n "${!name:-}" || { echo "Missing required configuration: ${name}" >&2; exit 1; }
@@ -189,17 +191,17 @@ jobs:
         run: |
           set -Eeuo pipefail
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
-            bash -se -- "${DEPLOY_DIR}" "${IMAGE_TAG}" "${GHCR_PULL_USERNAME}" <<EOF
+            bash -se -- "${DEPLOY_DIR}" "${IMAGE_TAG}" "${GHCR_PULL_USERNAME}" "${SERVER_RUNTIME_ENV_FILE}" <<EOF
           set -Eeuo pipefail
           deploy_dir="\$1"
           image_tag="\$2"
           ghcr_username="\$3"
+          runtime_env_file="\$4"
           cd "\${deploy_dir}"
-          test -f env/.env.hr.develop
-          test -f env/.env.hr-web.develop
+          test -f "\${runtime_env_file}"
           echo "${GHCR_PULL_TOKEN}" | docker login ghcr.io -u "\${ghcr_username}" --password-stdin
           chmod +x deploy/scripts/deploy-develop.sh deploy/scripts/smoke-develop.sh
-          HR_WEB_VERSION="\${image_tag}" deploy/scripts/deploy-develop.sh
+          SERVER_RUNTIME_ENV_FILE="\${runtime_env_file}" HR_WEB_VERSION="\${image_tag}" deploy/scripts/deploy-develop.sh
           EOF
 
       - name: Show remote logs on failure
@@ -208,7 +210,7 @@ jobs:
         run: |
           set +e
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
-            "cd '${DEPLOY_DIR}' && docker compose -p hr-dev --env-file env/.env.hr.develop --env-file env/.env.versions -f deploy/compose/develop.yml ps hr-web-client && docker compose -p hr-dev --env-file env/.env.hr.develop --env-file env/.env.versions -f deploy/compose/develop.yml logs --tail=200 hr-web-client"
+            "cd '${DEPLOY_DIR}' && versions_env_file=\"\$(dirname '${SERVER_RUNTIME_ENV_FILE}')/.hr-web-client.versions\" && HR_WEB_ENV_FILE='${SERVER_RUNTIME_ENV_FILE}' docker compose -p hr-dev --env-file '${SERVER_RUNTIME_ENV_FILE}' --env-file \"\${versions_env_file}\" -f deploy/compose/develop.yml ps hr-web-client && HR_WEB_ENV_FILE='${SERVER_RUNTIME_ENV_FILE}' docker compose -p hr-dev --env-file '${SERVER_RUNTIME_ENV_FILE}' --env-file \"\${versions_env_file}\" -f deploy/compose/develop.yml logs --tail=200 hr-web-client"
 
   verify:
     needs: deploy-develop
@@ -219,6 +221,7 @@ jobs:
       SERVER_PORT: ${{ secrets.SERVER_PORT }}
       SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
       SERVER_SSH_KNOWN_HOSTS: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+      SERVER_RUNTIME_ENV_FILE: ${{ vars.SERVER_RUNTIME_ENV_FILE }}
     steps:
       - name: Install SSH key
         uses: webfactory/ssh-agent@v0.9.0
@@ -239,4 +242,4 @@ jobs:
         run: |
           set -Eeuo pipefail
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
-            "cd '${DEPLOY_DIR}' && deploy/scripts/smoke-develop.sh"
+            "cd '${DEPLOY_DIR}' && SERVER_RUNTIME_ENV_FILE='${SERVER_RUNTIME_ENV_FILE}' deploy/scripts/smoke-develop.sh"

@@ -5,9 +5,15 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT_DIR}"
 
 PROJECT_NAME="${COMPOSE_PROJECT_NAME:-hr-dev}"
-COMMON_ENV_FILE="${COMMON_ENV_FILE:-env/.env.hr.develop}"
-SERVICE_ENV_FILE="${SERVICE_ENV_FILE:-env/.env.hr-web.develop}"
-VERSIONS_ENV_FILE="${VERSIONS_ENV_FILE:-env/.env.versions}"
+COMMON_ENV_FILE="${COMMON_ENV_FILE:-${SERVER_RUNTIME_ENV_FILE:-env/.env.hr-web.develop}}"
+SERVICE_ENV_FILE="${SERVICE_ENV_FILE:-${SERVER_RUNTIME_ENV_FILE:-env/.env.hr-web.develop}}"
+if [ -z "${VERSIONS_ENV_FILE:-}" ]; then
+  if [ -n "${SERVER_RUNTIME_ENV_FILE:-}" ]; then
+    VERSIONS_ENV_FILE="$(dirname "${SERVER_RUNTIME_ENV_FILE}")/.hr-web-client.versions"
+  else
+    VERSIONS_ENV_FILE="env/.env.versions"
+  fi
+fi
 COMPOSE_FILE="${COMPOSE_FILE:-deploy/compose/develop.yml}"
 SERVICE_NAME="hr-web-client"
 IMAGE_TAG="${HR_WEB_VERSION:-${IMAGE_TAG:-${1:-}}}"
@@ -38,6 +44,7 @@ set -a
 . "${COMMON_ENV_FILE}"
 . "${VERSIONS_ENV_FILE}"
 set +a
+export HR_WEB_ENV_FILE="${SERVICE_ENV_FILE}"
 
 : "${CHAT_NETWORK:?CHAT_NETWORK is required in ${COMMON_ENV_FILE}}"
 docker network inspect "${CHAT_NETWORK}" >/dev/null
