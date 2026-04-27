@@ -10,3 +10,8 @@ export interface AuthUser {
 
 export type DemoRole = 'HR_ADMIN' | 'MANAGER' | 'EMPLOYEE';
 
+export interface LoginCredentials {
+  loginIdentifier: string;
+  password: string;
+  rememberMe?: boolean;
+}

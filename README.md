@@ -175,6 +175,10 @@ VITE_CHAT_AUTH_LOGOUT_URL=https://<server-host-or-domain>/api/v1/auth/logout
 VITE_CHAT_AUTH_REDIRECT_URI=http://localhost:5173/auth/callback
 ```
 
+`VITE_CHAT_AUTH_LOGIN_URL` is a JSON API endpoint. The HR login form calls it
+with `POST`; do not navigate the browser to that URL because `GET
+/api/v1/auth/login` is not a supported auth route.
+
 Use `VITE_API_BASE_URL=/api` only for a deployed build that is served behind the
 same reverse proxy as HR API. It is not the recommended local-dev setting unless
 you intentionally add a local Vite proxy.

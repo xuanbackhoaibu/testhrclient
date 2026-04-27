@@ -1,9 +1,27 @@
+import axios from 'axios';
+
 import { MOCK_AUTH_USERS, MOCK_TOKENS, getMockUserByToken } from '../../shared/mocks/mockAuth';
 import { STORAGE_KEYS, getStoredString, removeStoredString, setStoredString } from '../../shared/utils/storage';
 import { useAuthStore } from './authStore';
-import type { AuthUser, DemoRole } from './types';
+import type { AuthUser, DemoRole, LoginCredentials } from './types';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
+
+interface ChatAuthLoginPayload {
+  loginIdentifier: string;
+  password: string;
+  rememberMe?: boolean;
+}
+
+interface ChatAuthLoginResponse {
+  success?: boolean;
+  message?: string;
+  error?: string;
+  data?: {
+    accessToken?: string;
+  };
+  accessToken?: string;
+}
 
 export function getAccessToken(): string | null {
   return getStoredString(STORAGE_KEYS.accessToken);
@@ -43,8 +61,26 @@ export function getStoredUser(): AuthUser | null {
   }
 }
 
-export async function login(role: DemoRole = 'HR_ADMIN'): Promise<void> {
+function readChatAuthError(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    const payload = error.response?.data as { message?: unknown; error?: unknown; code?: unknown } | undefined;
+    if (typeof payload?.message === 'string') {
+      return payload.message;
+    }
+    if (typeof payload?.error === 'string') {
+      return payload.error;
+    }
+    if (typeof payload?.code === 'string') {
+      return `Login failed: ${payload.code}`;
+    }
+  }
+
+  return error instanceof Error ? error.message : 'Login failed.';
+}
+
+export async function login(input: DemoRole | LoginCredentials = 'HR_ADMIN'): Promise<void> {
   if (isMockMode) {
+    const role = typeof input === 'string' ? input : 'HR_ADMIN';
     const token = MOCK_TOKENS[role];
     const user = MOCK_AUTH_USERS[role];
     setStoredString(STORAGE_KEYS.accessToken, token);
@@ -54,20 +90,39 @@ export async function login(role: DemoRole = 'HR_ADMIN'): Promise<void> {
   }
 
   const loginUrl = import.meta.env.VITE_CHAT_AUTH_LOGIN_URL;
-  const redirectUri = import.meta.env.VITE_CHAT_AUTH_REDIRECT_URI;
-  const clientId = import.meta.env.VITE_CHAT_AUTH_CLIENT_ID;
+
+  if (!loginUrl) {
+    throw new Error('VITE_CHAT_AUTH_LOGIN_URL is required.');
+  }
+
+  if (typeof input === 'string') {
+    throw new Error('Real auth requires loginIdentifier and password.');
+  }
+
+  const payload: ChatAuthLoginPayload = {
+    loginIdentifier: input.loginIdentifier.trim(),
+    password: input.password,
+    rememberMe: input.rememberMe,
+  };
 
   try {
-    const url = new URL(loginUrl);
-    if (redirectUri) {
-      url.searchParams.set('redirect_uri', redirectUri);
+    const response = await axios.post<ChatAuthLoginResponse>(loginUrl, payload, {
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      withCredentials: true,
+    });
+
+    const accessToken = response.data.data?.accessToken ?? response.data.accessToken;
+    if (!accessToken) {
+      throw new Error('Chat auth login response did not include accessToken.');
     }
-    if (clientId) {
-      url.searchParams.set('client_id', clientId);
-    }
-    window.location.assign(url.toString());
-  } catch {
-    window.location.assign(loginUrl);
+
+    setAccessToken(accessToken);
+    setSessionUser(null);
+  } catch (error) {
+    throw new Error(readChatAuthError(error), { cause: error });
   }
 }
 
@@ -96,17 +151,28 @@ export function clearSession(): void {
   useAuthStore.getState().clearSession();
 }
 
-export function logout(): void {
-  clearSession();
+export async function logout(): Promise<void> {
+  const accessToken = getAccessToken();
 
   if (!isMockMode) {
     const logoutUrl = import.meta.env.VITE_CHAT_AUTH_LOGOUT_URL;
-    if (logoutUrl) {
-      window.location.assign(logoutUrl);
-      return;
+    if (logoutUrl && accessToken) {
+      await axios
+        .post(
+          logoutUrl,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+            withCredentials: true,
+          },
+        )
+        .catch(() => undefined);
     }
   }
 
+  clearSession();
+
   window.location.assign('/login');
 }
-

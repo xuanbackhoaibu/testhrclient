@@ -3,7 +3,7 @@ import { message } from 'antd';
 import { getCurrentUser } from './authApi';
 import { clearSession, getStoredUser, login as loginClient, logout as logoutClient, setSessionUser } from './authClient';
 import { useAuthStore } from './authStore';
-import type { DemoRole } from './types';
+import type { DemoRole, LoginCredentials } from './types';
 
 export function useAuth() {
   const store = useAuthStore();
@@ -31,12 +31,12 @@ export function useAuth() {
     }
   }
 
-  async function login(role?: DemoRole): Promise<void> {
-    await loginClient(role);
+  async function login(input?: DemoRole | LoginCredentials): Promise<void> {
+    await loginClient(input);
   }
 
   function logout(): void {
-    logoutClient();
+    void logoutClient();
   }
 
   function hasRole(role: string): boolean {
@@ -55,4 +55,3 @@ export function useAuth() {
     hasRole,
   };
 }
-

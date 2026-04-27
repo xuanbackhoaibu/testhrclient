@@ -81,6 +81,10 @@ VITE_CHAT_AUTH_LOGOUT_URL=https://<server-host-or-domain>/api/v1/auth/logout
 VITE_CHAT_AUTH_REDIRECT_URI=http://localhost:5173/auth/callback
 ```
 
+`VITE_CHAT_AUTH_LOGIN_URL` is the POST endpoint consumed by the HR web login
+form. It is not a browser redirect target; `GET /api/v1/auth/login` correctly
+returns `NOT_FOUND`.
+
 That mode also requires server-side HR/Auth configuration to allow the local
 browser origin and callback, for example `http://localhost:5173` and
 `http://localhost:5173/auth/callback`.
