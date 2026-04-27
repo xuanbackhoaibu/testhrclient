@@ -47,7 +47,14 @@ curl -fsS "${public_url}" | grep -E '<script|/assets/' >/dev/null
 
 if [ -n "${HR_API_HEALTH_URL:-}" ]; then
   echo "Smoke: HR web host can reach HR API health URL ${HR_API_HEALTH_URL}"
-  curl -fsS "${HR_API_HEALTH_URL}" >/dev/null
+  if curl -fsS "${HR_API_HEALTH_URL}" >/dev/null; then
+    echo "Smoke: HR API health reachable"
+  elif [ "${HR_WEB_REQUIRE_API_HEALTH:-false}" = "true" ]; then
+    echo "HR API health check failed and HR_WEB_REQUIRE_API_HEALTH=true" >&2
+    exit 1
+  else
+    echo "WARN: HR API health check failed; continuing because HR_WEB_REQUIRE_API_HEALTH is not true" >&2
+  fi
 fi
 
 compose ps hr-web-client
