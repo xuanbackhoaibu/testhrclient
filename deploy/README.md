@@ -35,7 +35,7 @@ runtime template. Real secrets must stay on the server or in GitHub secrets.
 
 The GitHub workflow passes Vite config as Docker build args:
 
-- `VITE_HR_API_BASE_URL`
+- `VITE_HR_API_BASE_URL` (default `/api` for the HR domain)
 - `VITE_HR_USE_MOCKS`
 - `VITE_HR_AUTH_MODE`
 - `VITE_CHAT_AUTH_BASE_URL`
