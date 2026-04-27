@@ -16,21 +16,26 @@ fi
 COMPOSE_FILE="${COMPOSE_FILE:-deploy/compose/develop.yml}"
 
 test -f "${COMMON_ENV_FILE}"
-test -f "${VERSIONS_ENV_FILE}"
 
 set -a
 . "${COMMON_ENV_FILE}"
-. "${VERSIONS_ENV_FILE}"
+if [ -f "${VERSIONS_ENV_FILE}" ]; then
+  . "${VERSIONS_ENV_FILE}"
+fi
 set +a
 export HR_WEB_ENV_FILE="${COMMON_ENV_FILE}"
+export HR_WEB_VERSION="${HR_WEB_VERSION:-smoke}"
 
 compose() {
-  docker compose \
-    -p "${PROJECT_NAME}" \
-    --env-file "${COMMON_ENV_FILE}" \
-    --env-file "${VERSIONS_ENV_FILE}" \
-    -f "${COMPOSE_FILE}" \
-    "$@"
+  local compose_args=(
+    -p "${PROJECT_NAME}"
+    --env-file "${COMMON_ENV_FILE}"
+  )
+  if [ -f "${VERSIONS_ENV_FILE}" ]; then
+    compose_args+=(--env-file "${VERSIONS_ENV_FILE}")
+  fi
+  compose_args+=(-f "${COMPOSE_FILE}")
+  docker compose "${compose_args[@]}" "$@"
 }
 
 web_url="${HR_WEB_HEALTH_URL:-http://127.0.0.1:${HR_WEB_HOST_PORT:-3400}/healthz}"

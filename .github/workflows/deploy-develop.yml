@@ -210,7 +210,23 @@ jobs:
         run: |
           set +e
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
-            "cd '${DEPLOY_DIR}' && versions_env_file=\"\$(dirname '${SERVER_RUNTIME_ENV_FILE}')/.hr-web-client.versions\" && if [ ! -f \"\${versions_env_file}\" ]; then echo \"Skip compose log tail: missing \${versions_env_file}\"; exit 0; fi && HR_WEB_ENV_FILE='${SERVER_RUNTIME_ENV_FILE}' docker compose -p hr-dev --env-file '${SERVER_RUNTIME_ENV_FILE}' --env-file \"\${versions_env_file}\" -f deploy/compose/develop.yml ps hr-web-client && HR_WEB_ENV_FILE='${SERVER_RUNTIME_ENV_FILE}' docker compose -p hr-dev --env-file '${SERVER_RUNTIME_ENV_FILE}' --env-file \"\${versions_env_file}\" -f deploy/compose/develop.yml logs --tail=200 hr-web-client"
+            bash -se -- "${DEPLOY_DIR}" "${SERVER_RUNTIME_ENV_FILE}" <<'EOF'
+          set +e
+          deploy_dir="$1"
+          runtime_env_file="$2"
+          cd "${deploy_dir}" || exit 0
+          versions_env_file="$(dirname "${runtime_env_file}")/.hr-web-client.versions"
+          compose_args=(-p hr-dev --env-file "${runtime_env_file}")
+          if [ -f "${versions_env_file}" ]; then
+            compose_args+=(--env-file "${versions_env_file}")
+          else
+            echo "Skip version env file for log tail: missing ${versions_env_file}"
+            export HR_WEB_VERSION=log-tail
+          fi
+          export HR_WEB_ENV_FILE="${runtime_env_file}"
+          docker compose "${compose_args[@]}" -f deploy/compose/develop.yml ps hr-web-client
+          docker compose "${compose_args[@]}" -f deploy/compose/develop.yml logs --tail=200 hr-web-client
+          EOF
 
   verify:
     needs: deploy-develop
