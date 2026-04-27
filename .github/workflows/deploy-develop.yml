@@ -156,7 +156,14 @@ jobs:
             HR_API_HEALTH_URL
           )
           for name in "${required[@]}"; do
-            test -n "${!name:-}" || { echo "Missing required configuration: ${name}" >&2; exit 1; }
+            if [ -z "${!name:-}" ]; then
+              if [ "${name}" = "HR_API_HEALTH_URL" ]; then
+                echo "Missing required configuration: HR_API_HEALTH_URL (set it in Settings -> Environments -> develop -> Variables)" >&2
+              else
+                echo "Missing required configuration: ${name}" >&2
+              fi
+              exit 1
+            fi
           done
           case "${SERVER_PORT}" in
             ''|*[!0-9]*) echo "SERVER_PORT must be digits only" >&2; exit 1 ;;
@@ -210,6 +217,7 @@ jobs:
 
       - name: Show remote logs on failure
         if: failure()
+        continue-on-error: true
         shell: bash
         run: |
           set +e
