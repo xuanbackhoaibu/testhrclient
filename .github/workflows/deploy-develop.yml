@@ -33,6 +33,7 @@ env:
   IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag != '' && inputs.image_tag || github.sha }}
   DEPLOY_DIR: ${{ vars.SERVER_APPS_ROOT != '' && vars.SERVICE_NAME != '' && format('{0}/{1}', vars.SERVER_APPS_ROOT, vars.SERVICE_NAME) || '/opt/hacom/hr-web-client' }}
   SERVER_RUNTIME_ENV_FILE: ${{ vars.SERVER_RUNTIME_ENV_FILE }}
+  HR_API_HEALTH_URL: ${{ vars.HR_API_HEALTH_URL }}
 
 jobs:
   test-build:
@@ -152,6 +153,7 @@ jobs:
             GHCR_PULL_TOKEN
             DEPLOY_DIR
             SERVER_RUNTIME_ENV_FILE
+            HR_API_HEALTH_URL
           )
           for name in "${required[@]}"; do
             test -n "${!name:-}" || { echo "Missing required configuration: ${name}" >&2; exit 1; }
@@ -191,17 +193,19 @@ jobs:
         run: |
           set -Eeuo pipefail
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
-            bash -se -- "${DEPLOY_DIR}" "${IMAGE_TAG}" "${GHCR_PULL_USERNAME}" "${SERVER_RUNTIME_ENV_FILE}" <<EOF
+            bash -se -- "${DEPLOY_DIR}" "${IMAGE_TAG}" "${GHCR_PULL_USERNAME}" "${SERVER_RUNTIME_ENV_FILE}" "${HR_API_HEALTH_URL}" <<EOF
           set -Eeuo pipefail
           deploy_dir="\$1"
           image_tag="\$2"
           ghcr_username="\$3"
           runtime_env_file="\$4"
+          hr_api_health_url="\$5"
           cd "\${deploy_dir}"
           test -f "\${runtime_env_file}"
+          test -n "\${hr_api_health_url}" || { echo "ERROR: HR_API_HEALTH_URL is missing. Set GitHub repo/environment variable HR_API_HEALTH_URL." >&2; exit 64; }
           echo "${GHCR_PULL_TOKEN}" | docker login ghcr.io -u "\${ghcr_username}" --password-stdin
           chmod +x deploy/scripts/deploy-develop.sh deploy/scripts/smoke-develop.sh
-          SERVER_RUNTIME_ENV_FILE="\${runtime_env_file}" HR_WEB_VERSION="\${image_tag}" deploy/scripts/deploy-develop.sh
+          SERVER_RUNTIME_ENV_FILE="\${runtime_env_file}" HR_WEB_VERSION="\${image_tag}" HR_API_HEALTH_URL="\${hr_api_health_url}" deploy/scripts/deploy-develop.sh
           EOF
 
       - name: Show remote logs on failure
@@ -238,6 +242,7 @@ jobs:
       SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
       SERVER_SSH_KNOWN_HOSTS: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
       SERVER_RUNTIME_ENV_FILE: ${{ vars.SERVER_RUNTIME_ENV_FILE }}
+      HR_API_HEALTH_URL: ${{ vars.HR_API_HEALTH_URL }}
     steps:
       - name: Install SSH key
         uses: webfactory/ssh-agent@v0.9.0
@@ -257,5 +262,6 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          test -n "${HR_API_HEALTH_URL:-}" || { echo "ERROR: HR_API_HEALTH_URL is missing. Set GitHub repo/environment variable HR_API_HEALTH_URL." >&2; exit 64; }
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
-            "cd '${DEPLOY_DIR}' && SERVER_RUNTIME_ENV_FILE='${SERVER_RUNTIME_ENV_FILE}' deploy/scripts/smoke-develop.sh"
+            "cd '${DEPLOY_DIR}' && SERVER_RUNTIME_ENV_FILE='${SERVER_RUNTIME_ENV_FILE}' HR_API_HEALTH_URL='${HR_API_HEALTH_URL}' deploy/scripts/smoke-develop.sh"

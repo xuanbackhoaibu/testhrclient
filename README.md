@@ -164,6 +164,25 @@ VITE_USE_MOCKS=true   -> run app without backend services
 VITE_USE_MOCKS=false  -> expect chat-auth-service and hr-api-service
 ```
 
+Local UI development does not require running `hr-api-service` on your machine.
+Set `VITE_USE_MOCKS=false` and point Vite at the server APIs with absolute URLs:
+
+```env
+VITE_API_BASE_URL=https://<server-host-or-domain>/api
+VITE_CHAT_AUTH_BASE_URL=https://<server-host-or-domain>/api/v1/auth
+VITE_CHAT_AUTH_LOGIN_URL=https://<server-host-or-domain>/api/v1/auth/login
+VITE_CHAT_AUTH_LOGOUT_URL=https://<server-host-or-domain>/api/v1/auth/logout
+VITE_CHAT_AUTH_REDIRECT_URI=http://localhost:5173/auth/callback
+```
+
+Use `VITE_API_BASE_URL=/api` only for a deployed build that is served behind the
+same reverse proxy as HR API. It is not the recommended local-dev setting unless
+you intentionally add a local Vite proxy.
+
+When using server APIs from local dev, the server-side HR/Auth configuration
+must allow the local browser origin and callback, for example
+`http://localhost:5173` and `http://localhost:5173/auth/callback`.
+
 Rules:
 
 - Do not commit real `.env` files.

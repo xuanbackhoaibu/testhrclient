@@ -7,6 +7,7 @@ cd "${ROOT_DIR}"
 PROJECT_NAME="${COMPOSE_PROJECT_NAME:-hr-dev}"
 COMMON_ENV_FILE="${COMMON_ENV_FILE:-${SERVER_RUNTIME_ENV_FILE:-env/.env.hr-web.develop}}"
 SERVICE_ENV_FILE="${SERVICE_ENV_FILE:-${SERVER_RUNTIME_ENV_FILE:-env/.env.hr-web.develop}}"
+INCOMING_HR_API_HEALTH_URL="${HR_API_HEALTH_URL:-}"
 if [ -z "${VERSIONS_ENV_FILE:-}" ]; then
   if [ -n "${SERVER_RUNTIME_ENV_FILE:-}" ]; then
     VERSIONS_ENV_FILE="$(dirname "${SERVER_RUNTIME_ENV_FILE}")/.hr-web-client.versions"
@@ -27,7 +28,7 @@ for file in "${COMMON_ENV_FILE}" "${SERVICE_ENV_FILE}" "${COMPOSE_FILE}"; do
   test -f "${file}" || { echo "Missing required file: ${file}" >&2; exit 1; }
 done
 
-if grep -R -n -E 'CHANGE_ME|change-me' "${COMMON_ENV_FILE}" "${SERVICE_ENV_FILE}"; then
+if grep -R -n -E 'CHANGE_ME|change-me|<actual_hr_api_port>' "${COMMON_ENV_FILE}" "${SERVICE_ENV_FILE}"; then
   echo "Refusing deploy: env file still contains placeholder values" >&2
   exit 1
 fi
@@ -44,9 +45,17 @@ set -a
 . "${COMMON_ENV_FILE}"
 . "${VERSIONS_ENV_FILE}"
 set +a
+if [ -n "${INCOMING_HR_API_HEALTH_URL}" ]; then
+  HR_API_HEALTH_URL="${INCOMING_HR_API_HEALTH_URL}"
+fi
 export HR_WEB_ENV_FILE="${SERVICE_ENV_FILE}"
 
 : "${CHAT_NETWORK:?CHAT_NETWORK is required in ${COMMON_ENV_FILE}}"
+if [ -z "${HR_API_HEALTH_URL:-}" ]; then
+  echo "ERROR: HR_API_HEALTH_URL is required for HR Web deploy smoke check." >&2
+  echo "Set GitHub repo/environment variable HR_API_HEALTH_URL or add it to ${COMMON_ENV_FILE}." >&2
+  exit 64
+fi
 docker network inspect "${CHAT_NETWORK}" >/dev/null
 
 compose() {
@@ -65,4 +74,4 @@ compose config --quiet
 compose pull "${SERVICE_NAME}"
 compose up -d --no-deps --wait "${SERVICE_NAME}"
 compose ps "${SERVICE_NAME}"
-"${ROOT_DIR}/deploy/scripts/smoke-develop.sh"
+HR_API_HEALTH_URL="${HR_API_HEALTH_URL}" "${ROOT_DIR}/deploy/scripts/smoke-develop.sh"
