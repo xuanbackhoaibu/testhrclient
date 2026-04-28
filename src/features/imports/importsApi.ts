@@ -1,4 +1,5 @@
 import { httpClient } from '../../shared/api/httpClient';
+import { normalizePaginatedResponse, unwrapApiResponse } from '../../shared/api/response';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockImportBatches } from '../../shared/mocks/mockWorkflows';
@@ -33,8 +34,8 @@ export async function importEmployeesCsv(file: File) {
 
   const formData = new FormData();
   formData.append('file', file);
-  const response = await httpClient.post<ImportBatch>('/imports/employees', formData);
-  return response.data;
+  const response = await httpClient.post('/imports/employees/csv', formData);
+  return unwrapApiResponse<ImportBatch>(response.data);
 }
 
 export async function importAttendanceCsv(file: File) {
@@ -44,8 +45,8 @@ export async function importAttendanceCsv(file: File) {
 
   const formData = new FormData();
   formData.append('file', file);
-  const response = await httpClient.post<ImportBatch>('/imports/attendance', formData);
-  return response.data;
+  const response = await httpClient.post('/imports/attendance/csv', formData);
+  return unwrapApiResponse<ImportBatch>(response.data);
 }
 
 export async function listImportBatches(params: ListQueryParams = {}): Promise<PaginatedResponse<ImportBatch>> {
@@ -61,8 +62,8 @@ export async function listImportBatches(params: ListQueryParams = {}): Promise<P
     return paginate(filtered, params);
   }
 
-  const response = await httpClient.get<PaginatedResponse<ImportBatch>>('/imports/batches', { params });
-  return response.data;
+  const response = await httpClient.get('/imports/batches', { params });
+  return normalizePaginatedResponse<ImportBatch>(response.data, params);
 }
 
 export async function getImportBatch(id: string): Promise<ImportBatch> {
@@ -75,7 +76,6 @@ export async function getImportBatch(id: string): Promise<ImportBatch> {
     return batch;
   }
 
-  const response = await httpClient.get<ImportBatch>(`/imports/batches/${id}`);
-  return response.data;
+  const response = await httpClient.get(`/imports/batches/${id}`);
+  return unwrapApiResponse<ImportBatch>(response.data);
 }
-

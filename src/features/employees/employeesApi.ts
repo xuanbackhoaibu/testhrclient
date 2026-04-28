@@ -1,4 +1,5 @@
 import { httpClient } from '../../shared/api/httpClient';
+import { normalizePaginatedResponse, unwrapApiResponse } from '../../shared/api/response';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
@@ -38,8 +39,8 @@ export async function listEmployees(params: ListQueryParams = {}): Promise<Pagin
     return paginate(applyEmployeeFilters(mockEmployees, params), params);
   }
 
-  const response = await httpClient.get<PaginatedResponse<Employee>>('/employees', { params });
-  return response.data;
+  const response = await httpClient.get('/employees', { params });
+  return normalizePaginatedResponse<Employee>(response.data, params);
 }
 
 export async function getEmployee(id: string): Promise<Employee> {
@@ -52,8 +53,8 @@ export async function getEmployee(id: string): Promise<Employee> {
     return employee;
   }
 
-  const response = await httpClient.get<Employee>(`/employees/${id}`);
-  return response.data;
+  const response = await httpClient.get(`/employees/${id}`);
+  return unwrapApiResponse<Employee>(response.data);
 }
 
 export async function createEmployee(payload: EmployeePayload): Promise<Employee> {
@@ -88,8 +89,8 @@ export async function createEmployee(payload: EmployeePayload): Promise<Employee
     return employee;
   }
 
-  const response = await httpClient.post<Employee>('/employees', payload);
-  return response.data;
+  const response = await httpClient.post('/employees', payload);
+  return unwrapApiResponse<Employee>(response.data);
 }
 
 export async function updateEmployee(id: string, payload: Partial<EmployeePayload>): Promise<Employee> {
@@ -120,8 +121,8 @@ export async function updateEmployee(id: string, payload: Partial<EmployeePayloa
     return employee;
   }
 
-  const response = await httpClient.patch<Employee>(`/employees/${id}`, payload);
-  return response.data;
+  const response = await httpClient.patch(`/employees/${id}`, payload);
+  return unwrapApiResponse<Employee>(response.data);
 }
 
 export async function getEmployeeAssignments(id: string): Promise<EmployeeAssignment[]> {
@@ -136,7 +137,7 @@ export async function getEmployeeContracts(id: string): Promise<Contract[]> {
   }
 
   const response = await httpClient.get(`/employees/${id}/contracts`);
-  return response.data;
+  return unwrapApiResponse<Contract[]>(response.data);
 }
 
 export async function getEmployeeAuditLogs(id: string): Promise<AuditLog[]> {
@@ -146,7 +147,7 @@ export async function getEmployeeAuditLogs(id: string): Promise<AuditLog[]> {
   }
 
   const response = await httpClient.get(`/employees/${id}/audit-logs`);
-  return response.data;
+  return unwrapApiResponse<AuditLog[]>(response.data);
 }
 
 export async function getEmployeeLeave(id: string): Promise<LeaveRequest[]> {
@@ -155,8 +156,8 @@ export async function getEmployeeLeave(id: string): Promise<LeaveRequest[]> {
     return mockLeaveRequests.filter((item) => item.employeeId === id);
   }
 
-  const response = await httpClient.get(`/employees/${id}/leave-requests`);
-  return response.data;
+  const response = await httpClient.get('/leave/requests', { params: { employeeId: id, page: 1, pageSize: 100 } });
+  return normalizePaginatedResponse<LeaveRequest>(response.data).data;
 }
 
 export async function getEmployeeAttendance(id: string): Promise<AttendanceRecord[]> {
@@ -165,6 +166,6 @@ export async function getEmployeeAttendance(id: string): Promise<AttendanceRecor
     return mockAttendanceRecords.filter((item) => item.employeeId === id);
   }
 
-  const response = await httpClient.get(`/employees/${id}/attendance-records`);
-  return response.data;
+  const response = await httpClient.get('/attendance/records', { params: { employeeId: id, page: 1, pageSize: 100 } });
+  return normalizePaginatedResponse<AttendanceRecord>(response.data).data;
 }

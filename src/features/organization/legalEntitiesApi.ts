@@ -1,4 +1,5 @@
 import { httpClient } from '../../shared/api/httpClient';
+import { normalizePaginatedResponse, unwrapApiResponse } from '../../shared/api/response';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockLegalEntities } from '../../shared/mocks/mockOrganization';
@@ -20,8 +21,8 @@ export async function listLegalEntities(params: ListQueryParams = {}): Promise<P
     return paginate(filtered, params);
   }
 
-  const response = await httpClient.get<PaginatedResponse<LegalEntity>>('/organization/legal-entities', { params });
-  return response.data;
+  const response = await httpClient.get('/legal-entities', { params });
+  return normalizePaginatedResponse<LegalEntity>(response.data, params);
 }
 
 export async function createLegalEntity(payload: Omit<LegalEntity, 'id'>): Promise<LegalEntity> {
@@ -33,8 +34,8 @@ export async function createLegalEntity(payload: Omit<LegalEntity, 'id'>): Promi
     return entity;
   }
 
-  const response = await httpClient.post<LegalEntity>('/organization/legal-entities', payload);
-  return response.data;
+  const response = await httpClient.post('/legal-entities', payload);
+  return unwrapApiResponse<LegalEntity>(response.data);
 }
 
 export async function updateLegalEntity(id: string, payload: Partial<Omit<LegalEntity, 'id'>>): Promise<LegalEntity> {
@@ -57,7 +58,6 @@ export async function updateLegalEntity(id: string, payload: Partial<Omit<LegalE
     return entity;
   }
 
-  const response = await httpClient.patch<LegalEntity>(`/organization/legal-entities/${id}`, payload);
-  return response.data;
+  const response = await httpClient.patch(`/legal-entities/${id}`, payload);
+  return unwrapApiResponse<LegalEntity>(response.data);
 }
-

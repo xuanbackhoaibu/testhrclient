@@ -1,4 +1,5 @@
 import { httpClient } from '../../shared/api/httpClient';
+import { normalizePaginatedResponse, unwrapApiResponse } from '../../shared/api/response';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
@@ -33,8 +34,8 @@ export async function listMovements(params: ListQueryParams = {}): Promise<Pagin
     return paginate(filtered, params);
   }
 
-  const response = await httpClient.get<PaginatedResponse<Movement>>('/movements', { params });
-  return response.data;
+  const response = await httpClient.get('/movements', { params });
+  return normalizePaginatedResponse<Movement>(response.data, params);
 }
 
 export async function createMovement(payload: MovementPayload): Promise<Movement> {
@@ -57,8 +58,8 @@ export async function createMovement(payload: MovementPayload): Promise<Movement
     return movement;
   }
 
-  const response = await httpClient.post<Movement>('/movements', payload);
-  return response.data;
+  const response = await httpClient.post('/movements', payload);
+  return unwrapApiResponse<Movement>(response.data);
 }
 
 async function updateMovementStatus(id: string, status: string, action: string): Promise<Movement> {
@@ -77,8 +78,8 @@ async function updateMovementStatus(id: string, status: string, action: string):
     return movement;
   }
 
-  const response = await httpClient.post<Movement>(`/movements/${id}/${action.toLowerCase()}`);
-  return response.data;
+  const response = await httpClient.post(`/movements/${id}/${action.toLowerCase()}`);
+  return unwrapApiResponse<Movement>(response.data);
 }
 
 export function submitMovement(id: string) {
@@ -96,4 +97,3 @@ export function rejectMovement(id: string) {
 export function cancelMovement(id: string) {
   return updateMovementStatus(id, 'CANCELLED', 'CANCEL');
 }
-

@@ -1,4 +1,5 @@
 import { httpClient } from '../../shared/api/httpClient';
+import { normalizePaginatedResponse, unwrapApiResponse } from '../../shared/api/response';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
@@ -27,8 +28,8 @@ export async function listAttendanceRecords(params: ListQueryParams = {}): Promi
     return paginate(filtered, params);
   }
 
-  const response = await httpClient.get<PaginatedResponse<AttendanceRecord>>('/attendance-records', { params });
-  return response.data;
+  const response = await httpClient.get('/attendance/records', { params });
+  return normalizePaginatedResponse<AttendanceRecord>(response.data, params);
 }
 
 export async function createAttendanceRecord(payload: AttendancePayload): Promise<AttendanceRecord> {
@@ -45,8 +46,8 @@ export async function createAttendanceRecord(payload: AttendancePayload): Promis
     return record;
   }
 
-  const response = await httpClient.post<AttendanceRecord>('/attendance-records', payload);
-  return response.data;
+  const response = await httpClient.post('/attendance/records', payload);
+  return unwrapApiResponse<AttendanceRecord>(response.data);
 }
 
 export async function updateAttendanceRecord(id: string, payload: Partial<AttendancePayload>): Promise<AttendanceRecord> {
@@ -68,6 +69,6 @@ export async function updateAttendanceRecord(id: string, payload: Partial<Attend
     return record;
   }
 
-  const response = await httpClient.patch<AttendanceRecord>(`/attendance-records/${id}`, payload);
-  return response.data;
+  const response = await httpClient.patch(`/attendance/records/${id}`, payload);
+  return unwrapApiResponse<AttendanceRecord>(response.data);
 }

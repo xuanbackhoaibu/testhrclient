@@ -1,4 +1,5 @@
 import { httpClient } from '../../shared/api/httpClient';
+import { normalizePaginatedResponse } from '../../shared/api/response';
 import { paginate, includesIgnoreCase, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockAuditLogs } from '../../shared/mocks/mockWorkflows';
 import type { ListQueryParams, PaginatedResponse } from '../../shared/types/api';
@@ -27,7 +28,6 @@ export async function listAuditLogs(params: ListQueryParams = {}): Promise<Pagin
     return paginate(filtered, params);
   }
 
-  const response = await httpClient.get<PaginatedResponse<AuditLog>>('/audit-logs', { params });
-  return response.data;
+  const response = await httpClient.get('/audit-logs', { params });
+  return normalizePaginatedResponse<AuditLog>(response.data, params);
 }
-

@@ -1,4 +1,5 @@
 import { httpClient } from '../../shared/api/httpClient';
+import { normalizePaginatedResponse, unwrapApiResponse } from '../../shared/api/response';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockPositions } from '../../shared/mocks/mockOrganization';
@@ -23,8 +24,8 @@ export async function listPositions(params: ListQueryParams = {}): Promise<Pagin
     return paginate(filtered, params);
   }
 
-  const response = await httpClient.get<PaginatedResponse<Position>>('/organization/positions', { params });
-  return response.data;
+  const response = await httpClient.get('/positions', { params });
+  return normalizePaginatedResponse<Position>(response.data, params);
 }
 
 export async function createPosition(payload: Omit<Position, 'id'>): Promise<Position> {
@@ -36,8 +37,8 @@ export async function createPosition(payload: Omit<Position, 'id'>): Promise<Pos
     return position;
   }
 
-  const response = await httpClient.post<Position>('/organization/positions', payload);
-  return response.data;
+  const response = await httpClient.post('/positions', payload);
+  return unwrapApiResponse<Position>(response.data);
 }
 
 export async function updatePosition(id: string, payload: Partial<Omit<Position, 'id'>>): Promise<Position> {
@@ -60,7 +61,6 @@ export async function updatePosition(id: string, payload: Partial<Omit<Position,
     return position;
   }
 
-  const response = await httpClient.patch<Position>(`/organization/positions/${id}`, payload);
-  return response.data;
+  const response = await httpClient.patch(`/positions/${id}`, payload);
+  return unwrapApiResponse<Position>(response.data);
 }
-

@@ -19,12 +19,14 @@ import { OnboardingPage } from '../pages/onboarding/OnboardingPage';
 import { LegalEntitiesPage } from '../pages/organization/LegalEntitiesPage';
 import { OrgUnitsPage } from '../pages/organization/OrgUnitsPage';
 import { PositionsPage } from '../pages/organization/PositionsPage';
+import { RouteErrorPage } from '../pages/RouteErrorPage';
 import { SettingsPage } from '../pages/settings/SettingsPage';
 import { ROUTES } from '../shared/constants/routes';
 
 export const router = createBrowserRouter([
   {
     element: <AuthLayout />,
+    errorElement: <RouteErrorPage />,
     children: [
       { path: ROUTES.login, element: <LoginPage /> },
       { path: ROUTES.authCallback, element: <AuthCallbackPage /> },
@@ -32,6 +34,7 @@ export const router = createBrowserRouter([
   },
   {
     path: ROUTES.root,
+    errorElement: <RouteErrorPage />,
     element: (
       <ProtectedRoute>
         <MainLayout />

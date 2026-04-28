@@ -1,4 +1,5 @@
 import { httpClient } from '../../shared/api/httpClient';
+import { normalizePaginatedResponse, unwrapApiResponse } from '../../shared/api/response';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockOrgUnits } from '../../shared/mocks/mockOrganization';
@@ -27,8 +28,8 @@ export async function listOrgUnits(params: ListQueryParams = {}): Promise<Pagina
     return paginate(filtered, params);
   }
 
-  const response = await httpClient.get<PaginatedResponse<OrgUnit>>('/organization/org-units', { params });
-  return response.data;
+  const response = await httpClient.get('/org-units', { params });
+  return normalizePaginatedResponse<OrgUnit>(response.data, params);
 }
 
 export async function getOrgUnitTree(params: ListQueryParams = {}): Promise<OrgUnitTreeNode[]> {
@@ -57,8 +58,8 @@ export async function createOrgUnit(payload: Omit<OrgUnit, 'id'>): Promise<OrgUn
     return orgUnit;
   }
 
-  const response = await httpClient.post<OrgUnit>('/organization/org-units', payload);
-  return response.data;
+  const response = await httpClient.post('/org-units', payload);
+  return unwrapApiResponse<OrgUnit>(response.data);
 }
 
 export async function updateOrgUnit(id: string, payload: Partial<Omit<OrgUnit, 'id'>>): Promise<OrgUnit> {
@@ -81,7 +82,6 @@ export async function updateOrgUnit(id: string, payload: Partial<Omit<OrgUnit, '
     return orgUnit;
   }
 
-  const response = await httpClient.patch<OrgUnit>(`/organization/org-units/${id}`, payload);
-  return response.data;
+  const response = await httpClient.patch(`/org-units/${id}`, payload);
+  return unwrapApiResponse<OrgUnit>(response.data);
 }
-

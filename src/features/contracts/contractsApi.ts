@@ -1,4 +1,5 @@
 import { httpClient } from '../../shared/api/httpClient';
+import { normalizePaginatedResponse, unwrapApiResponse } from '../../shared/api/response';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
@@ -24,8 +25,8 @@ export async function listContracts(params: ListQueryParams = {}): Promise<Pagin
     return paginate(filtered, params);
   }
 
-  const response = await httpClient.get<PaginatedResponse<Contract>>('/contracts', { params });
-  return response.data;
+  const response = await httpClient.get('/contracts', { params });
+  return normalizePaginatedResponse<Contract>(response.data, params);
 }
 
 export async function createContract(payload: ContractPayload): Promise<Contract> {
@@ -42,8 +43,8 @@ export async function createContract(payload: ContractPayload): Promise<Contract
     return contract;
   }
 
-  const response = await httpClient.post<Contract>('/contracts', payload);
-  return response.data;
+  const response = await httpClient.post('/contracts', payload);
+  return unwrapApiResponse<Contract>(response.data);
 }
 
 export async function updateContract(id: string, payload: Partial<ContractPayload>): Promise<Contract> {
@@ -65,8 +66,8 @@ export async function updateContract(id: string, payload: Partial<ContractPayloa
     return contract;
   }
 
-  const response = await httpClient.patch<Contract>(`/contracts/${id}`, payload);
-  return response.data;
+  const response = await httpClient.patch(`/contracts/${id}`, payload);
+  return unwrapApiResponse<Contract>(response.data);
 }
 
 export async function terminateContract(id: string, payload: { endDate: string }): Promise<Contract> {
@@ -89,6 +90,6 @@ export async function terminateContract(id: string, payload: { endDate: string }
     return contract;
   }
 
-  const response = await httpClient.post<Contract>(`/contracts/${id}/terminate`, payload);
-  return response.data;
+  const response = await httpClient.post(`/contracts/${id}/terminate`, payload);
+  return unwrapApiResponse<Contract>(response.data);
 }

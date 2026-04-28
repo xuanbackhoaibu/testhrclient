@@ -1,4 +1,5 @@
 import { httpClient } from '../../shared/api/httpClient';
+import { normalizePaginatedResponse, unwrapApiResponse } from '../../shared/api/response';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
@@ -25,8 +26,8 @@ export async function listLeaveRequests(params: ListQueryParams = {}): Promise<P
     return paginate(filtered, params);
   }
 
-  const response = await httpClient.get<PaginatedResponse<LeaveRequest>>('/leave-requests', { params });
-  return response.data;
+  const response = await httpClient.get('/leave/requests', { params });
+  return normalizePaginatedResponse<LeaveRequest>(response.data, params);
 }
 
 export async function createLeaveRequest(payload: LeaveRequestPayload): Promise<LeaveRequest> {
@@ -44,8 +45,8 @@ export async function createLeaveRequest(payload: LeaveRequestPayload): Promise<
     return leaveRequest;
   }
 
-  const response = await httpClient.post<LeaveRequest>('/leave-requests', payload);
-  return response.data;
+  const response = await httpClient.post('/leave/requests', payload);
+  return unwrapApiResponse<LeaveRequest>(response.data);
 }
 
 async function updateLeaveStatus(id: string, status: string, action: string): Promise<LeaveRequest> {
@@ -67,8 +68,8 @@ async function updateLeaveStatus(id: string, status: string, action: string): Pr
     return leave;
   }
 
-  const response = await httpClient.post<LeaveRequest>(`/leave-requests/${id}/${action.toLowerCase()}`);
-  return response.data;
+  const response = await httpClient.post(`/leave/requests/${id}/${action.toLowerCase()}`);
+  return unwrapApiResponse<LeaveRequest>(response.data);
 }
 
 export function submitLeaveRequest(id: string) {
