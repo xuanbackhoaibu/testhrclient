@@ -204,7 +204,12 @@ export function ImportsPage() {
     return <ErrorState onRetry={() => void refetch()} />;
   }
 
-  function renderSuggestedCodes(items: SuggestedCode[], drafts: Record<string, string>, setDrafts: (next: Record<string, string>) => void) {
+  function renderSuggestedCodes(
+    items: SuggestedCode[],
+    drafts: Record<string, string>,
+    setDrafts: (next: Record<string, string>) => void,
+    showUnit = false,
+  ) {
     return (
       <Table
         rowKey="key"
@@ -212,6 +217,15 @@ export function ImportsPage() {
         dataSource={items}
         pagination={false}
         columns={[
+          ...(showUnit
+            ? [
+                {
+                  title: 'Đơn vị',
+                  render: (_: unknown, record: SuggestedCode) =>
+                    record.unitName ?? record.unitKey ?? '-',
+                },
+              ]
+            : []),
           { title: 'Tên', dataIndex: 'name' },
           {
             title: 'Mã đề xuất',
@@ -327,7 +341,7 @@ export function ImportsPage() {
                   {
                     key: 'departments',
                     label: 'Phòng ban',
-                    children: renderSuggestedCodes(preview.suggestedCodes.departments, departmentCodeDrafts, setDepartmentCodeDrafts),
+                    children: renderSuggestedCodes(preview.suggestedCodes.departments, departmentCodeDrafts, setDepartmentCodeDrafts, true),
                   },
                   {
                     key: 'employees',

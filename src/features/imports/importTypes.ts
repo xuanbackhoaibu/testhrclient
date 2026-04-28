@@ -22,6 +22,7 @@ export interface SuggestedCode {
   name: string;
   code: string;
   unitKey?: string;
+  unitName?: string;
 }
 
 export interface HrmCoreImportSummary {

@@ -38,6 +38,7 @@ function renderSuggestedCodes(
   items: SuggestedCode[],
   drafts: Record<string, string>,
   setDrafts: (next: Record<string, string>) => void,
+  showUnit = false,
 ) {
   return (
     <Table
@@ -46,6 +47,15 @@ function renderSuggestedCodes(
       dataSource={items}
       pagination={false}
       columns={[
+        ...(showUnit
+          ? [
+              {
+                title: 'Đơn vị',
+                render: (_: unknown, record: SuggestedCode) =>
+                  record.unitName ?? record.unitKey ?? '-',
+              },
+            ]
+          : []),
         { title: 'Tên', dataIndex: 'name' },
         {
           title: 'Mã đề xuất',
@@ -208,7 +218,7 @@ export function HrmCoreExcelImportModal({
           {preview ? (
             <>
               {renderSuggestedCodes(preview.suggestedCodes.units, unitCodeDrafts, setUnitCodeDrafts)}
-              {renderSuggestedCodes(preview.suggestedCodes.departments, departmentCodeDrafts, setDepartmentCodeDrafts)}
+              {renderSuggestedCodes(preview.suggestedCodes.departments, departmentCodeDrafts, setDepartmentCodeDrafts, true)}
               <Space>
                 <Button
                   loading={updateCodesMutation.isPending}
