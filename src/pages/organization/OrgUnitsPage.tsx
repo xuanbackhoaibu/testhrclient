@@ -1,181 +1,297 @@
-import { useState } from 'react';
-import { Button, Card, Drawer, Form, Input, Popconfirm, Select, Space, Table, Tree, message } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import type { ReactNode } from 'react';
+import { useMemo, useState } from 'react';
+import { Button, Drawer, Group, Paper, Select, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
+import { useForm } from '@mantine/form';
+import { notifications } from '@mantine/notifications';
+import { IconEdit, IconPlus, IconSearch, IconSitemap, IconX } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { createOrgUnit, updateOrgUnit } from '../../features/organization/orgUnitsApi';
 import type { OrgUnit } from '../../features/organization/organizationTypes';
 import { useOrgUnits } from '../../features/organization/useOrgUnits';
-import { mockLegalEntities, mockOrgUnits } from '../../shared/mocks/mockOrganization';
-import { ErrorState } from '../../shared/components/ErrorState';
-import { LoadingState } from '../../shared/components/LoadingState';
+import { ConfirmActionModal } from '../../shared/components/ConfirmActionModal';
+import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
+import { TableActionsMenu } from '../../shared/components/TableActionsMenu';
+import { mockLegalEntities, mockOrgUnits } from '../../shared/mocks/mockOrganization';
+
+type OrgUnitFormValues = Omit<OrgUnit, 'id'>;
+
+const statusOptions = [
+  { value: 'ACTIVE', label: 'Đang hoạt động' },
+  { value: 'INACTIVE', label: 'Tạm ngưng' },
+];
+
+function renderOrgTree(nodes: Array<OrgUnit & { children?: OrgUnit[] }>, level = 0): ReactNode {
+  return nodes.map((node) => (
+    <Stack key={node.id} gap={4} pl={level ? 'md' : 0}>
+      <Group gap="xs" wrap="nowrap">
+        <IconSitemap size={16} color="#64748b" />
+        <Text size="sm" fw={level === 0 ? 650 : 500}>
+          {node.name}
+        </Text>
+        <Text size="xs" c="dimmed">
+          {node.code}
+        </Text>
+        <StatusTag status={node.status} />
+      </Group>
+      {node.children?.length ? renderOrgTree(node.children, level + 1) : null}
+    </Stack>
+  ));
+}
 
 export function OrgUnitsPage() {
   const queryClient = useQueryClient();
-  const [form] = Form.useForm<Omit<OrgUnit, 'id'>>();
-  const [params, setParams] = useState({ page: 1, pageSize: 10, search: '', legalEntityId: undefined as string | undefined, status: undefined as string | undefined });
+  const [params, setParams] = useState({
+    page: 1,
+    pageSize: 10,
+    search: '',
+    legalEntityId: undefined as string | undefined,
+    status: undefined as string | undefined,
+  });
   const [editing, setEditing] = useState<OrgUnit | null>(null);
+  const [confirmInactive, setConfirmInactive] = useState<OrgUnit | null>(null);
   const [open, setOpen] = useState(false);
 
   const { data, isLoading, error, refetch } = useOrgUnits(params);
 
-  const mutation = useMutation({
-    mutationFn: async (values: Omit<OrgUnit, 'id'>) => {
-      if (editing) {
-        return updateOrgUnit(editing.id, values);
-      }
-      return createOrgUnit(values);
+  const form = useForm<OrgUnitFormValues>({
+    initialValues: {
+      code: '',
+      legalEntityId: '',
+      parentId: '',
+      name: '',
+      type: '',
+      effectiveFrom: new Date().toISOString().slice(0, 10),
+      effectiveTo: '',
+      status: 'ACTIVE',
     },
-    onSuccess: async () => {
-      message.success(editing ? 'Đã cập nhật org unit.' : 'Đã tạo org unit.');
-      setOpen(false);
-      setEditing(null);
-      form.resetFields();
-      await queryClient.invalidateQueries({ queryKey: ['org-units'] });
+    validate: {
+      code: (value) => (value.trim() ? null : 'Nhập mã đơn vị.'),
+      legalEntityId: (value) => (value ? null : 'Chọn pháp nhân.'),
+      name: (value) => (value.trim() ? null : 'Nhập tên đơn vị.'),
+      type: (value) => (value.trim() ? null : 'Nhập loại đơn vị.'),
+      effectiveFrom: (value) => (value ? null : 'Chọn ngày hiệu lực.'),
     },
   });
 
-  if (isLoading) {
-    return <LoadingState />;
-  }
+  const mutation = useMutation({
+    mutationFn: async (values: OrgUnitFormValues) => {
+      const payload = { ...values, parentId: values.parentId || undefined, effectiveTo: values.effectiveTo || undefined };
+      if (editing) {
+        return updateOrgUnit(editing.id, payload);
+      }
+      return createOrgUnit(payload);
+    },
+    onSuccess: async () => {
+      notifications.show({
+        color: 'green',
+        title: editing ? 'Đã cập nhật đơn vị' : 'Đã tạo đơn vị',
+        message: 'Cấu trúc tổ chức đã được cập nhật.',
+      });
+      setOpen(false);
+      setEditing(null);
+      form.reset();
+      await queryClient.invalidateQueries({ queryKey: ['org-units'] });
+    },
+    onError: () => {
+      notifications.show({
+        color: 'red',
+        title: 'Không lưu được đơn vị',
+        message: 'Vui lòng kiểm tra dữ liệu và thử lại.',
+      });
+    },
+  });
 
-  if (error || !data) {
-    return <ErrorState onRetry={() => void refetch()} />;
-  }
+  const inactiveMutation = useMutation({
+    mutationFn: (record: OrgUnit) => updateOrgUnit(record.id, { ...record, status: 'INACTIVE' }),
+    onSuccess: async () => {
+      notifications.show({
+        color: 'green',
+        title: 'Đã tạm ngưng đơn vị',
+        message: 'Trạng thái đơn vị đã được cập nhật.',
+      });
+      setConfirmInactive(null);
+      await queryClient.invalidateQueries({ queryKey: ['org-units'] });
+    },
+    onError: () => {
+      notifications.show({
+        color: 'red',
+        title: 'Không tạm ngưng được đơn vị',
+        message: 'Vui lòng thử lại.',
+      });
+    },
+  });
+
+  const columns = useMemo<DataTableColumn<OrgUnit>[]>(
+    () => [
+      { key: 'code', header: 'Mã', width: 120, render: (record) => <Text fw={600}>{record.code}</Text> },
+      { key: 'name', header: 'Tên đơn vị', render: (record) => record.name },
+      { key: 'type', header: 'Loại', width: 140, render: (record) => record.type },
+      { key: 'effectiveFrom', header: 'Hiệu lực từ', width: 140, render: (record) => record.effectiveFrom },
+      { key: 'effectiveTo', header: 'Hiệu lực đến', width: 140, render: (record) => record.effectiveTo || '-' },
+      { key: 'status', header: 'Trạng thái', width: 140, render: (record) => <StatusTag status={record.status} /> },
+      {
+        key: 'actions',
+        header: '',
+        width: 70,
+        align: 'right',
+        render: (record) => (
+          <TableActionsMenu
+            actions={[
+              {
+                label: 'Chỉnh sửa',
+                icon: <IconEdit size={16} />,
+                onClick: () => {
+                  setEditing(record);
+                  form.setValues({ ...record, parentId: record.parentId ?? '', effectiveTo: record.effectiveTo ?? '' });
+                  setOpen(true);
+                },
+              },
+              {
+                label: 'Tạm ngưng',
+                icon: <IconX size={16} />,
+                color: 'red',
+                disabled: record.status === 'INACTIVE',
+                onClick: () => setConfirmInactive(record),
+              },
+            ]}
+          />
+        ),
+      },
+    ],
+    [form],
+  );
 
   return (
     <>
       <PageHeader
-        title="Org Units"
-        subtitle="Hiển thị song song table và tree để demo organizational structure."
+        title="Đơn vị"
+        subtitle="Quản lý đơn vị tổ chức theo pháp nhân, cấp cha con và trạng thái hiệu lực."
         actions={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
-            Create
+          <Button
+            leftSection={<IconPlus size={18} />}
+            onClick={() => {
+              setEditing(null);
+              form.reset();
+              setOpen(true);
+            }}
+          >
+            Tạo đơn vị
           </Button>
         }
       />
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
-        <Card className="page-card">
-          <Space wrap style={{ marginBottom: 16 }}>
-            <Input.Search placeholder="Search code or name" allowClear onSearch={(search) => setParams((current) => ({ ...current, search }))} />
-            <Select
-              allowClear
-              placeholder="Legal entity"
-              style={{ width: 220 }}
-              options={mockLegalEntities.map((item) => ({ value: item.id, label: item.name }))}
-              onChange={(value) => setParams((current) => ({ ...current, legalEntityId: value }))}
-            />
-            <Select
-              allowClear
-              placeholder="Status"
-              style={{ width: 160 }}
-              options={[{ value: 'ACTIVE' }, { value: 'INACTIVE' }]}
-              onChange={(value) => setParams((current) => ({ ...current, status: value }))}
-            />
-          </Space>
 
-          <Table
-            rowKey="id"
-            dataSource={data.data}
-            pagination={{
-              current: data.meta.page,
-              pageSize: data.meta.pageSize,
-              total: data.meta.total,
-              onChange: (page, pageSize) => setParams((current) => ({ ...current, page, pageSize })),
-            }}
-            columns={[
-              { title: 'Code', dataIndex: 'code' },
-              { title: 'Name', dataIndex: 'name' },
-              { title: 'Type', dataIndex: 'type' },
-              { title: 'Effective from', dataIndex: 'effectiveFrom' },
-              { title: 'Effective to', dataIndex: 'effectiveTo' },
-              { title: 'Status', render: (_, record) => <StatusTag status={record.status} /> },
-              {
-                title: 'Actions',
-                render: (_, record) => (
-                  <Space>
-                    <Button
-                      onClick={() => {
-                        setEditing(record);
-                        form.setFieldsValue(record);
-                        setOpen(true);
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    {record.status !== 'INACTIVE' ? (
-                      <Popconfirm title="Inactive org unit?" onConfirm={() => mutation.mutate({ ...record, status: 'INACTIVE' })}>
-                        <Button danger>Inactive</Button>
-                      </Popconfirm>
-                    ) : null}
-                  </Space>
-                ),
-              },
-            ]}
+      <Stack gap="md">
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+          <TextInput
+            placeholder="Tìm mã hoặc tên"
+            leftSection={<IconSearch size={17} />}
+            value={params.search}
+            onChange={(event) =>
+              setParams((current) => ({ ...current, search: event.currentTarget.value, page: 1 }))
+            }
           />
-        </Card>
+          <Select
+            placeholder="Pháp nhân"
+            clearable
+            data={mockLegalEntities.map((item) => ({ value: item.id, label: item.name }))}
+            value={params.legalEntityId ?? null}
+            onChange={(value) =>
+              setParams((current) => ({ ...current, legalEntityId: value ?? undefined, page: 1 }))
+            }
+          />
+          <Select
+            placeholder="Trạng thái"
+            clearable
+            data={statusOptions}
+            value={params.status ?? null}
+            onChange={(value) =>
+              setParams((current) => ({ ...current, status: value ?? undefined, page: 1 }))
+            }
+          />
+        </SimpleGrid>
 
-        <Card title="Org Unit Tree" className="page-card">
-          <Tree
-            treeData={data.tree.map((node) => ({
-              key: node.id,
-              title: `${node.name} (${node.code})`,
-              children:
-                node.children?.map((child) => ({
-                  key: child.id,
-                  title: `${child.name} (${child.code})`,
-                })) ?? [],
-            }))}
-          />
-        </Card>
-      </Space>
+        <DataTable
+          data={data?.data ?? []}
+          columns={columns}
+          rowKey={(record) => record.id}
+          meta={data?.meta}
+          loading={isLoading}
+          error={error}
+          onRetry={() => void refetch()}
+          onPageChange={(page, pageSize) => setParams((current) => ({ ...current, page, pageSize }))}
+          emptyTitle="Chưa có đơn vị"
+          emptyDescription="Không có đơn vị phù hợp với bộ lọc hiện tại."
+        />
+
+        {data?.tree?.length ? (
+          <Paper p="md" radius="md">
+            <Stack gap="sm">
+              <Text fw={650}>Cây tổ chức</Text>
+              {renderOrgTree(data.tree)}
+            </Stack>
+          </Paper>
+        ) : null}
+      </Stack>
 
       <Drawer
-        title={editing ? 'Edit org unit' : 'Create org unit'}
-        open={open}
-        width={460}
-        destroyOnClose
+        opened={open}
         onClose={() => {
           setOpen(false);
           setEditing(null);
-          form.resetFields();
+          form.reset();
         }}
-        extra={
-          <Button type="primary" loading={mutation.isPending} onClick={() => void form.submit()}>
-            Save
-          </Button>
-        }
+        title={editing ? 'Chỉnh sửa đơn vị' : 'Tạo đơn vị'}
+        position="right"
+        size="lg"
       >
-        <Form form={form} layout="vertical" onFinish={(values) => mutation.mutate(values)} initialValues={{ status: 'ACTIVE', effectiveFrom: '2026-04-25' }}>
-          <Form.Item name="code" label="Code" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="legalEntityId" label="Legal entity" rules={[{ required: true }]}>
-            <Select options={mockLegalEntities.map((item) => ({ value: item.id, label: item.name }))} />
-          </Form.Item>
-          <Form.Item name="parentId" label="Parent org unit">
-            <Select allowClear options={mockOrgUnits.map((item) => ({ value: item.id, label: item.name }))} />
-          </Form.Item>
-          <Form.Item name="name" label="Name" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="type" label="Type" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="effectiveFrom" label="Effective from" rules={[{ required: true }]}>
-            <Input type="date" />
-          </Form.Item>
-          <Form.Item name="effectiveTo" label="Effective to">
-            <Input type="date" />
-          </Form.Item>
-          <Form.Item name="status" label="Status" rules={[{ required: true }]}>
-            <Select options={[{ value: 'ACTIVE' }, { value: 'INACTIVE' }]} />
-          </Form.Item>
-        </Form>
+        <form onSubmit={form.onSubmit((values) => mutation.mutate(values))}>
+          <Stack gap="sm">
+            <TextInput label="Mã" withAsterisk {...form.getInputProps('code')} />
+            <Select
+              label="Pháp nhân"
+              data={mockLegalEntities.map((item) => ({ value: item.id, label: item.name }))}
+              withAsterisk
+              {...form.getInputProps('legalEntityId')}
+            />
+            <Select
+              label="Đơn vị cha"
+              clearable
+              data={mockOrgUnits.map((item) => ({ value: item.id, label: item.name }))}
+              {...form.getInputProps('parentId')}
+            />
+            <TextInput label="Tên đơn vị" withAsterisk {...form.getInputProps('name')} />
+            <TextInput label="Loại đơn vị" withAsterisk {...form.getInputProps('type')} />
+            <TextInput label="Hiệu lực từ" type="date" withAsterisk {...form.getInputProps('effectiveFrom')} />
+            <TextInput label="Hiệu lực đến" type="date" {...form.getInputProps('effectiveTo')} />
+            <Select label="Trạng thái" data={statusOptions} withAsterisk {...form.getInputProps('status')} />
+            <Group justify="flex-end" mt="md">
+              <Button variant="default" onClick={() => setOpen(false)}>
+                Hủy
+              </Button>
+              <Button type="submit" loading={mutation.isPending}>
+                Lưu
+              </Button>
+            </Group>
+          </Stack>
+        </form>
       </Drawer>
+
+      <ConfirmActionModal
+        opened={Boolean(confirmInactive)}
+        title="Tạm ngưng đơn vị?"
+        message="Đơn vị sẽ được chuyển sang trạng thái tạm ngưng. Dữ liệu lịch sử không bị xóa."
+        confirmLabel="Tạm ngưng"
+        loading={inactiveMutation.isPending}
+        onClose={() => setConfirmInactive(null)}
+        onConfirm={() => {
+          if (confirmInactive) {
+            inactiveMutation.mutate(confirmInactive);
+          }
+        }}
+      />
     </>
   );
 }
-

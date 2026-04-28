@@ -168,7 +168,7 @@ Local UI development does not require running `hr-api-service` on your machine.
 Set `VITE_USE_MOCKS=false` and point Vite at the server APIs with absolute URLs:
 
 ```env
-VITE_API_BASE_URL=https://<server-host-or-domain>/api
+VITE_API_BASE_URL=https://<server-host-or-domain>/api/v1
 VITE_CHAT_AUTH_BASE_URL=https://<server-host-or-domain>/api/v1/auth
 VITE_CHAT_AUTH_LOGIN_URL=https://<server-host-or-domain>/api/v1/auth/login
 VITE_CHAT_AUTH_LOGOUT_URL=https://<server-host-or-domain>/api/v1/auth/logout
@@ -179,9 +179,9 @@ VITE_CHAT_AUTH_REDIRECT_URI=http://localhost:5173/auth/callback
 with `POST`; do not navigate the browser to that URL because `GET
 /api/v1/auth/login` is not a supported auth route.
 
-Use `VITE_API_BASE_URL=/api` only for a deployed build that is served behind the
-same reverse proxy as HR API. It is not the recommended local-dev setting unless
-you intentionally add a local Vite proxy.
+Use `VITE_API_BASE_URL=/api/v1` for a deployed build that is served behind the
+same reverse proxy as HR API. `/api` is only a temporary backend compatibility
+alias for older bundles and should not be used for new builds.
 
 When using server APIs from local dev, the server-side HR/Auth configuration
 must allow the local browser origin and callback, for example

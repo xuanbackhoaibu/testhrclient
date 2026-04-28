@@ -1,161 +1,209 @@
+import { AppShell, Avatar, Burger, Group, Menu, NavLink, ScrollArea, Stack, Text, Title, UnstyledButton } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import {
-  AuditOutlined,
-  BankOutlined,
-  CalendarOutlined,
-  CarryOutOutlined,
-  DashboardOutlined,
-  DeploymentUnitOutlined,
-  DownOutlined,
-  FileSearchOutlined,
-  FolderOpenOutlined,
-  ImportOutlined,
-  LogoutOutlined,
-  SettingOutlined,
-  TeamOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
-import { Avatar, Breadcrumb, Button, Dropdown, Flex, Layout, Menu, Space, Typography } from 'antd';
-import type { MenuProps } from 'antd';
+  IconBriefcase,
+  IconBuildingBank,
+  IconCalendarCheck,
+  IconChevronDown,
+  IconClipboardList,
+  IconDashboard,
+  IconFileAnalytics,
+  IconFileImport,
+  IconFolderOpen,
+  IconLogout,
+  IconSettings,
+  IconSitemap,
+  IconTableImport,
+  IconTransfer,
+  IconUsers,
+} from '@tabler/icons-react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../features/auth/useAuth';
 import { ROUTES } from '../shared/constants/routes';
 
-const { Header, Sider, Content } = Layout;
+interface NavItem {
+  label: string;
+  path: string;
+  icon: typeof IconDashboard;
+}
 
-const menuItems: MenuProps['items'] = [
-  { key: ROUTES.dashboard, icon: <DashboardOutlined />, label: 'Dashboard' },
-  { key: ROUTES.employees, icon: <TeamOutlined />, label: 'Employees' },
-  {
-    key: 'organization',
-    icon: <BankOutlined />,
-    label: 'Organization',
-    children: [
-      { key: ROUTES.legalEntities, label: 'Legal Entities' },
-      { key: ROUTES.orgUnits, label: 'Org Units' },
-      { key: ROUTES.positions, label: 'Positions' },
-    ],
-  },
-  { key: ROUTES.movements, icon: <DeploymentUnitOutlined />, label: 'Movements' },
-  { key: ROUTES.contracts, icon: <FileSearchOutlined />, label: 'Contracts' },
-  { key: ROUTES.leave, icon: <CalendarOutlined />, label: 'Leave' },
-  { key: ROUTES.attendance, icon: <CarryOutOutlined />, label: 'Attendance' },
-  { key: ROUTES.onboarding, icon: <FolderOpenOutlined />, label: 'Onboarding' },
-  { key: ROUTES.offboarding, icon: <ImportOutlined />, label: 'Offboarding' },
-  { key: ROUTES.imports, icon: <ImportOutlined />, label: 'Imports' },
-  { key: ROUTES.auditLogs, icon: <AuditOutlined />, label: 'Audit Logs' },
-  { key: ROUTES.settings, icon: <SettingOutlined />, label: 'Settings' },
+const mainItems: NavItem[] = [
+  { label: 'Dashboard', path: ROUTES.dashboard, icon: IconDashboard },
+  { label: 'Nhân sự', path: ROUTES.employees, icon: IconUsers },
+  { label: 'Điều chuyển', path: ROUTES.movements, icon: IconTransfer },
+  { label: 'Hợp đồng', path: ROUTES.contracts, icon: IconBriefcase },
+  { label: 'Nghỉ phép', path: ROUTES.leave, icon: IconCalendarCheck },
+  { label: 'Chấm công', path: ROUTES.attendance, icon: IconClipboardList },
+  { label: 'Onboarding', path: ROUTES.onboarding, icon: IconFolderOpen },
+  { label: 'Offboarding', path: ROUTES.offboarding, icon: IconFileImport },
+  { label: 'Imports', path: ROUTES.imports, icon: IconTableImport },
+  { label: 'Audit logs', path: ROUTES.auditLogs, icon: IconFileAnalytics },
+  { label: 'Cài đặt', path: ROUTES.settings, icon: IconSettings },
+];
+
+const orgItems: NavItem[] = [
+  { label: 'Pháp nhân', path: ROUTES.legalEntities, icon: IconBuildingBank },
+  { label: 'Đơn vị', path: ROUTES.orgUnits, icon: IconSitemap },
+  { label: 'Chức vụ', path: ROUTES.positions, icon: IconBriefcase },
 ];
 
 const routeTitles: Record<string, string> = {
   [ROUTES.dashboard]: 'Dashboard',
-  [ROUTES.employees]: 'Employees',
-  [ROUTES.legalEntities]: 'Legal Entities',
-  [ROUTES.orgUnits]: 'Org Units',
-  [ROUTES.positions]: 'Positions',
-  [ROUTES.movements]: 'Movements',
-  [ROUTES.contracts]: 'Contracts',
-  [ROUTES.leave]: 'Leave',
-  [ROUTES.attendance]: 'Attendance',
+  [ROUTES.employees]: 'Nhân sự',
+  [ROUTES.legalEntities]: 'Pháp nhân',
+  [ROUTES.orgUnits]: 'Đơn vị',
+  [ROUTES.positions]: 'Chức vụ',
+  [ROUTES.movements]: 'Điều chuyển',
+  [ROUTES.contracts]: 'Hợp đồng',
+  [ROUTES.leave]: 'Nghỉ phép',
+  [ROUTES.attendance]: 'Chấm công',
   [ROUTES.onboarding]: 'Onboarding',
   [ROUTES.offboarding]: 'Offboarding',
   [ROUTES.imports]: 'Imports',
-  [ROUTES.auditLogs]: 'Audit Logs',
-  [ROUTES.settings]: 'Settings',
+  [ROUTES.auditLogs]: 'Audit logs',
+  [ROUTES.settings]: 'Cài đặt',
 };
 
+function isActive(pathname: string, path: string) {
+  if (path === ROUTES.employees) {
+    return pathname === path || pathname.startsWith('/employees/');
+  }
+  return pathname === path;
+}
+
 export function MainLayout() {
+  const [opened, { toggle, close }] = useDisclosure();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const selectedKey =
-    location.pathname.startsWith('/employees/') ? ROUTES.employees : location.pathname;
+  const selectedPath = location.pathname.startsWith('/employees/')
+    ? ROUTES.employees
+    : location.pathname;
 
-  const userMenuItems: MenuProps['items'] = [
-    {
-      key: 'profile',
-      label: (
-        <Space direction="vertical" size={0}>
-          <Typography.Text strong>{user?.fullName ?? 'Unknown user'}</Typography.Text>
-          <Typography.Text type="secondary">{user?.email ?? '-'}</Typography.Text>
-        </Space>
-      ),
-      disabled: true,
-    },
-    { type: 'divider' },
-    {
-      key: 'logout',
-      label: 'Logout',
-      icon: <LogoutOutlined />,
-      onClick: () => logout(),
-    },
-  ];
-
-  const pathSegments = location.pathname.split('/').filter(Boolean);
+  function goTo(path: string) {
+    navigate(path);
+    close();
+  }
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider theme="light" width={248} breakpoint="lg" collapsedWidth={72}>
-        <Flex vertical style={{ height: '100%' }}>
-          <Flex align="center" gap={12} style={{ padding: '20px 16px' }}>
-            <Avatar shape="square" size={40} style={{ background: '#1677ff' }}>
+    <AppShell
+      header={{ height: 64 }}
+      navbar={{ width: 260, breakpoint: 'md', collapsed: { mobile: !opened } }}
+      padding="lg"
+      bg="#f6f8fb"
+    >
+      <AppShell.Header>
+        <Group h="100%" px="lg" justify="space-between" wrap="nowrap">
+          <Group gap="sm" wrap="nowrap">
+            <Burger opened={opened} onClick={toggle} hiddenFrom="md" size="sm" />
+            <Title order={1} size="h3">
+              {routeTitles[selectedPath] ?? 'HACOM HRM'}
+            </Title>
+          </Group>
+
+          <Menu position="bottom-end" shadow="md" width={230}>
+            <Menu.Target>
+              <UnstyledButton>
+                <Group gap="xs" wrap="nowrap">
+                  <Avatar size={32} radius="xl" color="blue">
+                    {(user?.fullName ?? user?.email ?? 'U').slice(0, 1).toUpperCase()}
+                  </Avatar>
+                  <Stack gap={0} visibleFrom="sm">
+                    <Text size="sm" fw={600} maw={160} truncate>
+                      {user?.fullName ?? 'User'}
+                    </Text>
+                    <Text size="xs" c="dimmed" maw={160} truncate>
+                      {user?.email ?? '-'}
+                    </Text>
+                  </Stack>
+                  <IconChevronDown size={16} />
+                </Group>
+              </UnstyledButton>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Label>Tài khoản</Menu.Label>
+              <Menu.Item color="red" leftSection={<IconLogout size={16} />} onClick={() => logout()}>
+                Đăng xuất
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </Group>
+      </AppShell.Header>
+
+      <AppShell.Navbar p="md">
+        <Stack gap="md" h="100%">
+          <Group gap="sm" px="xs">
+            <Avatar radius="md" color="blue">
               HR
             </Avatar>
-            <Flex vertical>
-              <Typography.Text strong>HACOM HRM</Typography.Text>
-              <Typography.Text type="secondary">Phase 1 Demo</Typography.Text>
-            </Flex>
-          </Flex>
-          <Menu
-            mode="inline"
-            selectedKeys={[selectedKey]}
-            defaultOpenKeys={['organization']}
-            items={menuItems}
-            onClick={({ key }) => navigate(key)}
-            style={{ borderInlineEnd: 0, flex: 1 }}
-          />
-        </Flex>
-      </Sider>
+            <Stack gap={0}>
+              <Text fw={700}>HACOM HRM</Text>
+              <Text c="dimmed" size="xs">
+                Internal operations
+              </Text>
+            </Stack>
+          </Group>
 
-      <Layout>
-        <Header
-          style={{
-            background: '#fff',
-            padding: '0 24px',
-            borderBottom: '1px solid #f0f0f0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <Flex vertical gap={4}>
-            <Typography.Title level={4} style={{ margin: 0 }}>
-              {routeTitles[selectedKey] ?? 'HACOM HRM'}
-            </Typography.Title>
-            <Breadcrumb
-              items={pathSegments.map((segment) => ({
-                title: segment,
-              }))}
-            />
-          </Flex>
+          <ScrollArea flex={1}>
+            <Stack gap={4}>
+              {mainItems.slice(0, 2).map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.path}
+                    label={item.label}
+                    leftSection={<Icon size={18} />}
+                    active={isActive(location.pathname, item.path)}
+                    onClick={() => goTo(item.path)}
+                    className="app-nav-link"
+                  />
+                );
+              })}
 
-          <Dropdown menu={{ items: userMenuItems }} trigger={['click']}>
-            <Button type="text">
-              <Space>
-                <Avatar icon={<UserOutlined />} />
-                <span>{user?.fullName ?? 'User'}</span>
-                <DownOutlined />
-              </Space>
-            </Button>
-          </Dropdown>
-        </Header>
+              <NavLink
+                label="Tổ chức"
+                leftSection={<IconBuildingBank size={18} />}
+                defaultOpened
+                className="app-nav-link"
+              >
+                {orgItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <NavLink
+                      key={item.path}
+                      label={item.label}
+                      leftSection={<Icon size={17} />}
+                      active={isActive(location.pathname, item.path)}
+                      onClick={() => goTo(item.path)}
+                      className="app-nav-link"
+                    />
+                  );
+                })}
+              </NavLink>
 
-        <Content className="main-layout-content">
-          <Outlet />
-        </Content>
-      </Layout>
-    </Layout>
+              {mainItems.slice(2).map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.path}
+                    label={item.label}
+                    leftSection={<Icon size={18} />}
+                    active={isActive(location.pathname, item.path)}
+                    onClick={() => goTo(item.path)}
+                    className="app-nav-link"
+                  />
+                );
+              })}
+            </Stack>
+          </ScrollArea>
+        </Stack>
+      </AppShell.Navbar>
+
+      <AppShell.Main>
+        <Outlet />
+      </AppShell.Main>
+    </AppShell>
   );
 }
-

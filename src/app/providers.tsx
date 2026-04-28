@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from 'react';
 import { useEffect, useState } from 'react';
-import { App as AntApp, ConfigProvider } from 'antd';
+import { MantineProvider, createTheme } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { getCurrentUser } from '../features/auth/authApi';
@@ -12,6 +13,32 @@ const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: false,
       retry: 1,
+    },
+  },
+});
+
+const theme = createTheme({
+  primaryColor: 'blue',
+  defaultRadius: 'md',
+  fontFamily:
+    'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  headings: {
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    fontWeight: '650',
+  },
+  components: {
+    Paper: {
+      defaultProps: {
+        withBorder: true,
+        shadow: 'none',
+      },
+    },
+    Table: {
+      defaultProps: {
+        verticalSpacing: 'sm',
+        horizontalSpacing: 'md',
+      },
     },
   },
 });
@@ -71,19 +98,11 @@ function AuthBootstrap({ children }: PropsWithChildren) {
 
 export function AppProviders({ children }: PropsWithChildren) {
   return (
-    <ConfigProvider
-      theme={{
-        token: {
-          borderRadius: 8,
-          colorPrimary: '#1677ff',
-        },
-      }}
-    >
-      <AntApp>
+    <MantineProvider theme={theme}>
+      <Notifications position="top-right" zIndex={4000} />
         <QueryClientProvider client={queryClient}>
           <AuthBootstrap>{children}</AuthBootstrap>
         </QueryClientProvider>
-      </AntApp>
-    </ConfigProvider>
+    </MantineProvider>
   );
 }

@@ -6,7 +6,7 @@ COPY package*.json ./
 RUN npm ci
 
 FROM deps AS build
-ARG VITE_API_BASE_URL=/api
+ARG VITE_API_BASE_URL=/api/v1
 ARG VITE_USE_MOCKS=false
 ARG VITE_AUTH_MODE=chat-auth
 ARG VITE_CHAT_AUTH_BASE_URL=/api/v1/auth

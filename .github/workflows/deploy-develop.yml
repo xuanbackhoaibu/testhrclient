@@ -86,7 +86,7 @@ jobs:
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
         shell: bash
         env:
-          VITE_API_BASE_URL: ${{ vars.VITE_HR_API_BASE_URL != '' && vars.VITE_HR_API_BASE_URL || '/api' }}
+          VITE_API_BASE_URL: ${{ vars.VITE_HR_API_BASE_URL != '' && vars.VITE_HR_API_BASE_URL || '/api/v1' }}
           VITE_USE_MOCKS: ${{ vars.VITE_HR_USE_MOCKS != '' && vars.VITE_HR_USE_MOCKS || 'false' }}
           VITE_AUTH_MODE: ${{ vars.VITE_HR_AUTH_MODE != '' && vars.VITE_HR_AUTH_MODE || 'chat-auth' }}
           VITE_CHAT_AUTH_BASE_URL: ${{ vars.VITE_CHAT_AUTH_BASE_URL != '' && vars.VITE_CHAT_AUTH_BASE_URL || '/api/v1/auth' }}

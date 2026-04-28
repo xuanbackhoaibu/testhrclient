@@ -32,7 +32,7 @@ export HR_WEB_VERSION="${HR_WEB_VERSION:-smoke}"
 
 if [ -z "${HR_API_HEALTH_URL:-}" ]; then
   echo "ERROR: HR_API_HEALTH_URL is required for deploy smoke check." >&2
-  echo "Example: HR_API_HEALTH_URL=http://127.0.0.1:<actual_hr_api_port>/api/health" >&2
+  echo "Example: HR_API_HEALTH_URL=http://127.0.0.1:<actual_hr_api_port>/api/v1/health" >&2
   exit 64
 fi
 if [[ "${HR_API_HEALTH_URL}" == *"CHANGE_ME"* || "${HR_API_HEALTH_URL}" == *"change-me"* || "${HR_API_HEALTH_URL}" == *"<actual_hr_api_port>"* ]]; then

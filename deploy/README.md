@@ -40,7 +40,7 @@ smoke scripts so stale server defaults do not silently select the wrong API.
 Example when smoke runs on the deploy host and HR API is bound on localhost:
 
 ```env
-HR_API_HEALTH_URL=http://127.0.0.1:<actual_hr_api_port>/api/health
+HR_API_HEALTH_URL=http://127.0.0.1:<actual_hr_api_port>/api/v1/health
 ```
 
 Use a reverse-proxy URL instead if that is the real host-reachable API path. Do
@@ -51,7 +51,7 @@ is moved into a container on the same Docker network.
 
 The GitHub workflow passes Vite config as Docker build args:
 
-- `VITE_HR_API_BASE_URL` (default `/api` for the HR domain)
+- `VITE_HR_API_BASE_URL` (default `/api/v1` for the HR domain)
 - `VITE_HR_USE_MOCKS`
 - `VITE_HR_AUTH_MODE`
 - `VITE_CHAT_AUTH_BASE_URL`
@@ -65,16 +65,17 @@ bundle during image build. Changing the server runtime env file after deployment
 does not change the browser API base URL for an already-built image.
 
 For the deployed develop environment where HR Web and HR API share the same
-reverse proxy, keep `VITE_HR_API_BASE_URL=/api` and configure
-`HR_API_HEALTH_URL` separately for host-side smoke checks.
+reverse proxy, keep `VITE_HR_API_BASE_URL=/api/v1` and configure
+`HR_API_HEALTH_URL` separately for host-side smoke checks. `/api` remains only a
+temporary backend compatibility alias for older bundles.
 
 For local UI development from a laptop against the server API, do not use `/api`
-unless you intentionally configure a local Vite proxy. Use an absolute server
-URL in `.env.local`, for example:
+unless you are testing the temporary legacy alias. Use the canonical absolute
+server URL in `.env.local`, for example:
 
 ```env
 VITE_USE_MOCKS=false
-VITE_API_BASE_URL=https://<server-host-or-domain>/api
+VITE_API_BASE_URL=https://<server-host-or-domain>/api/v1
 VITE_CHAT_AUTH_BASE_URL=https://<server-host-or-domain>/api/v1/auth
 VITE_CHAT_AUTH_LOGIN_URL=https://<server-host-or-domain>/api/v1/auth/login
 VITE_CHAT_AUTH_LOGOUT_URL=https://<server-host-or-domain>/api/v1/auth/logout
@@ -104,7 +105,7 @@ docker compose -p hr-dev --env-file /hdd3/apps/hr/env/develop/hr-web-client.env 
 Or:
 
 ```bash
-HR_API_HEALTH_URL=http://127.0.0.1:<actual_hr_api_port>/api/health \
+HR_API_HEALTH_URL=http://127.0.0.1:<actual_hr_api_port>/api/v1/health \
 HR_WEB_VERSION=<git-sha> deploy/scripts/deploy-develop.sh
 ```
 

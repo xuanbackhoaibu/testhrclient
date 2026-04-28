@@ -1,17 +1,32 @@
 import { useState } from 'react';
-import { LockOutlined, UserOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Checkbox, Flex, Form, Input, Radio, Space, Typography } from 'antd';
+import { Alert, Button, Checkbox, SegmentedControl, Stack, TextInput, PasswordInput } from '@mantine/core';
+import { useForm } from '@mantine/form';
+import { notifications } from '@mantine/notifications';
+import { IconAlertCircle, IconLock, IconUser } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 
 import type { DemoRole } from '../features/auth/types';
-import { useAuth } from '../features/auth/useAuth';
 import { useAuthStore } from '../features/auth/authStore';
+import { useAuth } from '../features/auth/useAuth';
 import { ROUTES } from '../shared/constants/routes';
 
 interface LoginFormValues {
   loginIdentifier: string;
   password: string;
-  rememberMe?: boolean;
+  rememberMe: boolean;
+}
+
+const demoRoles: Array<{ label: string; value: DemoRole }> = [
+  { label: 'HR Admin', value: 'HR_ADMIN' },
+  { label: 'Manager', value: 'MANAGER' },
+  { label: 'Employee', value: 'EMPLOYEE' },
+];
+
+function readLoginError(error: unknown) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return 'Không đăng nhập được. Vui lòng kiểm tra tài khoản và thử lại.';
 }
 
 export function LoginPage() {
@@ -20,8 +35,19 @@ export function LoginPage() {
   const [role, setRole] = useState<DemoRole>('HR_ADMIN');
   const [submitting, setSubmitting] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
-
   const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
+
+  const form = useForm<LoginFormValues>({
+    initialValues: {
+      loginIdentifier: '',
+      password: '',
+      rememberMe: true,
+    },
+    validate: {
+      loginIdentifier: (value) => (value.trim() ? null : 'Nhập email hoặc mã nhân sự.'),
+      password: (value) => (value ? null : 'Nhập mật khẩu.'),
+    },
+  });
 
   async function handleMockLogin() {
     setSubmitting(true);
@@ -30,7 +56,7 @@ export function LoginPage() {
       await login(role);
       navigate(ROUTES.dashboard, { replace: true });
     } catch (loginFailure) {
-      setLoginError(loginFailure instanceof Error ? loginFailure.message : 'Login failed.');
+      setLoginError(readLoginError(loginFailure));
     } finally {
       setSubmitting(false);
     }
@@ -49,92 +75,79 @@ export function LoginPage() {
 
       const authState = useAuthStore.getState();
       if (authState.user && authState.isAuthenticated) {
+        notifications.show({
+          color: 'green',
+          title: 'Đăng nhập thành công',
+          message: 'Đang mở HRM.',
+        });
         navigate(ROUTES.dashboard, { replace: true });
         return;
       }
 
-      setLoginError(authState.error ?? 'Login succeeded, but HRM profile could not be loaded.');
+      setLoginError(authState.error ?? 'Đăng nhập thành công nhưng chưa tải được hồ sơ HRM.');
     } catch (loginFailure) {
-      setLoginError(loginFailure instanceof Error ? loginFailure.message : 'Login failed.');
+      setLoginError(readLoginError(loginFailure));
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <Space direction="vertical" size={20} style={{ width: '100%' }}>
-      {error ? <Alert type="warning" showIcon message={error} /> : null}
-      {loginError ? <Alert type="error" showIcon message={loginError} /> : null}
+    <Stack gap="md">
+      {error ? (
+        <Alert color="yellow" icon={<IconAlertCircle size={18} />}>
+          {error}
+        </Alert>
+      ) : null}
+      {loginError ? (
+        <Alert color="red" icon={<IconAlertCircle size={18} />}>
+          {loginError}
+        </Alert>
+      ) : null}
 
-      <Card className="page-card">
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <Typography.Title level={4} style={{ margin: 0 }}>
-            {isMockMode ? 'Local demo login' : 'Login with Chat Auth'}
-          </Typography.Title>
-          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            HR web client không login trực tiếp vào HRM backend bằng username/password.
-          </Typography.Paragraph>
-
-          {isMockMode ? (
-            <Flex vertical gap={16}>
-              <Radio.Group
-                value={role}
-                onChange={(event) => setRole(event.target.value as DemoRole)}
-                optionType="button"
-                buttonStyle="solid"
-              >
-                <Radio.Button value="HR_ADMIN">HR Admin</Radio.Button>
-                <Radio.Button value="MANAGER">Manager</Radio.Button>
-                <Radio.Button value="EMPLOYEE">Employee</Radio.Button>
-              </Radio.Group>
-              <Button type="primary" size="large" loading={submitting} onClick={handleMockLogin}>
-                Login mock
-              </Button>
-            </Flex>
-          ) : (
-            <Form<LoginFormValues>
-              layout="vertical"
-              initialValues={{ rememberMe: true }}
-              onFinish={handleRealLogin}
-              requiredMark={false}
-            >
-              <Form.Item
-                label="Login identifier"
-                name="loginIdentifier"
-                rules={[{ required: true, message: 'Enter employee code or email.' }]}
-              >
-                <Input
-                  size="large"
-                  prefix={<UserOutlined />}
-                  autoComplete="username"
-                  placeholder="Employee code or email"
-                />
-              </Form.Item>
-
-              <Form.Item
-                label="Password"
-                name="password"
-                rules={[{ required: true, message: 'Enter password.' }]}
-              >
-                <Input.Password
-                  size="large"
-                  prefix={<LockOutlined />}
-                  autoComplete="current-password"
-                  placeholder="Password"
-                />
-              </Form.Item>
-
-              <Form.Item name="rememberMe" valuePropName="checked">
-                <Checkbox>Remember me</Checkbox>
-              </Form.Item>
-
-              <Button type="primary" size="large" htmlType="submit" loading={submitting} block>
-                Login with Chat Auth
-              </Button>
-            </Form>
-          )}
-        </Space>
-      </Card>
-    </Space>
+      {isMockMode ? (
+        <Stack gap="md">
+          <SegmentedControl
+            fullWidth
+            value={role}
+            data={demoRoles}
+            onChange={(value) => setRole(value as DemoRole)}
+            disabled={submitting}
+          />
+          <Button size="md" loading={submitting} onClick={handleMockLogin}>
+            Đăng nhập mock
+          </Button>
+        </Stack>
+      ) : (
+        <form onSubmit={form.onSubmit(handleRealLogin)}>
+          <Stack gap="md">
+            <TextInput
+              label="Tài khoản"
+              placeholder="Email hoặc mã nhân sự"
+              leftSection={<IconUser size={18} />}
+              autoComplete="username"
+              disabled={submitting}
+              {...form.getInputProps('loginIdentifier')}
+            />
+            <PasswordInput
+              label="Mật khẩu"
+              placeholder="Mật khẩu"
+              leftSection={<IconLock size={18} />}
+              autoComplete="current-password"
+              disabled={submitting}
+              {...form.getInputProps('password')}
+            />
+            <Checkbox
+              label="Ghi nhớ đăng nhập"
+              disabled={submitting}
+              {...form.getInputProps('rememberMe', { type: 'checkbox' })}
+            />
+            <Button type="submit" size="md" loading={submitting}>
+              Đăng nhập
+            </Button>
+          </Stack>
+        </form>
+      )}
+    </Stack>
   );
 }

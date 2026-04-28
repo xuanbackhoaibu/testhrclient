@@ -24,10 +24,19 @@ interface ChatAuthLoginResponse {
 }
 
 export function getAccessToken(): string | null {
-  return getStoredString(STORAGE_KEYS.accessToken);
+  const token = getStoredString(STORAGE_KEYS.accessToken)?.trim();
+  if (!token || token === 'undefined' || token === 'null') {
+    return null;
+  }
+
+  return token;
 }
 
 export function setAccessToken(token: string): void {
+  if (!token.trim() || token === 'undefined' || token === 'null') {
+    throw new Error('Invalid access token.');
+  }
+
   setStoredString(STORAGE_KEYS.accessToken, token);
   useAuthStore.getState().setSession({
     accessToken: token,

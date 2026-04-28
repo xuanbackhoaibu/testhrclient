@@ -1,24 +1,41 @@
 import { useMemo, useState } from 'react';
-import { Button, Card, Col, Drawer, Form, Input, Row, Select, Space, Table, message } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { Button, Drawer, Group, Select, SimpleGrid, Stack, TextInput, Tooltip, Text } from '@mantine/core';
+import { useForm } from '@mantine/form';
+import { notifications } from '@mantine/notifications';
+import { IconEye, IconPlus, IconSearch } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
 import { createEmployee } from '../../features/employees/employeesApi';
 import type { Employee, EmployeePayload } from '../../features/employees/employeeTypes';
 import { useEmployees } from '../../features/employees/useEmployees';
-import { mockLegalEntities, mockOrgUnits } from '../../shared/mocks/mockOrganization';
+import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
-import { LoadingState } from '../../shared/components/LoadingState';
-import { ErrorState } from '../../shared/components/ErrorState';
-import { EmptyState } from '../../shared/components/EmptyState';
+import { TableActionsMenu } from '../../shared/components/TableActionsMenu';
+import { mockLegalEntities, mockOrgUnits } from '../../shared/mocks/mockOrganization';
+
+const employmentStatusOptions = [
+  { value: 'ACTIVE', label: 'Đang làm việc' },
+  { value: 'PROBATION', label: 'Thử việc' },
+  { value: 'INACTIVE', label: 'Tạm ngưng' },
+  { value: 'TERMINATED', label: 'Nghỉ việc' },
+];
+
+function TruncatedCell({ value, maxWidth = 220 }: { value?: string | null; maxWidth?: number }) {
+  const display = value || '-';
+  return (
+    <Tooltip label={display} disabled={!value || display.length < 24}>
+      <Text span className="truncate-cell" style={{ maxWidth }}>
+        {display}
+      </Text>
+    </Tooltip>
+  );
+}
 
 export function EmployeesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [form] = Form.useForm<EmployeePayload>();
   const [open, setOpen] = useState(false);
   const [params, setParams] = useState({
     page: 1,
@@ -29,201 +46,230 @@ export function EmployeesPage() {
     orgUnitId: undefined as string | undefined,
   });
 
+  const form = useForm<EmployeePayload>({
+    initialValues: {
+      employeeCode: '',
+      fullName: '',
+      companyEmail: '',
+      personalEmail: '',
+      phone: '',
+      gender: '',
+      dateOfBirth: '',
+      hireDate: '',
+      employmentStatus: 'ACTIVE',
+      citizenId: '',
+    },
+    validate: {
+      employeeCode: (value) => (value.trim() ? null : 'Nhập mã nhân sự.'),
+      fullName: (value) => (value.trim() ? null : 'Nhập họ tên.'),
+      hireDate: (value) => (value ? null : 'Chọn ngày vào làm.'),
+      companyEmail: (value) => (!value || /^\S+@\S+$/.test(value) ? null : 'Email không hợp lệ.'),
+      personalEmail: (value) => (!value || /^\S+@\S+$/.test(value) ? null : 'Email không hợp lệ.'),
+    },
+  });
+
   const { data, isLoading, error, refetch } = useEmployees(params);
 
   const createMutation = useMutation({
     mutationFn: createEmployee,
     onSuccess: async () => {
-      message.success('Đã tạo nhân sự mới.');
+      notifications.show({
+        color: 'green',
+        title: 'Đã tạo nhân sự',
+        message: 'Danh sách nhân sự đã được cập nhật.',
+      });
       setOpen(false);
-      form.resetFields();
+      form.reset();
       await queryClient.invalidateQueries({ queryKey: ['employees'] });
+    },
+    onError: () => {
+      notifications.show({
+        color: 'red',
+        title: 'Không tạo được nhân sự',
+        message: 'Vui lòng kiểm tra dữ liệu và thử lại.',
+      });
     },
   });
 
-  const columns = useMemo<ColumnsType<Employee>>(
+  const columns = useMemo<DataTableColumn<Employee>[]>(
     () => [
-      { title: 'Employee code', dataIndex: 'employeeCode', key: 'employeeCode' },
-      { title: 'Full name', dataIndex: 'fullName', key: 'fullName' },
-      { title: 'Company email', dataIndex: 'companyEmail', key: 'companyEmail' },
-      { title: 'Phone', dataIndex: 'phone', key: 'phone' },
       {
-        title: 'Status',
-        dataIndex: 'employmentStatus',
+        key: 'employeeCode',
+        header: 'Mã NV',
+        width: 120,
+        render: (record) => <Text fw={600}>{record.employeeCode}</Text>,
+      },
+      {
+        key: 'fullName',
+        header: 'Họ tên',
+        render: (record) => <TruncatedCell value={record.fullName} />,
+      },
+      {
+        key: 'companyEmail',
+        header: 'Email',
+        render: (record) => <TruncatedCell value={record.companyEmail} maxWidth={240} />,
+      },
+      {
+        key: 'phone',
+        header: 'SĐT',
+        width: 130,
+        render: (record) => record.phone || '-',
+      },
+      {
         key: 'employmentStatus',
-        render: (value: string) => <StatusTag status={value} />,
+        header: 'Trạng thái',
+        width: 150,
+        render: (record) => <StatusTag status={record.employmentStatus} />,
       },
       {
-        title: 'Legal entity',
-        key: 'legalEntityName',
-        render: (_, record) => record.currentAssignment.legalEntityName,
+        key: 'orgUnit',
+        header: 'Đơn vị',
+        render: (record) => <TruncatedCell value={record.currentAssignment.orgUnitName} />,
       },
       {
-        title: 'Org unit',
-        key: 'orgUnitName',
-        render: (_, record) => record.currentAssignment.orgUnitName,
-      },
-      {
-        title: 'Job title',
         key: 'jobTitle',
-        render: (_, record) => record.currentAssignment.jobTitle,
+        header: 'Chức danh',
+        render: (record) => <TruncatedCell value={record.currentAssignment.jobTitle} />,
       },
       {
-        title: 'Manager',
-        key: 'managerName',
-        render: (_, record) => record.currentAssignment.managerName,
-      },
-      {
-        title: 'Actions',
         key: 'actions',
-        render: (_, record) => (
-          <Button icon={<EyeOutlined />} onClick={() => navigate(`/employees/${record.id}`)}>
-            View
-          </Button>
+        header: '',
+        width: 70,
+        align: 'right',
+        render: (record) => (
+          <TableActionsMenu
+            actions={[
+              {
+                label: 'Xem chi tiết',
+                icon: <IconEye size={16} />,
+                onClick: () => navigate(`/employees/${record.id}`),
+              },
+            ]}
+          />
         ),
       },
     ],
     [navigate],
   );
 
-  if (isLoading) {
-    return <LoadingState />;
-  }
-
-  if (error) {
-    return <ErrorState onRetry={() => void refetch()} />;
-  }
-
-  if (!data) {
-    return <EmptyState />;
-  }
-
   return (
     <>
       <PageHeader
-        title="Employees"
-        subtitle="Employee master demo. Tạo mới chỉ lưu dữ liệu masked cho citizenId."
+        title="Nhân sự"
+        subtitle="Quản lý hồ sơ nhân sự, trạng thái làm việc và thông tin đơn vị hiện tại."
         actions={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
-            Create Employee
+          <Button leftSection={<IconPlus size={18} />} onClick={() => setOpen(true)}>
+            Tạo nhân sự
           </Button>
         }
       />
 
-      <Card className="page-card">
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <Row gutter={12}>
-            <Col xs={24} md={10}>
-              <Input.Search
-                placeholder="Search code, name, email"
-                allowClear
-                onSearch={(value) => setParams((current) => ({ ...current, search: value, page: 1 }))}
-              />
-            </Col>
-            <Col xs={24} md={4}>
-              <Select
-                placeholder="Status"
-                allowClear
-                style={{ width: '100%' }}
-                options={[
-                  { value: 'ACTIVE', label: 'ACTIVE' },
-                  { value: 'PROBATION', label: 'PROBATION' },
-                  { value: 'INACTIVE', label: 'INACTIVE' },
-                  { value: 'TERMINATED', label: 'TERMINATED' },
-                ]}
-                onChange={(value) => setParams((current) => ({ ...current, status: value, page: 1 }))}
-              />
-            </Col>
-            <Col xs={24} md={5}>
-              <Select
-                placeholder="Legal entity"
-                allowClear
-                style={{ width: '100%' }}
-                options={mockLegalEntities.map((item) => ({ value: item.id, label: item.name }))}
-                onChange={(value) => setParams((current) => ({ ...current, legalEntityId: value, page: 1 }))}
-              />
-            </Col>
-            <Col xs={24} md={5}>
-              <Select
-                placeholder="Org unit"
-                allowClear
-                style={{ width: '100%' }}
-                options={mockOrgUnits.map((item) => ({ value: item.id, label: item.name }))}
-                onChange={(value) => setParams((current) => ({ ...current, orgUnitId: value, page: 1 }))}
-              />
-            </Col>
-          </Row>
-
-          <Table
-            rowKey="id"
-            columns={columns}
-            dataSource={data.data}
-            onRow={(record) => ({
-              onClick: () => navigate(`/employees/${record.id}`),
-              style: { cursor: 'pointer' },
-            })}
-            pagination={{
-              current: data.meta.page,
-              pageSize: data.meta.pageSize,
-              total: data.meta.total,
-              onChange: (page, pageSize) => setParams((current) => ({ ...current, page, pageSize })),
-            }}
+      <Stack gap="md">
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm">
+          <TextInput
+            placeholder="Tìm mã, tên, email"
+            leftSection={<IconSearch size={17} />}
+            value={params.search}
+            onChange={(event) =>
+              setParams((current) => ({ ...current, search: event.currentTarget.value, page: 1 }))
+            }
           />
-        </Space>
-      </Card>
+          <Select
+            placeholder="Trạng thái"
+            clearable
+            data={employmentStatusOptions}
+            value={params.status ?? null}
+            onChange={(value) =>
+              setParams((current) => ({ ...current, status: value ?? undefined, page: 1 }))
+            }
+          />
+          <Select
+            placeholder="Pháp nhân"
+            clearable
+            data={mockLegalEntities.map((item) => ({ value: item.id, label: item.name }))}
+            value={params.legalEntityId ?? null}
+            onChange={(value) =>
+              setParams((current) => ({ ...current, legalEntityId: value ?? undefined, page: 1 }))
+            }
+          />
+          <Select
+            placeholder="Đơn vị"
+            clearable
+            data={mockOrgUnits.map((item) => ({ value: item.id, label: item.name }))}
+            value={params.orgUnitId ?? null}
+            onChange={(value) =>
+              setParams((current) => ({ ...current, orgUnitId: value ?? undefined, page: 1 }))
+            }
+          />
+        </SimpleGrid>
+
+        <DataTable
+          data={data?.data ?? []}
+          columns={columns}
+          rowKey={(record) => record.id}
+          meta={data?.meta}
+          loading={isLoading}
+          error={error}
+          onRetry={() => void refetch()}
+          onRowClick={(record) => navigate(`/employees/${record.id}`)}
+          onPageChange={(page, pageSize) => setParams((current) => ({ ...current, page, pageSize }))}
+          emptyTitle="Chưa có nhân sự"
+          emptyDescription="Không tìm thấy nhân sự phù hợp với bộ lọc hiện tại."
+        />
+      </Stack>
 
       <Drawer
-        title="Create Employee"
-        open={open}
-        width={520}
-        destroyOnClose
+        opened={open}
         onClose={() => {
           setOpen(false);
-          form.resetFields();
+          form.reset();
         }}
-        extra={
-          <Button type="primary" loading={createMutation.isPending} onClick={() => void form.submit()}>
-            Save
-          </Button>
-        }
+        title="Tạo nhân sự"
+        position="right"
+        size="lg"
       >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={(values) => createMutation.mutate(values)}
-          initialValues={{ employmentStatus: 'ACTIVE' }}
-        >
-          <Form.Item name="employeeCode" label="Employee code" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="fullName" label="Full name" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="companyEmail" label="Company email" rules={[{ type: 'email' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="personalEmail" label="Personal email" rules={[{ type: 'email' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="phone" label="Phone">
-            <Input />
-          </Form.Item>
-          <Form.Item name="gender" label="Gender">
-            <Select allowClear options={[{ value: 'MALE' }, { value: 'FEMALE' }, { value: 'OTHER' }]} />
-          </Form.Item>
-          <Form.Item name="dateOfBirth" label="Date of birth">
-            <Input type="date" />
-          </Form.Item>
-          <Form.Item name="hireDate" label="Hire date" rules={[{ required: true }]}>
-            <Input type="date" />
-          </Form.Item>
-          <Form.Item name="employmentStatus" label="Employment status" rules={[{ required: true }]}>
-            <Select options={[{ value: 'ACTIVE' }, { value: 'PROBATION' }, { value: 'INACTIVE' }, { value: 'TERMINATED' }]} />
-          </Form.Item>
-          <Form.Item name="citizenId" label="Citizen ID">
-            <Input />
-          </Form.Item>
-        </Form>
+        <form onSubmit={form.onSubmit((values) => createMutation.mutate(values))}>
+          <Stack gap="sm">
+            <TextInput label="Mã nhân sự" withAsterisk {...form.getInputProps('employeeCode')} />
+            <TextInput label="Họ tên" withAsterisk {...form.getInputProps('fullName')} />
+            <TextInput label="Email công ty" {...form.getInputProps('companyEmail')} />
+            <TextInput label="Email cá nhân" {...form.getInputProps('personalEmail')} />
+            <TextInput label="Số điện thoại" {...form.getInputProps('phone')} />
+            <Select
+              label="Giới tính"
+              clearable
+              data={[
+                { value: 'MALE', label: 'Nam' },
+                { value: 'FEMALE', label: 'Nữ' },
+                { value: 'OTHER', label: 'Khác' },
+              ]}
+              {...form.getInputProps('gender')}
+            />
+            <TextInput label="Ngày sinh" type="date" {...form.getInputProps('dateOfBirth')} />
+            <TextInput label="Ngày vào làm" type="date" withAsterisk {...form.getInputProps('hireDate')} />
+            <Select
+              label="Trạng thái"
+              withAsterisk
+              data={employmentStatusOptions}
+              {...form.getInputProps('employmentStatus')}
+            />
+            <TextInput label="CCCD" {...form.getInputProps('citizenId')} />
+            <Group justify="flex-end" mt="md">
+              <Button
+                variant="default"
+                onClick={() => {
+                  setOpen(false);
+                  form.reset();
+                }}
+              >
+                Hủy
+              </Button>
+              <Button type="submit" loading={createMutation.isPending}>
+                Lưu
+              </Button>
+            </Group>
+          </Stack>
+        </form>
       </Drawer>
     </>
   );

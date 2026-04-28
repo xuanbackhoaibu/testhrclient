@@ -1,5 +1,5 @@
-import { Breadcrumb, Flex, Typography } from 'antd';
 import type { ReactNode } from 'react';
+import { Breadcrumbs, Group, Stack, Text, Title } from '@mantine/core';
 
 interface PageHeaderProps {
   title: string;
@@ -10,18 +10,27 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, subtitle, actions, breadcrumbs }: PageHeaderProps) {
   return (
-    <Flex align="flex-start" justify="space-between" gap={16} wrap="wrap" style={{ marginBottom: 20 }}>
-      <Flex vertical gap={6}>
+    <Group justify="space-between" align="flex-start" gap="md" mb="lg" wrap="wrap">
+      <Stack gap={4}>
         {breadcrumbs?.length ? (
-          <Breadcrumb items={breadcrumbs.map((item) => ({ title: item }))} />
+          <Breadcrumbs fz="sm">
+            {breadcrumbs.map((item) => (
+              <Text key={item} c="dimmed" inherit>
+                {item}
+              </Text>
+            ))}
+          </Breadcrumbs>
         ) : null}
-        <Typography.Title level={3} style={{ margin: 0 }}>
+        <Title order={2} size="h3">
           {title}
-        </Typography.Title>
-        {subtitle ? <Typography.Text type="secondary">{subtitle}</Typography.Text> : null}
-      </Flex>
-      {actions}
-    </Flex>
+        </Title>
+        {subtitle ? (
+          <Text c="dimmed" size="sm" maw={720}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </Stack>
+      {actions ? <Group gap="xs">{actions}</Group> : null}
+    </Group>
   );
 }
-
