@@ -166,7 +166,7 @@ export async function getEmployeeLeave(id: string): Promise<LeaveRequest[]> {
   }
 
   const response = await httpClient.get('/leave/requests', { params: { employeeId: id, page: 1, pageSize: 100 } });
-  return normalizePaginatedResponse<LeaveRequest>(response.data).data;
+  return normalizePaginatedResponse<LeaveRequest>(response.data).items;
 }
 
 export async function getEmployeeAttendance(id: string): Promise<AttendanceRecord[]> {
@@ -176,5 +176,5 @@ export async function getEmployeeAttendance(id: string): Promise<AttendanceRecor
   }
 
   const response = await httpClient.get('/attendance/records', { params: { employeeId: id, page: 1, pageSize: 100 } });
-  return normalizePaginatedResponse<AttendanceRecord>(response.data).data;
+  return normalizePaginatedResponse<AttendanceRecord>(response.data).items;
 }

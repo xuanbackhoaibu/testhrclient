@@ -2,11 +2,11 @@ import { useMemo, useState } from 'react';
 import { Button, Drawer, Group, Select, SimpleGrid, Stack, Text, TextInput, Tooltip } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconEye, IconPlus, IconSearch } from '@tabler/icons-react';
+import { IconDownload, IconEye, IconPlus, IconSearch } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 
-import { createEmployee } from '../../features/employees/employeesApi';
+import { createEmployee, listEmployees } from '../../features/employees/employeesApi';
 import type { Employee, EmployeePayload } from '../../features/employees/employeeTypes';
 import { useEmployees } from '../../features/employees/useEmployees';
 import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
@@ -14,6 +14,7 @@ import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
 import { TableActionsMenu } from '../../shared/components/TableActionsMenu';
 import { mockDepartments, mockUnits } from '../../shared/mocks/mockOrganization';
+import { exportRowsToExcel } from '../../shared/utils/excel';
 
 const employmentStatusOptions = [
   { value: 'ACTIVE', label: 'Dang lam viec' },
@@ -68,6 +69,52 @@ export function EmployeesPage() {
   });
 
   const { data, isLoading, error, refetch } = useEmployees(params);
+
+  const exportMutation = useMutation({
+    mutationFn: async () => {
+      const result = await listEmployees({ ...params, page: 1, pageSize: 10000 });
+      await exportRowsToExcel({
+        fileName: `hrm-employees-${new Date().toISOString().slice(0, 10)}.xlsx`,
+        sheetName: 'Nhan su',
+        rows: result.items,
+        columns: [
+          { header: 'Ho ten', key: 'fullName', width: 28, value: (record) => record.fullName },
+          { header: 'Email cong ty', key: 'companyEmail', width: 32, value: (record) => record.companyEmail },
+          { header: 'Email ca nhan', key: 'personalEmail', width: 32, value: (record) => record.personalEmail },
+          { header: 'So dien thoai', key: 'phone', width: 16, value: (record) => record.phone },
+          { header: 'Gioi tinh', key: 'gender', width: 12, value: (record) => record.gender },
+          { header: 'Ngay sinh', key: 'dateOfBirth', width: 16, value: (record) => record.dateOfBirth },
+          { header: 'Ngay vao lam', key: 'hireDate', width: 16, value: (record) => record.hireDate },
+          { header: 'Trang thai', key: 'employmentStatus', width: 16, value: (record) => record.employmentStatus },
+          {
+            header: 'Don vi',
+            key: 'unitName',
+            width: 24,
+            value: (record) => record.currentEmployeeAssignment?.unitName,
+          },
+          {
+            header: 'Phong ban',
+            key: 'departmentName',
+            width: 24,
+            value: (record) => record.currentEmployeeAssignment?.departmentName,
+          },
+          {
+            header: 'Chuc danh',
+            key: 'jobTitle',
+            width: 24,
+            value: (record) => record.currentEmployeeAssignment?.jobTitle,
+          },
+        ],
+      });
+    },
+    onError: () => {
+      notifications.show({
+        color: 'red',
+        title: 'Khong xuat duoc Excel',
+        message: 'Vui long thu lai sau.',
+      });
+    },
+  });
 
   const createMutation = useMutation({
     mutationFn: createEmployee,
@@ -151,9 +198,19 @@ export function EmployeesPage() {
         title="Nhan su"
         subtitle="Quan ly ho so nhan su, trang thai lam viec va phan cong hien tai."
         actions={
-          <Button leftSection={<IconPlus size={18} />} onClick={() => setOpen(true)}>
-            Tao nhan su
-          </Button>
+          <>
+            <Button
+              variant="default"
+              leftSection={<IconDownload size={18} />}
+              loading={exportMutation.isPending}
+              onClick={() => exportMutation.mutate()}
+            >
+              Xuat Excel
+            </Button>
+            <Button leftSection={<IconPlus size={18} />} onClick={() => setOpen(true)}>
+              Tao nhan su
+            </Button>
+          </>
         }
       />
 
@@ -197,10 +254,10 @@ export function EmployeesPage() {
         </SimpleGrid>
 
         <DataTable
-          data={data?.data ?? []}
+          data={data?.items ?? []}
           columns={columns}
           rowKey={(record) => record.id}
-          meta={data?.meta}
+          meta={data?.pagination}
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}

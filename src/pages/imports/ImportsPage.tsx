@@ -19,6 +19,7 @@ import { LoadingState } from '../../shared/components/LoadingState';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
 import { formatDateTime } from '../../shared/utils/date';
+import { exportRowsToExcel, isExcelFile } from '../../shared/utils/excel';
 
 const steps = [
   { title: 'Tai mau' },
@@ -90,6 +91,82 @@ export function ImportsPage() {
     },
   });
 
+  async function exportBatchHistory() {
+    await exportRowsToExcel({
+      fileName: `hrm-import-batches-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      sheetName: 'Import batches',
+      rows: data?.items ?? [],
+      columns: [
+        { header: 'Batch code', key: 'batchCode', width: 28, value: (record) => record.batchCode },
+        { header: 'Import type', key: 'importType', width: 22, value: (record) => record.importType },
+        { header: 'File name', key: 'fileName', width: 34, value: (record) => record.fileName },
+        { header: 'Total rows', key: 'totalRows', width: 14, value: (record) => record.totalRows },
+        { header: 'Success rows', key: 'successRows', width: 14, value: (record) => record.successRows },
+        { header: 'Failed rows', key: 'failedRows', width: 14, value: (record) => record.failedRows },
+        { header: 'Status', key: 'status', width: 18, value: (record) => record.status },
+        { header: 'Created at', key: 'createdAt', width: 24, value: (record) => formatDateTime(record.createdAt) },
+      ],
+    });
+  }
+
+  async function exportPreviewRows() {
+    if (!preview) {
+      return;
+    }
+    await exportRowsToExcel({
+      fileName: `hrm-core-preview-${preview.batchId}.xlsx`,
+      sheetName: 'Preview rows',
+      rows,
+      columns: [
+        { header: 'Dong', key: 'rowNumber', width: 10, value: (record) => record.rowNumber },
+        { header: 'Loai dong', key: 'rowKind', width: 18, value: (record) => record.rowKind },
+        { header: 'Trang thai', key: 'validationStatus', width: 18, value: (record) => record.validationStatus },
+        { header: 'Ho ten', key: 'fullName', width: 28, value: (record) => String(record.normalizedDataJson.fullName ?? '') },
+        { header: 'Email', key: 'companyEmail', width: 32, value: (record) => String(record.normalizedDataJson.companyEmail ?? '') },
+        { header: 'Don vi', key: 'unitName', width: 28, value: (record) => String(record.normalizedDataJson.unitName ?? '') },
+        { header: 'Phong ban', key: 'departmentName', width: 28, value: (record) => String(record.normalizedDataJson.departmentName ?? '') },
+        { header: 'Chuc danh', key: 'jobTitle', width: 24, value: (record) => String(record.normalizedDataJson.jobTitle ?? '') },
+        { header: 'Loi', key: 'errors', width: 50, value: (record) => JSON.stringify(record.validationErrorsJson) },
+        { header: 'Canh bao', key: 'warnings', width: 50, value: (record) => JSON.stringify(record.validationWarningsJson) },
+      ],
+    });
+  }
+
+  async function exportSuggestedCodes() {
+    if (!preview) {
+      return;
+    }
+    const suggestedRows = [
+      ...preview.suggestedCodes.units.map((item) => ({
+        type: 'UNIT',
+        key: item.key,
+        name: item.name,
+        code: unitCodeDrafts[item.key] ?? item.code,
+        unitKey: '',
+      })),
+      ...preview.suggestedCodes.departments.map((item) => ({
+        type: 'DEPARTMENT',
+        key: item.key,
+        name: item.name,
+        code: departmentCodeDrafts[item.key] ?? item.code,
+        unitKey: item.unitKey ?? '',
+      })),
+    ];
+
+    await exportRowsToExcel({
+      fileName: `hrm-core-suggested-codes-${preview.batchId}.xlsx`,
+      sheetName: 'Suggested codes',
+      rows: suggestedRows,
+      columns: [
+        { header: 'Loai', key: 'type', width: 16, value: (record) => record.type },
+        { header: 'Key', key: 'key', width: 36, value: (record) => record.key },
+        { header: 'Ten', key: 'name', width: 32, value: (record) => record.name },
+        { header: 'Ma de xuat', key: 'code', width: 18, value: (record) => record.code },
+        { header: 'Unit key', key: 'unitKey', width: 26, value: (record) => record.unitKey },
+      ],
+    });
+  }
+
   const currentStep = useMemo(() => {
     if (!preview) {
       return 1;
@@ -158,7 +235,18 @@ export function ImportsPage() {
             >
               Tai mau Excel
             </Button>
-            <Upload showUploadList={false} beforeUpload={(file) => { previewMutation.mutate(file); return false; }}>
+            <Upload
+              accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+              showUploadList={false}
+              beforeUpload={(file) => {
+                if (!isExcelFile(file)) {
+                  message.error('Chi chap nhan file Excel .xlsx hoac .xls.');
+                  return Upload.LIST_IGNORE;
+                }
+                previewMutation.mutate(file);
+                return false;
+              }}
+            >
               <Button icon={<UploadOutlined />} loading={previewMutation.isPending}>
                 Upload preview
               </Button>
@@ -181,6 +269,15 @@ export function ImportsPage() {
               onClick={() => preview && void downloadBlob(`/imports/hrm-core/${preview.batchId}/errors.xlsx`, `hrm-core-errors-${preview.batchId}.xlsx`)}
             >
               Tai file loi
+            </Button>
+            <Button icon={<DownloadOutlined />} disabled={!preview || !rows.length} onClick={() => void exportPreviewRows()}>
+              Xuat preview
+            </Button>
+            <Button icon={<DownloadOutlined />} disabled={!preview} onClick={() => void exportSuggestedCodes()}>
+              Xuat ma de xuat
+            </Button>
+            <Button icon={<DownloadOutlined />} onClick={() => void exportBatchHistory()}>
+              Xuat lich su
             </Button>
           </Space>
         </Card>
@@ -258,7 +355,7 @@ export function ImportsPage() {
         <Card className="page-card" title="Lich su batch">
           <Table
             rowKey="id"
-            dataSource={data.data}
+            dataSource={data.items}
             pagination={false}
             columns={[
               { title: 'Batch code', dataIndex: 'batchCode' },

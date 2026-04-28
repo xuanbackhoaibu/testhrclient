@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react';
 import { Button, Drawer, Group, Select, SimpleGrid, Stack, Text, TextInput, Tooltip } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconEdit, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
+import { IconDownload, IconEdit, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { createUnit, updateUnit } from '../../features/organization/unitsApi';
+import { createUnit, listUnits, updateUnit } from '../../features/organization/unitsApi';
 import type { Unit } from '../../features/organization/organizationTypes';
 import { useUnits } from '../../features/organization/useUnits';
 import { ConfirmActionModal } from '../../shared/components/ConfirmActionModal';
@@ -13,6 +13,7 @@ import { DataTable, type DataTableColumn } from '../../shared/components/DataTab
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
 import { TableActionsMenu } from '../../shared/components/TableActionsMenu';
+import { exportRowsToExcel } from '../../shared/utils/excel';
 
 type UnitFormValues = Omit<Unit, 'id'>;
 
@@ -44,6 +45,31 @@ export function UnitsPage() {
   const [confirmInactive, setConfirmInactive] = useState<Unit | null>(null);
   const [open, setOpen] = useState(false);
   const { data, isLoading, error, refetch } = useUnits(params);
+
+  const exportMutation = useMutation({
+    mutationFn: async () => {
+      const result = await listUnits({ ...params, page: 1, pageSize: 10000 });
+      await exportRowsToExcel({
+        fileName: `hrm-units-${new Date().toISOString().slice(0, 10)}.xlsx`,
+        sheetName: 'Don vi',
+        rows: result.items,
+        columns: [
+          { header: 'Ma', key: 'code', width: 16, value: (record) => record.code },
+          { header: 'Ten don vi', key: 'name', width: 36, value: (record) => record.name },
+          { header: 'Ten tat', key: 'shortName', width: 20, value: (record) => record.shortName },
+          { header: 'Ma so thue', key: 'taxCode', width: 20, value: (record) => record.taxCode },
+          { header: 'Trang thai', key: 'status', width: 16, value: (record) => record.status },
+        ],
+      });
+    },
+    onError: () => {
+      notifications.show({
+        color: 'red',
+        title: 'Khong xuat duoc Excel',
+        message: 'Vui long thu lai sau.',
+      });
+    },
+  });
 
   const form = useForm<UnitFormValues>({
     initialValues: {
@@ -154,16 +180,26 @@ export function UnitsPage() {
         title="Pháp nhân"
         subtitle="Quản lý pháp nhân dùng trong hồ sơ nhân sự và phân quyền dữ liệu."
         actions={
-          <Button
-            leftSection={<IconPlus size={18} />}
-            onClick={() => {
-              setEditing(null);
-              form.reset();
-              setOpen(true);
-            }}
-          >
-            Tạo pháp nhân
-          </Button>
+          <>
+            <Button
+              variant="default"
+              leftSection={<IconDownload size={18} />}
+              loading={exportMutation.isPending}
+              onClick={() => exportMutation.mutate()}
+            >
+              Xuat Excel
+            </Button>
+            <Button
+              leftSection={<IconPlus size={18} />}
+              onClick={() => {
+                setEditing(null);
+                form.reset();
+                setOpen(true);
+              }}
+            >
+              Tạo pháp nhân
+            </Button>
+          </>
         }
       />
 
@@ -189,10 +225,10 @@ export function UnitsPage() {
         </SimpleGrid>
 
         <DataTable
-          data={data?.data ?? []}
+          data={data?.items ?? []}
           columns={columns}
           rowKey={(record) => record.id}
-          meta={data?.meta}
+          meta={data?.pagination}
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}

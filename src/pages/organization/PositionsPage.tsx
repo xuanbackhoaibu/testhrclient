@@ -2,16 +2,17 @@ import { useMemo, useState } from 'react';
 import { Button, Drawer, Group, Select, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconEdit, IconPlus, IconSearch } from '@tabler/icons-react';
+import { IconDownload, IconEdit, IconPlus, IconSearch } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { createPosition, updatePosition } from '../../features/organization/positionsApi';
+import { createPosition, listPositions, updatePosition } from '../../features/organization/positionsApi';
 import type { Position } from '../../features/organization/organizationTypes';
 import { usePositions } from '../../features/organization/usePositions';
 import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
 import { TableActionsMenu } from '../../shared/components/TableActionsMenu';
+import { exportRowsToExcel } from '../../shared/utils/excel';
 
 type PositionFormValues = Omit<Position, 'id'>;
 
@@ -31,6 +32,31 @@ export function PositionsPage() {
     status: undefined as string | undefined,
   });
   const { data, isLoading, error, refetch } = usePositions(params);
+
+  const exportMutation = useMutation({
+    mutationFn: async () => {
+      const result = await listPositions({ ...params, page: 1, pageSize: 10000 });
+      await exportRowsToExcel({
+        fileName: `hrm-positions-${new Date().toISOString().slice(0, 10)}.xlsx`,
+        sheetName: 'Chuc vu',
+        rows: result.items,
+        columns: [
+          { header: 'Ma', key: 'code', width: 16, value: (record) => record.code },
+          { header: 'Ten chuc vu', key: 'name', width: 30, value: (record) => record.name },
+          { header: 'Nhom cong viec', key: 'jobFunction', width: 24, value: (record) => record.jobFunction },
+          { header: 'Grade', key: 'grade', width: 12, value: (record) => record.grade },
+          { header: 'Trang thai', key: 'status', width: 16, value: (record) => record.status },
+        ],
+      });
+    },
+    onError: () => {
+      notifications.show({
+        color: 'red',
+        title: 'Khong xuat duoc Excel',
+        message: 'Vui long thu lai sau.',
+      });
+    },
+  });
 
   const form = useForm<PositionFormValues>({
     initialValues: {
@@ -113,16 +139,26 @@ export function PositionsPage() {
         title="Chức vụ"
         subtitle="Danh mục chức vụ, nhóm công việc và grade dùng cho hồ sơ nhân sự."
         actions={
-          <Button
-            leftSection={<IconPlus size={18} />}
-            onClick={() => {
-              setEditing(null);
-              form.reset();
-              setOpen(true);
-            }}
-          >
-            Tạo chức vụ
-          </Button>
+          <>
+            <Button
+              variant="default"
+              leftSection={<IconDownload size={18} />}
+              loading={exportMutation.isPending}
+              onClick={() => exportMutation.mutate()}
+            >
+              Xuat Excel
+            </Button>
+            <Button
+              leftSection={<IconPlus size={18} />}
+              onClick={() => {
+                setEditing(null);
+                form.reset();
+                setOpen(true);
+              }}
+            >
+              Tạo chức vụ
+            </Button>
+          </>
         }
       />
 
@@ -148,10 +184,10 @@ export function PositionsPage() {
         </SimpleGrid>
 
         <DataTable
-          data={data?.data ?? []}
+          data={data?.items ?? []}
           columns={columns}
           rowKey={(record) => record.id}
-          meta={data?.meta}
+          meta={data?.pagination}
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}

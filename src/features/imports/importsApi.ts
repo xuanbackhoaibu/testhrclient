@@ -123,7 +123,7 @@ export async function listHrmCoreRows(batchId: string, status?: string): Promise
   }
 
   const response = await httpClient.get(`/imports/hrm-core/${batchId}/rows`, { params: { status } });
-  return response.data.data as HrmCoreStagingRow[];
+  return response.data as HrmCoreStagingRow[];
 }
 
 export async function updateHrmCoreSuggestedCodes(

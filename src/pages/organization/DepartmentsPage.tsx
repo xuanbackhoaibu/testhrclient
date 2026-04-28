@@ -3,10 +3,10 @@ import { useMemo, useState } from 'react';
 import { Button, Drawer, Group, Paper, Select, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconEdit, IconPlus, IconSearch, IconSitemap, IconX } from '@tabler/icons-react';
+import { IconDownload, IconEdit, IconPlus, IconSearch, IconSitemap, IconX } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { createDepartment, updateDepartment } from '../../features/organization/departmentsApi';
+import { createDepartment, listDepartments, updateDepartment } from '../../features/organization/departmentsApi';
 import type { Department } from '../../features/organization/organizationTypes';
 import { useDepartments } from '../../features/organization/useDepartments';
 import { ConfirmActionModal } from '../../shared/components/ConfirmActionModal';
@@ -15,6 +15,7 @@ import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
 import { TableActionsMenu } from '../../shared/components/TableActionsMenu';
 import { mockUnits, mockDepartments } from '../../shared/mocks/mockOrganization';
+import { exportRowsToExcel } from '../../shared/utils/excel';
 
 type DepartmentFormValues = Omit<Department, 'id'>;
 
@@ -55,6 +56,34 @@ export function DepartmentsPage() {
   const [open, setOpen] = useState(false);
 
   const { data, isLoading, error, refetch } = useDepartments(params);
+
+  const exportMutation = useMutation({
+    mutationFn: async () => {
+      const result = await listDepartments({ ...params, page: 1, pageSize: 10000 });
+      await exportRowsToExcel({
+        fileName: `hrm-departments-${new Date().toISOString().slice(0, 10)}.xlsx`,
+        sheetName: 'Phong ban',
+        rows: result.items,
+        columns: [
+          { header: 'Ma', key: 'code', width: 16, value: (record) => record.code },
+          { header: 'Ten phong ban', key: 'name', width: 34, value: (record) => record.name },
+          { header: 'Don vi ID', key: 'unitId', width: 24, value: (record) => record.unitId },
+          { header: 'Phong ban cha ID', key: 'parentId', width: 24, value: (record) => record.parentId },
+          { header: 'Loai', key: 'type', width: 16, value: (record) => record.type },
+          { header: 'Hieu luc tu', key: 'effectiveFrom', width: 16, value: (record) => record.effectiveFrom },
+          { header: 'Hieu luc den', key: 'effectiveTo', width: 16, value: (record) => record.effectiveTo },
+          { header: 'Trang thai', key: 'status', width: 16, value: (record) => record.status },
+        ],
+      });
+    },
+    onError: () => {
+      notifications.show({
+        color: 'red',
+        title: 'Khong xuat duoc Excel',
+        message: 'Vui long thu lai sau.',
+      });
+    },
+  });
 
   const form = useForm<DepartmentFormValues>({
     initialValues: {
@@ -170,16 +199,26 @@ export function DepartmentsPage() {
         title="Đơn vị"
         subtitle="Quản lý đơn vị tổ chức theo pháp nhân, cấp cha con và trạng thái hiệu lực."
         actions={
-          <Button
-            leftSection={<IconPlus size={18} />}
-            onClick={() => {
-              setEditing(null);
-              form.reset();
-              setOpen(true);
-            }}
-          >
-            Tạo đơn vị
-          </Button>
+          <>
+            <Button
+              variant="default"
+              leftSection={<IconDownload size={18} />}
+              loading={exportMutation.isPending}
+              onClick={() => exportMutation.mutate()}
+            >
+              Xuat Excel
+            </Button>
+            <Button
+              leftSection={<IconPlus size={18} />}
+              onClick={() => {
+                setEditing(null);
+                form.reset();
+                setOpen(true);
+              }}
+            >
+              Tạo đơn vị
+            </Button>
+          </>
         }
       />
 
@@ -214,10 +253,10 @@ export function DepartmentsPage() {
         </SimpleGrid>
 
         <DataTable
-          data={data?.data ?? []}
+          data={data?.items ?? []}
           columns={columns}
           rowKey={(record) => record.id}
-          meta={data?.meta}
+          meta={data?.pagination}
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}

@@ -1,20 +1,53 @@
-import type { ApiResponse, ListQueryParams, PaginatedResponse, PaginationMeta } from '../types/api';
+import type {
+  ApiSuccessResponse,
+  ListQueryParams,
+  PaginatedData,
+  PaginatedResponse,
+  PaginationMeta,
+} from '../types/api';
 
-type BackendPaginatedResponse<T> = {
-  data?: T[];
-  meta?: PaginationMeta;
-  pagination?: PaginationMeta;
-};
+type BackendPaginatedResponse<T> =
+  | PaginatedData<T>
+  | {
+      data?: T[];
+      meta?: Partial<PaginationMeta>;
+      pagination?: Partial<PaginationMeta>;
+    };
 
 function fallbackPagination(params: ListQueryParams = {}, total = 0): PaginationMeta {
   const page = params.page ?? 1;
   const pageSize = params.pageSize ?? Math.max(total, 10);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return {
     page,
     pageSize,
     total,
-    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPreviousPage: page > 1,
+  };
+}
+
+function completePagination(
+  pagination: Partial<PaginationMeta> | undefined,
+  params: ListQueryParams,
+  total: number,
+): PaginationMeta {
+  const fallback = fallbackPagination(params, total);
+  const page = pagination?.page ?? fallback.page;
+  const pageSize = pagination?.pageSize ?? fallback.pageSize;
+  const resolvedTotal = pagination?.total ?? fallback.total;
+  const totalPages =
+    pagination?.totalPages ?? Math.max(1, Math.ceil(resolvedTotal / pageSize));
+
+  return {
+    page,
+    pageSize,
+    total: resolvedTotal,
+    totalPages,
+    hasNextPage: pagination?.hasNextPage ?? page < totalPages,
+    hasPreviousPage: pagination?.hasPreviousPage ?? page > 1,
   };
 }
 
@@ -23,23 +56,36 @@ export function normalizePaginatedResponse<T>(
   params: ListQueryParams = {},
 ): PaginatedResponse<T> {
   if (Array.isArray(payload)) {
-    return {
-      data: payload,
-      meta: fallbackPagination(params, payload.length),
-    };
+    const pagination = fallbackPagination(params, payload.length);
+    return { items: payload, pagination, data: payload, meta: pagination };
   }
 
-  const data = Array.isArray(payload?.data) ? payload.data : [];
+  const items = Array.isArray((payload as PaginatedData<T> | undefined)?.items)
+    ? (payload as PaginatedData<T>).items
+    : Array.isArray((payload as { data?: T[] } | undefined)?.data)
+      ? ((payload as { data?: T[] }).data ?? [])
+      : [];
+  const rawPagination =
+    (payload as PaginatedData<T> | undefined)?.pagination ??
+    (payload as { meta?: Partial<PaginationMeta> } | undefined)?.meta;
+  const pagination = completePagination(rawPagination, params, items.length);
 
   return {
-    data,
-    meta: payload?.meta ?? payload?.pagination ?? fallbackPagination(params, data.length),
+    items,
+    pagination,
+    data: items,
+    meta: pagination,
   };
 }
 
-export function unwrapApiResponse<T>(payload: ApiResponse<T> | T): T {
-  if (payload && typeof payload === 'object' && 'data' in payload) {
-    return (payload as ApiResponse<T>).data;
+export function unwrapApiResponse<T>(payload: ApiSuccessResponse<T> | T): T {
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    'success' in payload &&
+    (payload as ApiSuccessResponse<T>).success === true
+  ) {
+    return (payload as ApiSuccessResponse<T>).data;
   }
 
   return payload as T;

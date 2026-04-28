@@ -77,11 +77,11 @@ export function MovementsPage() {
 
           <Table
             rowKey="id"
-            dataSource={data.data}
+            dataSource={data.items}
             pagination={{
-              current: data.meta.page,
-              pageSize: data.meta.pageSize,
-              total: data.meta.total,
+              current: data.pagination.page,
+              pageSize: data.pagination.pageSize,
+              total: data.pagination.total,
               onChange: (page, pageSize) => setParams((current) => ({ ...current, page, pageSize })),
             }}
             columns={[
