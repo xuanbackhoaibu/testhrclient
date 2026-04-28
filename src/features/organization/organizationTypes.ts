@@ -7,6 +7,13 @@ export interface Unit {
   status: string;
 }
 
+export interface UnitSelectOption {
+  id: string;
+  code: string;
+  name: string;
+  shortName?: string | null;
+}
+
 export interface Department {
   id: string;
   code: string;
@@ -19,6 +26,14 @@ export interface Department {
   status: string;
 }
 
+export interface DepartmentSelectOption {
+  id: string;
+  code: string;
+  unitId: string;
+  parentId?: string | null;
+  name: string;
+}
+
 export interface Position {
   id: string;
   code: string;
@@ -28,3 +43,10 @@ export interface Position {
   status: string;
 }
 
+export interface PositionSelectOption {
+  id: string;
+  code: string;
+  name: string;
+  jobFunction?: string | null;
+  grade?: string | null;
+}

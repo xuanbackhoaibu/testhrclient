@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import type { ListQueryParams } from '../../shared/types/api';
-import { getDepartmentTree, listDepartments } from './departmentsApi';
+import { getDepartmentTree, listDepartments, listDepartmentsSelect } from './departmentsApi';
 
 export function useDepartments(params: ListQueryParams) {
   return useQuery({
@@ -13,3 +13,9 @@ export function useDepartments(params: ListQueryParams) {
   });
 }
 
+export function useDepartmentsSelect(unitId?: string) {
+  return useQuery({
+    queryKey: ['departments', 'select', unitId ?? null],
+    queryFn: () => listDepartmentsSelect(unitId),
+  });
+}

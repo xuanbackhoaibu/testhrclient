@@ -4,7 +4,7 @@ import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockDepartments } from '../../shared/mocks/mockOrganization';
 import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../shared/types/api';
-import type { Department } from './organizationTypes';
+import type { Department, DepartmentSelectOption } from './organizationTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
 const DEPARTMENT_TREE_PAGE_SIZE = 100;
@@ -31,6 +31,26 @@ export async function listDepartments(params: ListQueryParams = {}): Promise<Pag
 
   const response = await api.get<PaginatedData<Department>>('/departments', { params });
   return normalizePaginatedResponse<Department>(response, params);
+}
+
+export async function listDepartmentsSelect(unitId?: string): Promise<DepartmentSelectOption[]> {
+  if (isMockMode) {
+    await mockDelay();
+    return mockDepartments
+      .filter((item) => item.status === 'ACTIVE')
+      .filter((item) => (unitId ? item.unitId === unitId : true))
+      .map((item) => ({
+        id: item.id,
+        code: item.code,
+        unitId: item.unitId,
+        parentId: item.parentId,
+        name: item.name,
+      }));
+  }
+
+  return api.get<DepartmentSelectOption[]>('/departments/select', {
+    params: { unitId },
+  });
 }
 
 export async function getDepartmentTree(params: ListQueryParams = {}): Promise<DepartmentTreeNode[]> {

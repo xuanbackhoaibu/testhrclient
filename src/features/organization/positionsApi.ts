@@ -4,7 +4,7 @@ import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockPositions } from '../../shared/mocks/mockOrganization';
 import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../shared/types/api';
-import type { Position } from './organizationTypes';
+import type { Position, PositionSelectOption } from './organizationTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
 
@@ -26,6 +26,23 @@ export async function listPositions(params: ListQueryParams = {}): Promise<Pagin
 
   const response = await api.get<PaginatedData<Position>>('/positions', { params });
   return normalizePaginatedResponse<Position>(response, params);
+}
+
+export async function listPositionsSelect(): Promise<PositionSelectOption[]> {
+  if (isMockMode) {
+    await mockDelay();
+    return mockPositions
+      .filter((item) => item.status === 'ACTIVE')
+      .map((item) => ({
+        id: item.id,
+        code: item.code,
+        name: item.name,
+        jobFunction: item.jobFunction,
+        grade: item.grade,
+      }));
+  }
+
+  return api.get<PositionSelectOption[]>('/positions/select');
 }
 
 export async function createPosition(payload: Omit<Position, 'id'>): Promise<Position> {

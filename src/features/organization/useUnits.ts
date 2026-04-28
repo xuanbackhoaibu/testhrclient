@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import type { ListQueryParams } from '../../shared/types/api';
-import { listUnits } from './unitsApi';
+import { listUnits, listUnitsSelect } from './unitsApi';
 
 export function useUnits(params: ListQueryParams) {
   return useQuery({
@@ -10,3 +10,9 @@ export function useUnits(params: ListQueryParams) {
   });
 }
 
+export function useUnitsSelect() {
+  return useQuery({
+    queryKey: ['units', 'select'],
+    queryFn: listUnitsSelect,
+  });
+}

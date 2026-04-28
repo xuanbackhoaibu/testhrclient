@@ -4,7 +4,7 @@ import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockUnits } from '../../shared/mocks/mockOrganization';
 import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../shared/types/api';
-import type { Unit } from './organizationTypes';
+import type { Unit, UnitSelectOption } from './organizationTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
 
@@ -23,6 +23,22 @@ export async function listUnits(params: ListQueryParams = {}): Promise<Paginated
 
   const response = await api.get<PaginatedData<Unit>>('/units', { params });
   return normalizePaginatedResponse<Unit>(response, params);
+}
+
+export async function listUnitsSelect(): Promise<UnitSelectOption[]> {
+  if (isMockMode) {
+    await mockDelay();
+    return mockUnits
+      .filter((item) => item.status === 'ACTIVE')
+      .map((item) => ({
+        id: item.id,
+        code: item.code,
+        name: item.name,
+        shortName: item.shortName,
+      }));
+  }
+
+  return api.get<UnitSelectOption[]>('/units/select');
 }
 
 export async function createUnit(payload: Omit<Unit, 'id'>): Promise<Unit> {
