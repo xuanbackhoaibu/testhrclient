@@ -1,7 +1,11 @@
 export interface ImportErrorSummary {
-  rowNo: number;
+  rowNumber?: number;
+  rowNo?: number;
   field: string;
   message: string;
+  value?: string | null;
+  errorCode?: string;
+  suggestion?: string;
 }
 
 export interface ImportBatch {
@@ -54,4 +58,18 @@ export interface HrmCoreStagingRow {
   validationStatus: string;
   validationErrorsJson: ImportErrorSummary[];
   validationWarningsJson: ImportErrorSummary[];
+}
+
+export interface DomainImportPreview {
+  jobId: string;
+  batchId: string;
+  importType: string;
+  status: string;
+  totalRows: number;
+  validRows: number;
+  invalidRows: number;
+  warnings: number;
+  warningRows: number;
+  errors: ImportErrorSummary[];
+  canCommit: boolean;
 }

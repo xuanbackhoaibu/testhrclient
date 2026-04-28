@@ -1,78 +1,101 @@
 import { useMemo, useState } from 'react';
-import { Button, Card, Checkbox, Input, Space, Statistic, Steps, Table, Tabs, Upload, message } from 'antd';
-import { DownloadOutlined, RollbackOutlined, UploadOutlined } from '@ant-design/icons';
+import { Button, Card, Checkbox, Space, Statistic, Steps, Table, Tabs, Upload, message } from 'antd';
+import { DownloadOutlined, UploadOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import {
-  commitHrmCoreImport,
+  commitDomainImport,
   getImportBatch,
-  listHrmCoreRows,
-  previewHrmCoreImport,
-  rollbackHrmCoreImport,
-  updateHrmCoreSuggestedCodes,
+  listDomainImportRows,
+  previewDomainImport,
 } from '../../features/imports/importsApi';
-import { downloadHrmCoreErrors, downloadHrmCoreTemplate } from '../../features/import-export/excelFilesApi';
+import type { DomainImportPreview, HrmCoreStagingRow, ImportBatch } from '../../features/imports/importTypes';
+import {
+  downloadDomainExport,
+  downloadImportErrorReport,
+  downloadImportTemplate,
+  type ExcelDomainKey,
+} from '../../features/import-export/excelFilesApi';
 import { showDownloadError } from '../../features/import-export/downloadError';
-import type { HrmCorePreview, HrmCoreStagingRow, ImportBatch, SuggestedCode } from '../../features/imports/importTypes';
 import { useImportBatches } from '../../features/imports/useImportBatches';
 import { ErrorState } from '../../shared/components/ErrorState';
 import { LoadingState } from '../../shared/components/LoadingState';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
 import { formatDateTime } from '../../shared/utils/date';
-import { exportRowsToExcel, isExcelFile } from '../../shared/utils/excel';
+import { isExcelFile } from '../../shared/utils/excel';
+
+interface DomainConfig {
+  key: ExcelDomainKey;
+  title: string;
+  importType: string;
+  order: number;
+}
+
+const domainConfigs: DomainConfig[] = [
+  { key: 'organization-units', title: 'Đơn vị', importType: 'ORGANIZATION_UNITS_EXCEL', order: 1 },
+  { key: 'departments', title: 'Phòng ban', importType: 'DEPARTMENTS_EXCEL', order: 2 },
+  { key: 'employees', title: 'Nhân sự', importType: 'EMPLOYEES_EXCEL', order: 3 },
+  { key: 'employee-assignments', title: 'Phân công nhân sự', importType: 'EMPLOYEE_ASSIGNMENTS_EXCEL', order: 4 },
+];
 
 const steps = [
+  { title: 'Chọn loại dữ liệu' },
   { title: 'Tải mẫu' },
   { title: 'Upload' },
-  { title: 'Kiểm tra' },
   { title: 'Preview' },
-  { title: 'Xác nhận' },
+  { title: 'Commit' },
+  { title: 'Kết quả' },
 ];
+
+function renderMessages(value: unknown): string {
+  if (!Array.isArray(value)) {
+    return '-';
+  }
+  return value
+    .map((item) => {
+      if (typeof item === 'object' && item !== null && 'message' in item) {
+        return String((item as { message?: unknown }).message ?? '');
+      }
+      return String(item);
+    })
+    .filter(Boolean)
+    .join('; ') || '-';
+}
 
 export function ImportsPage() {
   const queryClient = useQueryClient();
-  const [selected, setSelected] = useState<ImportBatch | null>(null);
-  const [preview, setPreview] = useState<HrmCorePreview | null>(null);
+  const [activeDomain, setActiveDomain] = useState<ExcelDomainKey>('organization-units');
+  const [preview, setPreview] = useState<DomainImportPreview | null>(null);
   const [rows, setRows] = useState<HrmCoreStagingRow[]>([]);
   const [allowWarnings, setAllowWarnings] = useState(false);
-  const [unitCodeDrafts, setUnitCodeDrafts] = useState<Record<string, string>>({});
-  const [departmentCodeDrafts, setDepartmentCodeDrafts] = useState<Record<string, string>>({});
+  const [selected, setSelected] = useState<ImportBatch | null>(null);
   const { data, isLoading, error, refetch } = useImportBatches({ page: 1, pageSize: 20 });
 
+  const activeConfig = domainConfigs.find((item) => item.key === activeDomain) ?? domainConfigs[0];
+
   const templateMutation = useMutation({
-    mutationFn: downloadHrmCoreTemplate,
+    mutationFn: downloadImportTemplate,
     onError: (error) => showDownloadError(error, 'Tải mẫu Excel thất bại.'),
   });
 
-  const previewMutation = useMutation({
-    mutationFn: previewHrmCoreImport,
-    onSuccess: async (result) => {
-      setPreview(result);
-      setAllowWarnings(false);
-      setUnitCodeDrafts(Object.fromEntries(result.suggestedCodes.units.map((item) => [item.key, item.code])));
-      setDepartmentCodeDrafts(Object.fromEntries(result.suggestedCodes.departments.map((item) => [item.key, item.code])));
-      setRows(await listHrmCoreRows(result.batchId));
-      await queryClient.invalidateQueries({ queryKey: ['import-batches'] });
-      message.success('Đã tạo preview HRM Core.');
-    },
+  const exportMutation = useMutation({
+    mutationFn: (domainKey: ExcelDomainKey) => downloadDomainExport(domainKey),
+    onError: (error) => showDownloadError(error, 'Xuất Excel thất bại.'),
   });
 
-  const updateCodesMutation = useMutation({
-    mutationFn: async () => {
-      if (!preview) {
-        throw new Error('Missing preview');
-      }
-      return updateHrmCoreSuggestedCodes(preview.batchId, {
-        units: Object.entries(unitCodeDrafts).map(([key, code]) => ({ key, code })),
-        departments: Object.entries(departmentCodeDrafts).map(([key, code]) => ({ key, code })),
-      });
-    },
-    onSuccess: async (result) => {
+  const previewMutation = useMutation({
+    mutationFn: async ({ domainKey, file }: { domainKey: ExcelDomainKey; file: File }) =>
+      previewDomainImport(domainKey, file),
+    onSuccess: async (result, variables) => {
+      setActiveDomain(variables.domainKey);
       setPreview(result);
-      setRows(await listHrmCoreRows(result.batchId));
-      message.success('Đã cập nhật mã đề xuất.');
+      setAllowWarnings(false);
+      setRows(await listDomainImportRows(result.batchId, variables.domainKey));
+      await queryClient.invalidateQueries({ queryKey: ['import-batches'] });
+      message.success('Đã kiểm tra dữ liệu Excel.');
     },
+    onError: () => message.error('Kiểm tra dữ liệu Excel thất bại.'),
   });
 
   const commitMutation = useMutation({
@@ -80,21 +103,14 @@ export function ImportsPage() {
       if (!preview) {
         throw new Error('Missing preview');
       }
-      return commitHrmCoreImport(preview.batchId, allowWarnings);
+      return commitDomainImport(activeDomain, preview.batchId, allowWarnings);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['import-batches'] });
-      message.success('Đã commit batch HRM Core.');
-      setPreview((current) => (current ? { ...current, status: 'COMMITTED' } : current));
+      setPreview((current) => (current ? { ...current, status: 'COMMITTED', canCommit: false } : current));
+      message.success('Import dữ liệu thành công.');
     },
-  });
-
-  const rollbackMutation = useMutation({
-    mutationFn: rollbackHrmCoreImport,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['import-batches'] });
-      message.success('Đã rollback dữ liệu batch tạo mới.');
-    },
+    onError: () => message.error('Import dữ liệu thất bại.'),
   });
 
   const errorFileMutation = useMutation({
@@ -102,98 +118,22 @@ export function ImportsPage() {
       if (!preview) {
         throw new Error('Missing preview');
       }
-      return downloadHrmCoreErrors(preview.batchId);
+      return downloadImportErrorReport(preview.batchId);
     },
     onError: (error) => showDownloadError(error, 'Tải file lỗi thất bại.'),
   });
-
-  async function exportBatchHistory() {
-    await exportRowsToExcel({
-      fileName: `hrm-import-batches-${new Date().toISOString().slice(0, 10)}.xlsx`,
-        sheetName: 'Lịch sử import',
-      rows: data?.items ?? [],
-      columns: [
-        { header: 'Batch code', key: 'batchCode', width: 28, value: (record) => record.batchCode },
-        { header: 'Import type', key: 'importType', width: 22, value: (record) => record.importType },
-        { header: 'Tên file', key: 'fileName', width: 34, value: (record) => record.fileName },
-        { header: 'Tổng số dòng', key: 'totalRows', width: 14, value: (record) => record.totalRows },
-        { header: 'Thành công', key: 'successRows', width: 14, value: (record) => record.successRows },
-        { header: 'Thất bại', key: 'failedRows', width: 14, value: (record) => record.failedRows },
-        { header: 'Trạng thái', key: 'status', width: 18, value: (record) => record.status },
-        { header: 'Ngày tạo', key: 'createdAt', width: 24, value: (record) => formatDateTime(record.createdAt) },
-      ],
-    });
-  }
-
-  async function exportPreviewRows() {
-    if (!preview) {
-      return;
-    }
-    await exportRowsToExcel({
-      fileName: `hrm-core-preview-${preview.batchId}.xlsx`,
-      sheetName: 'Dòng preview',
-      rows,
-      columns: [
-        { header: 'Dòng', key: 'rowNumber', width: 10, value: (record) => record.rowNumber },
-        { header: 'Loại dòng', key: 'rowKind', width: 18, value: (record) => record.rowKind },
-        { header: 'Trạng thái', key: 'validationStatus', width: 18, value: (record) => record.validationStatus },
-        { header: 'Họ tên', key: 'fullName', width: 28, value: (record) => String(record.normalizedDataJson.fullName ?? '') },
-        { header: 'Email', key: 'companyEmail', width: 32, value: (record) => String(record.normalizedDataJson.companyEmail ?? '') },
-        { header: 'Đơn vị', key: 'unitName', width: 28, value: (record) => String(record.normalizedDataJson.unitName ?? '') },
-        { header: 'Phòng ban', key: 'departmentName', width: 28, value: (record) => String(record.normalizedDataJson.departmentName ?? '') },
-        { header: 'Chức danh', key: 'jobTitle', width: 24, value: (record) => String(record.normalizedDataJson.jobTitle ?? '') },
-        { header: 'Lỗi', key: 'errors', width: 50, value: (record) => JSON.stringify(record.validationErrorsJson) },
-        { header: 'Cảnh báo', key: 'warnings', width: 50, value: (record) => JSON.stringify(record.validationWarningsJson) },
-      ],
-    });
-  }
-
-  async function exportSuggestedCodes() {
-    if (!preview) {
-      return;
-    }
-    const suggestedRows = [
-      ...preview.suggestedCodes.units.map((item) => ({
-        type: 'UNIT',
-        key: item.key,
-        name: item.name,
-        code: unitCodeDrafts[item.key] ?? item.code,
-        unitKey: '',
-      })),
-      ...preview.suggestedCodes.departments.map((item) => ({
-        type: 'DEPARTMENT',
-        key: item.key,
-        name: item.name,
-        code: departmentCodeDrafts[item.key] ?? item.code,
-        unitKey: item.unitKey ?? '',
-      })),
-    ];
-
-    await exportRowsToExcel({
-      fileName: `hrm-core-suggested-codes-${preview.batchId}.xlsx`,
-      sheetName: 'Mã đề xuất',
-      rows: suggestedRows,
-      columns: [
-        { header: 'Loại', key: 'type', width: 16, value: (record) => record.type },
-        { header: 'Key', key: 'key', width: 36, value: (record) => record.key },
-        { header: 'Tên', key: 'name', width: 32, value: (record) => record.name },
-        { header: 'Mã đề xuất', key: 'code', width: 18, value: (record) => record.code },
-        { header: 'Unit key', key: 'unitKey', width: 26, value: (record) => record.unitKey },
-      ],
-    });
-  }
 
   const currentStep = useMemo(() => {
     if (!preview) {
       return 1;
     }
     if (preview.status === 'COMMITTED') {
-      return 4;
+      return 5;
     }
-    if (preview.summary.errors > 0) {
-      return 2;
+    if (preview.invalidRows > 0) {
+      return 3;
     }
-    return 3;
+    return 4;
   }, [preview]);
 
   if (isLoading) {
@@ -204,44 +144,7 @@ export function ImportsPage() {
     return <ErrorState onRetry={() => void refetch()} />;
   }
 
-  function renderSuggestedCodes(
-    items: SuggestedCode[],
-    drafts: Record<string, string>,
-    setDrafts: (next: Record<string, string>) => void,
-    showUnit = false,
-  ) {
-    return (
-      <Table
-        rowKey="key"
-        size="small"
-        dataSource={items}
-        pagination={false}
-        columns={[
-          ...(showUnit
-            ? [
-                {
-                  title: 'Đơn vị',
-                  render: (_: unknown, record: SuggestedCode) =>
-                    record.unitName ?? record.unitKey ?? '-',
-                },
-              ]
-            : []),
-          { title: 'Tên', dataIndex: 'name' },
-          {
-            title: 'Mã đề xuất',
-            render: (_, record) => (
-              <Input
-                value={drafts[record.key] ?? record.code}
-                onChange={(event) => setDrafts({ ...drafts, [record.key]: event.target.value })}
-              />
-            ),
-          },
-        ]}
-      />
-    );
-  }
-
-  const hasWarnings = Boolean(preview && preview.summary.warnings > 0);
+  const hasWarnings = Boolean(preview && preview.warnings > 0);
   const commitDisabled =
     !preview ||
     !preview.canCommit ||
@@ -251,134 +154,99 @@ export function ImportsPage() {
 
   return (
     <>
-      <PageHeader title="Import HRM Core" subtitle="Preview Excel, staging, commit và rollback an toàn." />
+      <PageHeader title="Import / Export Excel HRM" subtitle="Tách Đơn vị, Phòng ban, Nhân sự và Phân công nhân sự." />
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
         <Card className="page-card">
           <Steps current={currentStep} items={steps} />
         </Card>
 
-        <Card className="page-card" title="Thao tác">
-          <Space wrap>
-            <Button
-              icon={<DownloadOutlined />}
-              loading={templateMutation.isPending}
-              disabled={templateMutation.isPending}
-              onClick={() => void templateMutation.mutateAsync()}
-            >
-              Tải mẫu Excel
-            </Button>
-            <Upload
-              accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-              showUploadList={false}
-              beforeUpload={(file) => {
-                if (!isExcelFile(file)) {
-                  message.error('Chỉ chấp nhận file Excel .xlsx hoặc .xls.');
-                  return Upload.LIST_IGNORE;
-                }
-                previewMutation.mutate(file);
-                return false;
-              }}
-            >
-              <Button icon={<UploadOutlined />} loading={previewMutation.isPending}>
-                Import Excel
-              </Button>
-            </Upload>
-            <Button
-              onClick={() => updateCodesMutation.mutate()}
-              disabled={!preview || updateCodesMutation.isPending}
-            >
-              Lưu mã đề xuất
-            </Button>
-            <Checkbox checked={allowWarnings} disabled={!hasWarnings} onChange={(event) => setAllowWarnings(event.target.checked)}>
-              Chấp nhận cảnh báo
-            </Checkbox>
-            <Button type="primary" disabled={commitDisabled} loading={commitMutation.isPending} onClick={() => commitMutation.mutate()}>
-              Commit
-            </Button>
-            <Button
-              icon={<DownloadOutlined />}
-              disabled={!preview}
-              loading={errorFileMutation.isPending}
-              onClick={() => void errorFileMutation.mutateAsync()}
-            >
-              Tải file lỗi
-            </Button>
-            <Button icon={<DownloadOutlined />} disabled={!preview || !rows.length} onClick={() => void exportPreviewRows()}>
-              Xuất preview
-            </Button>
-            <Button icon={<DownloadOutlined />} disabled={!preview} onClick={() => void exportSuggestedCodes()}>
-              Xuất mã đề xuất
-            </Button>
-            <Button icon={<DownloadOutlined />} onClick={() => void exportBatchHistory()}>
-              Xuất lịch sử
-            </Button>
-          </Space>
-        </Card>
+        <Tabs
+          activeKey={activeDomain}
+          onChange={(key) => {
+            setActiveDomain(key as ExcelDomainKey);
+            setPreview(null);
+            setRows([]);
+            setAllowWarnings(false);
+          }}
+          items={domainConfigs.map((config) => ({
+            key: config.key,
+            label: `${config.order}. ${config.title}`,
+            children: (
+              <Card className="page-card" title={`Import ${config.title}`}>
+                <Space wrap>
+                  <Button
+                    icon={<DownloadOutlined />}
+                    loading={templateMutation.isPending}
+                    disabled={templateMutation.isPending}
+                    onClick={() => void templateMutation.mutateAsync(config.key)}
+                  >
+                    Tải mẫu {config.title}
+                  </Button>
+                  <Upload
+                    accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    showUploadList={false}
+                    beforeUpload={(file) => {
+                      if (!isExcelFile(file)) {
+                        message.error('Chỉ chấp nhận file Excel .xlsx hoặc .xlsm.');
+                        return Upload.LIST_IGNORE;
+                      }
+                      previewMutation.mutate({ domainKey: config.key, file });
+                      return false;
+                    }}
+                  >
+                    <Button icon={<UploadOutlined />} loading={previewMutation.isPending}>
+                      Kiểm tra dữ liệu
+                    </Button>
+                  </Upload>
+                  <Checkbox checked={allowWarnings} disabled={!hasWarnings} onChange={(event) => setAllowWarnings(event.target.checked)}>
+                    Chấp nhận cảnh báo
+                  </Checkbox>
+                  <Button type="primary" disabled={commitDisabled} loading={commitMutation.isPending} onClick={() => commitMutation.mutate()}>
+                    Import
+                  </Button>
+                  <Button
+                    icon={<DownloadOutlined />}
+                    disabled={!preview}
+                    loading={errorFileMutation.isPending}
+                    onClick={() => void errorFileMutation.mutateAsync()}
+                  >
+                    Tải file lỗi
+                  </Button>
+                  <Button
+                    icon={<DownloadOutlined />}
+                    loading={exportMutation.isPending}
+                    disabled={exportMutation.isPending}
+                    onClick={() => void exportMutation.mutateAsync(config.key)}
+                  >
+                    Export {config.title}
+                  </Button>
+                </Space>
+              </Card>
+            ),
+          }))}
+        />
 
         {preview ? (
-          <Card className="page-card" title={`Batch ${preview.batchId}`}>
+          <Card className="page-card" title={`Preview ${activeConfig.title}`}>
             <Space direction="vertical" size={16} style={{ width: '100%' }}>
               <Space wrap>
-                <Statistic title="Đơn vị" value={preview.summary.units} />
-                <Statistic title="Phòng ban" value={preview.summary.departments} />
-                <Statistic title="Nhân sự" value={preview.summary.employees} />
-                <Statistic title="Phân công" value={preview.summary.assignments} />
-                <Statistic title="Lỗi" value={preview.summary.errors} />
-                <Statistic title="Cảnh báo" value={preview.summary.warnings} />
+                <Statistic title="Tổng dòng" value={preview.totalRows} />
+                <Statistic title="Hợp lệ" value={preview.validRows} />
+                <Statistic title="Lỗi" value={preview.invalidRows} />
+                <Statistic title="Cảnh báo" value={preview.warnings} />
+                <StatusTag status={preview.status} />
               </Space>
-              <Tabs
-                items={[
-                  {
-                    key: 'overview',
-                    label: 'Tổng quan',
-                    children: <StatusTag status={preview.status} />,
-                  },
-                  {
-                    key: 'units',
-                    label: 'Đơn vị',
-                    children: renderSuggestedCodes(preview.suggestedCodes.units, unitCodeDrafts, setUnitCodeDrafts),
-                  },
-                  {
-                    key: 'departments',
-                    label: 'Phòng ban',
-                    children: renderSuggestedCodes(preview.suggestedCodes.departments, departmentCodeDrafts, setDepartmentCodeDrafts, true),
-                  },
-                  {
-                    key: 'employees',
-                    label: 'Nhân sự',
-                    children: <Table rowKey="id" size="small" dataSource={rows} pagination={{ pageSize: 8 }} columns={[
-                      { title: 'Dòng', dataIndex: 'rowNumber' },
-                      { title: 'Trạng thái', dataIndex: 'validationStatus' },
-                      { title: 'Họ tên', render: (_, row) => String(row.normalizedDataJson.fullName ?? '-') },
-                      { title: 'Email', render: (_, row) => String(row.normalizedDataJson.companyEmail ?? '-') },
-                    ]} />,
-                  },
-                  {
-                    key: 'assignments',
-                    label: 'Phân công',
-                    children: <Table rowKey="id" size="small" dataSource={rows} pagination={{ pageSize: 8 }} columns={[
-                      { title: 'Dòng', dataIndex: 'rowNumber' },
-                      { title: 'Đơn vị', render: (_, row) => String(row.normalizedDataJson.unitName ?? '-') },
-                      { title: 'Phòng ban', render: (_, row) => String(row.normalizedDataJson.departmentName ?? '-') },
-                      { title: 'Chức danh', render: (_, row) => String(row.normalizedDataJson.jobTitle ?? '-') },
-                    ]} />,
-                  },
-                  {
-                    key: 'errors',
-                    label: 'Lỗi',
-                    children: <Table rowKey="id" size="small" dataSource={rows.filter((row) => row.validationStatus === 'ERROR')} pagination={false} columns={[
-                      { title: 'Dòng', dataIndex: 'rowNumber' },
-                      { title: 'Chi tiết', render: (_, row) => JSON.stringify(row.validationErrorsJson) },
-                    ]} />,
-                  },
-                  {
-                    key: 'warnings',
-                    label: 'Cảnh báo',
-                    children: <Table rowKey="id" size="small" dataSource={rows.filter((row) => row.validationStatus === 'WARNING')} pagination={false} columns={[
-                      { title: 'Dòng', dataIndex: 'rowNumber' },
-                      { title: 'Chi tiết', render: (_, row) => JSON.stringify(row.validationWarningsJson) },
-                    ]} />,
-                  },
+              <Table
+                rowKey="id"
+                size="small"
+                dataSource={rows}
+                pagination={{ pageSize: 8 }}
+                columns={[
+                  { title: 'Dòng', dataIndex: 'rowNumber', width: 80 },
+                  { title: 'Trạng thái', dataIndex: 'validationStatus', width: 140 },
+                  { title: 'Dữ liệu', render: (_, row) => JSON.stringify(row.rawDataJson) },
+                  { title: 'Lỗi', render: (_, row) => renderMessages(row.validationErrorsJson) },
+                  { title: 'Cảnh báo', render: (_, row) => renderMessages(row.validationWarningsJson) },
                 ]}
               />
             </Space>
@@ -402,21 +270,14 @@ export function ImportsPage() {
               {
                 title: 'Thao tác',
                 render: (_, record) => (
-                  <Space>
-                    <Button
-                      onClick={async () => {
-                        const detail = await getImportBatch(record.id);
-                        setSelected(detail);
-                      }}
-                    >
-                      Chi tiết
-                    </Button>
-                    {record.importType === 'HRM_CORE_EXCEL' && record.status === 'COMMITTED' ? (
-                      <Button icon={<RollbackOutlined />} danger loading={rollbackMutation.isPending} onClick={() => rollbackMutation.mutate(record.id)}>
-                        Rollback
-                      </Button>
-                    ) : null}
-                  </Space>
+                  <Button
+                    onClick={async () => {
+                      const detail = await getImportBatch(record.id);
+                      setSelected(detail);
+                    }}
+                  >
+                    Chi tiết
+                  </Button>
                 ),
               },
             ]}

@@ -6,7 +6,6 @@ import { IconEdit, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { downloadUnitsExport } from '../../features/import-export/excelFilesApi';
-import { HrmCoreExcelImportModal } from '../../features/import-export/HrmCoreExcelImportModal';
 import { ImportExportToolbar } from '../../features/import-export/ImportExportToolbar';
 import { useHrmCoreTemplateDownload } from '../../features/import-export/useHrmCoreTemplateDownload';
 import { createUnit, updateUnit } from '../../features/organization/unitsApi';
@@ -47,9 +46,8 @@ export function UnitsPage() {
   const [editing, setEditing] = useState<Unit | null>(null);
   const [confirmInactive, setConfirmInactive] = useState<Unit | null>(null);
   const [open, setOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
   const { data, isLoading, error, refetch } = useUnits(params);
-  const templateDownload = useHrmCoreTemplateDownload();
+  const templateDownload = useHrmCoreTemplateDownload('organization-units');
 
   const exportMutation = useMutation({
     mutationFn: () => downloadUnitsExport(params),
@@ -174,7 +172,6 @@ export function UnitsPage() {
           <>
             <ImportExportToolbar
               onDownloadTemplate={templateDownload.downloadTemplate}
-              onImport={() => setImportOpen(true)}
               onExport={() => exportMutation.mutateAsync()}
               isDownloadingTemplate={templateDownload.isDownloadingTemplate}
               isExporting={exportMutation.isPending}
@@ -271,11 +268,6 @@ export function UnitsPage() {
         }}
       />
 
-      <HrmCoreExcelImportModal
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        onCommitted={() => queryClient.invalidateQueries({ queryKey: ['units'] })}
-      />
     </>
   );
 }

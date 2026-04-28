@@ -6,9 +6,7 @@ import { IconEdit, IconPlus, IconSearch } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { downloadPositionsExport } from '../../features/import-export/excelFilesApi';
-import { HrmCoreExcelImportModal } from '../../features/import-export/HrmCoreExcelImportModal';
 import { ImportExportToolbar } from '../../features/import-export/ImportExportToolbar';
-import { useHrmCoreTemplateDownload } from '../../features/import-export/useHrmCoreTemplateDownload';
 import { createPosition, updatePosition } from '../../features/organization/positionsApi';
 import type { Position } from '../../features/organization/organizationTypes';
 import { usePositions } from '../../features/organization/usePositions';
@@ -28,7 +26,6 @@ export function PositionsPage() {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<Position | null>(null);
   const [open, setOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
   const [params, setParams] = useState({
     page: 1,
     pageSize: 10,
@@ -36,7 +33,6 @@ export function PositionsPage() {
     status: undefined as string | undefined,
   });
   const { data, isLoading, error, refetch } = usePositions(params);
-  const templateDownload = useHrmCoreTemplateDownload();
 
   const exportMutation = useMutation({
     mutationFn: () => downloadPositionsExport(params),
@@ -132,10 +128,7 @@ export function PositionsPage() {
         actions={
           <>
             <ImportExportToolbar
-              onDownloadTemplate={templateDownload.downloadTemplate}
-              onImport={() => setImportOpen(true)}
               onExport={() => exportMutation.mutateAsync()}
-              isDownloadingTemplate={templateDownload.isDownloadingTemplate}
               isExporting={exportMutation.isPending}
             />
             <Button
@@ -216,11 +209,6 @@ export function PositionsPage() {
         </form>
       </Drawer>
 
-      <HrmCoreExcelImportModal
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        onCommitted={() => queryClient.invalidateQueries({ queryKey: ['positions'] })}
-      />
     </>
   );
 }

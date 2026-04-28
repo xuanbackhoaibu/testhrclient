@@ -10,7 +10,6 @@ import { createEmployee } from '../../features/employees/employeesApi';
 import type { Employee, EmployeePayload } from '../../features/employees/employeeTypes';
 import { useEmployees } from '../../features/employees/useEmployees';
 import { downloadEmployeesExport } from '../../features/import-export/excelFilesApi';
-import { HrmCoreExcelImportModal } from '../../features/import-export/HrmCoreExcelImportModal';
 import { ImportExportToolbar } from '../../features/import-export/ImportExportToolbar';
 import { useHrmCoreTemplateDownload } from '../../features/import-export/useHrmCoreTemplateDownload';
 import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
@@ -42,7 +41,6 @@ export function EmployeesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
   const [params, setParams] = useState({
     page: 1,
     pageSize: 10,
@@ -73,7 +71,7 @@ export function EmployeesPage() {
   });
 
   const { data, isLoading, error, refetch } = useEmployees(params);
-  const templateDownload = useHrmCoreTemplateDownload();
+  const templateDownload = useHrmCoreTemplateDownload('employees');
 
   const exportMutation = useMutation({
     mutationFn: () => downloadEmployeesExport(params),
@@ -171,7 +169,6 @@ export function EmployeesPage() {
           <>
             <ImportExportToolbar
               onDownloadTemplate={templateDownload.downloadTemplate}
-              onImport={() => setImportOpen(true)}
               onExport={() => exportMutation.mutateAsync()}
               isDownloadingTemplate={templateDownload.isDownloadingTemplate}
               isExporting={exportMutation.isPending}
@@ -290,11 +287,6 @@ export function EmployeesPage() {
         </form>
       </Drawer>
 
-      <HrmCoreExcelImportModal
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        onCommitted={() => queryClient.invalidateQueries({ queryKey: ['employees'] })}
-      />
     </>
   );
 }

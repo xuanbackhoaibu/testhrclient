@@ -1,11 +1,11 @@
 import { useMutation } from '@tanstack/react-query';
 
 import { showDownloadError } from './downloadError';
-import { downloadHrmCoreTemplate } from './excelFilesApi';
+import { downloadHrmCoreTemplate, downloadImportTemplate, type ExcelDomainKey } from './excelFilesApi';
 
-export function useHrmCoreTemplateDownload() {
+export function useHrmCoreTemplateDownload(domainKey?: ExcelDomainKey) {
   const mutation = useMutation({
-    mutationFn: downloadHrmCoreTemplate,
+    mutationFn: () => (domainKey ? downloadImportTemplate(domainKey) : downloadHrmCoreTemplate()),
     onError: (error) => showDownloadError(error, 'Tải mẫu Excel thất bại.'),
   });
 

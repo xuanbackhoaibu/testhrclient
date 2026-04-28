@@ -4,8 +4,8 @@ import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockImportBatches } from '../../shared/mocks/mockWorkflows';
 import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../shared/types/api';
-import { downloadHrmCoreErrors, downloadHrmCoreTemplate } from '../import-export/excelFilesApi';
-import type { HrmCorePreview, HrmCoreStagingRow, ImportBatch } from './importTypes';
+import { downloadHrmCoreErrors, downloadHrmCoreTemplate, type ExcelDomainKey } from '../import-export/excelFilesApi';
+import type { DomainImportPreview, HrmCorePreview, HrmCoreStagingRow, ImportBatch } from './importTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
 
@@ -90,6 +90,51 @@ export async function previewHrmCoreImport(file: File): Promise<HrmCorePreview> 
   }
 
   return api.upload<HrmCorePreview>('/imports/hrm-core/preview', file);
+}
+
+export async function previewDomainImport(domainKey: ExcelDomainKey, file: File): Promise<DomainImportPreview> {
+  if (isMockMode) {
+    const batch = await createMockBatch(file, `${domainKey.toUpperCase()}_EXCEL`);
+    return {
+      jobId: batch.id,
+      batchId: batch.id,
+      importType: batch.importType,
+      status: 'PREVIEWED',
+      totalRows: 12,
+      validRows: 12,
+      invalidRows: 0,
+      warnings: 0,
+      warningRows: 0,
+      errors: [],
+      canCommit: true,
+    };
+  }
+
+  return api.upload<DomainImportPreview>(`/imports/${domainKey}/preview`, file);
+}
+
+export async function listDomainImportRows(batchId: string, domainKey: ExcelDomainKey, status?: string): Promise<HrmCoreStagingRow[]> {
+  if (isMockMode) {
+    await mockDelay();
+    return [];
+  }
+
+  return api.get<HrmCoreStagingRow[]>(`/imports/${domainKey}/${batchId}/rows`, { params: { status } });
+}
+
+export async function commitDomainImport(
+  domainKey: ExcelDomainKey,
+  batchId: string,
+  allowWarnings: boolean,
+): Promise<{ batchId: string; jobId: string; status: string }> {
+  if (isMockMode) {
+    await mockDelay();
+    return { batchId, jobId: batchId, status: 'COMMITTED' };
+  }
+
+  return api.post<{ batchId: string; jobId: string; status: string }>(`/imports/${domainKey}/${batchId}/commit`, {
+    allowWarnings,
+  });
 }
 
 export async function getHrmCorePreview(batchId: string): Promise<HrmCorePreview> {
