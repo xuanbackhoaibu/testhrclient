@@ -7,13 +7,13 @@ import type { AuthUser, DemoRole, LoginCredentials } from './types';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
 
-interface ChatAuthLoginPayload {
+interface AuthServiceLoginPayload {
   loginIdentifier: string;
   password: string;
   rememberMe?: boolean;
 }
 
-interface ChatAuthLoginResponse {
+interface AuthServiceLoginResponse {
   success?: boolean;
   message?: string;
   error?: string;
@@ -70,7 +70,7 @@ export function getStoredUser(): AuthUser | null {
   }
 }
 
-function readChatAuthError(error: unknown): string {
+function readAuthLoginError(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const payload = error.response?.data as { message?: unknown; error?: unknown; code?: unknown } | undefined;
     if (typeof payload?.message === 'string') {
@@ -87,9 +87,14 @@ function readChatAuthError(error: unknown): string {
   return error instanceof Error ? error.message : 'Login failed.';
 }
 
-export async function login(input: DemoRole | LoginCredentials = 'HR_ADMIN'): Promise<void> {
+function readAuthEnv(primary: string, fallback: string): string | undefined {
+  const env = import.meta.env as Record<string, string | undefined>;
+  return env[primary] || env[fallback];
+}
+
+export async function login(input: DemoRole | LoginCredentials = 'HR'): Promise<void> {
   if (isMockMode) {
-    const role = typeof input === 'string' ? input : 'HR_ADMIN';
+    const role = typeof input === 'string' ? input : 'HR';
     const token = MOCK_TOKENS[role];
     const user = MOCK_AUTH_USERS[role];
     setStoredString(STORAGE_KEYS.accessToken, token);
@@ -98,24 +103,27 @@ export async function login(input: DemoRole | LoginCredentials = 'HR_ADMIN'): Pr
     return;
   }
 
-  const loginUrl = import.meta.env.VITE_CHAT_AUTH_LOGIN_URL;
+  const loginUrl = readAuthEnv(
+    'VITE_AUTH_SERVICE_LOGIN_URL',
+    'VITE_CHAT_AUTH_LOGIN_URL',
+  );
 
   if (!loginUrl) {
-    throw new Error('VITE_CHAT_AUTH_LOGIN_URL is required.');
+    throw new Error('VITE_AUTH_SERVICE_LOGIN_URL is required.');
   }
 
   if (typeof input === 'string') {
     throw new Error('Real auth requires loginIdentifier and password.');
   }
 
-  const payload: ChatAuthLoginPayload = {
+  const payload: AuthServiceLoginPayload = {
     loginIdentifier: input.loginIdentifier.trim(),
     password: input.password,
     rememberMe: input.rememberMe,
   };
 
   try {
-    const response = await axios.post<ChatAuthLoginResponse>(loginUrl, payload, {
+    const response = await axios.post<AuthServiceLoginResponse>(loginUrl, payload, {
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
@@ -125,13 +133,13 @@ export async function login(input: DemoRole | LoginCredentials = 'HR_ADMIN'): Pr
 
     const accessToken = response.data.data?.accessToken ?? response.data.accessToken;
     if (!accessToken) {
-      throw new Error('Chat auth login response did not include accessToken.');
+      throw new Error('Auth service login response did not include accessToken.');
     }
 
     setAccessToken(accessToken);
     setSessionUser(null);
   } catch (error) {
-    throw new Error(readChatAuthError(error), { cause: error });
+    throw new Error(readAuthLoginError(error), { cause: error });
   }
 }
 
@@ -141,7 +149,7 @@ export function handleCallback(): string {
   const token = query.get('access_token') ?? query.get('token') ?? hash.get('access_token') ?? hash.get('token');
 
   if (!token) {
-    throw new Error('Không tìm thấy access token từ chat-auth-service.');
+    throw new Error('Không tìm thấy access token từ dịch vụ xác thực.');
   }
 
   setStoredString(STORAGE_KEYS.accessToken, token);
@@ -164,7 +172,10 @@ export async function logout(): Promise<void> {
   const accessToken = getAccessToken();
 
   if (!isMockMode) {
-    const logoutUrl = import.meta.env.VITE_CHAT_AUTH_LOGOUT_URL;
+    const logoutUrl = readAuthEnv(
+      'VITE_AUTH_SERVICE_LOGOUT_URL',
+      'VITE_CHAT_AUTH_LOGOUT_URL',
+    );
     if (logoutUrl && accessToken) {
       await axios
         .post(

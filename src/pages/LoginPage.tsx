@@ -17,8 +17,11 @@ interface LoginFormValues {
 }
 
 const demoRoles: Array<{ label: string; value: DemoRole }> = [
-  { label: 'HR Admin', value: 'HR_ADMIN' },
-  { label: 'Manager', value: 'MANAGER' },
+  { label: 'Super Admin', value: 'SUPER_ADMIN' },
+  { label: 'Admin', value: 'ADMIN' },
+  { label: 'HR', value: 'HR' },
+  { label: 'Ban lanh dao', value: 'BAN_LANH_DAO' },
+  { label: 'Ban lanh dao don vi', value: 'BAN_LANH_DAO_DON_VI' },
   { label: 'Employee', value: 'EMPLOYEE' },
 ];
 
@@ -32,7 +35,7 @@ function readLoginError(error: unknown) {
 export function LoginPage() {
   const navigate = useNavigate();
   const { login, error, refreshCurrentUser } = useAuth();
-  const [role, setRole] = useState<DemoRole>('HR_ADMIN');
+  const [role, setRole] = useState<DemoRole>('HR');
   const [submitting, setSubmitting] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';

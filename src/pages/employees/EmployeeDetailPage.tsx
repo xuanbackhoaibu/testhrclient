@@ -1,10 +1,20 @@
-import { Card, Col, Descriptions, Row, Table, Tabs, Typography } from 'antd';
+import { Button, Card, Col, Descriptions, Popconfirm, Row, Select, Space, Table, Tabs, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 
 import type { AttendanceRecord } from '../../features/attendance/attendanceTypes';
 import type { AuditLog } from '../../features/audit/auditTypes';
+import { canAssignRole, canManageAccount, HRM_ROLES } from '../../features/auth/permissions';
+import { useAuth } from '../../features/auth/useAuth';
 import type { Contract } from '../../features/contracts/contractTypes';
+import {
+  createEmployeeAccount,
+  lockEmployeeAccount,
+  unlockEmployeeAccount,
+} from '../../features/employees/employeesApi';
+import type { EmployeeAccountRole } from '../../features/employees/employeeTypes';
 import { useEmployeeDetail } from '../../features/employees/useEmployeeDetail';
 import type { LeaveRequest } from '../../features/leave/leaveTypes';
 import { LoadingState } from '../../shared/components/LoadingState';
@@ -15,7 +25,40 @@ import { formatDate, formatDateTime } from '../../shared/utils/date';
 
 export function EmployeeDetailPage() {
   const { id } = useParams();
-  const { data, isLoading, error, refetch } = useEmployeeDetail(id);
+  const [selectedRole, setSelectedRole] = useState<EmployeeAccountRole>('HR');
+  const { user } = useAuth();
+  const mayManageAccount = canManageAccount(user);
+  const queryClient = useQueryClient();
+  const { data, isLoading, error, refetch } = useEmployeeDetail(id, {
+    includeAccount: mayManageAccount,
+  });
+  const refreshDetail = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['employee-detail', id] });
+  };
+  const createAccountMutation = useMutation({
+    mutationFn: (roleCode: EmployeeAccountRole) => createEmployeeAccount(id!, roleCode),
+    onSuccess: async () => {
+      message.success('Da tao tai khoan nhan su.');
+      await refreshDetail();
+    },
+    onError: (mutationError) => message.error(mutationError instanceof Error ? mutationError.message : 'Tao tai khoan that bai.'),
+  });
+  const lockAccountMutation = useMutation({
+    mutationFn: () => lockEmployeeAccount(id!),
+    onSuccess: async () => {
+      message.success('Da khoa tai khoan.');
+      await refreshDetail();
+    },
+    onError: (mutationError) => message.error(mutationError instanceof Error ? mutationError.message : 'Khoa tai khoan that bai.'),
+  });
+  const unlockAccountMutation = useMutation({
+    mutationFn: () => unlockEmployeeAccount(id!),
+    onSuccess: async () => {
+      message.success('Da mo khoa tai khoan.');
+      await refreshDetail();
+    },
+    onError: (mutationError) => message.error(mutationError instanceof Error ? mutationError.message : 'Mo khoa tai khoan that bai.'),
+  });
 
   if (isLoading) {
     return <LoadingState />;
@@ -32,6 +75,16 @@ export function EmployeeDetailPage() {
     { title: 'Job title', render: (_, record) => record.jobTitle },
     { title: 'Manager', render: (_, record) => record.managerName },
   ];
+  const account = data.account;
+  const roleOptions = [
+    { label: 'HR', value: HRM_ROLES.HR },
+    { label: 'Admin', value: HRM_ROLES.ADMIN },
+    { label: 'Super Admin', value: HRM_ROLES.SUPER_ADMIN },
+    { label: 'Ban lãnh đạo', value: HRM_ROLES.BAN_LANH_DAO },
+    { label: 'Ban lãnh đạo đơn vị', value: HRM_ROLES.BAN_LANH_DAO_DON_VI },
+  ].filter((option) => canAssignRole(user, option.value));
+  const accountLocked = Boolean(account && (account.accountStatus === 'LOCKED' || account.accountStatus === 'BLOCKED' || account.accountStatus === 'DISABLED'));
+  const accountBusy = createAccountMutation.isPending || lockAccountMutation.isPending || unlockAccountMutation.isPending;
 
   return (
     <>
@@ -59,6 +112,46 @@ export function EmployeeDetailPage() {
           </Col>
         </Row>
       </Card>
+
+      {mayManageAccount && account ? (
+      <Card className="page-card" title="Tai khoan dang nhap" style={{ marginBottom: 16 }}>
+        <Descriptions column={{ xs: 1, md: 2, xl: 4 }}>
+          <Descriptions.Item label="Trang thai">
+            <StatusTag status={account.accountStatus} />
+          </Descriptions.Item>
+          <Descriptions.Item label="Auth user ID">{account.authUserId ?? '-'}</Descriptions.Item>
+          <Descriptions.Item label="Email">{account.email ?? '-'}</Descriptions.Item>
+          <Descriptions.Item label="Role HRM">{account.roles.length ? account.roles.join(', ') : '-'}</Descriptions.Item>
+        </Descriptions>
+        <Space wrap style={{ marginTop: 16 }}>
+          {!account.linked ? (
+            <Popconfirm
+              title="Tao tai khoan dang nhap cho nhan su nay?"
+              onConfirm={() => createAccountMutation.mutate(selectedRole)}
+            >
+              <Button type="primary" loading={createAccountMutation.isPending}>
+                Tao tai khoan
+              </Button>
+            </Popconfirm>
+          ) : accountLocked ? (
+            <Popconfirm title="Mo khoa tai khoan nay?" onConfirm={() => unlockAccountMutation.mutate()}>
+              <Button loading={unlockAccountMutation.isPending}>Mo khoa</Button>
+            </Popconfirm>
+          ) : (
+            <Popconfirm title="Khoa tai khoan nay?" onConfirm={() => lockAccountMutation.mutate()}>
+              <Button danger loading={lockAccountMutation.isPending}>Khoa tai khoan</Button>
+            </Popconfirm>
+          )}
+          <Select<EmployeeAccountRole>
+            value={selectedRole}
+            disabled={accountBusy || account.linked}
+            style={{ width: 180 }}
+            options={roleOptions}
+            onChange={setSelectedRole}
+          />
+        </Space>
+      </Card>
+      ) : null}
 
       <Tabs
         items={[

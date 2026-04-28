@@ -21,7 +21,7 @@ export function AuthCallbackPage() {
         navigate(ROUTES.dashboard, { replace: true });
       } catch (callbackError) {
         useAuthStore.getState().setError(
-          callbackError instanceof Error ? callbackError.message : 'Không xử lý được callback từ chat-auth-service.',
+          callbackError instanceof Error ? callbackError.message : 'Không xử lý được callback từ dịch vụ xác thực.',
         );
       } finally {
         useAuthStore.getState().setLoading(false);
@@ -46,4 +46,3 @@ export function AuthCallbackPage() {
     </Card>
   );
 }
-

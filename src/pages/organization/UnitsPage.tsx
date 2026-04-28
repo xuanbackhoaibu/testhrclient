@@ -8,9 +8,16 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { downloadUnitsExport } from '../../features/import-export/excelFilesApi';
 import { ImportExportToolbar } from '../../features/import-export/ImportExportToolbar';
 import { useHrmCoreTemplateDownload } from '../../features/import-export/useHrmCoreTemplateDownload';
-import { createUnit, updateUnit } from '../../features/organization/unitsApi';
+import {
+  createUnit,
+  generateUnitShortCode,
+  isValidUnitCode,
+  normalizeUnitCodeInput,
+  updateUnit,
+} from '../../features/organization/unitsApi';
 import type { Unit } from '../../features/organization/organizationTypes';
 import { useUnits } from '../../features/organization/useUnits';
+import { ApiError } from '../../shared/api/api.types';
 import { ConfirmActionModal } from '../../shared/components/ConfirmActionModal';
 import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
 import { PageHeader } from '../../shared/components/PageHeader';
@@ -46,6 +53,7 @@ export function UnitsPage() {
   const [editing, setEditing] = useState<Unit | null>(null);
   const [confirmInactive, setConfirmInactive] = useState<Unit | null>(null);
   const [open, setOpen] = useState(false);
+  const [codeManuallyEdited, setCodeManuallyEdited] = useState(false);
   const { data, isLoading, error, refetch } = useUnits(params);
   const templateDownload = useHrmCoreTemplateDownload('organization-units');
 
@@ -69,19 +77,51 @@ export function UnitsPage() {
       status: 'ACTIVE',
     },
     validate: {
-      code: (value) => (value.trim() ? null : 'Nhập mã đơn vị.'),
-      name: (value) => (value.trim() ? null : 'Nhập tên đơn vị.'),
+      code: (value) => {
+        const code = normalizeUnitCodeInput(value);
+        if (!code) {
+          return 'Mã viết tắt không được để trống.';
+        }
+        return isValidUnitCode(code) ? null : 'Mã viết tắt không đúng định dạng.';
+      },
+      name: (value) => (value.trim() ? null : 'Vui lòng nhập tên đơn vị.'),
       shortName: (value) => (value.trim() ? null : 'Nhập tên viết tắt.'),
       taxCode: (value) => (value.trim() ? null : 'Nhập mã số thuế.'),
     },
   });
+
+  function applyApiErrors(error: unknown) {
+    if (!(error instanceof ApiError)) {
+      return 'Vui lòng kiểm tra dữ liệu và thử lại.';
+    }
+    error.errors.forEach((item) => {
+      if (item.field && ['code', 'name', 'shortName', 'taxCode', 'status'].includes(item.field)) {
+        form.setFieldError(item.field as keyof UnitFormValues, item.message);
+      }
+    });
+    return error.errors[0]?.message ?? error.message;
+  }
+
+  function normalizeUnitPayload(values: UnitFormValues): UnitFormValues {
+    return {
+      ...values,
+      code: normalizeUnitCodeInput(values.code),
+      name: values.name.trim(),
+      shortName: values.shortName?.trim() ?? '',
+      taxCode: values.taxCode?.trim() ?? '',
+    };
+  }
 
   const mutation = useMutation({
     mutationFn: async (values: Partial<UnitFormValues>) => {
       if (editing) {
         return updateUnit(editing.id, values);
       }
-      return createUnit(values as UnitFormValues);
+      const payload = { ...values };
+      if (!codeManuallyEdited) {
+        delete payload.code;
+      }
+      return createUnit(payload as Partial<UnitFormValues> & { name: string });
     },
     onSuccess: async () => {
       notifications.show({
@@ -92,17 +132,55 @@ export function UnitsPage() {
       setOpen(false);
       setEditing(null);
       setConfirmInactive(null);
+      setCodeManuallyEdited(false);
       form.reset();
       await queryClient.invalidateQueries({ queryKey: ['units'] });
     },
-    onError: () => {
+    onError: (error) => {
       notifications.show({
         color: 'red',
         title: 'Không lưu được đơn vị',
-        message: 'Vui lòng kiểm tra dữ liệu và thử lại.',
+        message: applyApiErrors(error),
       });
     },
   });
+
+  function openCreateDrawer() {
+    setEditing(null);
+    setCodeManuallyEdited(false);
+    form.reset();
+    setOpen(true);
+  }
+
+  function openEditDrawer(record: Unit) {
+    setEditing(record);
+    setCodeManuallyEdited(false);
+    form.setValues(record);
+    setOpen(true);
+  }
+
+  function closeDrawer() {
+    setOpen(false);
+    setEditing(null);
+    setCodeManuallyEdited(false);
+    form.reset();
+  }
+
+  function handleNameChange(value: string) {
+    form.setFieldValue('name', value);
+    if (!codeManuallyEdited) {
+      form.setFieldValue('code', value.trim() ? generateUnitShortCode(value) : '');
+    }
+  }
+
+  function handleCodeChange(value: string) {
+    setCodeManuallyEdited(true);
+    form.setFieldValue('code', normalizeUnitCodeInput(value));
+  }
+
+  function submitUnit(values: UnitFormValues) {
+    mutation.mutate(normalizeUnitPayload(values));
+  }
 
   const inactiveMutation = useMutation({
     mutationFn: (record: Unit) => updateUnit(record.id, { ...record, status: 'INACTIVE' }),
@@ -142,11 +220,7 @@ export function UnitsPage() {
               {
                 label: 'Chỉnh sửa',
                 icon: <IconEdit size={16} />,
-                onClick: () => {
-                  setEditing(record);
-                  form.setValues(record);
-                  setOpen(true);
-                },
+                onClick: () => openEditDrawer(record),
               },
               {
                 label: 'Tạm ngưng',
@@ -178,11 +252,7 @@ export function UnitsPage() {
             />
             <Button
               leftSection={<IconPlus size={18} />}
-              onClick={() => {
-                setEditing(null);
-                form.reset();
-                setOpen(true);
-              }}
+              onClick={openCreateDrawer}
             >
               Tạo đơn vị
             </Button>
@@ -227,23 +297,31 @@ export function UnitsPage() {
 
       <Drawer
         opened={open}
-        onClose={() => {
-          setOpen(false);
-          setEditing(null);
-          form.reset();
-        }}
+        onClose={closeDrawer}
         title={editing ? 'Chỉnh sửa đơn vị' : 'Tạo đơn vị'}
         position="right"
       >
-        <form onSubmit={form.onSubmit((values) => mutation.mutate(values))}>
+        <form onSubmit={form.onSubmit(submitUnit)}>
           <Stack gap="sm">
-            <TextInput label="Mã" withAsterisk {...form.getInputProps('code')} />
-            <TextInput label="Tên đơn vị" withAsterisk {...form.getInputProps('name')} />
+            <TextInput
+              label="Mã viết tắt"
+              withAsterisk
+              value={form.values.code}
+              error={form.errors.code}
+              onChange={(event) => handleCodeChange(event.currentTarget.value)}
+            />
+            <TextInput
+              label="Tên đơn vị"
+              withAsterisk
+              value={form.values.name}
+              error={form.errors.name}
+              onChange={(event) => handleNameChange(event.currentTarget.value)}
+            />
             <TextInput label="Tên viết tắt" withAsterisk {...form.getInputProps('shortName')} />
             <TextInput label="Mã số thuế" withAsterisk {...form.getInputProps('taxCode')} />
             <Select label="Trạng thái" data={statusOptions} withAsterisk {...form.getInputProps('status')} />
             <Group justify="flex-end" mt="md">
-              <Button variant="default" onClick={() => setOpen(false)}>
+              <Button variant="default" onClick={closeDrawer}>
                 Hủy
               </Button>
               <Button type="submit" loading={mutation.isPending}>

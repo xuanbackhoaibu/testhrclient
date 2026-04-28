@@ -8,6 +8,13 @@ import { getCurrentUser } from '../features/auth/authApi';
 import { clearSession, getAccessToken, getStoredUser, setSessionUser } from '../features/auth/authClient';
 import { useAuthStore } from '../features/auth/authStore';
 
+function readHttpStatus(error: unknown): number | undefined {
+  return (
+    (error as { statusCode?: number })?.statusCode ??
+    (error as { response?: { status?: number } })?.response?.status
+  );
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -71,7 +78,7 @@ function AuthBootstrap({ children }: PropsWithChildren) {
         setSessionUser(user);
         useAuthStore.getState().setError(null);
       } catch (error: unknown) {
-        const status = (error as { response?: { status?: number } })?.response?.status;
+        const status = readHttpStatus(error);
         if (status === 401 || status === 403) {
           clearSession();
           if (status === 403) {

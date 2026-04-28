@@ -3,7 +3,15 @@ import { message } from 'antd';
 import { getCurrentUser } from './authApi';
 import { clearSession, getStoredUser, login as loginClient, logout as logoutClient, setSessionUser } from './authClient';
 import { useAuthStore } from './authStore';
+import { hasRole as hasNormalizedRole } from './permissions';
 import type { DemoRole, LoginCredentials } from './types';
+
+function readHttpStatus(error: unknown): number | undefined {
+  return (
+    (error as { statusCode?: number })?.statusCode ??
+    (error as { response?: { status?: number } })?.response?.status
+  );
+}
 
 export function useAuth() {
   const store = useAuthStore();
@@ -14,7 +22,7 @@ export function useAuth() {
       setSessionUser(user);
       useAuthStore.getState().setError(null);
     } catch (error: unknown) {
-      const status = (error as { response?: { status?: number } })?.response?.status;
+      const status = readHttpStatus(error);
       if (status === 403) {
         clearSession();
         useAuthStore.getState().setError('Tài khoản đã xác thực nhưng chưa được cấp quyền HRM.');
@@ -40,7 +48,7 @@ export function useAuth() {
   }
 
   function hasRole(role: string): boolean {
-    return Boolean(store.user?.roles.includes(role));
+    return hasNormalizedRole(store.user ?? getStoredUser(), role as never);
   }
 
   return {

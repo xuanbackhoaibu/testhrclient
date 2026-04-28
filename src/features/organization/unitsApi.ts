@@ -7,6 +7,53 @@ import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../sh
 import type { Unit, UnitSelectOption } from './organizationTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
+const unitCodePattern = /^[A-Z0-9_-]+$/;
+const unitCodeStopWords = new Set(['CONG', 'TY', 'CO', 'PHAN', 'TNHH', 'MTV', 'PHONG', 'BAN', 'TRUNG', 'TAM']);
+
+export function normalizeVietnameseText(value: string): string {
+  return value
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toUpperCase();
+}
+
+export function normalizeUnitCodeInput(value: string): string {
+  return normalizeVietnameseText(value)
+    .replace(/[^A-Z0-9_-]+/g, '')
+    .replace(/_+/g, '_')
+    .replace(/-+/g, '-');
+}
+
+export function isValidUnitCode(value: string): boolean {
+  return unitCodePattern.test(value);
+}
+
+export function generateUnitShortCode(name: string): string {
+  const normalized = normalizeVietnameseText(name);
+  const words = normalized.replace(/[^A-Z0-9]+/g, ' ').split(/\s+/).filter(Boolean);
+  const significantWords = words.filter((word) => !unitCodeStopWords.has(word));
+  const sourceWords = significantWords.length ? significantWords : words;
+  const acronym = sourceWords.map((word) => word[0]).join('');
+  if (acronym.length >= 2) {
+    return acronym;
+  }
+  const fallbackSource = sourceWords.join('') || normalized;
+  return fallbackSource.replace(/[^A-Z0-9]+/g, '').slice(0, 8) || 'DV';
+}
+
+function ensureUniqueMockUnitCode(baseCode: string, currentId?: string) {
+  for (let suffix = 0; suffix <= 9999; suffix += 1) {
+    const code = suffix === 0 ? baseCode : `${baseCode}${suffix + 1}`;
+    const duplicate = mockUnits.find((item) => item.code === code && item.id !== currentId);
+    if (!duplicate) {
+      return code;
+    }
+  }
+  throw new Error('Không thể sinh mã viết tắt không trùng.');
+}
 
 export async function listUnits(params: ListQueryParams = {}): Promise<PaginatedResponse<Unit>> {
   if (isMockMode) {
@@ -41,10 +88,29 @@ export async function listUnitsSelect(): Promise<UnitSelectOption[]> {
   return api.get<UnitSelectOption[]>('/units/select');
 }
 
-export async function createUnit(payload: Omit<Unit, 'id'>): Promise<Unit> {
+export async function generateUnitCode(name: string, currentId?: string): Promise<{ code: string }> {
   if (isMockMode) {
     await mockDelay();
-    const entity = { id: generateId('le'), ...payload };
+    return { code: ensureUniqueMockUnitCode(generateUnitShortCode(name), currentId) };
+  }
+
+  return api.get<{ code: string }>('/units/generate-code', {
+    params: { name, currentId },
+  });
+}
+
+export async function createUnit(payload: Partial<Omit<Unit, 'id'>> & { name: string }): Promise<Unit> {
+  if (isMockMode) {
+    await mockDelay();
+    const code = payload.code ? normalizeUnitCodeInput(payload.code) : ensureUniqueMockUnitCode(generateUnitShortCode(payload.name));
+    const entity = {
+      id: generateId('le'),
+      shortName: '',
+      taxCode: '',
+      status: 'ACTIVE',
+      ...payload,
+      code,
+    } as Unit;
     mockUnits.unshift(entity);
     appendAuditLog({ entityType: 'UNIT', entityId: entity.id, action: 'CREATE', afterJson: entity as unknown as Record<string, unknown> });
     return entity;

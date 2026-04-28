@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import {
   getEmployee,
+  getEmployeeAccount,
   getEmployeeAssignments,
   getEmployeeContracts,
   getEmployeeAuditLogs,
@@ -9,17 +10,23 @@ import {
   getEmployeeLeave,
 } from './employeesApi';
 
-export function useEmployeeDetail(id?: string) {
+export function useEmployeeDetail(
+  id?: string,
+  options: { includeAccount?: boolean } = {},
+) {
+  const includeAccount = options.includeAccount ?? false;
+
   return useQuery({
-    queryKey: ['employee-detail', id],
+    queryKey: ['employee-detail', id, { includeAccount }],
     enabled: Boolean(id),
     queryFn: async () => {
       if (!id) {
         throw new Error('Missing employee id');
       }
 
-      const [employee, assignments, contracts, leaveRequests, attendanceRecords, auditLogs] = await Promise.all([
+      const [employee, account, assignments, contracts, leaveRequests, attendanceRecords, auditLogs] = await Promise.all([
         getEmployee(id),
+        includeAccount ? getEmployeeAccount(id) : Promise.resolve(null),
         getEmployeeAssignments(id),
         getEmployeeContracts(id),
         getEmployeeLeave(id),
@@ -27,8 +34,7 @@ export function useEmployeeDetail(id?: string) {
         getEmployeeAuditLogs(id),
       ]);
 
-      return { employee, assignments, contracts, leaveRequests, attendanceRecords, auditLogs };
+      return { employee, account, assignments, contracts, leaveRequests, attendanceRecords, auditLogs };
     },
   });
 }
-

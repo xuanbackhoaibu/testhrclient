@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
+import { HRM_ROLES } from '../features/auth/permissions';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { MainLayout } from '../layouts/MainLayout';
 import { AttendancePage } from '../pages/attendance/AttendancePage';
@@ -45,18 +46,60 @@ export const router = createBrowserRouter([
       { path: ROUTES.dashboard, element: <DashboardPage /> },
       { path: ROUTES.employees, element: <EmployeesPage /> },
       { path: '/employees/:id', element: <EmployeeDetailPage /> },
-      { path: ROUTES.units, element: <UnitsPage /> },
-      { path: ROUTES.departments, element: <DepartmentsPage /> },
-      { path: ROUTES.positions, element: <PositionsPage /> },
+      {
+        path: ROUTES.units,
+        element: (
+          <ProtectedRoute roles={[HRM_ROLES.SUPER_ADMIN, HRM_ROLES.ADMIN, HRM_ROLES.HR]}>
+            <UnitsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.departments,
+        element: (
+          <ProtectedRoute roles={[HRM_ROLES.SUPER_ADMIN, HRM_ROLES.ADMIN, HRM_ROLES.HR]}>
+            <DepartmentsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.positions,
+        element: (
+          <ProtectedRoute roles={[HRM_ROLES.SUPER_ADMIN, HRM_ROLES.ADMIN, HRM_ROLES.HR]}>
+            <PositionsPage />
+          </ProtectedRoute>
+        ),
+      },
       { path: ROUTES.movements, element: <MovementsPage /> },
       { path: ROUTES.contracts, element: <ContractsPage /> },
       { path: ROUTES.leave, element: <LeavePage /> },
       { path: ROUTES.attendance, element: <AttendancePage /> },
       { path: ROUTES.onboarding, element: <OnboardingPage /> },
       { path: ROUTES.offboarding, element: <OffboardingPage /> },
-      { path: ROUTES.imports, element: <ImportsPage /> },
-      { path: ROUTES.auditLogs, element: <AuditLogsPage /> },
-      { path: ROUTES.settings, element: <SettingsPage /> },
+      {
+        path: ROUTES.imports,
+        element: (
+          <ProtectedRoute roles={[HRM_ROLES.SUPER_ADMIN, HRM_ROLES.ADMIN, HRM_ROLES.HR]}>
+            <ImportsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.auditLogs,
+        element: (
+          <ProtectedRoute roles={[HRM_ROLES.SUPER_ADMIN, HRM_ROLES.ADMIN, HRM_ROLES.HR]}>
+            <AuditLogsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.settings,
+        element: (
+          <ProtectedRoute roles={[HRM_ROLES.SUPER_ADMIN, HRM_ROLES.ADMIN]}>
+            <SettingsPage />
+          </ProtectedRoute>
+        ),
+      },
       { path: '*', element: <Navigate to={ROUTES.dashboard} replace /> },
     ],
   },

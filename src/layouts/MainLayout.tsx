@@ -31,6 +31,11 @@ import {
 } from "@tabler/icons-react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
+import {
+  canManageMasterData,
+  canViewAuditLogs,
+  canViewEmployees,
+} from "../features/auth/permissions";
 import { useAuth } from "../features/auth/useAuth";
 import { BrandLogo } from "../shared/components/BrandLogo";
 import { ROUTES } from "../shared/constants/routes";
@@ -90,6 +95,19 @@ export function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const visibleMainItems = mainItems.filter((item) => {
+    if (item.path === ROUTES.employees) {
+      return canViewEmployees(user);
+    }
+    if (item.path === ROUTES.auditLogs || item.path === ROUTES.imports) {
+      return canViewAuditLogs(user);
+    }
+    if (item.path === ROUTES.settings) {
+      return canManageMasterData(user);
+    }
+    return true;
+  });
+  const showOrganizationMenu = canManageMasterData(user);
 
   const selectedPath = location.pathname.startsWith("/employees/")
     ? ROUTES.employees
@@ -164,7 +182,7 @@ export function MainLayout() {
 
           <ScrollArea flex={1}>
             <Stack gap={4}>
-              {mainItems.slice(0, 2).map((item) => {
+              {visibleMainItems.slice(0, 2).map((item) => {
                 const Icon = item.icon;
                 return (
                   <NavLink
@@ -178,6 +196,7 @@ export function MainLayout() {
                 );
               })}
 
+              {showOrganizationMenu ? (
               <NavLink
                 label="Tổ chức"
                 leftSection={<IconBuildingBank size={18} />}
@@ -198,8 +217,9 @@ export function MainLayout() {
                   );
                 })}
               </NavLink>
+              ) : null}
 
-              {mainItems.slice(2).map((item) => {
+              {visibleMainItems.slice(2).map((item) => {
                 const Icon = item.icon;
                 return (
                   <NavLink
