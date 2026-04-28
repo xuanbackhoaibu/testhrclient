@@ -12,6 +12,7 @@ import {
   updateHrmCoreSuggestedCodes,
 } from '../../features/imports/importsApi';
 import { downloadHrmCoreErrors, downloadHrmCoreTemplate } from '../../features/import-export/excelFilesApi';
+import { showDownloadError } from '../../features/import-export/downloadError';
 import type { HrmCorePreview, HrmCoreStagingRow, ImportBatch, SuggestedCode } from '../../features/imports/importTypes';
 import { useImportBatches } from '../../features/imports/useImportBatches';
 import { ErrorState } from '../../shared/components/ErrorState';
@@ -41,7 +42,7 @@ export function ImportsPage() {
 
   const templateMutation = useMutation({
     mutationFn: downloadHrmCoreTemplate,
-    onError: () => message.error('Tải mẫu Excel thất bại.'),
+    onError: (error) => showDownloadError(error, 'Tải mẫu Excel thất bại.'),
   });
 
   const previewMutation = useMutation({
@@ -103,7 +104,7 @@ export function ImportsPage() {
       }
       return downloadHrmCoreErrors(preview.batchId);
     },
-    onError: () => message.error('Tải file lỗi thất bại.'),
+    onError: (error) => showDownloadError(error, 'Tải file lỗi thất bại.'),
   });
 
   async function exportBatchHistory() {
@@ -247,6 +248,7 @@ export function ImportsPage() {
             <Button
               icon={<DownloadOutlined />}
               loading={templateMutation.isPending}
+              disabled={templateMutation.isPending}
               onClick={() => void templateMutation.mutateAsync()}
             >
               Tải mẫu Excel

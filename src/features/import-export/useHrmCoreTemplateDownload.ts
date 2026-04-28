@@ -1,12 +1,12 @@
-import { message } from 'antd';
 import { useMutation } from '@tanstack/react-query';
 
+import { showDownloadError } from './downloadError';
 import { downloadHrmCoreTemplate } from './excelFilesApi';
 
 export function useHrmCoreTemplateDownload() {
   const mutation = useMutation({
     mutationFn: downloadHrmCoreTemplate,
-    onError: () => message.error('Tải mẫu Excel thất bại.'),
+    onError: (error) => showDownloadError(error, 'Tải mẫu Excel thất bại.'),
   });
 
   return {

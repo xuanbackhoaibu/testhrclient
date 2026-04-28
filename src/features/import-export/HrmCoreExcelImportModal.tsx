@@ -9,6 +9,7 @@ import {
   updateHrmCoreSuggestedCodes,
 } from '../imports/importsApi';
 import type { HrmCorePreview, HrmCoreStagingRow, SuggestedCode } from '../imports/importTypes';
+import { showDownloadError } from './downloadError';
 import { downloadHrmCoreErrors, downloadHrmCoreTemplate } from './excelFilesApi';
 import { ExcelImportModal } from './ExcelImportModal';
 
@@ -74,7 +75,7 @@ export function HrmCoreExcelImportModal({
 
   const templateMutation = useMutation({
     mutationFn: downloadHrmCoreTemplate,
-    onError: () => message.error('Tải mẫu Excel thất bại.'),
+    onError: (error) => showDownloadError(error, 'Tải mẫu Excel thất bại.'),
   });
 
   const previewMutation = useMutation({
@@ -133,7 +134,7 @@ export function HrmCoreExcelImportModal({
       }
       return downloadHrmCoreErrors(preview.batchId);
     },
-    onError: () => message.error('Tải file lỗi thất bại.'),
+    onError: (error) => showDownloadError(error, 'Tải file lỗi thất bại.'),
   });
 
   const hasErrors = Boolean(preview && preview.summary.errors > 0);

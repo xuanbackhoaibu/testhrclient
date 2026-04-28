@@ -99,6 +99,7 @@ export function ExcelImportModal({
           <Button
             icon={<DownloadOutlined />}
             loading={isDownloadingTemplate}
+            disabled={isDownloadingTemplate}
             onClick={() => void onDownloadTemplate()}
           >
             Tải mẫu Excel

@@ -7,6 +7,7 @@ import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../sh
 import type { Department } from './organizationTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
+const DEPARTMENT_TREE_PAGE_SIZE = 100;
 
 export interface DepartmentTreeNode extends Department {
   children?: DepartmentTreeNode[];
@@ -33,7 +34,16 @@ export async function listDepartments(params: ListQueryParams = {}): Promise<Pag
 }
 
 export async function getDepartmentTree(params: ListQueryParams = {}): Promise<DepartmentTreeNode[]> {
-  const { items } = await listDepartments({ ...params, page: 1, pageSize: 200 });
+  const firstPage = await listDepartments({ ...params, page: 1, pageSize: DEPARTMENT_TREE_PAGE_SIZE });
+  const remainingPages =
+    firstPage.pagination.totalPages > 1
+      ? await Promise.all(
+          Array.from({ length: firstPage.pagination.totalPages - 1 }, (_, index) =>
+            listDepartments({ ...params, page: index + 2, pageSize: DEPARTMENT_TREE_PAGE_SIZE }),
+          ),
+        )
+      : [];
+  const items = [firstPage, ...remainingPages].flatMap((page) => page.items);
   const map = new Map<string, DepartmentTreeNode>();
   items.forEach((item) => map.set(item.id, { ...item, children: [] }));
 
