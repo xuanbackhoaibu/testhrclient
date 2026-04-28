@@ -62,25 +62,25 @@ export function DepartmentsPage() {
       const result = await listDepartments({ ...params, page: 1, pageSize: 10000 });
       await exportRowsToExcel({
         fileName: `hrm-departments-${new Date().toISOString().slice(0, 10)}.xlsx`,
-        sheetName: 'Phong ban',
+        sheetName: 'Phòng ban',
         rows: result.items,
         columns: [
-          { header: 'Ma', key: 'code', width: 16, value: (record) => record.code },
-          { header: 'Ten phong ban', key: 'name', width: 34, value: (record) => record.name },
-          { header: 'Don vi ID', key: 'unitId', width: 24, value: (record) => record.unitId },
-          { header: 'Phong ban cha ID', key: 'parentId', width: 24, value: (record) => record.parentId },
+          { header: 'Mã', key: 'code', width: 16, value: (record) => record.code },
+          { header: 'Tên phòng ban', key: 'name', width: 34, value: (record) => record.name },
+          { header: 'Đơn vị ID', key: 'unitId', width: 24, value: (record) => record.unitId },
+          { header: 'Phòng ban cha ID', key: 'parentId', width: 24, value: (record) => record.parentId },
           { header: 'Loai', key: 'type', width: 16, value: (record) => record.type },
           { header: 'Hieu luc tu', key: 'effectiveFrom', width: 16, value: (record) => record.effectiveFrom },
           { header: 'Hieu luc den', key: 'effectiveTo', width: 16, value: (record) => record.effectiveTo },
-          { header: 'Trang thai', key: 'status', width: 16, value: (record) => record.status },
+          { header: 'Trạng thái', key: 'status', width: 16, value: (record) => record.status },
         ],
       });
     },
     onError: () => {
       notifications.show({
         color: 'red',
-        title: 'Khong xuat duoc Excel',
-        message: 'Vui long thu lai sau.',
+        title: 'Không xuất được Excel',
+        message: 'Vui lòng thử lại sau.',
       });
     },
   });
@@ -206,7 +206,7 @@ export function DepartmentsPage() {
               loading={exportMutation.isPending}
               onClick={() => exportMutation.mutate()}
             >
-              Xuat Excel
+              Xuất Excel
             </Button>
             <Button
               leftSection={<IconPlus size={18} />}

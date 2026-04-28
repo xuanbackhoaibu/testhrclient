@@ -6,6 +6,11 @@
     "module": "esnext",
     "types": ["vite/client"],
     "skipLibCheck": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "write-excel-file/browser": ["src/types/write-excel-file-browser.d.ts"]
+    },
 
     /* Bundler mode */
     "moduleResolution": "bundler",

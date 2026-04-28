@@ -22,11 +22,11 @@ import { formatDateTime } from '../../shared/utils/date';
 import { exportRowsToExcel, isExcelFile } from '../../shared/utils/excel';
 
 const steps = [
-  { title: 'Tai mau' },
+  { title: 'Tải mẫu' },
   { title: 'Upload' },
-  { title: 'Kiem tra' },
+  { title: 'Kiểm tra' },
   { title: 'Preview' },
-  { title: 'Xac nhan' },
+  { title: 'Xác nhận' },
 ];
 
 export function ImportsPage() {
@@ -48,7 +48,7 @@ export function ImportsPage() {
       setDepartmentCodeDrafts(Object.fromEntries(result.suggestedCodes.departments.map((item) => [item.key, item.code])));
       setRows(await listHrmCoreRows(result.batchId));
       await queryClient.invalidateQueries({ queryKey: ['import-batches'] });
-      message.success('Da tao preview HRM Core.');
+      message.success('Đã tạo preview HRM Core.');
     },
   });
 
@@ -65,7 +65,7 @@ export function ImportsPage() {
     onSuccess: async (result) => {
       setPreview(result);
       setRows(await listHrmCoreRows(result.batchId));
-      message.success('Da cap nhat ma de xuat.');
+      message.success('Đã cập nhật mã đề xuất.');
     },
   });
 
@@ -78,7 +78,7 @@ export function ImportsPage() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['import-batches'] });
-      message.success('Da commit batch HRM Core.');
+      message.success('Đã commit batch HRM Core.');
       setPreview((current) => (current ? { ...current, status: 'COMMITTED' } : current));
     },
   });
@@ -87,24 +87,24 @@ export function ImportsPage() {
     mutationFn: rollbackHrmCoreImport,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['import-batches'] });
-      message.success('Da rollback du lieu batch tao moi.');
+      message.success('Đã rollback dữ liệu batch tạo mới.');
     },
   });
 
   async function exportBatchHistory() {
     await exportRowsToExcel({
       fileName: `hrm-import-batches-${new Date().toISOString().slice(0, 10)}.xlsx`,
-      sheetName: 'Import batches',
+        sheetName: 'Lịch sử import',
       rows: data?.items ?? [],
       columns: [
         { header: 'Batch code', key: 'batchCode', width: 28, value: (record) => record.batchCode },
         { header: 'Import type', key: 'importType', width: 22, value: (record) => record.importType },
-        { header: 'File name', key: 'fileName', width: 34, value: (record) => record.fileName },
-        { header: 'Total rows', key: 'totalRows', width: 14, value: (record) => record.totalRows },
-        { header: 'Success rows', key: 'successRows', width: 14, value: (record) => record.successRows },
-        { header: 'Failed rows', key: 'failedRows', width: 14, value: (record) => record.failedRows },
-        { header: 'Status', key: 'status', width: 18, value: (record) => record.status },
-        { header: 'Created at', key: 'createdAt', width: 24, value: (record) => formatDateTime(record.createdAt) },
+        { header: 'Tên file', key: 'fileName', width: 34, value: (record) => record.fileName },
+        { header: 'Tổng số dòng', key: 'totalRows', width: 14, value: (record) => record.totalRows },
+        { header: 'Thành công', key: 'successRows', width: 14, value: (record) => record.successRows },
+        { header: 'Thất bại', key: 'failedRows', width: 14, value: (record) => record.failedRows },
+        { header: 'Trạng thái', key: 'status', width: 18, value: (record) => record.status },
+        { header: 'Ngày tạo', key: 'createdAt', width: 24, value: (record) => formatDateTime(record.createdAt) },
       ],
     });
   }
@@ -115,19 +115,19 @@ export function ImportsPage() {
     }
     await exportRowsToExcel({
       fileName: `hrm-core-preview-${preview.batchId}.xlsx`,
-      sheetName: 'Preview rows',
+      sheetName: 'Dòng preview',
       rows,
       columns: [
-        { header: 'Dong', key: 'rowNumber', width: 10, value: (record) => record.rowNumber },
-        { header: 'Loai dong', key: 'rowKind', width: 18, value: (record) => record.rowKind },
-        { header: 'Trang thai', key: 'validationStatus', width: 18, value: (record) => record.validationStatus },
-        { header: 'Ho ten', key: 'fullName', width: 28, value: (record) => String(record.normalizedDataJson.fullName ?? '') },
+        { header: 'Dòng', key: 'rowNumber', width: 10, value: (record) => record.rowNumber },
+        { header: 'Loại dòng', key: 'rowKind', width: 18, value: (record) => record.rowKind },
+        { header: 'Trạng thái', key: 'validationStatus', width: 18, value: (record) => record.validationStatus },
+        { header: 'Họ tên', key: 'fullName', width: 28, value: (record) => String(record.normalizedDataJson.fullName ?? '') },
         { header: 'Email', key: 'companyEmail', width: 32, value: (record) => String(record.normalizedDataJson.companyEmail ?? '') },
-        { header: 'Don vi', key: 'unitName', width: 28, value: (record) => String(record.normalizedDataJson.unitName ?? '') },
-        { header: 'Phong ban', key: 'departmentName', width: 28, value: (record) => String(record.normalizedDataJson.departmentName ?? '') },
-        { header: 'Chuc danh', key: 'jobTitle', width: 24, value: (record) => String(record.normalizedDataJson.jobTitle ?? '') },
-        { header: 'Loi', key: 'errors', width: 50, value: (record) => JSON.stringify(record.validationErrorsJson) },
-        { header: 'Canh bao', key: 'warnings', width: 50, value: (record) => JSON.stringify(record.validationWarningsJson) },
+        { header: 'Đơn vị', key: 'unitName', width: 28, value: (record) => String(record.normalizedDataJson.unitName ?? '') },
+        { header: 'Phòng ban', key: 'departmentName', width: 28, value: (record) => String(record.normalizedDataJson.departmentName ?? '') },
+        { header: 'Chức danh', key: 'jobTitle', width: 24, value: (record) => String(record.normalizedDataJson.jobTitle ?? '') },
+        { header: 'Lỗi', key: 'errors', width: 50, value: (record) => JSON.stringify(record.validationErrorsJson) },
+        { header: 'Cảnh báo', key: 'warnings', width: 50, value: (record) => JSON.stringify(record.validationWarningsJson) },
       ],
     });
   }
@@ -155,13 +155,13 @@ export function ImportsPage() {
 
     await exportRowsToExcel({
       fileName: `hrm-core-suggested-codes-${preview.batchId}.xlsx`,
-      sheetName: 'Suggested codes',
+      sheetName: 'Mã đề xuất',
       rows: suggestedRows,
       columns: [
-        { header: 'Loai', key: 'type', width: 16, value: (record) => record.type },
+        { header: 'Loại', key: 'type', width: 16, value: (record) => record.type },
         { header: 'Key', key: 'key', width: 36, value: (record) => record.key },
-        { header: 'Ten', key: 'name', width: 32, value: (record) => record.name },
-        { header: 'Ma de xuat', key: 'code', width: 18, value: (record) => record.code },
+        { header: 'Tên', key: 'name', width: 32, value: (record) => record.name },
+        { header: 'Mã đề xuất', key: 'code', width: 18, value: (record) => record.code },
         { header: 'Unit key', key: 'unitKey', width: 26, value: (record) => record.unitKey },
       ],
     });
@@ -196,9 +196,9 @@ export function ImportsPage() {
         dataSource={items}
         pagination={false}
         columns={[
-          { title: 'Ten', dataIndex: 'name' },
+          { title: 'Tên', dataIndex: 'name' },
           {
-            title: 'Ma de xuat',
+            title: 'Mã đề xuất',
             render: (_, record) => (
               <Input
                 value={drafts[record.key] ?? record.code}
@@ -221,26 +221,26 @@ export function ImportsPage() {
 
   return (
     <>
-      <PageHeader title="Import HRM Core" subtitle="Excel preview, staging, commit va rollback an toan." />
+      <PageHeader title="Import HRM Core" subtitle="Preview Excel, staging, commit và rollback an toàn." />
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
         <Card className="page-card">
           <Steps current={currentStep} items={steps} />
         </Card>
 
-        <Card className="page-card" title="Thao tac">
+        <Card className="page-card" title="Thao tác">
           <Space wrap>
             <Button
               icon={<DownloadOutlined />}
               onClick={() => void downloadBlob('/import-templates/hrm-core', 'Mau_import_HRM_Core.xlsx')}
             >
-              Tai mau Excel
+              Tải mẫu Excel
             </Button>
             <Upload
               accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
               showUploadList={false}
               beforeUpload={(file) => {
                 if (!isExcelFile(file)) {
-                  message.error('Chi chap nhan file Excel .xlsx hoac .xls.');
+                  message.error('Chỉ chấp nhận file Excel .xlsx hoặc .xls.');
                   return Upload.LIST_IGNORE;
                 }
                 previewMutation.mutate(file);
@@ -255,10 +255,10 @@ export function ImportsPage() {
               onClick={() => updateCodesMutation.mutate()}
               disabled={!preview || updateCodesMutation.isPending}
             >
-              Luu ma de xuat
+              Lưu mã đề xuất
             </Button>
             <Checkbox checked={allowWarnings} disabled={!hasWarnings} onChange={(event) => setAllowWarnings(event.target.checked)}>
-              Chap nhan warning
+              Chấp nhận cảnh báo
             </Checkbox>
             <Button type="primary" disabled={commitDisabled} loading={commitMutation.isPending} onClick={() => commitMutation.mutate()}>
               Commit
@@ -268,16 +268,16 @@ export function ImportsPage() {
               disabled={!preview}
               onClick={() => preview && void downloadBlob(`/imports/hrm-core/${preview.batchId}/errors.xlsx`, `hrm-core-errors-${preview.batchId}.xlsx`)}
             >
-              Tai file loi
+              Tải file lỗi
             </Button>
             <Button icon={<DownloadOutlined />} disabled={!preview || !rows.length} onClick={() => void exportPreviewRows()}>
-              Xuat preview
+              Xuất preview
             </Button>
             <Button icon={<DownloadOutlined />} disabled={!preview} onClick={() => void exportSuggestedCodes()}>
-              Xuat ma de xuat
+              Xuất mã đề xuất
             </Button>
             <Button icon={<DownloadOutlined />} onClick={() => void exportBatchHistory()}>
-              Xuat lich su
+              Xuất lịch sử
             </Button>
           </Space>
         </Card>
@@ -286,64 +286,64 @@ export function ImportsPage() {
           <Card className="page-card" title={`Batch ${preview.batchId}`}>
             <Space direction="vertical" size={16} style={{ width: '100%' }}>
               <Space wrap>
-                <Statistic title="Don vi" value={preview.summary.units} />
-                <Statistic title="Phong ban" value={preview.summary.departments} />
-                <Statistic title="Nhan su" value={preview.summary.employees} />
-                <Statistic title="Phan cong" value={preview.summary.assignments} />
-                <Statistic title="Loi" value={preview.summary.errors} />
-                <Statistic title="Canh bao" value={preview.summary.warnings} />
+                <Statistic title="Đơn vị" value={preview.summary.units} />
+                <Statistic title="Phòng ban" value={preview.summary.departments} />
+                <Statistic title="Nhân sự" value={preview.summary.employees} />
+                <Statistic title="Phân công" value={preview.summary.assignments} />
+                <Statistic title="Lỗi" value={preview.summary.errors} />
+                <Statistic title="Cảnh báo" value={preview.summary.warnings} />
               </Space>
               <Tabs
                 items={[
                   {
                     key: 'overview',
-                    label: 'Tong quan',
+                    label: 'Tổng quan',
                     children: <StatusTag status={preview.status} />,
                   },
                   {
                     key: 'units',
-                    label: 'Don vi',
+                    label: 'Đơn vị',
                     children: renderSuggestedCodes(preview.suggestedCodes.units, unitCodeDrafts, setUnitCodeDrafts),
                   },
                   {
                     key: 'departments',
-                    label: 'Phong ban',
+                    label: 'Phòng ban',
                     children: renderSuggestedCodes(preview.suggestedCodes.departments, departmentCodeDrafts, setDepartmentCodeDrafts),
                   },
                   {
                     key: 'employees',
-                    label: 'Nhan su',
+                    label: 'Nhân sự',
                     children: <Table rowKey="id" size="small" dataSource={rows} pagination={{ pageSize: 8 }} columns={[
-                      { title: 'Dong', dataIndex: 'rowNumber' },
-                      { title: 'Trang thai', dataIndex: 'validationStatus' },
-                      { title: 'Ho ten', render: (_, row) => String(row.normalizedDataJson.fullName ?? '-') },
+                      { title: 'Dòng', dataIndex: 'rowNumber' },
+                      { title: 'Trạng thái', dataIndex: 'validationStatus' },
+                      { title: 'Họ tên', render: (_, row) => String(row.normalizedDataJson.fullName ?? '-') },
                       { title: 'Email', render: (_, row) => String(row.normalizedDataJson.companyEmail ?? '-') },
                     ]} />,
                   },
                   {
                     key: 'assignments',
-                    label: 'Phan cong',
+                    label: 'Phân công',
                     children: <Table rowKey="id" size="small" dataSource={rows} pagination={{ pageSize: 8 }} columns={[
-                      { title: 'Dong', dataIndex: 'rowNumber' },
-                      { title: 'Don vi', render: (_, row) => String(row.normalizedDataJson.unitName ?? '-') },
-                      { title: 'Phong ban', render: (_, row) => String(row.normalizedDataJson.departmentName ?? '-') },
-                      { title: 'Chuc danh', render: (_, row) => String(row.normalizedDataJson.jobTitle ?? '-') },
+                      { title: 'Dòng', dataIndex: 'rowNumber' },
+                      { title: 'Đơn vị', render: (_, row) => String(row.normalizedDataJson.unitName ?? '-') },
+                      { title: 'Phòng ban', render: (_, row) => String(row.normalizedDataJson.departmentName ?? '-') },
+                      { title: 'Chức danh', render: (_, row) => String(row.normalizedDataJson.jobTitle ?? '-') },
                     ]} />,
                   },
                   {
                     key: 'errors',
-                    label: 'Loi',
+                    label: 'Lỗi',
                     children: <Table rowKey="id" size="small" dataSource={rows.filter((row) => row.validationStatus === 'ERROR')} pagination={false} columns={[
-                      { title: 'Dong', dataIndex: 'rowNumber' },
-                      { title: 'Chi tiet', render: (_, row) => JSON.stringify(row.validationErrorsJson) },
+                      { title: 'Dòng', dataIndex: 'rowNumber' },
+                      { title: 'Chi tiết', render: (_, row) => JSON.stringify(row.validationErrorsJson) },
                     ]} />,
                   },
                   {
                     key: 'warnings',
-                    label: 'Canh bao',
+                    label: 'Cảnh báo',
                     children: <Table rowKey="id" size="small" dataSource={rows.filter((row) => row.validationStatus === 'WARNING')} pagination={false} columns={[
-                      { title: 'Dong', dataIndex: 'rowNumber' },
-                      { title: 'Chi tiet', render: (_, row) => JSON.stringify(row.validationWarningsJson) },
+                      { title: 'Dòng', dataIndex: 'rowNumber' },
+                      { title: 'Chi tiết', render: (_, row) => JSON.stringify(row.validationWarningsJson) },
                     ]} />,
                   },
                 ]}
@@ -352,7 +352,7 @@ export function ImportsPage() {
           </Card>
         ) : null}
 
-        <Card className="page-card" title="Lich su batch">
+        <Card className="page-card" title="Lịch sử batch">
           <Table
             rowKey="id"
             dataSource={data.items}
@@ -360,14 +360,14 @@ export function ImportsPage() {
             columns={[
               { title: 'Batch code', dataIndex: 'batchCode' },
               { title: 'Import type', dataIndex: 'importType' },
-              { title: 'File name', dataIndex: 'fileName' },
-              { title: 'Total', dataIndex: 'totalRows' },
-              { title: 'Success', dataIndex: 'successRows' },
-              { title: 'Failed', dataIndex: 'failedRows' },
-              { title: 'Status', render: (_, record) => <StatusTag status={record.status} /> },
-              { title: 'Created at', render: (_, record) => formatDateTime(record.createdAt) },
+              { title: 'Tên file', dataIndex: 'fileName' },
+              { title: 'Tổng', dataIndex: 'totalRows' },
+              { title: 'Thành công', dataIndex: 'successRows' },
+              { title: 'Thất bại', dataIndex: 'failedRows' },
+              { title: 'Trạng thái', render: (_, record) => <StatusTag status={record.status} /> },
+              { title: 'Ngày tạo', render: (_, record) => formatDateTime(record.createdAt) },
               {
-                title: 'Actions',
+                title: 'Thao tác',
                 render: (_, record) => (
                   <Space>
                     <Button
@@ -376,7 +376,7 @@ export function ImportsPage() {
                         setSelected(detail);
                       }}
                     >
-                      Detail
+                      Chi tiết
                     </Button>
                     {record.importType === 'HRM_CORE_EXCEL' && record.status === 'COMMITTED' ? (
                       <Button icon={<RollbackOutlined />} danger loading={rollbackMutation.isPending} onClick={() => rollbackMutation.mutate(record.id)}>
@@ -391,7 +391,7 @@ export function ImportsPage() {
         </Card>
 
         {selected ? (
-          <Card className="page-card" title="Batch detail">
+          <Card className="page-card" title="Chi tiết batch">
             <p>Batch code: {selected.batchCode}</p>
             <p>File: {selected.fileName}</p>
             <p>Status: <StatusTag status={selected.status} /></p>

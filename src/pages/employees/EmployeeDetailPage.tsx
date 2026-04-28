@@ -26,8 +26,8 @@ export function EmployeeDetailPage() {
   }
 
   const assignmentColumns: ColumnsType<(typeof data.assignments)[number]> = [
-    { title: 'Don vi', render: (_, record) => record.unitName },
-    { title: 'Phong ban', render: (_, record) => record.departmentName },
+    { title: 'Đơn vị', render: (_, record) => record.unitName },
+    { title: 'Phòng ban', render: (_, record) => record.departmentName },
     { title: 'Position', render: (_, record) => record.positionName },
     { title: 'Job title', render: (_, record) => record.jobTitle },
     { title: 'Manager', render: (_, record) => record.managerName },
@@ -48,8 +48,8 @@ export function EmployeeDetailPage() {
               <Descriptions.Item label="Status">
                 <StatusTag status={data.employee.employmentStatus} />
               </Descriptions.Item>
-              <Descriptions.Item label="Don vi">{data.employee.currentEmployeeAssignment?.unitName ?? '-'}</Descriptions.Item>
-              <Descriptions.Item label="Phong ban">{data.employee.currentEmployeeAssignment?.departmentName ?? '-'}</Descriptions.Item>
+              <Descriptions.Item label="Đơn vị">{data.employee.currentEmployeeAssignment?.unitName ?? '-'}</Descriptions.Item>
+              <Descriptions.Item label="Phòng ban">{data.employee.currentEmployeeAssignment?.departmentName ?? '-'}</Descriptions.Item>
               <Descriptions.Item label="Manager">{data.employee.currentEmployeeAssignment?.managerName ?? '-'}</Descriptions.Item>
               <Descriptions.Item label="Company email">{data.employee.companyEmail ?? '-'}</Descriptions.Item>
               <Descriptions.Item label="Phone">{data.employee.phone ?? '-'}</Descriptions.Item>

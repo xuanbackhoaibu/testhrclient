@@ -75,10 +75,10 @@ function AuthBootstrap({ children }: PropsWithChildren) {
         if (status === 401 || status === 403) {
           clearSession();
           if (status === 403) {
-            useAuthStore.getState().setError('Tai khoan da xac thuc nhung chua duoc cap quyen HRM.');
+            useAuthStore.getState().setError('Tài khoản đã xác thực nhưng chưa được cấp quyền HRM.');
           }
         } else {
-          useAuthStore.getState().setError('Khong tai duoc thong tin nguoi dung HRM.');
+          useAuthStore.getState().setError('Không tải được thông tin người dùng HRM.');
         }
       }
 

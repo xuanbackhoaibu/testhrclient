@@ -10,7 +10,7 @@ function getErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return 'Da co loi khi tai trang.';
+  return 'Đã có lỗi khi tải trang.';
 }
 
 export function RouteErrorPage() {
@@ -20,11 +20,11 @@ export function RouteErrorPage() {
   return (
     <Result
       status="error"
-      title="Khong the tai trang"
+      title="Không thể tải trang"
       subTitle="Ung dung gap loi khi hien thi man hinh hien tai."
       extra={[
         <Button type="primary" key="reload" onClick={() => window.location.reload()}>
-          Tai lai
+          Tải lại
         </Button>,
         <Button key="home" onClick={() => window.location.assign('/')}>
           Ve trang chinh

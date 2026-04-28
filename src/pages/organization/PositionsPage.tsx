@@ -38,22 +38,22 @@ export function PositionsPage() {
       const result = await listPositions({ ...params, page: 1, pageSize: 10000 });
       await exportRowsToExcel({
         fileName: `hrm-positions-${new Date().toISOString().slice(0, 10)}.xlsx`,
-        sheetName: 'Chuc vu',
+        sheetName: 'Chức vụ',
         rows: result.items,
         columns: [
-          { header: 'Ma', key: 'code', width: 16, value: (record) => record.code },
-          { header: 'Ten chuc vu', key: 'name', width: 30, value: (record) => record.name },
-          { header: 'Nhom cong viec', key: 'jobFunction', width: 24, value: (record) => record.jobFunction },
+          { header: 'Mã', key: 'code', width: 16, value: (record) => record.code },
+          { header: 'Tên chức vụ', key: 'name', width: 30, value: (record) => record.name },
+          { header: 'Nhóm công việc', key: 'jobFunction', width: 24, value: (record) => record.jobFunction },
           { header: 'Grade', key: 'grade', width: 12, value: (record) => record.grade },
-          { header: 'Trang thai', key: 'status', width: 16, value: (record) => record.status },
+          { header: 'Trạng thái', key: 'status', width: 16, value: (record) => record.status },
         ],
       });
     },
     onError: () => {
       notifications.show({
         color: 'red',
-        title: 'Khong xuat duoc Excel',
-        message: 'Vui long thu lai sau.',
+        title: 'Không xuất được Excel',
+        message: 'Vui lòng thử lại sau.',
       });
     },
   });
@@ -146,7 +146,7 @@ export function PositionsPage() {
               loading={exportMutation.isPending}
               onClick={() => exportMutation.mutate()}
             >
-              Xuat Excel
+              Xuất Excel
             </Button>
             <Button
               leftSection={<IconPlus size={18} />}

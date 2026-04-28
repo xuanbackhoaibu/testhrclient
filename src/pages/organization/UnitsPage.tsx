@@ -51,22 +51,22 @@ export function UnitsPage() {
       const result = await listUnits({ ...params, page: 1, pageSize: 10000 });
       await exportRowsToExcel({
         fileName: `hrm-units-${new Date().toISOString().slice(0, 10)}.xlsx`,
-        sheetName: 'Don vi',
+        sheetName: 'Đơn vị',
         rows: result.items,
         columns: [
-          { header: 'Ma', key: 'code', width: 16, value: (record) => record.code },
-          { header: 'Ten don vi', key: 'name', width: 36, value: (record) => record.name },
-          { header: 'Ten tat', key: 'shortName', width: 20, value: (record) => record.shortName },
-          { header: 'Ma so thue', key: 'taxCode', width: 20, value: (record) => record.taxCode },
-          { header: 'Trang thai', key: 'status', width: 16, value: (record) => record.status },
+          { header: 'Mã', key: 'code', width: 16, value: (record) => record.code },
+          { header: 'Tên đơn vị', key: 'name', width: 36, value: (record) => record.name },
+          { header: 'Tên tắt', key: 'shortName', width: 20, value: (record) => record.shortName },
+          { header: 'Mã số thuế', key: 'taxCode', width: 20, value: (record) => record.taxCode },
+          { header: 'Trạng thái', key: 'status', width: 16, value: (record) => record.status },
         ],
       });
     },
     onError: () => {
       notifications.show({
         color: 'red',
-        title: 'Khong xuat duoc Excel',
-        message: 'Vui long thu lai sau.',
+        title: 'Không xuất được Excel',
+        message: 'Vui lòng thử lại sau.',
       });
     },
   });
@@ -187,7 +187,7 @@ export function UnitsPage() {
               loading={exportMutation.isPending}
               onClick={() => exportMutation.mutate()}
             >
-              Xuat Excel
+              Xuất Excel
             </Button>
             <Button
               leftSection={<IconPlus size={18} />}

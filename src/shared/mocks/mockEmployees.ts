@@ -146,7 +146,7 @@ export const mockEmployees: Employee[] = [
   {
     id: 'emp-08',
     employeeCode: 'EMP0008',
-    fullName: 'Nguyen Quoc Huy',
+    fullName: 'Nguyễn Quốc Huy',
     companyEmail: 'quoc.huy@hacom.local',
     phone: '0901000008',
     gender: 'MALE',
@@ -204,4 +204,3 @@ export const mockEmployees: Employee[] = [
     },
   },
 ];
-

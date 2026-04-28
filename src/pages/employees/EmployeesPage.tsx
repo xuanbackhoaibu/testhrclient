@@ -17,11 +17,11 @@ import { mockDepartments, mockUnits } from '../../shared/mocks/mockOrganization'
 import { exportRowsToExcel } from '../../shared/utils/excel';
 
 const employmentStatusOptions = [
-  { value: 'ACTIVE', label: 'Dang lam viec' },
-  { value: 'PROBATION', label: 'Thu viec' },
-  { value: 'SUSPENDED', label: 'Tam dung' },
-  { value: 'TERMINATED', label: 'Nghi viec' },
-  { value: 'RESIGNED', label: 'Da nghi' },
+  { value: 'ACTIVE', label: 'Đang làm việc' },
+  { value: 'PROBATION', label: 'Thử việc' },
+  { value: 'SUSPENDED', label: 'Tạm dừng' },
+  { value: 'TERMINATED', label: 'Nghỉ việc' },
+  { value: 'RESIGNED', label: 'Đã nghỉ' },
 ];
 
 function TruncatedCell({ value, maxWidth = 220 }: { value?: string | null; maxWidth?: number }) {
@@ -61,10 +61,10 @@ export function EmployeesPage() {
       citizenId: '',
     },
     validate: {
-      fullName: (value) => (value.trim() ? null : 'Nhap ho ten.'),
-      hireDate: (value) => (value ? null : 'Chon ngay vao lam.'),
-      companyEmail: (value) => (!value || /^\S+@\S+$/.test(value) ? null : 'Email khong hop le.'),
-      personalEmail: (value) => (!value || /^\S+@\S+$/.test(value) ? null : 'Email khong hop le.'),
+      fullName: (value) => (value.trim() ? null : 'Nhập họ tên.'),
+      hireDate: (value) => (value ? null : 'Chọn ngày vào làm.'),
+      companyEmail: (value) => (!value || /^\S+@\S+$/.test(value) ? null : 'Email không hợp lệ.'),
+      personalEmail: (value) => (!value || /^\S+@\S+$/.test(value) ? null : 'Email không hợp lệ.'),
     },
   });
 
@@ -75,31 +75,31 @@ export function EmployeesPage() {
       const result = await listEmployees({ ...params, page: 1, pageSize: 10000 });
       await exportRowsToExcel({
         fileName: `hrm-employees-${new Date().toISOString().slice(0, 10)}.xlsx`,
-        sheetName: 'Nhan su',
+        sheetName: 'Nhân sự',
         rows: result.items,
         columns: [
-          { header: 'Ho ten', key: 'fullName', width: 28, value: (record) => record.fullName },
-          { header: 'Email cong ty', key: 'companyEmail', width: 32, value: (record) => record.companyEmail },
-          { header: 'Email ca nhan', key: 'personalEmail', width: 32, value: (record) => record.personalEmail },
-          { header: 'So dien thoai', key: 'phone', width: 16, value: (record) => record.phone },
-          { header: 'Gioi tinh', key: 'gender', width: 12, value: (record) => record.gender },
-          { header: 'Ngay sinh', key: 'dateOfBirth', width: 16, value: (record) => record.dateOfBirth },
-          { header: 'Ngay vao lam', key: 'hireDate', width: 16, value: (record) => record.hireDate },
-          { header: 'Trang thai', key: 'employmentStatus', width: 16, value: (record) => record.employmentStatus },
+          { header: 'Họ tên', key: 'fullName', width: 28, value: (record) => record.fullName },
+          { header: 'Email công ty', key: 'companyEmail', width: 32, value: (record) => record.companyEmail },
+          { header: 'Email cá nhân', key: 'personalEmail', width: 32, value: (record) => record.personalEmail },
+          { header: 'Số điện thoại', key: 'phone', width: 16, value: (record) => record.phone },
+          { header: 'Giới tính', key: 'gender', width: 12, value: (record) => record.gender },
+          { header: 'Ngày sinh', key: 'dateOfBirth', width: 16, value: (record) => record.dateOfBirth },
+          { header: 'Ngày vào làm', key: 'hireDate', width: 16, value: (record) => record.hireDate },
+          { header: 'Trạng thái', key: 'employmentStatus', width: 16, value: (record) => record.employmentStatus },
           {
-            header: 'Don vi',
+            header: 'Đơn vị',
             key: 'unitName',
             width: 24,
             value: (record) => record.currentEmployeeAssignment?.unitName,
           },
           {
-            header: 'Phong ban',
+            header: 'Phòng ban',
             key: 'departmentName',
             width: 24,
             value: (record) => record.currentEmployeeAssignment?.departmentName,
           },
           {
-            header: 'Chuc danh',
+            header: 'Chức danh',
             key: 'jobTitle',
             width: 24,
             value: (record) => record.currentEmployeeAssignment?.jobTitle,
@@ -110,8 +110,8 @@ export function EmployeesPage() {
     onError: () => {
       notifications.show({
         color: 'red',
-        title: 'Khong xuat duoc Excel',
-        message: 'Vui long thu lai sau.',
+        title: 'Không xuất được Excel',
+        message: 'Vui lòng thử lại sau.',
       });
     },
   });
@@ -121,8 +121,8 @@ export function EmployeesPage() {
     onSuccess: async () => {
       notifications.show({
         color: 'green',
-        title: 'Da tao nhan su',
-        message: 'Ma nhan su he thong duoc backend tu sinh.',
+        title: 'Đã tạo nhân sự',
+        message: 'Mã nhân sự hệ thống được backend tự sinh.',
       });
       setOpen(false);
       form.reset();
@@ -131,8 +131,8 @@ export function EmployeesPage() {
     onError: () => {
       notifications.show({
         color: 'red',
-        title: 'Khong tao duoc nhan su',
-        message: 'Vui long kiem tra du lieu va thu lai.',
+        title: 'Không tạo được nhân sự',
+        message: 'Vui lòng kiểm tra dữ liệu và thử lại.',
       });
     },
   });
@@ -141,7 +141,7 @@ export function EmployeesPage() {
     () => [
       {
         key: 'fullName',
-        header: 'Ho ten',
+        header: 'Họ tên',
         render: (record) => <TruncatedCell value={record.fullName} />,
       },
       {
@@ -157,18 +157,18 @@ export function EmployeesPage() {
       },
       {
         key: 'employmentStatus',
-        header: 'Trang thai',
+        header: 'Trạng thái',
         width: 150,
         render: (record) => <StatusTag status={record.employmentStatus} />,
       },
       {
         key: 'department',
-        header: 'Phong ban',
+        header: 'Phòng ban',
         render: (record) => <TruncatedCell value={record.currentEmployeeAssignment?.departmentName} />,
       },
       {
         key: 'jobTitle',
-        header: 'Chuc danh',
+        header: 'Chức danh',
         render: (record) => <TruncatedCell value={record.currentEmployeeAssignment?.jobTitle} />,
       },
       {
@@ -180,7 +180,7 @@ export function EmployeesPage() {
           <TableActionsMenu
             actions={[
               {
-                label: 'Xem chi tiet',
+                label: 'Xem chi tiết',
                 icon: <IconEye size={16} />,
                 onClick: () => navigate(`/employees/${record.id}`),
               },
@@ -195,8 +195,8 @@ export function EmployeesPage() {
   return (
     <>
       <PageHeader
-        title="Nhan su"
-        subtitle="Quan ly ho so nhan su, trang thai lam viec va phan cong hien tai."
+        title="Nhân sự"
+        subtitle="Quản lý hồ sơ nhân sự, trạng thái làm việc và phân công hiện tại."
         actions={
           <>
             <Button
@@ -205,10 +205,10 @@ export function EmployeesPage() {
               loading={exportMutation.isPending}
               onClick={() => exportMutation.mutate()}
             >
-              Xuat Excel
+              Xuất Excel
             </Button>
             <Button leftSection={<IconPlus size={18} />} onClick={() => setOpen(true)}>
-              Tao nhan su
+              Tạo nhân sự
             </Button>
           </>
         }
@@ -217,7 +217,7 @@ export function EmployeesPage() {
       <Stack gap="md">
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm">
           <TextInput
-            placeholder="Tim ten, email, SDT"
+            placeholder="Tìm tên, email, SĐT"
             leftSection={<IconSearch size={17} />}
             value={params.search}
             onChange={(event) =>
@@ -225,7 +225,7 @@ export function EmployeesPage() {
             }
           />
           <Select
-            placeholder="Trang thai"
+            placeholder="Trạng thái"
             clearable
             data={employmentStatusOptions}
             value={params.employmentStatus ?? null}
@@ -234,7 +234,7 @@ export function EmployeesPage() {
             }
           />
           <Select
-            placeholder="Don vi"
+            placeholder="Đơn vị"
             clearable
             data={mockUnits.map((item) => ({ value: item.id, label: item.name }))}
             value={params.unitId ?? null}
@@ -243,7 +243,7 @@ export function EmployeesPage() {
             }
           />
           <Select
-            placeholder="Phong ban"
+            placeholder="Phòng ban"
             clearable
             data={mockDepartments.map((item) => ({ value: item.id, label: item.name }))}
             value={params.departmentId ?? null}
@@ -263,8 +263,8 @@ export function EmployeesPage() {
           onRetry={() => void refetch()}
           onRowClick={(record) => navigate(`/employees/${record.id}`)}
           onPageChange={(page, pageSize) => setParams((current) => ({ ...current, page, pageSize }))}
-          emptyTitle="Chua co nhan su"
-          emptyDescription="Khong tim thay nhan su phu hop voi bo loc hien tai."
+          emptyTitle="Chưa có nhân sự"
+          emptyDescription="Không tìm thấy nhân sự phù hợp với bộ lọc hiện tại."
         />
       </Stack>
 
@@ -274,30 +274,30 @@ export function EmployeesPage() {
           setOpen(false);
           form.reset();
         }}
-        title="Tao nhan su"
+        title="Tạo nhân sự"
         position="right"
         size="lg"
       >
         <form onSubmit={form.onSubmit((values) => createMutation.mutate(values))}>
           <Stack gap="sm">
-            <TextInput label="Ho ten" withAsterisk {...form.getInputProps('fullName')} />
-            <TextInput label="Email cong ty" {...form.getInputProps('companyEmail')} />
-            <TextInput label="Email ca nhan" {...form.getInputProps('personalEmail')} />
-            <TextInput label="So dien thoai" {...form.getInputProps('phone')} />
+            <TextInput label="Họ tên" withAsterisk {...form.getInputProps('fullName')} />
+            <TextInput label="Email công ty" {...form.getInputProps('companyEmail')} />
+            <TextInput label="Email cá nhân" {...form.getInputProps('personalEmail')} />
+            <TextInput label="Số điện thoại" {...form.getInputProps('phone')} />
             <Select
-              label="Gioi tinh"
+              label="Giới tính"
               clearable
               data={[
                 { value: 'MALE', label: 'Nam' },
-                { value: 'FEMALE', label: 'Nu' },
-                { value: 'OTHER', label: 'Khac' },
+                { value: 'FEMALE', label: 'Nữ' },
+                { value: 'OTHER', label: 'Khác' },
               ]}
               {...form.getInputProps('gender')}
             />
-            <TextInput label="Ngay sinh" type="date" {...form.getInputProps('dateOfBirth')} />
-            <TextInput label="Ngay vao lam" type="date" withAsterisk {...form.getInputProps('hireDate')} />
+            <TextInput label="Ngày sinh" type="date" {...form.getInputProps('dateOfBirth')} />
+            <TextInput label="Ngày vào làm" type="date" withAsterisk {...form.getInputProps('hireDate')} />
             <Select
-              label="Trang thai"
+              label="Trạng thái"
               withAsterisk
               data={employmentStatusOptions}
               {...form.getInputProps('employmentStatus')}
@@ -311,10 +311,10 @@ export function EmployeesPage() {
                   form.reset();
                 }}
               >
-                Huy
+                Hủy
               </Button>
               <Button type="submit" loading={createMutation.isPending}>
-                Luu
+                Lưu
               </Button>
             </Group>
           </Stack>

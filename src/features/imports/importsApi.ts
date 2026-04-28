@@ -89,7 +89,7 @@ export async function previewHrmCoreImport(file: File): Promise<HrmCorePreview> 
       summary: { units: 2, departments: 3, employees: 12, assignments: 12, errors: 0, warnings: 1 },
       suggestedCodes: {
         units: [{ key: 'HACOM', name: 'HACOM', code: 'HC' }],
-        departments: [{ key: 'HACOM:NHAN SU', name: 'Nhan su', code: 'NS', unitKey: 'HACOM' }],
+        departments: [{ key: 'HACOM:NHAN SU', name: 'Nhân sự', code: 'NS', unitKey: 'HACOM' }],
       },
       canCommit: true,
     };
