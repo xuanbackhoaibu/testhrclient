@@ -14,7 +14,7 @@ export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
     fullName: 'Nguyen Ha Linh',
     employeeId: 'EMP0001',
     roles: ['HR_ADMIN', 'ORG_ADMIN'],
-    dataScopes: ['LEGAL_ENTITY:*', 'ORG_UNIT:*', 'EMPLOYEE:*'],
+    dataScopes: ['UNIT:*', 'DEPARTMENT:*', 'EMPLOYEE:*'],
   },
   MANAGER: {
     id: 'usr-manager',
@@ -23,7 +23,7 @@ export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
     fullName: 'Tran Minh Quan',
     employeeId: 'EMP0002',
     roles: ['MANAGER'],
-    dataScopes: ['LEGAL_ENTITY:LE-01', 'ORG_UNIT:OU-SALES'],
+    dataScopes: ['UNIT:LE-01', 'DEPARTMENT:OU-SALES'],
   },
   EMPLOYEE: {
     id: 'usr-employee',

@@ -1,8 +1,8 @@
 export interface EmployeeAssignment {
-  legalEntityId: string;
-  legalEntityName: string;
-  orgUnitId: string;
-  orgUnitName: string;
+  unitId: string;
+  unitName: string;
+  departmentId: string;
+  departmentName: string;
   positionId: string;
   positionName: string;
   jobTitle: string;
@@ -21,11 +21,10 @@ export interface Employee {
   hireDate: string;
   employmentStatus: string;
   citizenIdMasked?: string;
-  currentAssignment: EmployeeAssignment;
+  currentEmployeeAssignment: EmployeeAssignment | null;
 }
 
 export interface EmployeePayload {
-  employeeCode: string;
   fullName: string;
   companyEmail?: string;
   personalEmail?: string;
@@ -35,10 +34,9 @@ export interface EmployeePayload {
   hireDate: string;
   employmentStatus: string;
   citizenId?: string;
-  legalEntityId?: string;
-  orgUnitId?: string;
+  unitId?: string;
+  departmentId?: string;
   positionId?: string;
   jobTitle?: string;
   managerName?: string;
 }
-

@@ -2,16 +2,16 @@ import { httpClient } from '../../shared/api/httpClient';
 import { normalizePaginatedResponse, unwrapApiResponse } from '../../shared/api/response';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
-import { mockLegalEntities } from '../../shared/mocks/mockOrganization';
+import { mockUnits } from '../../shared/mocks/mockOrganization';
 import type { ListQueryParams, PaginatedResponse } from '../../shared/types/api';
-import type { LegalEntity } from './organizationTypes';
+import type { Unit } from './organizationTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
 
-export async function listLegalEntities(params: ListQueryParams = {}): Promise<PaginatedResponse<LegalEntity>> {
+export async function listUnits(params: ListQueryParams = {}): Promise<PaginatedResponse<Unit>> {
   if (isMockMode) {
     await mockDelay();
-    const filtered = mockLegalEntities.filter(
+    const filtered = mockUnits.filter(
       (item) =>
         includesIgnoreCase(item.code, params.search) ||
         includesIgnoreCase(item.name, params.search) ||
@@ -21,27 +21,27 @@ export async function listLegalEntities(params: ListQueryParams = {}): Promise<P
     return paginate(filtered, params);
   }
 
-  const response = await httpClient.get('/legal-entities', { params });
-  return normalizePaginatedResponse<LegalEntity>(response.data, params);
+  const response = await httpClient.get('/units', { params });
+  return normalizePaginatedResponse<Unit>(response.data, params);
 }
 
-export async function createLegalEntity(payload: Omit<LegalEntity, 'id'>): Promise<LegalEntity> {
+export async function createUnit(payload: Omit<Unit, 'id'>): Promise<Unit> {
   if (isMockMode) {
     await mockDelay();
     const entity = { id: generateId('le'), ...payload };
-    mockLegalEntities.unshift(entity);
-    appendAuditLog({ entityType: 'LEGAL_ENTITY', entityId: entity.id, action: 'CREATE', afterJson: entity as unknown as Record<string, unknown> });
+    mockUnits.unshift(entity);
+    appendAuditLog({ entityType: 'UNIT', entityId: entity.id, action: 'CREATE', afterJson: entity as unknown as Record<string, unknown> });
     return entity;
   }
 
-  const response = await httpClient.post('/legal-entities', payload);
-  return unwrapApiResponse<LegalEntity>(response.data);
+  const response = await httpClient.post('/units', payload);
+  return unwrapApiResponse<Unit>(response.data);
 }
 
-export async function updateLegalEntity(id: string, payload: Partial<Omit<LegalEntity, 'id'>>): Promise<LegalEntity> {
+export async function updateUnit(id: string, payload: Partial<Omit<Unit, 'id'>>): Promise<Unit> {
   if (isMockMode) {
     await mockDelay();
-    const entity = mockLegalEntities.find((item) => item.id === id);
+    const entity = mockUnits.find((item) => item.id === id);
     if (!entity) {
       throw new Error('Legal entity not found');
     }
@@ -49,7 +49,7 @@ export async function updateLegalEntity(id: string, payload: Partial<Omit<LegalE
     const before = { ...entity };
     Object.assign(entity, payload);
     appendAuditLog({
-      entityType: 'LEGAL_ENTITY',
+      entityType: 'UNIT',
       entityId: id,
       action: 'UPDATE',
       beforeJson: before as unknown as Record<string, unknown>,
@@ -58,6 +58,6 @@ export async function updateLegalEntity(id: string, payload: Partial<Omit<LegalE
     return entity;
   }
 
-  const response = await httpClient.patch(`/legal-entities/${id}`, payload);
-  return unwrapApiResponse<LegalEntity>(response.data);
+  const response = await httpClient.patch(`/units/${id}`, payload);
+  return unwrapApiResponse<Unit>(response.data);
 }

@@ -27,9 +27,10 @@ export interface ListQueryParams {
   pageSize?: number;
   search?: string;
   status?: string;
+  employmentStatus?: string;
   employeeId?: string;
-  legalEntityId?: string;
-  orgUnitId?: string;
+  unitId?: string;
+  departmentId?: string;
   movementType?: string;
   leaveType?: string;
   source?: string;
@@ -40,4 +41,3 @@ export interface ListQueryParams {
   fromDate?: string;
   toDate?: string;
 }
-

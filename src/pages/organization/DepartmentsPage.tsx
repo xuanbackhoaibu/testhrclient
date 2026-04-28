@@ -6,24 +6,24 @@ import { notifications } from '@mantine/notifications';
 import { IconEdit, IconPlus, IconSearch, IconSitemap, IconX } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { createOrgUnit, updateOrgUnit } from '../../features/organization/orgUnitsApi';
-import type { OrgUnit } from '../../features/organization/organizationTypes';
-import { useOrgUnits } from '../../features/organization/useOrgUnits';
+import { createDepartment, updateDepartment } from '../../features/organization/departmentsApi';
+import type { Department } from '../../features/organization/organizationTypes';
+import { useDepartments } from '../../features/organization/useDepartments';
 import { ConfirmActionModal } from '../../shared/components/ConfirmActionModal';
 import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
 import { TableActionsMenu } from '../../shared/components/TableActionsMenu';
-import { mockLegalEntities, mockOrgUnits } from '../../shared/mocks/mockOrganization';
+import { mockUnits, mockDepartments } from '../../shared/mocks/mockOrganization';
 
-type OrgUnitFormValues = Omit<OrgUnit, 'id'>;
+type DepartmentFormValues = Omit<Department, 'id'>;
 
 const statusOptions = [
   { value: 'ACTIVE', label: 'Đang hoạt động' },
   { value: 'INACTIVE', label: 'Tạm ngưng' },
 ];
 
-function renderOrgTree(nodes: Array<OrgUnit & { children?: OrgUnit[] }>, level = 0): ReactNode {
+function renderOrgTree(nodes: Array<Department & { children?: Department[] }>, level = 0): ReactNode {
   return nodes.map((node) => (
     <Stack key={node.id} gap={4} pl={level ? 'md' : 0}>
       <Group gap="xs" wrap="nowrap">
@@ -41,25 +41,25 @@ function renderOrgTree(nodes: Array<OrgUnit & { children?: OrgUnit[] }>, level =
   ));
 }
 
-export function OrgUnitsPage() {
+export function DepartmentsPage() {
   const queryClient = useQueryClient();
   const [params, setParams] = useState({
     page: 1,
     pageSize: 10,
     search: '',
-    legalEntityId: undefined as string | undefined,
+    unitId: undefined as string | undefined,
     status: undefined as string | undefined,
   });
-  const [editing, setEditing] = useState<OrgUnit | null>(null);
-  const [confirmInactive, setConfirmInactive] = useState<OrgUnit | null>(null);
+  const [editing, setEditing] = useState<Department | null>(null);
+  const [confirmInactive, setConfirmInactive] = useState<Department | null>(null);
   const [open, setOpen] = useState(false);
 
-  const { data, isLoading, error, refetch } = useOrgUnits(params);
+  const { data, isLoading, error, refetch } = useDepartments(params);
 
-  const form = useForm<OrgUnitFormValues>({
+  const form = useForm<DepartmentFormValues>({
     initialValues: {
       code: '',
-      legalEntityId: '',
+      unitId: '',
       parentId: '',
       name: '',
       type: '',
@@ -69,7 +69,7 @@ export function OrgUnitsPage() {
     },
     validate: {
       code: (value) => (value.trim() ? null : 'Nhập mã đơn vị.'),
-      legalEntityId: (value) => (value ? null : 'Chọn pháp nhân.'),
+      unitId: (value) => (value ? null : 'Chọn pháp nhân.'),
       name: (value) => (value.trim() ? null : 'Nhập tên đơn vị.'),
       type: (value) => (value.trim() ? null : 'Nhập loại đơn vị.'),
       effectiveFrom: (value) => (value ? null : 'Chọn ngày hiệu lực.'),
@@ -77,12 +77,12 @@ export function OrgUnitsPage() {
   });
 
   const mutation = useMutation({
-    mutationFn: async (values: OrgUnitFormValues) => {
+    mutationFn: async (values: DepartmentFormValues) => {
       const payload = { ...values, parentId: values.parentId || undefined, effectiveTo: values.effectiveTo || undefined };
       if (editing) {
-        return updateOrgUnit(editing.id, payload);
+        return updateDepartment(editing.id, payload);
       }
-      return createOrgUnit(payload);
+      return createDepartment(payload);
     },
     onSuccess: async () => {
       notifications.show({
@@ -93,7 +93,7 @@ export function OrgUnitsPage() {
       setOpen(false);
       setEditing(null);
       form.reset();
-      await queryClient.invalidateQueries({ queryKey: ['org-units'] });
+      await queryClient.invalidateQueries({ queryKey: ['departments'] });
     },
     onError: () => {
       notifications.show({
@@ -105,7 +105,7 @@ export function OrgUnitsPage() {
   });
 
   const inactiveMutation = useMutation({
-    mutationFn: (record: OrgUnit) => updateOrgUnit(record.id, { ...record, status: 'INACTIVE' }),
+    mutationFn: (record: Department) => updateDepartment(record.id, { ...record, status: 'INACTIVE' }),
     onSuccess: async () => {
       notifications.show({
         color: 'green',
@@ -113,7 +113,7 @@ export function OrgUnitsPage() {
         message: 'Trạng thái đơn vị đã được cập nhật.',
       });
       setConfirmInactive(null);
-      await queryClient.invalidateQueries({ queryKey: ['org-units'] });
+      await queryClient.invalidateQueries({ queryKey: ['departments'] });
     },
     onError: () => {
       notifications.show({
@@ -124,7 +124,7 @@ export function OrgUnitsPage() {
     },
   });
 
-  const columns = useMemo<DataTableColumn<OrgUnit>[]>(
+  const columns = useMemo<DataTableColumn<Department>[]>(
     () => [
       { key: 'code', header: 'Mã', width: 120, render: (record) => <Text fw={600}>{record.code}</Text> },
       { key: 'name', header: 'Tên đơn vị', render: (record) => record.name },
@@ -196,10 +196,10 @@ export function OrgUnitsPage() {
           <Select
             placeholder="Pháp nhân"
             clearable
-            data={mockLegalEntities.map((item) => ({ value: item.id, label: item.name }))}
-            value={params.legalEntityId ?? null}
+            data={mockUnits.map((item) => ({ value: item.id, label: item.name }))}
+            value={params.unitId ?? null}
             onChange={(value) =>
-              setParams((current) => ({ ...current, legalEntityId: value ?? undefined, page: 1 }))
+              setParams((current) => ({ ...current, unitId: value ?? undefined, page: 1 }))
             }
           />
           <Select
@@ -252,14 +252,14 @@ export function OrgUnitsPage() {
             <TextInput label="Mã" withAsterisk {...form.getInputProps('code')} />
             <Select
               label="Pháp nhân"
-              data={mockLegalEntities.map((item) => ({ value: item.id, label: item.name }))}
+              data={mockUnits.map((item) => ({ value: item.id, label: item.name }))}
               withAsterisk
-              {...form.getInputProps('legalEntityId')}
+              {...form.getInputProps('unitId')}
             />
             <Select
               label="Đơn vị cha"
               clearable
-              data={mockOrgUnits.map((item) => ({ value: item.id, label: item.name }))}
+              data={mockDepartments.map((item) => ({ value: item.id, label: item.name }))}
               {...form.getInputProps('parentId')}
             />
             <TextInput label="Tên đơn vị" withAsterisk {...form.getInputProps('name')} />

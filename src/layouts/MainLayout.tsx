@@ -44,16 +44,16 @@ const mainItems: NavItem[] = [
 ];
 
 const orgItems: NavItem[] = [
-  { label: 'Pháp nhân', path: ROUTES.legalEntities, icon: IconBuildingBank },
-  { label: 'Đơn vị', path: ROUTES.orgUnits, icon: IconSitemap },
+  { label: 'Pháp nhân', path: ROUTES.units, icon: IconBuildingBank },
+  { label: 'Đơn vị', path: ROUTES.departments, icon: IconSitemap },
   { label: 'Chức vụ', path: ROUTES.positions, icon: IconBriefcase },
 ];
 
 const routeTitles: Record<string, string> = {
   [ROUTES.dashboard]: 'Dashboard',
   [ROUTES.employees]: 'Nhân sự',
-  [ROUTES.legalEntities]: 'Pháp nhân',
-  [ROUTES.orgUnits]: 'Đơn vị',
+  [ROUTES.units]: 'Pháp nhân',
+  [ROUTES.departments]: 'Đơn vị',
   [ROUTES.positions]: 'Chức vụ',
   [ROUTES.movements]: 'Điều chuyển',
   [ROUTES.contracts]: 'Hợp đồng',

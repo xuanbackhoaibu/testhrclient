@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Button, Drawer, Group, Select, SimpleGrid, Stack, TextInput, Tooltip, Text } from '@mantine/core';
+import { Button, Drawer, Group, Select, SimpleGrid, Stack, Text, TextInput, Tooltip } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconEye, IconPlus, IconSearch } from '@tabler/icons-react';
@@ -13,13 +13,14 @@ import { DataTable, type DataTableColumn } from '../../shared/components/DataTab
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
 import { TableActionsMenu } from '../../shared/components/TableActionsMenu';
-import { mockLegalEntities, mockOrgUnits } from '../../shared/mocks/mockOrganization';
+import { mockDepartments, mockUnits } from '../../shared/mocks/mockOrganization';
 
 const employmentStatusOptions = [
-  { value: 'ACTIVE', label: 'Đang làm việc' },
-  { value: 'PROBATION', label: 'Thử việc' },
-  { value: 'INACTIVE', label: 'Tạm ngưng' },
-  { value: 'TERMINATED', label: 'Nghỉ việc' },
+  { value: 'ACTIVE', label: 'Dang lam viec' },
+  { value: 'PROBATION', label: 'Thu viec' },
+  { value: 'SUSPENDED', label: 'Tam dung' },
+  { value: 'TERMINATED', label: 'Nghi viec' },
+  { value: 'RESIGNED', label: 'Da nghi' },
 ];
 
 function TruncatedCell({ value, maxWidth = 220 }: { value?: string | null; maxWidth?: number }) {
@@ -41,14 +42,13 @@ export function EmployeesPage() {
     page: 1,
     pageSize: 10,
     search: '',
-    status: undefined as string | undefined,
-    legalEntityId: undefined as string | undefined,
-    orgUnitId: undefined as string | undefined,
+    employmentStatus: undefined as string | undefined,
+    unitId: undefined as string | undefined,
+    departmentId: undefined as string | undefined,
   });
 
   const form = useForm<EmployeePayload>({
     initialValues: {
-      employeeCode: '',
       fullName: '',
       companyEmail: '',
       personalEmail: '',
@@ -60,11 +60,10 @@ export function EmployeesPage() {
       citizenId: '',
     },
     validate: {
-      employeeCode: (value) => (value.trim() ? null : 'Nhập mã nhân sự.'),
-      fullName: (value) => (value.trim() ? null : 'Nhập họ tên.'),
-      hireDate: (value) => (value ? null : 'Chọn ngày vào làm.'),
-      companyEmail: (value) => (!value || /^\S+@\S+$/.test(value) ? null : 'Email không hợp lệ.'),
-      personalEmail: (value) => (!value || /^\S+@\S+$/.test(value) ? null : 'Email không hợp lệ.'),
+      fullName: (value) => (value.trim() ? null : 'Nhap ho ten.'),
+      hireDate: (value) => (value ? null : 'Chon ngay vao lam.'),
+      companyEmail: (value) => (!value || /^\S+@\S+$/.test(value) ? null : 'Email khong hop le.'),
+      personalEmail: (value) => (!value || /^\S+@\S+$/.test(value) ? null : 'Email khong hop le.'),
     },
   });
 
@@ -75,8 +74,8 @@ export function EmployeesPage() {
     onSuccess: async () => {
       notifications.show({
         color: 'green',
-        title: 'Đã tạo nhân sự',
-        message: 'Danh sách nhân sự đã được cập nhật.',
+        title: 'Da tao nhan su',
+        message: 'Ma nhan su he thong duoc backend tu sinh.',
       });
       setOpen(false);
       form.reset();
@@ -85,8 +84,8 @@ export function EmployeesPage() {
     onError: () => {
       notifications.show({
         color: 'red',
-        title: 'Không tạo được nhân sự',
-        message: 'Vui lòng kiểm tra dữ liệu và thử lại.',
+        title: 'Khong tao duoc nhan su',
+        message: 'Vui long kiem tra du lieu va thu lai.',
       });
     },
   });
@@ -94,14 +93,8 @@ export function EmployeesPage() {
   const columns = useMemo<DataTableColumn<Employee>[]>(
     () => [
       {
-        key: 'employeeCode',
-        header: 'Mã NV',
-        width: 120,
-        render: (record) => <Text fw={600}>{record.employeeCode}</Text>,
-      },
-      {
         key: 'fullName',
-        header: 'Họ tên',
+        header: 'Ho ten',
         render: (record) => <TruncatedCell value={record.fullName} />,
       },
       {
@@ -111,25 +104,25 @@ export function EmployeesPage() {
       },
       {
         key: 'phone',
-        header: 'SĐT',
+        header: 'SDT',
         width: 130,
         render: (record) => record.phone || '-',
       },
       {
         key: 'employmentStatus',
-        header: 'Trạng thái',
+        header: 'Trang thai',
         width: 150,
         render: (record) => <StatusTag status={record.employmentStatus} />,
       },
       {
-        key: 'orgUnit',
-        header: 'Đơn vị',
-        render: (record) => <TruncatedCell value={record.currentAssignment.orgUnitName} />,
+        key: 'department',
+        header: 'Phong ban',
+        render: (record) => <TruncatedCell value={record.currentEmployeeAssignment?.departmentName} />,
       },
       {
         key: 'jobTitle',
-        header: 'Chức danh',
-        render: (record) => <TruncatedCell value={record.currentAssignment.jobTitle} />,
+        header: 'Chuc danh',
+        render: (record) => <TruncatedCell value={record.currentEmployeeAssignment?.jobTitle} />,
       },
       {
         key: 'actions',
@@ -140,7 +133,7 @@ export function EmployeesPage() {
           <TableActionsMenu
             actions={[
               {
-                label: 'Xem chi tiết',
+                label: 'Xem chi tiet',
                 icon: <IconEye size={16} />,
                 onClick: () => navigate(`/employees/${record.id}`),
               },
@@ -155,11 +148,11 @@ export function EmployeesPage() {
   return (
     <>
       <PageHeader
-        title="Nhân sự"
-        subtitle="Quản lý hồ sơ nhân sự, trạng thái làm việc và thông tin đơn vị hiện tại."
+        title="Nhan su"
+        subtitle="Quan ly ho so nhan su, trang thai lam viec va phan cong hien tai."
         actions={
           <Button leftSection={<IconPlus size={18} />} onClick={() => setOpen(true)}>
-            Tạo nhân sự
+            Tao nhan su
           </Button>
         }
       />
@@ -167,7 +160,7 @@ export function EmployeesPage() {
       <Stack gap="md">
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm">
           <TextInput
-            placeholder="Tìm mã, tên, email"
+            placeholder="Tim ten, email, SDT"
             leftSection={<IconSearch size={17} />}
             value={params.search}
             onChange={(event) =>
@@ -175,30 +168,30 @@ export function EmployeesPage() {
             }
           />
           <Select
-            placeholder="Trạng thái"
+            placeholder="Trang thai"
             clearable
             data={employmentStatusOptions}
-            value={params.status ?? null}
+            value={params.employmentStatus ?? null}
             onChange={(value) =>
-              setParams((current) => ({ ...current, status: value ?? undefined, page: 1 }))
+              setParams((current) => ({ ...current, employmentStatus: value ?? undefined, page: 1 }))
             }
           />
           <Select
-            placeholder="Pháp nhân"
+            placeholder="Don vi"
             clearable
-            data={mockLegalEntities.map((item) => ({ value: item.id, label: item.name }))}
-            value={params.legalEntityId ?? null}
+            data={mockUnits.map((item) => ({ value: item.id, label: item.name }))}
+            value={params.unitId ?? null}
             onChange={(value) =>
-              setParams((current) => ({ ...current, legalEntityId: value ?? undefined, page: 1 }))
+              setParams((current) => ({ ...current, unitId: value ?? undefined, page: 1 }))
             }
           />
           <Select
-            placeholder="Đơn vị"
+            placeholder="Phong ban"
             clearable
-            data={mockOrgUnits.map((item) => ({ value: item.id, label: item.name }))}
-            value={params.orgUnitId ?? null}
+            data={mockDepartments.map((item) => ({ value: item.id, label: item.name }))}
+            value={params.departmentId ?? null}
             onChange={(value) =>
-              setParams((current) => ({ ...current, orgUnitId: value ?? undefined, page: 1 }))
+              setParams((current) => ({ ...current, departmentId: value ?? undefined, page: 1 }))
             }
           />
         </SimpleGrid>
@@ -213,8 +206,8 @@ export function EmployeesPage() {
           onRetry={() => void refetch()}
           onRowClick={(record) => navigate(`/employees/${record.id}`)}
           onPageChange={(page, pageSize) => setParams((current) => ({ ...current, page, pageSize }))}
-          emptyTitle="Chưa có nhân sự"
-          emptyDescription="Không tìm thấy nhân sự phù hợp với bộ lọc hiện tại."
+          emptyTitle="Chua co nhan su"
+          emptyDescription="Khong tim thay nhan su phu hop voi bo loc hien tai."
         />
       </Stack>
 
@@ -224,31 +217,30 @@ export function EmployeesPage() {
           setOpen(false);
           form.reset();
         }}
-        title="Tạo nhân sự"
+        title="Tao nhan su"
         position="right"
         size="lg"
       >
         <form onSubmit={form.onSubmit((values) => createMutation.mutate(values))}>
           <Stack gap="sm">
-            <TextInput label="Mã nhân sự" withAsterisk {...form.getInputProps('employeeCode')} />
-            <TextInput label="Họ tên" withAsterisk {...form.getInputProps('fullName')} />
-            <TextInput label="Email công ty" {...form.getInputProps('companyEmail')} />
-            <TextInput label="Email cá nhân" {...form.getInputProps('personalEmail')} />
-            <TextInput label="Số điện thoại" {...form.getInputProps('phone')} />
+            <TextInput label="Ho ten" withAsterisk {...form.getInputProps('fullName')} />
+            <TextInput label="Email cong ty" {...form.getInputProps('companyEmail')} />
+            <TextInput label="Email ca nhan" {...form.getInputProps('personalEmail')} />
+            <TextInput label="So dien thoai" {...form.getInputProps('phone')} />
             <Select
-              label="Giới tính"
+              label="Gioi tinh"
               clearable
               data={[
                 { value: 'MALE', label: 'Nam' },
-                { value: 'FEMALE', label: 'Nữ' },
-                { value: 'OTHER', label: 'Khác' },
+                { value: 'FEMALE', label: 'Nu' },
+                { value: 'OTHER', label: 'Khac' },
               ]}
               {...form.getInputProps('gender')}
             />
-            <TextInput label="Ngày sinh" type="date" {...form.getInputProps('dateOfBirth')} />
-            <TextInput label="Ngày vào làm" type="date" withAsterisk {...form.getInputProps('hireDate')} />
+            <TextInput label="Ngay sinh" type="date" {...form.getInputProps('dateOfBirth')} />
+            <TextInput label="Ngay vao lam" type="date" withAsterisk {...form.getInputProps('hireDate')} />
             <Select
-              label="Trạng thái"
+              label="Trang thai"
               withAsterisk
               data={employmentStatusOptions}
               {...form.getInputProps('employmentStatus')}
@@ -262,10 +254,10 @@ export function EmployeesPage() {
                   form.reset();
                 }}
               >
-                Hủy
+                Huy
               </Button>
               <Button type="submit" loading={createMutation.isPending}>
-                Lưu
+                Luu
               </Button>
             </Group>
           </Stack>

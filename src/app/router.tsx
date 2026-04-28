@@ -16,8 +16,8 @@ import { LoginPage } from '../pages/LoginPage';
 import { MovementsPage } from '../pages/movements/MovementsPage';
 import { OffboardingPage } from '../pages/offboarding/OffboardingPage';
 import { OnboardingPage } from '../pages/onboarding/OnboardingPage';
-import { LegalEntitiesPage } from '../pages/organization/LegalEntitiesPage';
-import { OrgUnitsPage } from '../pages/organization/OrgUnitsPage';
+import { UnitsPage } from '../pages/organization/UnitsPage';
+import { DepartmentsPage } from '../pages/organization/DepartmentsPage';
 import { PositionsPage } from '../pages/organization/PositionsPage';
 import { RouteErrorPage } from '../pages/RouteErrorPage';
 import { SettingsPage } from '../pages/settings/SettingsPage';
@@ -45,8 +45,8 @@ export const router = createBrowserRouter([
       { path: ROUTES.dashboard, element: <DashboardPage /> },
       { path: ROUTES.employees, element: <EmployeesPage /> },
       { path: '/employees/:id', element: <EmployeeDetailPage /> },
-      { path: ROUTES.legalEntities, element: <LegalEntitiesPage /> },
-      { path: ROUTES.orgUnits, element: <OrgUnitsPage /> },
+      { path: ROUTES.units, element: <UnitsPage /> },
+      { path: ROUTES.departments, element: <DepartmentsPage /> },
       { path: ROUTES.positions, element: <PositionsPage /> },
       { path: ROUTES.movements, element: <MovementsPage /> },
       { path: ROUTES.contracts, element: <ContractsPage /> },

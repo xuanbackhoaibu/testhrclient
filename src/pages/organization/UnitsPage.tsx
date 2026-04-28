@@ -5,16 +5,16 @@ import { notifications } from '@mantine/notifications';
 import { IconEdit, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { createLegalEntity, updateLegalEntity } from '../../features/organization/legalEntitiesApi';
-import type { LegalEntity } from '../../features/organization/organizationTypes';
-import { useLegalEntities } from '../../features/organization/useLegalEntities';
+import { createUnit, updateUnit } from '../../features/organization/unitsApi';
+import type { Unit } from '../../features/organization/organizationTypes';
+import { useUnits } from '../../features/organization/useUnits';
 import { ConfirmActionModal } from '../../shared/components/ConfirmActionModal';
 import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
 import { TableActionsMenu } from '../../shared/components/TableActionsMenu';
 
-type LegalEntityFormValues = Omit<LegalEntity, 'id'>;
+type UnitFormValues = Omit<Unit, 'id'>;
 
 const statusOptions = [
   { value: 'ACTIVE', label: 'Đang hoạt động' },
@@ -32,7 +32,7 @@ function TruncatedCell({ value }: { value?: string | null }) {
   );
 }
 
-export function LegalEntitiesPage() {
+export function UnitsPage() {
   const queryClient = useQueryClient();
   const [params, setParams] = useState({
     page: 1,
@@ -40,12 +40,12 @@ export function LegalEntitiesPage() {
     search: '',
     status: undefined as string | undefined,
   });
-  const [editing, setEditing] = useState<LegalEntity | null>(null);
-  const [confirmInactive, setConfirmInactive] = useState<LegalEntity | null>(null);
+  const [editing, setEditing] = useState<Unit | null>(null);
+  const [confirmInactive, setConfirmInactive] = useState<Unit | null>(null);
   const [open, setOpen] = useState(false);
-  const { data, isLoading, error, refetch } = useLegalEntities(params);
+  const { data, isLoading, error, refetch } = useUnits(params);
 
-  const form = useForm<LegalEntityFormValues>({
+  const form = useForm<UnitFormValues>({
     initialValues: {
       code: '',
       name: '',
@@ -62,11 +62,11 @@ export function LegalEntitiesPage() {
   });
 
   const mutation = useMutation({
-    mutationFn: async (values: Partial<LegalEntityFormValues>) => {
+    mutationFn: async (values: Partial<UnitFormValues>) => {
       if (editing) {
-        return updateLegalEntity(editing.id, values);
+        return updateUnit(editing.id, values);
       }
-      return createLegalEntity(values as LegalEntityFormValues);
+      return createUnit(values as UnitFormValues);
     },
     onSuccess: async () => {
       notifications.show({
@@ -78,7 +78,7 @@ export function LegalEntitiesPage() {
       setEditing(null);
       setConfirmInactive(null);
       form.reset();
-      await queryClient.invalidateQueries({ queryKey: ['legal-entities'] });
+      await queryClient.invalidateQueries({ queryKey: ['units'] });
     },
     onError: () => {
       notifications.show({
@@ -90,7 +90,7 @@ export function LegalEntitiesPage() {
   });
 
   const inactiveMutation = useMutation({
-    mutationFn: (record: LegalEntity) => updateLegalEntity(record.id, { ...record, status: 'INACTIVE' }),
+    mutationFn: (record: Unit) => updateUnit(record.id, { ...record, status: 'INACTIVE' }),
     onSuccess: async () => {
       notifications.show({
         color: 'green',
@@ -98,7 +98,7 @@ export function LegalEntitiesPage() {
         message: 'Trạng thái pháp nhân đã được cập nhật.',
       });
       setConfirmInactive(null);
-      await queryClient.invalidateQueries({ queryKey: ['legal-entities'] });
+      await queryClient.invalidateQueries({ queryKey: ['units'] });
     },
     onError: () => {
       notifications.show({
@@ -109,7 +109,7 @@ export function LegalEntitiesPage() {
     },
   });
 
-  const columns = useMemo<DataTableColumn<LegalEntity>[]>(
+  const columns = useMemo<DataTableColumn<Unit>[]>(
     () => [
       { key: 'code', header: 'Mã', width: 120, render: (record) => <Text fw={600}>{record.code}</Text> },
       { key: 'name', header: 'Tên pháp nhân', render: (record) => <TruncatedCell value={record.name} /> },

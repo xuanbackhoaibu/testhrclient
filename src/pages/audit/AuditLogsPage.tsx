@@ -38,7 +38,7 @@ export function AuditLogsPage() {
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
           <Row gutter={12}>
             <Col xs={24} md={6}>
-              <Select allowClear placeholder="Entity type" style={{ width: '100%' }} options={['EMPLOYEE', 'LEAVE_REQUEST', 'ORG_UNIT', 'LEGAL_ENTITY', 'CONTRACT', 'IMPORT_BATCH'].map((item) => ({ value: item, label: item }))} onChange={(value) => setParams((current) => ({ ...current, entityType: value }))} />
+              <Select allowClear placeholder="Entity type" style={{ width: '100%' }} options={['EMPLOYEE', 'LEAVE_REQUEST', 'DEPARTMENT', 'UNIT', 'CONTRACT', 'IMPORT_BATCH'].map((item) => ({ value: item, label: item }))} onChange={(value) => setParams((current) => ({ ...current, entityType: value }))} />
             </Col>
             <Col xs={24} md={4}>
               <Input placeholder="Entity ID" onChange={(event) => setParams((current) => ({ ...current, entityId: event.target.value || undefined }))} />

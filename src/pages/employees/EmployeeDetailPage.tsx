@@ -26,8 +26,8 @@ export function EmployeeDetailPage() {
   }
 
   const assignmentColumns: ColumnsType<(typeof data.assignments)[number]> = [
-    { title: 'Legal entity', render: (_, record) => record.legalEntityName },
-    { title: 'Org unit', render: (_, record) => record.orgUnitName },
+    { title: 'Don vi', render: (_, record) => record.unitName },
+    { title: 'Phong ban', render: (_, record) => record.departmentName },
     { title: 'Position', render: (_, record) => record.positionName },
     { title: 'Job title', render: (_, record) => record.jobTitle },
     { title: 'Manager', render: (_, record) => record.managerName },
@@ -37,7 +37,7 @@ export function EmployeeDetailPage() {
     <>
       <PageHeader
         title={`${data.employee.employeeCode} - ${data.employee.fullName}`}
-        subtitle={data.employee.currentAssignment.jobTitle}
+        subtitle={data.employee.currentEmployeeAssignment?.jobTitle ?? 'Chua co phan cong'}
         breadcrumbs={['Employees', data.employee.employeeCode]}
       />
 
@@ -48,9 +48,9 @@ export function EmployeeDetailPage() {
               <Descriptions.Item label="Status">
                 <StatusTag status={data.employee.employmentStatus} />
               </Descriptions.Item>
-              <Descriptions.Item label="Legal entity">{data.employee.currentAssignment.legalEntityName}</Descriptions.Item>
-              <Descriptions.Item label="Org unit">{data.employee.currentAssignment.orgUnitName}</Descriptions.Item>
-              <Descriptions.Item label="Manager">{data.employee.currentAssignment.managerName}</Descriptions.Item>
+              <Descriptions.Item label="Don vi">{data.employee.currentEmployeeAssignment?.unitName ?? '-'}</Descriptions.Item>
+              <Descriptions.Item label="Phong ban">{data.employee.currentEmployeeAssignment?.departmentName ?? '-'}</Descriptions.Item>
+              <Descriptions.Item label="Manager">{data.employee.currentEmployeeAssignment?.managerName ?? '-'}</Descriptions.Item>
               <Descriptions.Item label="Company email">{data.employee.companyEmail ?? '-'}</Descriptions.Item>
               <Descriptions.Item label="Phone">{data.employee.phone ?? '-'}</Descriptions.Item>
               <Descriptions.Item label="Hire date">{formatDate(data.employee.hireDate)}</Descriptions.Item>

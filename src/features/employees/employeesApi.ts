@@ -21,15 +21,17 @@ function applyEmployeeFilters(items: Employee[], params: ListQueryParams = {}): 
       includesIgnoreCase(employee.fullName, params.search) ||
       includesIgnoreCase(employee.companyEmail, params.search);
 
-    const matchedStatus = params.status ? employee.employmentStatus === params.status : true;
-    const matchedLegalEntity = params.legalEntityId
-      ? employee.currentAssignment.legalEntityId === params.legalEntityId
+    const matchedStatus = params.employmentStatus
+      ? employee.employmentStatus === params.employmentStatus
       : true;
-    const matchedOrgUnit = params.orgUnitId
-      ? employee.currentAssignment.orgUnitId === params.orgUnitId
+    const matchedUnit = params.unitId
+      ? employee.currentEmployeeAssignment?.unitId === params.unitId
+      : true;
+    const matchedDepartment = params.departmentId
+      ? employee.currentEmployeeAssignment?.departmentId === params.departmentId
       : true;
 
-    return matchedSearch && matchedStatus && matchedLegalEntity && matchedOrgUnit;
+    return matchedSearch && matchedStatus && matchedUnit && matchedDepartment;
   });
 }
 
@@ -62,7 +64,7 @@ export async function createEmployee(payload: EmployeePayload): Promise<Employee
     await mockDelay();
     const employee: Employee = {
       id: generateId('emp'),
-      employeeCode: payload.employeeCode,
+      employeeCode: `NV${String(mockEmployees.length + 1).padStart(6, '0')}`,
       fullName: payload.fullName,
       companyEmail: payload.companyEmail,
       personalEmail: payload.personalEmail,
@@ -72,11 +74,11 @@ export async function createEmployee(payload: EmployeePayload): Promise<Employee
       hireDate: payload.hireDate,
       employmentStatus: payload.employmentStatus,
       citizenIdMasked: maskSensitiveValue(payload.citizenId),
-      currentAssignment: {
-        legalEntityId: payload.legalEntityId ?? 'le-01',
-        legalEntityName: 'HACOM Holdings',
-        orgUnitId: payload.orgUnitId ?? 'ou-hr',
-        orgUnitName: 'Human Resources',
+      currentEmployeeAssignment: {
+        unitId: payload.unitId ?? 'le-01',
+        unitName: 'HACOM Holdings',
+        departmentId: payload.departmentId ?? 'ou-hr',
+        departmentName: 'Human Resources',
         positionId: payload.positionId ?? 'pos-hro',
         positionName: payload.jobTitle ?? 'HR Officer',
         jobTitle: payload.jobTitle ?? 'HR Officer',
@@ -105,11 +107,13 @@ export async function updateEmployee(id: string, payload: Partial<EmployeePayloa
     Object.assign(employee, {
       ...payload,
       citizenIdMasked: payload.citizenId ? maskSensitiveValue(payload.citizenId) : employee.citizenIdMasked,
-      currentAssignment: {
-        ...employee.currentAssignment,
-        jobTitle: payload.jobTitle ?? employee.currentAssignment.jobTitle,
-        managerName: payload.managerName ?? employee.currentAssignment.managerName,
-      },
+      currentEmployeeAssignment: employee.currentEmployeeAssignment
+        ? {
+            ...employee.currentEmployeeAssignment,
+            jobTitle: payload.jobTitle ?? employee.currentEmployeeAssignment.jobTitle,
+            managerName: payload.managerName ?? employee.currentEmployeeAssignment.managerName,
+          }
+        : null,
     });
     appendAuditLog({
       entityType: 'EMPLOYEE',
@@ -126,8 +130,13 @@ export async function updateEmployee(id: string, payload: Partial<EmployeePayloa
 }
 
 export async function getEmployeeAssignments(id: string): Promise<EmployeeAssignment[]> {
-  const employee = await getEmployee(id);
-  return [employee.currentAssignment];
+  if (isMockMode) {
+    const employee = await getEmployee(id);
+    return employee.currentEmployeeAssignment ? [employee.currentEmployeeAssignment] : [];
+  }
+
+  const response = await httpClient.get(`/employees/${id}/employee-assignments`);
+  return unwrapApiResponse<EmployeeAssignment[]>(response.data);
 }
 
 export async function getEmployeeContracts(id: string): Promise<Contract[]> {

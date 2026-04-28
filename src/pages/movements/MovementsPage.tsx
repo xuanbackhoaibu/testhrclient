@@ -108,7 +108,7 @@ export function MovementsPage() {
       </Card>
 
       <Drawer title="Create movement" open={open} width={520} destroyOnClose onClose={() => { setOpen(false); form.resetFields(); }} extra={<Button type="primary" loading={createMutation.isPending} onClick={() => void form.submit()}>Save</Button>}>
-        <Form form={form} layout="vertical" onFinish={(values) => createMutation.mutate(values)} initialValues={{ afterJson: '{\n  "orgUnitId": "ou-sales"\n}' }}>
+        <Form form={form} layout="vertical" onFinish={(values) => createMutation.mutate(values)} initialValues={{ afterJson: '{\n  "departmentId": "ou-sales"\n}' }}>
           <Form.Item name="employeeId" label="Employee" rules={[{ required: true }]}>
             <Select options={mockEmployees.map((item) => ({ value: item.id, label: item.fullName }))} />
           </Form.Item>
@@ -124,7 +124,7 @@ export function MovementsPage() {
           <Form.Item
             name="afterJson"
             label="afterJson"
-            extra={'TRANSFER: {"orgUnitId":"ou-sales"} | STATUS_CHANGE: {"employmentStatus":"ACTIVE"} | TERMINATION: {"employmentStatus":"TERMINATED"}'}
+            extra={'TRANSFER: {"departmentId":"ou-sales"} | STATUS_CHANGE: {"employmentStatus":"ACTIVE"} | TERMINATION: {"employmentStatus":"TERMINATED"}'}
             rules={[
               { required: true },
               {

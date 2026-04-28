@@ -80,7 +80,7 @@ export function DashboardPage() {
         </SimpleGrid>
 
         <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
-          <BreakdownList title="Nhân sự theo pháp nhân" items={data.employeesByLegalEntity} />
+          <BreakdownList title="Nhân sự theo pháp nhân" items={data.employeesByUnit} />
           <BreakdownList title="Nhân sự theo trạng thái" items={data.employeesByEmploymentStatus} />
         </SimpleGrid>
       </Stack>

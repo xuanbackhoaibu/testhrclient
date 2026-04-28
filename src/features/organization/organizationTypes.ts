@@ -1,4 +1,4 @@
-export interface LegalEntity {
+export interface Unit {
   id: string;
   code: string;
   name: string;
@@ -7,10 +7,10 @@ export interface LegalEntity {
   status: string;
 }
 
-export interface OrgUnit {
+export interface Department {
   id: string;
   code: string;
-  legalEntityId: string;
+  unitId: string;
   parentId?: string;
   name: string;
   type: string;
