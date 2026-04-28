@@ -54,6 +54,10 @@ body {
   background: #eaf2ff;
 }
 
+.brand-logo-image {
+  flex: 0 0 auto;
+}
+
 .data-table-shell {
   overflow: hidden;
 }

@@ -1,5 +1,7 @@
-import { Box, Center, Container, Paper, Stack, Text, Title } from '@mantine/core';
+import { Box, Center, Container, Paper, Stack, Text } from '@mantine/core';
 import { Outlet } from 'react-router-dom';
+
+import { BrandLogo } from '../shared/components/BrandLogo';
 
 export function AuthLayout() {
   return (
@@ -9,9 +11,7 @@ export function AuthLayout() {
           <Paper p="xl" radius="md">
             <Stack gap="lg">
               <Stack gap={2}>
-                <Title order={1} size="h2">
-                  HACOM HRM
-                </Title>
+                <BrandLogo />
                 <Text c="dimmed" size="sm">
                   Đăng nhập hệ thống nhân sự nội bộ.
                 </Text>

@@ -20,6 +20,7 @@ import {
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../features/auth/useAuth';
+import { BrandLogo } from '../shared/components/BrandLogo';
 import { ROUTES } from '../shared/constants/routes';
 
 interface NavItem {
@@ -134,16 +135,8 @@ export function MainLayout() {
 
       <AppShell.Navbar p="md">
         <Stack gap="md" h="100%">
-          <Group gap="sm" px="xs">
-            <Avatar radius="md" color="blue">
-              HR
-            </Avatar>
-            <Stack gap={0}>
-              <Text fw={700}>HACOM HRM</Text>
-              <Text c="dimmed" size="xs">
-                Internal operations
-              </Text>
-            </Stack>
+          <Group px="xs">
+            <BrandLogo />
           </Group>
 
           <ScrollArea flex={1}>
