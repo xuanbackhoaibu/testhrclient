@@ -2,19 +2,22 @@ import { useMemo, useState } from 'react';
 import { Button, Drawer, Group, Select, SimpleGrid, Stack, Text, TextInput, Tooltip } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconDownload, IconEye, IconPlus, IconSearch } from '@tabler/icons-react';
+import { IconEye, IconPlus, IconSearch } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 
-import { createEmployee, listEmployees } from '../../features/employees/employeesApi';
+import { createEmployee } from '../../features/employees/employeesApi';
 import type { Employee, EmployeePayload } from '../../features/employees/employeeTypes';
 import { useEmployees } from '../../features/employees/useEmployees';
+import { downloadEmployeesExport } from '../../features/import-export/excelFilesApi';
+import { HrmCoreExcelImportModal } from '../../features/import-export/HrmCoreExcelImportModal';
+import { ImportExportToolbar } from '../../features/import-export/ImportExportToolbar';
+import { useHrmCoreTemplateDownload } from '../../features/import-export/useHrmCoreTemplateDownload';
 import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
 import { TableActionsMenu } from '../../shared/components/TableActionsMenu';
 import { mockDepartments, mockUnits } from '../../shared/mocks/mockOrganization';
-import { exportRowsToExcel } from '../../shared/utils/excel';
 
 const employmentStatusOptions = [
   { value: 'ACTIVE', label: 'Đang làm việc' },
@@ -39,6 +42,7 @@ export function EmployeesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [params, setParams] = useState({
     page: 1,
     pageSize: 10,
@@ -69,44 +73,10 @@ export function EmployeesPage() {
   });
 
   const { data, isLoading, error, refetch } = useEmployees(params);
+  const templateDownload = useHrmCoreTemplateDownload();
 
   const exportMutation = useMutation({
-    mutationFn: async () => {
-      const result = await listEmployees({ ...params, page: 1, pageSize: 10000 });
-      await exportRowsToExcel({
-        fileName: `hrm-employees-${new Date().toISOString().slice(0, 10)}.xlsx`,
-        sheetName: 'Nhân sự',
-        rows: result.items,
-        columns: [
-          { header: 'Họ tên', key: 'fullName', width: 28, value: (record) => record.fullName },
-          { header: 'Email công ty', key: 'companyEmail', width: 32, value: (record) => record.companyEmail },
-          { header: 'Email cá nhân', key: 'personalEmail', width: 32, value: (record) => record.personalEmail },
-          { header: 'Số điện thoại', key: 'phone', width: 16, value: (record) => record.phone },
-          { header: 'Giới tính', key: 'gender', width: 12, value: (record) => record.gender },
-          { header: 'Ngày sinh', key: 'dateOfBirth', width: 16, value: (record) => record.dateOfBirth },
-          { header: 'Ngày vào làm', key: 'hireDate', width: 16, value: (record) => record.hireDate },
-          { header: 'Trạng thái', key: 'employmentStatus', width: 16, value: (record) => record.employmentStatus },
-          {
-            header: 'Đơn vị',
-            key: 'unitName',
-            width: 24,
-            value: (record) => record.currentEmployeeAssignment?.unitName,
-          },
-          {
-            header: 'Phòng ban',
-            key: 'departmentName',
-            width: 24,
-            value: (record) => record.currentEmployeeAssignment?.departmentName,
-          },
-          {
-            header: 'Chức danh',
-            key: 'jobTitle',
-            width: 24,
-            value: (record) => record.currentEmployeeAssignment?.jobTitle,
-          },
-        ],
-      });
-    },
+    mutationFn: () => downloadEmployeesExport(params),
     onError: () => {
       notifications.show({
         color: 'red',
@@ -199,14 +169,13 @@ export function EmployeesPage() {
         subtitle="Quản lý hồ sơ nhân sự, trạng thái làm việc và phân công hiện tại."
         actions={
           <>
-            <Button
-              variant="default"
-              leftSection={<IconDownload size={18} />}
-              loading={exportMutation.isPending}
-              onClick={() => exportMutation.mutate()}
-            >
-              Xuất Excel
-            </Button>
+            <ImportExportToolbar
+              onDownloadTemplate={templateDownload.downloadTemplate}
+              onImport={() => setImportOpen(true)}
+              onExport={() => exportMutation.mutateAsync()}
+              isDownloadingTemplate={templateDownload.isDownloadingTemplate}
+              isExporting={exportMutation.isPending}
+            />
             <Button leftSection={<IconPlus size={18} />} onClick={() => setOpen(true)}>
               Tạo nhân sự
             </Button>
@@ -320,6 +289,12 @@ export function EmployeesPage() {
           </Stack>
         </form>
       </Drawer>
+
+      <HrmCoreExcelImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onCommitted={() => queryClient.invalidateQueries({ queryKey: ['employees'] })}
+      />
     </>
   );
 }

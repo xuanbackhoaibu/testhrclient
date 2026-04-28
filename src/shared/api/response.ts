@@ -1,10 +1,10 @@
 import type {
-  ApiSuccessResponse,
   ListQueryParams,
   PaginatedData,
   PaginatedResponse,
   PaginationMeta,
 } from '../types/api';
+import { unwrapApiEnvelope } from './http-client';
 
 type BackendPaginatedResponse<T> =
   | PaginatedData<T>
@@ -78,15 +78,4 @@ export function normalizePaginatedResponse<T>(
   };
 }
 
-export function unwrapApiResponse<T>(payload: ApiSuccessResponse<T> | T): T {
-  if (
-    payload &&
-    typeof payload === 'object' &&
-    'success' in payload &&
-    (payload as ApiSuccessResponse<T>).success === true
-  ) {
-    return (payload as ApiSuccessResponse<T>).data;
-  }
-
-  return payload as T;
-}
+export const unwrapApiResponse = unwrapApiEnvelope;

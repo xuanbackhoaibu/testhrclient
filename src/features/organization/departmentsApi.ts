@@ -1,9 +1,9 @@
-import { httpClient } from '../../shared/api/httpClient';
-import { normalizePaginatedResponse, unwrapApiResponse } from '../../shared/api/response';
+import { api } from '../../shared/api/httpClient';
+import { normalizePaginatedResponse } from '../../shared/api/response';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockDepartments } from '../../shared/mocks/mockOrganization';
-import type { ListQueryParams, PaginatedResponse } from '../../shared/types/api';
+import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../shared/types/api';
 import type { Department } from './organizationTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
@@ -28,14 +28,14 @@ export async function listDepartments(params: ListQueryParams = {}): Promise<Pag
     return paginate(filtered, params);
   }
 
-  const response = await httpClient.get('/departments', { params });
-  return normalizePaginatedResponse<Department>(response.data, params);
+  const response = await api.get<PaginatedData<Department>>('/departments', { params });
+  return normalizePaginatedResponse<Department>(response, params);
 }
 
 export async function getDepartmentTree(params: ListQueryParams = {}): Promise<DepartmentTreeNode[]> {
-  const { data } = await listDepartments({ ...params, page: 1, pageSize: 200 });
+  const { items } = await listDepartments({ ...params, page: 1, pageSize: 200 });
   const map = new Map<string, DepartmentTreeNode>();
-  data.forEach((item) => map.set(item.id, { ...item, children: [] }));
+  items.forEach((item) => map.set(item.id, { ...item, children: [] }));
 
   const roots: DepartmentTreeNode[] = [];
   map.forEach((node) => {
@@ -58,8 +58,7 @@ export async function createDepartment(payload: Omit<Department, 'id'>): Promise
     return department;
   }
 
-  const response = await httpClient.post('/departments', payload);
-  return unwrapApiResponse<Department>(response.data);
+  return api.post<Department>('/departments', payload);
 }
 
 export async function updateDepartment(id: string, payload: Partial<Omit<Department, 'id'>>): Promise<Department> {
@@ -67,7 +66,7 @@ export async function updateDepartment(id: string, payload: Partial<Omit<Departm
     await mockDelay();
     const department = mockDepartments.find((item) => item.id === id);
     if (!department) {
-      throw new Error('Org unit not found');
+      throw new Error('Department not found');
     }
 
     const before = { ...department };
@@ -82,6 +81,5 @@ export async function updateDepartment(id: string, payload: Partial<Omit<Departm
     return department;
   }
 
-  const response = await httpClient.patch(`/departments/${id}`, payload);
-  return unwrapApiResponse<Department>(response.data);
+  return api.patch<Department>(`/departments/${id}`, payload);
 }

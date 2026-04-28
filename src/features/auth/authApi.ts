@@ -1,4 +1,4 @@
-import { httpClient } from '../../shared/api/httpClient';
+import { api } from '../../shared/api/httpClient';
 import { getMockUserByToken } from '../../shared/mocks/mockAuth';
 import { mockDelay } from '../../shared/mocks/mockHelpers';
 import type { AuthUser } from './types';
@@ -17,7 +17,5 @@ export async function getCurrentUser(): Promise<AuthUser> {
     return user;
   }
 
-  const response = await httpClient.get<AuthUser>('/auth/me');
-  return response.data;
+  return api.get<AuthUser>('/auth/me');
 }
-

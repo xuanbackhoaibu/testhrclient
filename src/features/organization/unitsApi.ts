@@ -1,9 +1,9 @@
-import { httpClient } from '../../shared/api/httpClient';
-import { normalizePaginatedResponse, unwrapApiResponse } from '../../shared/api/response';
+import { api } from '../../shared/api/httpClient';
+import { normalizePaginatedResponse } from '../../shared/api/response';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockUnits } from '../../shared/mocks/mockOrganization';
-import type { ListQueryParams, PaginatedResponse } from '../../shared/types/api';
+import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../shared/types/api';
 import type { Unit } from './organizationTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
@@ -21,8 +21,8 @@ export async function listUnits(params: ListQueryParams = {}): Promise<Paginated
     return paginate(filtered, params);
   }
 
-  const response = await httpClient.get('/units', { params });
-  return normalizePaginatedResponse<Unit>(response.data, params);
+  const response = await api.get<PaginatedData<Unit>>('/units', { params });
+  return normalizePaginatedResponse<Unit>(response, params);
 }
 
 export async function createUnit(payload: Omit<Unit, 'id'>): Promise<Unit> {
@@ -34,8 +34,7 @@ export async function createUnit(payload: Omit<Unit, 'id'>): Promise<Unit> {
     return entity;
   }
 
-  const response = await httpClient.post('/units', payload);
-  return unwrapApiResponse<Unit>(response.data);
+  return api.post<Unit>('/units', payload);
 }
 
 export async function updateUnit(id: string, payload: Partial<Omit<Unit, 'id'>>): Promise<Unit> {
@@ -58,6 +57,5 @@ export async function updateUnit(id: string, payload: Partial<Omit<Unit, 'id'>>)
     return entity;
   }
 
-  const response = await httpClient.patch(`/units/${id}`, payload);
-  return unwrapApiResponse<Unit>(response.data);
+  return api.patch<Unit>(`/units/${id}`, payload);
 }

@@ -2,10 +2,14 @@ import { useMemo, useState } from 'react';
 import { Button, Drawer, Group, Select, SimpleGrid, Stack, Text, TextInput, Tooltip } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconDownload, IconEdit, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
+import { IconEdit, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { createUnit, listUnits, updateUnit } from '../../features/organization/unitsApi';
+import { downloadUnitsExport } from '../../features/import-export/excelFilesApi';
+import { HrmCoreExcelImportModal } from '../../features/import-export/HrmCoreExcelImportModal';
+import { ImportExportToolbar } from '../../features/import-export/ImportExportToolbar';
+import { useHrmCoreTemplateDownload } from '../../features/import-export/useHrmCoreTemplateDownload';
+import { createUnit, updateUnit } from '../../features/organization/unitsApi';
 import type { Unit } from '../../features/organization/organizationTypes';
 import { useUnits } from '../../features/organization/useUnits';
 import { ConfirmActionModal } from '../../shared/components/ConfirmActionModal';
@@ -13,7 +17,6 @@ import { DataTable, type DataTableColumn } from '../../shared/components/DataTab
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
 import { TableActionsMenu } from '../../shared/components/TableActionsMenu';
-import { exportRowsToExcel } from '../../shared/utils/excel';
 
 type UnitFormValues = Omit<Unit, 'id'>;
 
@@ -44,24 +47,12 @@ export function UnitsPage() {
   const [editing, setEditing] = useState<Unit | null>(null);
   const [confirmInactive, setConfirmInactive] = useState<Unit | null>(null);
   const [open, setOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const { data, isLoading, error, refetch } = useUnits(params);
+  const templateDownload = useHrmCoreTemplateDownload();
 
   const exportMutation = useMutation({
-    mutationFn: async () => {
-      const result = await listUnits({ ...params, page: 1, pageSize: 10000 });
-      await exportRowsToExcel({
-        fileName: `hrm-units-${new Date().toISOString().slice(0, 10)}.xlsx`,
-        sheetName: 'Đơn vị',
-        rows: result.items,
-        columns: [
-          { header: 'Mã', key: 'code', width: 16, value: (record) => record.code },
-          { header: 'Tên đơn vị', key: 'name', width: 36, value: (record) => record.name },
-          { header: 'Tên tắt', key: 'shortName', width: 20, value: (record) => record.shortName },
-          { header: 'Mã số thuế', key: 'taxCode', width: 20, value: (record) => record.taxCode },
-          { header: 'Trạng thái', key: 'status', width: 16, value: (record) => record.status },
-        ],
-      });
-    },
+    mutationFn: () => downloadUnitsExport(params),
     onError: () => {
       notifications.show({
         color: 'red',
@@ -80,8 +71,8 @@ export function UnitsPage() {
       status: 'ACTIVE',
     },
     validate: {
-      code: (value) => (value.trim() ? null : 'Nhập mã pháp nhân.'),
-      name: (value) => (value.trim() ? null : 'Nhập tên pháp nhân.'),
+      code: (value) => (value.trim() ? null : 'Nhập mã đơn vị.'),
+      name: (value) => (value.trim() ? null : 'Nhập tên đơn vị.'),
       shortName: (value) => (value.trim() ? null : 'Nhập tên viết tắt.'),
       taxCode: (value) => (value.trim() ? null : 'Nhập mã số thuế.'),
     },
@@ -97,7 +88,7 @@ export function UnitsPage() {
     onSuccess: async () => {
       notifications.show({
         color: 'green',
-        title: editing ? 'Đã cập nhật pháp nhân' : 'Đã tạo pháp nhân',
+        title: editing ? 'Đã cập nhật đơn vị' : 'Đã tạo đơn vị',
         message: 'Dữ liệu đã được lưu.',
       });
       setOpen(false);
@@ -109,7 +100,7 @@ export function UnitsPage() {
     onError: () => {
       notifications.show({
         color: 'red',
-        title: 'Không lưu được pháp nhân',
+        title: 'Không lưu được đơn vị',
         message: 'Vui lòng kiểm tra dữ liệu và thử lại.',
       });
     },
@@ -120,8 +111,8 @@ export function UnitsPage() {
     onSuccess: async () => {
       notifications.show({
         color: 'green',
-        title: 'Đã tạm ngưng pháp nhân',
-        message: 'Trạng thái pháp nhân đã được cập nhật.',
+        title: 'Đã tạm ngưng đơn vị',
+        message: 'Trạng thái đơn vị đã được cập nhật.',
       });
       setConfirmInactive(null);
       await queryClient.invalidateQueries({ queryKey: ['units'] });
@@ -129,7 +120,7 @@ export function UnitsPage() {
     onError: () => {
       notifications.show({
         color: 'red',
-        title: 'Không tạm ngưng được pháp nhân',
+        title: 'Không tạm ngưng được đơn vị',
         message: 'Vui lòng thử lại.',
       });
     },
@@ -138,7 +129,7 @@ export function UnitsPage() {
   const columns = useMemo<DataTableColumn<Unit>[]>(
     () => [
       { key: 'code', header: 'Mã', width: 120, render: (record) => <Text fw={600}>{record.code}</Text> },
-      { key: 'name', header: 'Tên pháp nhân', render: (record) => <TruncatedCell value={record.name} /> },
+      { key: 'name', header: 'Tên đơn vị', render: (record) => <TruncatedCell value={record.name} /> },
       { key: 'shortName', header: 'Tên tắt', render: (record) => record.shortName || '-' },
       { key: 'taxCode', header: 'Mã số thuế', render: (record) => <TruncatedCell value={record.taxCode} /> },
       { key: 'status', header: 'Trạng thái', width: 140, render: (record) => <StatusTag status={record.status} /> },
@@ -177,18 +168,17 @@ export function UnitsPage() {
   return (
     <>
       <PageHeader
-        title="Pháp nhân"
-        subtitle="Quản lý pháp nhân dùng trong hồ sơ nhân sự và phân quyền dữ liệu."
+        title="Đơn vị"
+        subtitle="Quản lý đơn vị dùng trong hồ sơ nhân sự và phân quyền dữ liệu."
         actions={
           <>
-            <Button
-              variant="default"
-              leftSection={<IconDownload size={18} />}
-              loading={exportMutation.isPending}
-              onClick={() => exportMutation.mutate()}
-            >
-              Xuất Excel
-            </Button>
+            <ImportExportToolbar
+              onDownloadTemplate={templateDownload.downloadTemplate}
+              onImport={() => setImportOpen(true)}
+              onExport={() => exportMutation.mutateAsync()}
+              isDownloadingTemplate={templateDownload.isDownloadingTemplate}
+              isExporting={exportMutation.isPending}
+            />
             <Button
               leftSection={<IconPlus size={18} />}
               onClick={() => {
@@ -197,7 +187,7 @@ export function UnitsPage() {
                 setOpen(true);
               }}
             >
-              Tạo pháp nhân
+              Tạo đơn vị
             </Button>
           </>
         }
@@ -233,8 +223,8 @@ export function UnitsPage() {
           error={error}
           onRetry={() => void refetch()}
           onPageChange={(page, pageSize) => setParams((current) => ({ ...current, page, pageSize }))}
-          emptyTitle="Chưa có pháp nhân"
-          emptyDescription="Không có pháp nhân phù hợp với bộ lọc hiện tại."
+          emptyTitle="Chưa có đơn vị"
+          emptyDescription="Không có đơn vị phù hợp với bộ lọc hiện tại."
         />
       </Stack>
 
@@ -245,13 +235,13 @@ export function UnitsPage() {
           setEditing(null);
           form.reset();
         }}
-        title={editing ? 'Chỉnh sửa pháp nhân' : 'Tạo pháp nhân'}
+        title={editing ? 'Chỉnh sửa đơn vị' : 'Tạo đơn vị'}
         position="right"
       >
         <form onSubmit={form.onSubmit((values) => mutation.mutate(values))}>
           <Stack gap="sm">
             <TextInput label="Mã" withAsterisk {...form.getInputProps('code')} />
-            <TextInput label="Tên pháp nhân" withAsterisk {...form.getInputProps('name')} />
+            <TextInput label="Tên đơn vị" withAsterisk {...form.getInputProps('name')} />
             <TextInput label="Tên viết tắt" withAsterisk {...form.getInputProps('shortName')} />
             <TextInput label="Mã số thuế" withAsterisk {...form.getInputProps('taxCode')} />
             <Select label="Trạng thái" data={statusOptions} withAsterisk {...form.getInputProps('status')} />
@@ -269,8 +259,8 @@ export function UnitsPage() {
 
       <ConfirmActionModal
         opened={Boolean(confirmInactive)}
-        title="Tạm ngưng pháp nhân?"
-        message="Pháp nhân sẽ được chuyển sang trạng thái tạm ngưng. Dữ liệu lịch sử không bị xóa."
+        title="Tạm ngưng đơn vị?"
+        message="Đơn vị sẽ được chuyển sang trạng thái tạm ngưng. Dữ liệu lịch sử không bị xóa."
         confirmLabel="Tạm ngưng"
         loading={inactiveMutation.isPending}
         onClose={() => setConfirmInactive(null)}
@@ -279,6 +269,12 @@ export function UnitsPage() {
             inactiveMutation.mutate(confirmInactive);
           }
         }}
+      />
+
+      <HrmCoreExcelImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onCommitted={() => queryClient.invalidateQueries({ queryKey: ['units'] })}
       />
     </>
   );

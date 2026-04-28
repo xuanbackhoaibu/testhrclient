@@ -1,11 +1,11 @@
-import { httpClient } from '../../shared/api/httpClient';
-import { normalizePaginatedResponse, unwrapApiResponse } from '../../shared/api/response';
+import { api } from '../../shared/api/httpClient';
+import { normalizePaginatedResponse } from '../../shared/api/response';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockContracts, mockLeaveRequests, mockAttendanceRecords, mockAuditLogs } from '../../shared/mocks/mockWorkflows';
 import { maskSensitiveValue } from '../../shared/utils/format';
-import type { ListQueryParams, PaginatedResponse } from '../../shared/types/api';
+import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../shared/types/api';
 import type { AttendanceRecord } from '../attendance/attendanceTypes';
 import type { AuditLog } from '../audit/auditTypes';
 import type { Contract } from '../contracts/contractTypes';
@@ -41,8 +41,8 @@ export async function listEmployees(params: ListQueryParams = {}): Promise<Pagin
     return paginate(applyEmployeeFilters(mockEmployees, params), params);
   }
 
-  const response = await httpClient.get('/employees', { params });
-  return normalizePaginatedResponse<Employee>(response.data, params);
+  const response = await api.get<PaginatedData<Employee>>('/employees', { params });
+  return normalizePaginatedResponse<Employee>(response, params);
 }
 
 export async function getEmployee(id: string): Promise<Employee> {
@@ -55,8 +55,7 @@ export async function getEmployee(id: string): Promise<Employee> {
     return employee;
   }
 
-  const response = await httpClient.get(`/employees/${id}`);
-  return unwrapApiResponse<Employee>(response.data);
+  return api.get<Employee>(`/employees/${id}`);
 }
 
 export async function createEmployee(payload: EmployeePayload): Promise<Employee> {
@@ -91,8 +90,7 @@ export async function createEmployee(payload: EmployeePayload): Promise<Employee
     return employee;
   }
 
-  const response = await httpClient.post('/employees', payload);
-  return unwrapApiResponse<Employee>(response.data);
+  return api.post<Employee>('/employees', payload);
 }
 
 export async function updateEmployee(id: string, payload: Partial<EmployeePayload>): Promise<Employee> {
@@ -125,8 +123,7 @@ export async function updateEmployee(id: string, payload: Partial<EmployeePayloa
     return employee;
   }
 
-  const response = await httpClient.patch(`/employees/${id}`, payload);
-  return unwrapApiResponse<Employee>(response.data);
+  return api.patch<Employee>(`/employees/${id}`, payload);
 }
 
 export async function getEmployeeAssignments(id: string): Promise<EmployeeAssignment[]> {
@@ -135,8 +132,7 @@ export async function getEmployeeAssignments(id: string): Promise<EmployeeAssign
     return employee.currentEmployeeAssignment ? [employee.currentEmployeeAssignment] : [];
   }
 
-  const response = await httpClient.get(`/employees/${id}/employee-assignments`);
-  return unwrapApiResponse<EmployeeAssignment[]>(response.data);
+  return api.get<EmployeeAssignment[]>(`/employees/${id}/employee-assignments`);
 }
 
 export async function getEmployeeContracts(id: string): Promise<Contract[]> {
@@ -145,8 +141,7 @@ export async function getEmployeeContracts(id: string): Promise<Contract[]> {
     return mockContracts.filter((item) => item.employeeId === id);
   }
 
-  const response = await httpClient.get(`/employees/${id}/contracts`);
-  return unwrapApiResponse<Contract[]>(response.data);
+  return api.get<Contract[]>(`/employees/${id}/contracts`);
 }
 
 export async function getEmployeeAuditLogs(id: string): Promise<AuditLog[]> {
@@ -155,8 +150,7 @@ export async function getEmployeeAuditLogs(id: string): Promise<AuditLog[]> {
     return mockAuditLogs.filter((item) => item.entityId === id || item.entityType === 'EMPLOYEE');
   }
 
-  const response = await httpClient.get(`/employees/${id}/audit-logs`);
-  return unwrapApiResponse<AuditLog[]>(response.data);
+  return api.get<AuditLog[]>(`/employees/${id}/audit-logs`);
 }
 
 export async function getEmployeeLeave(id: string): Promise<LeaveRequest[]> {
@@ -165,8 +159,8 @@ export async function getEmployeeLeave(id: string): Promise<LeaveRequest[]> {
     return mockLeaveRequests.filter((item) => item.employeeId === id);
   }
 
-  const response = await httpClient.get('/leave/requests', { params: { employeeId: id, page: 1, pageSize: 100 } });
-  return normalizePaginatedResponse<LeaveRequest>(response.data).items;
+  const response = await api.get<PaginatedData<LeaveRequest>>('/leave/requests', { params: { employeeId: id, page: 1, pageSize: 100 } });
+  return normalizePaginatedResponse<LeaveRequest>(response).items;
 }
 
 export async function getEmployeeAttendance(id: string): Promise<AttendanceRecord[]> {
@@ -175,6 +169,6 @@ export async function getEmployeeAttendance(id: string): Promise<AttendanceRecor
     return mockAttendanceRecords.filter((item) => item.employeeId === id);
   }
 
-  const response = await httpClient.get('/attendance/records', { params: { employeeId: id, page: 1, pageSize: 100 } });
-  return normalizePaginatedResponse<AttendanceRecord>(response.data).items;
+  const response = await api.get<PaginatedData<AttendanceRecord>>('/attendance/records', { params: { employeeId: id, page: 1, pageSize: 100 } });
+  return normalizePaginatedResponse<AttendanceRecord>(response).items;
 }

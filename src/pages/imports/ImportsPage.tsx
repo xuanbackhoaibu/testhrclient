@@ -5,13 +5,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import {
   commitHrmCoreImport,
-  downloadBlob,
   getImportBatch,
   listHrmCoreRows,
   previewHrmCoreImport,
   rollbackHrmCoreImport,
   updateHrmCoreSuggestedCodes,
 } from '../../features/imports/importsApi';
+import { downloadHrmCoreErrors, downloadHrmCoreTemplate } from '../../features/import-export/excelFilesApi';
 import type { HrmCorePreview, HrmCoreStagingRow, ImportBatch, SuggestedCode } from '../../features/imports/importTypes';
 import { useImportBatches } from '../../features/imports/useImportBatches';
 import { ErrorState } from '../../shared/components/ErrorState';
@@ -38,6 +38,11 @@ export function ImportsPage() {
   const [unitCodeDrafts, setUnitCodeDrafts] = useState<Record<string, string>>({});
   const [departmentCodeDrafts, setDepartmentCodeDrafts] = useState<Record<string, string>>({});
   const { data, isLoading, error, refetch } = useImportBatches({ page: 1, pageSize: 20 });
+
+  const templateMutation = useMutation({
+    mutationFn: downloadHrmCoreTemplate,
+    onError: () => message.error('Tải mẫu Excel thất bại.'),
+  });
 
   const previewMutation = useMutation({
     mutationFn: previewHrmCoreImport,
@@ -89,6 +94,16 @@ export function ImportsPage() {
       await queryClient.invalidateQueries({ queryKey: ['import-batches'] });
       message.success('Đã rollback dữ liệu batch tạo mới.');
     },
+  });
+
+  const errorFileMutation = useMutation({
+    mutationFn: async () => {
+      if (!preview) {
+        throw new Error('Missing preview');
+      }
+      return downloadHrmCoreErrors(preview.batchId);
+    },
+    onError: () => message.error('Tải file lỗi thất bại.'),
   });
 
   async function exportBatchHistory() {
@@ -231,7 +246,8 @@ export function ImportsPage() {
           <Space wrap>
             <Button
               icon={<DownloadOutlined />}
-              onClick={() => void downloadBlob('/import-templates/hrm-core', 'Mau_import_HRM_Core.xlsx')}
+              loading={templateMutation.isPending}
+              onClick={() => void templateMutation.mutateAsync()}
             >
               Tải mẫu Excel
             </Button>
@@ -248,7 +264,7 @@ export function ImportsPage() {
               }}
             >
               <Button icon={<UploadOutlined />} loading={previewMutation.isPending}>
-                Upload preview
+                Import Excel
               </Button>
             </Upload>
             <Button
@@ -266,7 +282,8 @@ export function ImportsPage() {
             <Button
               icon={<DownloadOutlined />}
               disabled={!preview}
-              onClick={() => preview && void downloadBlob(`/imports/hrm-core/${preview.batchId}/errors.xlsx`, `hrm-core-errors-${preview.batchId}.xlsx`)}
+              loading={errorFileMutation.isPending}
+              onClick={() => void errorFileMutation.mutateAsync()}
             >
               Tải file lỗi
             </Button>

@@ -2,17 +2,20 @@ import { useMemo, useState } from 'react';
 import { Button, Drawer, Group, Select, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconDownload, IconEdit, IconPlus, IconSearch } from '@tabler/icons-react';
+import { IconEdit, IconPlus, IconSearch } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { createPosition, listPositions, updatePosition } from '../../features/organization/positionsApi';
+import { downloadPositionsExport } from '../../features/import-export/excelFilesApi';
+import { HrmCoreExcelImportModal } from '../../features/import-export/HrmCoreExcelImportModal';
+import { ImportExportToolbar } from '../../features/import-export/ImportExportToolbar';
+import { useHrmCoreTemplateDownload } from '../../features/import-export/useHrmCoreTemplateDownload';
+import { createPosition, updatePosition } from '../../features/organization/positionsApi';
 import type { Position } from '../../features/organization/organizationTypes';
 import { usePositions } from '../../features/organization/usePositions';
 import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
 import { TableActionsMenu } from '../../shared/components/TableActionsMenu';
-import { exportRowsToExcel } from '../../shared/utils/excel';
 
 type PositionFormValues = Omit<Position, 'id'>;
 
@@ -25,6 +28,7 @@ export function PositionsPage() {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<Position | null>(null);
   const [open, setOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [params, setParams] = useState({
     page: 1,
     pageSize: 10,
@@ -32,23 +36,10 @@ export function PositionsPage() {
     status: undefined as string | undefined,
   });
   const { data, isLoading, error, refetch } = usePositions(params);
+  const templateDownload = useHrmCoreTemplateDownload();
 
   const exportMutation = useMutation({
-    mutationFn: async () => {
-      const result = await listPositions({ ...params, page: 1, pageSize: 10000 });
-      await exportRowsToExcel({
-        fileName: `hrm-positions-${new Date().toISOString().slice(0, 10)}.xlsx`,
-        sheetName: 'Chức vụ',
-        rows: result.items,
-        columns: [
-          { header: 'Mã', key: 'code', width: 16, value: (record) => record.code },
-          { header: 'Tên chức vụ', key: 'name', width: 30, value: (record) => record.name },
-          { header: 'Nhóm công việc', key: 'jobFunction', width: 24, value: (record) => record.jobFunction },
-          { header: 'Grade', key: 'grade', width: 12, value: (record) => record.grade },
-          { header: 'Trạng thái', key: 'status', width: 16, value: (record) => record.status },
-        ],
-      });
-    },
+    mutationFn: () => downloadPositionsExport(params),
     onError: () => {
       notifications.show({
         color: 'red',
@@ -140,14 +131,13 @@ export function PositionsPage() {
         subtitle="Danh mục chức vụ, nhóm công việc và grade dùng cho hồ sơ nhân sự."
         actions={
           <>
-            <Button
-              variant="default"
-              leftSection={<IconDownload size={18} />}
-              loading={exportMutation.isPending}
-              onClick={() => exportMutation.mutate()}
-            >
-              Xuất Excel
-            </Button>
+            <ImportExportToolbar
+              onDownloadTemplate={templateDownload.downloadTemplate}
+              onImport={() => setImportOpen(true)}
+              onExport={() => exportMutation.mutateAsync()}
+              isDownloadingTemplate={templateDownload.isDownloadingTemplate}
+              isExporting={exportMutation.isPending}
+            />
             <Button
               leftSection={<IconPlus size={18} />}
               onClick={() => {
@@ -225,6 +215,12 @@ export function PositionsPage() {
           </Stack>
         </form>
       </Drawer>
+
+      <HrmCoreExcelImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onCommitted={() => queryClient.invalidateQueries({ queryKey: ['positions'] })}
+      />
     </>
   );
 }

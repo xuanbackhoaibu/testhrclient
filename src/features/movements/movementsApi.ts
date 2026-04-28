@@ -1,10 +1,10 @@
-import { httpClient } from '../../shared/api/httpClient';
-import { normalizePaginatedResponse, unwrapApiResponse } from '../../shared/api/response';
+import { api } from '../../shared/api/httpClient';
+import { normalizePaginatedResponse } from '../../shared/api/response';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockMovements } from '../../shared/mocks/mockWorkflows';
-import type { ListQueryParams, PaginatedResponse } from '../../shared/types/api';
+import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../shared/types/api';
 import type { Movement, MovementPayload } from './movementTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
@@ -34,8 +34,8 @@ export async function listMovements(params: ListQueryParams = {}): Promise<Pagin
     return paginate(filtered, params);
   }
 
-  const response = await httpClient.get('/movements', { params });
-  return normalizePaginatedResponse<Movement>(response.data, params);
+  const response = await api.get<PaginatedData<Movement>>('/movements', { params });
+  return normalizePaginatedResponse<Movement>(response, params);
 }
 
 export async function createMovement(payload: MovementPayload): Promise<Movement> {
@@ -58,8 +58,7 @@ export async function createMovement(payload: MovementPayload): Promise<Movement
     return movement;
   }
 
-  const response = await httpClient.post('/movements', payload);
-  return unwrapApiResponse<Movement>(response.data);
+  return api.post<Movement>('/movements', payload);
 }
 
 async function updateMovementStatus(id: string, status: string, action: string): Promise<Movement> {
@@ -78,8 +77,7 @@ async function updateMovementStatus(id: string, status: string, action: string):
     return movement;
   }
 
-  const response = await httpClient.post(`/movements/${id}/${action.toLowerCase()}`);
-  return unwrapApiResponse<Movement>(response.data);
+  return api.post<Movement>(`/movements/${id}/${action.toLowerCase()}`);
 }
 
 export function submitMovement(id: string) {

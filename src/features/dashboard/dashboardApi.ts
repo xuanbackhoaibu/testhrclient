@@ -1,4 +1,4 @@
-import { httpClient } from '../../shared/api/httpClient';
+import { api } from '../../shared/api/httpClient';
 import { getMockDashboardSummary } from '../../shared/mocks/mockDashboard';
 import { mockDelay } from '../../shared/mocks/mockHelpers';
 import type { DashboardSummary } from './dashboardTypes';
@@ -11,7 +11,5 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     return getMockDashboardSummary();
   }
 
-  const response = await httpClient.get<DashboardSummary>('/dashboard/summary');
-  return response.data;
+  return api.get<DashboardSummary>('/dashboard/summary');
 }
-

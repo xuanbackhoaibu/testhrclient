@@ -1,9 +1,10 @@
-import { httpClient } from '../../shared/api/httpClient';
-import { normalizePaginatedResponse, unwrapApiResponse } from '../../shared/api/response';
+import { api } from '../../shared/api/httpClient';
+import { normalizePaginatedResponse } from '../../shared/api/response';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockImportBatches } from '../../shared/mocks/mockWorkflows';
-import type { ListQueryParams, PaginatedResponse } from '../../shared/types/api';
+import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../shared/types/api';
+import { downloadHrmCoreErrors, downloadHrmCoreTemplate } from '../import-export/excelFilesApi';
 import type { HrmCorePreview, HrmCoreStagingRow, ImportBatch } from './importTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
@@ -32,10 +33,7 @@ export async function importEmployeesCsv(file: File) {
     return createMockBatch(file, 'EMPLOYEE');
   }
 
-  const formData = new FormData();
-  formData.append('file', file);
-  const response = await httpClient.post('/imports/employees/csv', formData);
-  return unwrapApiResponse<ImportBatch>(response.data);
+  return api.upload<ImportBatch>('/imports/employees/csv', file);
 }
 
 export async function importAttendanceCsv(file: File) {
@@ -43,10 +41,7 @@ export async function importAttendanceCsv(file: File) {
     return createMockBatch(file, 'ATTENDANCE');
   }
 
-  const formData = new FormData();
-  formData.append('file', file);
-  const response = await httpClient.post('/imports/attendance/csv', formData);
-  return unwrapApiResponse<ImportBatch>(response.data);
+  return api.upload<ImportBatch>('/imports/attendance/csv', file);
 }
 
 export async function listImportBatches(params: ListQueryParams = {}): Promise<PaginatedResponse<ImportBatch>> {
@@ -62,8 +57,8 @@ export async function listImportBatches(params: ListQueryParams = {}): Promise<P
     return paginate(filtered, params);
   }
 
-  const response = await httpClient.get('/imports/batches', { params });
-  return normalizePaginatedResponse<ImportBatch>(response.data, params);
+  const response = await api.get<PaginatedData<ImportBatch>>('/imports/batches', { params });
+  return normalizePaginatedResponse<ImportBatch>(response, params);
 }
 
 export async function getImportBatch(id: string): Promise<ImportBatch> {
@@ -76,8 +71,7 @@ export async function getImportBatch(id: string): Promise<ImportBatch> {
     return batch;
   }
 
-  const response = await httpClient.get(`/imports/batches/${id}`);
-  return unwrapApiResponse<ImportBatch>(response.data);
+  return api.get<ImportBatch>(`/imports/batches/${id}`);
 }
 
 export async function previewHrmCoreImport(file: File): Promise<HrmCorePreview> {
@@ -95,10 +89,7 @@ export async function previewHrmCoreImport(file: File): Promise<HrmCorePreview> 
     };
   }
 
-  const formData = new FormData();
-  formData.append('file', file);
-  const response = await httpClient.post('/imports/hrm-core/preview', formData);
-  return unwrapApiResponse<HrmCorePreview>(response.data);
+  return api.upload<HrmCorePreview>('/imports/hrm-core/preview', file);
 }
 
 export async function getHrmCorePreview(batchId: string): Promise<HrmCorePreview> {
@@ -112,8 +103,7 @@ export async function getHrmCorePreview(batchId: string): Promise<HrmCorePreview
     };
   }
 
-  const response = await httpClient.get(`/imports/hrm-core/${batchId}`);
-  return unwrapApiResponse<HrmCorePreview>(response.data);
+  return api.get<HrmCorePreview>(`/imports/hrm-core/${batchId}`);
 }
 
 export async function listHrmCoreRows(batchId: string, status?: string): Promise<HrmCoreStagingRow[]> {
@@ -122,8 +112,7 @@ export async function listHrmCoreRows(batchId: string, status?: string): Promise
     return [];
   }
 
-  const response = await httpClient.get(`/imports/hrm-core/${batchId}/rows`, { params: { status } });
-  return response.data as HrmCoreStagingRow[];
+  return api.get<HrmCoreStagingRow[]>(`/imports/hrm-core/${batchId}/rows`, { params: { status } });
 }
 
 export async function updateHrmCoreSuggestedCodes(
@@ -134,8 +123,7 @@ export async function updateHrmCoreSuggestedCodes(
     return getHrmCorePreview(batchId);
   }
 
-  const response = await httpClient.patch(`/imports/hrm-core/${batchId}/suggested-codes`, payload);
-  return unwrapApiResponse<HrmCorePreview>(response.data);
+  return api.patch<HrmCorePreview>(`/imports/hrm-core/${batchId}/suggested-codes`, payload);
 }
 
 export async function commitHrmCoreImport(batchId: string, allowWarnings: boolean): Promise<{ batchId: string; status: string }> {
@@ -144,8 +132,7 @@ export async function commitHrmCoreImport(batchId: string, allowWarnings: boolea
     return { batchId, status: 'COMMITTED' };
   }
 
-  const response = await httpClient.post(`/imports/hrm-core/${batchId}/commit`, { allowWarnings });
-  return unwrapApiResponse<{ batchId: string; status: string }>(response.data);
+  return api.post<{ batchId: string; status: string }>(`/imports/hrm-core/${batchId}/commit`, { allowWarnings });
 }
 
 export async function rollbackHrmCoreImport(batchId: string): Promise<{ batchId: string; status: string }> {
@@ -154,16 +141,11 @@ export async function rollbackHrmCoreImport(batchId: string): Promise<{ batchId:
     return { batchId, status: 'ROLLED_BACK' };
   }
 
-  const response = await httpClient.post(`/imports/hrm-core/${batchId}/rollback`);
-  return unwrapApiResponse<{ batchId: string; status: string }>(response.data);
+  return api.post<{ batchId: string; status: string }>(`/imports/hrm-core/${batchId}/rollback`);
 }
 
 export async function downloadBlob(path: string, fileName: string) {
-  const response = await httpClient.get(path, { responseType: 'blob' });
-  const url = URL.createObjectURL(response.data);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = fileName;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  return api.download(path, fileName);
 }
+
+export { downloadHrmCoreErrors, downloadHrmCoreTemplate };
