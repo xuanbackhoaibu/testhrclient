@@ -1,9 +1,8 @@
-import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
-import { Button, Drawer, Group, Paper, Select, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
+import { Button, Drawer, Group, Select, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconEdit, IconPlus, IconSearch, IconSitemap, IconX } from '@tabler/icons-react';
+import { IconEdit, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { downloadDepartmentsExport } from '../../features/import-export/excelFilesApi';
@@ -17,7 +16,7 @@ import { DataTable, type DataTableColumn } from '../../shared/components/DataTab
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
 import { TableActionsMenu } from '../../shared/components/TableActionsMenu';
-import { mockUnits, mockDepartments } from '../../shared/mocks/mockOrganization';
+import { mockUnits } from '../../shared/mocks/mockOrganization';
 
 type DepartmentFormValues = Omit<Department, 'id'>;
 
@@ -25,24 +24,6 @@ const statusOptions = [
   { value: 'ACTIVE', label: 'Đang hoạt động' },
   { value: 'INACTIVE', label: 'Tạm ngưng' },
 ];
-
-function renderOrgTree(nodes: Array<Department & { children?: Department[] }>, level = 0): ReactNode {
-  return nodes.map((node) => (
-    <Stack key={node.id} gap={4} pl={level ? 'md' : 0}>
-      <Group gap="xs" wrap="nowrap">
-        <IconSitemap size={16} color="#64748b" />
-        <Text size="sm" fw={level === 0 ? 650 : 500}>
-          {node.name}
-        </Text>
-        <Text size="xs" c="dimmed">
-          {node.code}
-        </Text>
-        <StatusTag status={node.status} />
-      </Group>
-      {node.children?.length ? renderOrgTree(node.children, level + 1) : null}
-    </Stack>
-  ));
-}
 
 export function DepartmentsPage() {
   const queryClient = useQueryClient();
@@ -75,7 +56,6 @@ export function DepartmentsPage() {
     initialValues: {
       code: '',
       unitId: '',
-      parentId: '',
       name: '',
       type: '',
       effectiveFrom: new Date().toISOString().slice(0, 10),
@@ -93,7 +73,7 @@ export function DepartmentsPage() {
 
   const mutation = useMutation({
     mutationFn: async (values: DepartmentFormValues) => {
-      const payload = { ...values, parentId: values.parentId || undefined, effectiveTo: values.effectiveTo || undefined };
+      const payload = { ...values, effectiveTo: values.effectiveTo || undefined };
       if (editing) {
         return updateDepartment(editing.id, payload);
       }
@@ -142,7 +122,7 @@ export function DepartmentsPage() {
   const columns = useMemo<DataTableColumn<Department>[]>(
     () => [
       { key: 'code', header: 'Mã', width: 120, render: (record) => <Text fw={600}>{record.code}</Text> },
-      { key: 'name', header: 'Tên đơn vị', render: (record) => record.name },
+      { key: 'name', header: 'Tên phòng ban', render: (record) => record.name },
       { key: 'type', header: 'Loại', width: 140, render: (record) => record.type },
       { key: 'effectiveFrom', header: 'Hiệu lực từ', width: 140, render: (record) => record.effectiveFrom },
       { key: 'effectiveTo', header: 'Hiệu lực đến', width: 140, render: (record) => record.effectiveTo || '-' },
@@ -160,7 +140,7 @@ export function DepartmentsPage() {
                 icon: <IconEdit size={16} />,
                 onClick: () => {
                   setEditing(record);
-                  form.setValues({ ...record, parentId: record.parentId ?? '', effectiveTo: record.effectiveTo ?? '' });
+                  form.setValues({ ...record, effectiveTo: record.effectiveTo ?? '' });
                   setOpen(true);
                 },
               },
@@ -183,7 +163,7 @@ export function DepartmentsPage() {
     <>
       <PageHeader
         title="Phòng ban"
-        subtitle="Quản lý phòng ban theo đơn vị, cấp cha con và trạng thái hiệu lực."
+        subtitle="Quản lý phòng ban theo đơn vị và trạng thái hiệu lực."
         actions={
           <>
             <ImportExportToolbar
@@ -249,14 +229,6 @@ export function DepartmentsPage() {
           emptyDescription="Không có phòng ban phù hợp với bộ lọc hiện tại."
         />
 
-        {data?.tree?.length ? (
-          <Paper p="md" radius="md">
-            <Stack gap="sm">
-              <Text fw={650}>Cây tổ chức</Text>
-              {renderOrgTree(data.tree)}
-            </Stack>
-          </Paper>
-        ) : null}
       </Stack>
 
       <Drawer
@@ -278,12 +250,6 @@ export function DepartmentsPage() {
               data={mockUnits.map((item) => ({ value: item.id, label: item.name }))}
               withAsterisk
               {...form.getInputProps('unitId')}
-            />
-            <Select
-              label="Phòng ban cha"
-              clearable
-              data={mockDepartments.map((item) => ({ value: item.id, label: item.name }))}
-              {...form.getInputProps('parentId')}
             />
             <TextInput label="Tên phòng ban" withAsterisk {...form.getInputProps('name')} />
             <TextInput label="Loại phòng ban" withAsterisk {...form.getInputProps('type')} />

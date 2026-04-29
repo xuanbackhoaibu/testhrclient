@@ -7,11 +7,6 @@ import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../sh
 import type { Department, DepartmentSelectOption } from './organizationTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
-const DEPARTMENT_TREE_PAGE_SIZE = 100;
-
-export interface DepartmentTreeNode extends Department {
-  children?: DepartmentTreeNode[];
-}
 
 export async function listDepartments(params: ListQueryParams = {}): Promise<PaginatedResponse<Department>> {
   if (isMockMode) {
@@ -43,7 +38,6 @@ export async function listDepartmentsSelect(unitId?: string): Promise<Department
         id: item.id,
         code: item.code,
         unitId: item.unitId,
-        parentId: item.parentId,
         name: item.name,
       }));
   }
@@ -51,32 +45,6 @@ export async function listDepartmentsSelect(unitId?: string): Promise<Department
   return api.get<DepartmentSelectOption[]>('/departments/select', {
     params: { unitId },
   });
-}
-
-export async function getDepartmentTree(params: ListQueryParams = {}): Promise<DepartmentTreeNode[]> {
-  const firstPage = await listDepartments({ ...params, page: 1, pageSize: DEPARTMENT_TREE_PAGE_SIZE });
-  const remainingPages =
-    firstPage.pagination.totalPages > 1
-      ? await Promise.all(
-          Array.from({ length: firstPage.pagination.totalPages - 1 }, (_, index) =>
-            listDepartments({ ...params, page: index + 2, pageSize: DEPARTMENT_TREE_PAGE_SIZE }),
-          ),
-        )
-      : [];
-  const items = [firstPage, ...remainingPages].flatMap((page) => page.items);
-  const map = new Map<string, DepartmentTreeNode>();
-  items.forEach((item) => map.set(item.id, { ...item, children: [] }));
-
-  const roots: DepartmentTreeNode[] = [];
-  map.forEach((node) => {
-    if (node.parentId && map.has(node.parentId)) {
-      map.get(node.parentId)?.children?.push(node);
-    } else {
-      roots.push(node);
-    }
-  });
-
-  return roots;
 }
 
 export async function createDepartment(payload: Omit<Department, 'id'>): Promise<Department> {

@@ -18,7 +18,6 @@ export interface Department {
   id: string;
   code: string;
   unitId: string;
-  parentId?: string;
   name: string;
   type: string;
   effectiveFrom: string;
@@ -30,7 +29,6 @@ export interface DepartmentSelectOption {
   id: string;
   code: string;
   unitId: string;
-  parentId?: string | null;
   name: string;
 }
 
