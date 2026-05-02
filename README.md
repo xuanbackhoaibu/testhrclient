@@ -1,4 +1,4 @@
-# AGENTS.md
+﻿# AGENTS.md
 
 ## Scope
 
@@ -193,7 +193,7 @@ Rules:
 - Do not commit secrets.
 - Document new environment variables in `.env.example`.
 - Keep mock mode local/demo only.
-- Do not rely on mock mode for server-test or production behavior.
+- Do not rely on mock mode for develop or production behavior.
 - Do not hard-code production API URLs in source code.
 - Keep API base URLs centralized in config/http client modules.
 - Do not scatter environment reads across random components.
@@ -330,7 +330,7 @@ Rules:
 - Do not implement product-only behavior that exists only in mocks.
 - Do not hide missing backend integration behind mock success.
 - When backend contract changes, update mocks to match.
-- Do not use mock auth in shared/server-test/production environments.
+- Do not use mock auth in shared/develop/production environments.
 
 Mock mode should support smoke testing, not replace backend contract testing.
 

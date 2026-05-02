@@ -1,4 +1,4 @@
-# HR Web Develop Deploy
+﻿# HR Web Develop Deploy
 
 `hr-web-client` owns its own build, image push, and develop deployment. Do not deploy this app from `chat-infrastructure`.
 
@@ -29,7 +29,7 @@ Set GitHub variable `SERVER_RUNTIME_ENV_FILE` to:
 /hdd3/apps/hr/env/develop/hr-web-client.env
 ```
 
-Use `env/server-test/hr-web-client.env` from the workspace as the server
+Use `env/develop/hr-web-client.env` from the workspace as the server
 runtime template. Real secrets must stay on the server or in GitHub secrets.
 
 The develop workflow also requires GitHub repo or environment variable
