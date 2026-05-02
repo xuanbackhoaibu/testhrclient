@@ -5,6 +5,8 @@ const STATUS_COLOR_MAP: Record<string, string> = {
   INACTIVE: 'gray',
   PROBATION: 'yellow',
   TERMINATED: 'red',
+  RESIGNED: 'orange',
+  SUSPENDED: 'orange',
   DRAFT: 'gray',
   SUBMITTED: 'blue',
   APPROVED: 'green',
@@ -16,6 +18,13 @@ const STATUS_COLOR_MAP: Record<string, string> = {
   IN_PROGRESS: 'blue',
   LINKED: 'green',
   UNLINKED: 'gray',
+  // Account statuses
+  NOT_CREATED: 'gray',
+  PENDING_ACTIVATION: 'yellow',
+  LOCKED: 'orange',
+  DISABLED: 'red',
+  DEACTIVATED: 'red',
+  TOMBSTONED: 'dark',
 };
 
 const STATUS_LABEL_MAP: Record<string, string> = {
@@ -23,8 +32,17 @@ const STATUS_LABEL_MAP: Record<string, string> = {
   INACTIVE: 'Tạm ngưng',
   PROBATION: 'Thử việc',
   TERMINATED: 'Nghỉ việc',
+  RESIGNED: 'Đã nghỉ',
+  SUSPENDED: 'Tạm dừng',
   LINKED: 'Đã liên kết',
   UNLINKED: 'Chưa liên kết',
+  // Account statuses
+  NOT_CREATED: 'Chưa tạo TK',
+  PENDING_ACTIVATION: 'Chờ kích hoạt',
+  LOCKED: 'Bị khóa',
+  DISABLED: 'Vô hiệu hóa',
+  DEACTIVATED: 'Đã hủy kích hoạt',
+  TOMBSTONED: 'Đã xóa',
 };
 
 export function StatusTag({ status }: { status?: string | null }) {

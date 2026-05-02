@@ -381,9 +381,15 @@ export function EmployeesPage() {
       },
       {
         key: 'employmentStatus',
-        header: 'Trạng thái',
+        header: 'TT nhân sự',
         width: 150,
         render: (record) => <StatusTag status={record.employmentStatus} />,
+      },
+      {
+        key: 'accountStatus',
+        header: 'TT tài khoản',
+        width: 150,
+        render: (record) => <StatusTag status={record.accountStatus ?? 'NOT_CREATED'} />,
       },
       {
         key: 'department',
