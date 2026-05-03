@@ -18,6 +18,7 @@ import {
   updateAccountStatus,
 } from '../../../features/auth-admin/authAdminApi';
 import { ACCOUNT_STATUS_LABELS } from '../../../features/auth-admin/authAdminTypes';
+import { useAuth } from '../../../features/auth/useAuth';
 import type { Employee } from '../../../features/employees/employeeTypes';
 import { api } from '../../../shared/api/httpClient';
 import { LoadingState } from '../../../shared/components/LoadingState';
@@ -26,7 +27,6 @@ import { formatDateTime } from '../../../shared/utils/date';
 
 interface Props {
   employee: Employee;
-  canManage: boolean;
 }
 
 function accountStatusColor(status: string): string {
@@ -39,15 +39,24 @@ function accountStatusColor(status: string): string {
   }
 }
 
-export function AccountTab({ employee, canManage }: Props) {
+export function AccountTab({ employee }: Props) {
   const queryClient = useQueryClient();
+  const { can } = useAuth();
   const [createModalOpen, setCreateModalOpen] = useState(false);
+
+  const canRead = can('auth.account.read');
+  const canCreate = can('auth.account.create');
+  const canSendActivation = can('auth.account.send_activation');
+  const canActivate = can('auth.account.activate');
+  const canSuspend = can('auth.account.suspend');
+  const canUpdate = can('auth.account.update');
 
   const { data: authUser, isLoading, error, refetch } = useQuery({
     queryKey: ['auth-user-by-employee', employee.id],
     queryFn: () => getAuthUserByEmployeeId(employee.id),
-    enabled: canManage && Boolean(employee.authUserId),
-    retry: (failCount, err: any) => failCount < 1 && err?.statusCode !== 404,
+    enabled: canRead && Boolean(employee.authUserId),
+    retry: (failCount, err: unknown) =>
+      failCount < 1 && (err as { statusCode?: number })?.statusCode !== 404,
   });
 
   const invalidate = async () => {
@@ -81,8 +90,8 @@ export function AccountTab({ employee, canManage }: Props) {
       setCreateModalOpen(false);
       await invalidate();
     },
-    onError: (err: any) => {
-      message.error(err?.message ?? 'Tạo tài khoản thất bại.');
+    onError: (err: unknown) => {
+      message.error((err as { message?: string })?.message ?? 'Tạo tài khoản thất bại.');
     },
   });
 
@@ -92,34 +101,52 @@ export function AccountTab({ employee, canManage }: Props) {
       message.success('Đã gửi email kích hoạt.');
       await invalidate();
     },
-    onError: (err: any) => message.error(err?.message ?? 'Gửi email kích hoạt thất bại.'),
+    onError: (err: unknown) =>
+      message.error((err as { message?: string })?.message ?? 'Gửi email kích hoạt thất bại.'),
   });
 
   const suspendMutation = useMutation({
-    mutationFn: () => updateAccountStatus(authUser!.authUserId, { status: 'SUSPENDED', revokeSessions: true, reason: 'HR admin suspended' }),
+    mutationFn: () =>
+      updateAccountStatus(authUser!.authUserId, {
+        status: 'SUSPENDED',
+        revokeSessions: true,
+        reason: 'HR admin suspended',
+      }),
     onSuccess: async () => {
       message.success('Đã tạm khóa tài khoản.');
       await invalidate();
     },
-    onError: (err: any) => message.error(err?.message ?? 'Tạm khóa tài khoản thất bại.'),
+    onError: (err: unknown) =>
+      message.error((err as { message?: string })?.message ?? 'Tạm khóa tài khoản thất bại.'),
   });
 
   const activateMutation = useMutation({
-    mutationFn: () => updateAccountStatus(authUser!.authUserId, { status: 'ACTIVE', reason: 'HR admin activated' }),
+    mutationFn: () =>
+      updateAccountStatus(authUser!.authUserId, {
+        status: 'ACTIVE',
+        reason: 'HR admin activated',
+      }),
     onSuccess: async () => {
       message.success('Đã kích hoạt tài khoản.');
       await invalidate();
     },
-    onError: (err: any) => message.error(err?.message ?? 'Kích hoạt tài khoản thất bại.'),
+    onError: (err: unknown) =>
+      message.error((err as { message?: string })?.message ?? 'Kích hoạt tài khoản thất bại.'),
   });
 
   const disableMutation = useMutation({
-    mutationFn: () => updateAccountStatus(authUser!.authUserId, { status: 'DISABLED', revokeSessions: true, reason: 'HR admin disabled' }),
+    mutationFn: () =>
+      updateAccountStatus(authUser!.authUserId, {
+        status: 'DISABLED',
+        revokeSessions: true,
+        reason: 'HR admin disabled',
+      }),
     onSuccess: async () => {
       message.success('Đã vô hiệu hóa tài khoản.');
       await invalidate();
     },
-    onError: (err: any) => message.error(err?.message ?? 'Vô hiệu hóa tài khoản thất bại.'),
+    onError: (err: unknown) =>
+      message.error((err as { message?: string })?.message ?? 'Vô hiệu hóa tài khoản thất bại.'),
   });
 
   const revokeSessionsMutation = useMutation({
@@ -128,13 +155,12 @@ export function AccountTab({ employee, canManage }: Props) {
       message.success('Đã thu hồi tất cả phiên đăng nhập.');
       await invalidate();
     },
-    onError: (err: any) => message.error(err?.message ?? 'Thu hồi session thất bại.'),
+    onError: (err: unknown) =>
+      message.error((err as { message?: string })?.message ?? 'Thu hồi session thất bại.'),
   });
 
-  const anyBusy = provisionMutation.isPending || sendActivationMutation.isPending || suspendMutation.isPending || activateMutation.isPending || disableMutation.isPending || revokeSessionsMutation.isPending;
-
-  if (!canManage) {
-    return <Alert message="Bạn không có quyền quản lý tài khoản nhân sự." type="info" showIcon />;
+  if (!canRead) {
+    return <Alert message="Bạn không có quyền xem thông tin tài khoản nhân sự." type="info" showIcon />;
   }
 
   const hasAccount = Boolean(employee.authUserId);
@@ -149,34 +175,42 @@ export function AccountTab({ employee, canManage }: Props) {
           showIcon
           style={{ marginBottom: 16 }}
         />
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => setCreateModalOpen(true)}
-        >
-          Tạo tài khoản
-        </Button>
+        {canCreate && (
+          <>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setCreateModalOpen(true)}
+            >
+              Tạo tài khoản
+            </Button>
 
-        <Modal
-          title="Xác nhận tạo tài khoản"
-          open={createModalOpen}
-          onCancel={() => setCreateModalOpen(false)}
-          onOk={() => provisionMutation.mutate()}
-          confirmLoading={provisionMutation.isPending}
-          okText="Tạo tài khoản & Gửi email kích hoạt"
-          cancelText="Hủy"
-        >
-          <Descriptions column={1} size="small" style={{ marginBottom: 16 }}>
-            <Descriptions.Item label="Họ tên">{employee.fullName}</Descriptions.Item>
-            <Descriptions.Item label="MNS">{employee.employeeCode}</Descriptions.Item>
-            <Descriptions.Item label="Email">{employee.companyEmail ?? employee.personalEmail ?? 'Chưa có email'}</Descriptions.Item>
-            <Descriptions.Item label="Đơn vị">{employee.unitName ?? '-'}</Descriptions.Item>
-            <Descriptions.Item label="Phòng ban">{employee.departmentName ?? '-'}</Descriptions.Item>
-          </Descriptions>
-          <Typography.Text type="secondary">
-            Tài khoản sẽ được tạo với trạng thái <strong>Chờ kích hoạt</strong>. Email kích hoạt sẽ được gửi đến địa chỉ email trên.
-          </Typography.Text>
-        </Modal>
+            <Modal
+              title="Xác nhận tạo tài khoản"
+              open={createModalOpen}
+              onCancel={() => setCreateModalOpen(false)}
+              onOk={() => provisionMutation.mutate()}
+              confirmLoading={provisionMutation.isPending}
+              okText="Tạo tài khoản & Gửi email kích hoạt"
+              cancelText="Hủy"
+            >
+              <Descriptions column={1} size="small" style={{ marginBottom: 16 }}>
+                <Descriptions.Item label="Họ tên">{employee.fullName}</Descriptions.Item>
+                <Descriptions.Item label="MNS">{employee.employeeCode}</Descriptions.Item>
+                <Descriptions.Item label="Email">
+                  {employee.companyEmail ?? employee.personalEmail ?? (
+                    <Typography.Text type="danger">Chưa có email — tài khoản sẽ không nhận được email kích hoạt</Typography.Text>
+                  )}
+                </Descriptions.Item>
+                <Descriptions.Item label="Đơn vị">{employee.unitName ?? '-'}</Descriptions.Item>
+                <Descriptions.Item label="Phòng ban">{employee.departmentName ?? '-'}</Descriptions.Item>
+              </Descriptions>
+              <Typography.Text type="secondary">
+                Tài khoản sẽ được tạo với trạng thái <strong>Chờ kích hoạt</strong>. Email kích hoạt sẽ được gửi đến địa chỉ email trên.
+              </Typography.Text>
+            </Modal>
+          </>
+        )}
       </div>
     );
   }
@@ -193,7 +227,11 @@ export function AccountTab({ employee, canManage }: Props) {
           showIcon
           style={{ marginBottom: 16 }}
         />
-        <ErrorState title="Không thể tải thông tin tài khoản" description="Không thể kết nối đến auth service." onRetry={() => void refetch()} />
+        <ErrorState
+          title="Không thể tải thông tin tài khoản"
+          description="Không thể kết nối đến auth service."
+          onRetry={() => void refetch()}
+        />
       </div>
     );
   }
@@ -203,6 +241,14 @@ export function AccountTab({ employee, canManage }: Props) {
   const isDisabled = accountStatus === 'DISABLED' || accountStatus === 'DEACTIVATED';
   const isPending = accountStatus === 'PENDING_ACTIVATION' || accountStatus === 'INACTIVE';
   const isActive = accountStatus === 'ACTIVE';
+
+  const anyBusy =
+    provisionMutation.isPending ||
+    sendActivationMutation.isPending ||
+    suspendMutation.isPending ||
+    activateMutation.isPending ||
+    disableMutation.isPending ||
+    revokeSessionsMutation.isPending;
 
   return (
     <div>
@@ -223,73 +269,69 @@ export function AccountTab({ employee, canManage }: Props) {
         </Descriptions.Item>
       </Descriptions>
 
-      {canManage && (
-        <Space wrap>
-          {isPending && (
-            <Popconfirm
-              title="Gửi email kích hoạt?"
-              description="Email kích hoạt sẽ được gửi đến địa chỉ email đã đăng ký."
-              onConfirm={() => sendActivationMutation.mutate()}
-              okText="Gửi"
-              cancelText="Hủy"
-            >
-              <Button icon={<MailOutlined />} loading={sendActivationMutation.isPending} disabled={anyBusy}>
-                Gửi email kích hoạt
-              </Button>
-            </Popconfirm>
-          )}
+      <Space wrap>
+        {canSendActivation && isPending && (
+          <Popconfirm
+            title="Gửi email kích hoạt?"
+            description="Email kích hoạt sẽ được gửi đến địa chỉ email đã đăng ký."
+            onConfirm={() => sendActivationMutation.mutate()}
+            okText="Gửi"
+            cancelText="Hủy"
+          >
+            <Button icon={<MailOutlined />} loading={sendActivationMutation.isPending} disabled={anyBusy}>
+              Gửi email kích hoạt
+            </Button>
+          </Popconfirm>
+        )}
 
-          {(isSuspended || isDisabled) && (
-            <Popconfirm
-              title="Kích hoạt tài khoản?"
-              onConfirm={() => activateMutation.mutate()}
-              okText="Kích hoạt"
-              cancelText="Hủy"
-            >
-              <Button icon={<CheckCircleOutlined />} loading={activateMutation.isPending} disabled={anyBusy}>
-                Kích hoạt tài khoản
-              </Button>
-            </Popconfirm>
-          )}
+        {canActivate && (isSuspended || isDisabled) && (
+          <Popconfirm
+            title="Kích hoạt tài khoản?"
+            onConfirm={() => activateMutation.mutate()}
+            okText="Kích hoạt"
+            cancelText="Hủy"
+          >
+            <Button icon={<CheckCircleOutlined />} loading={activateMutation.isPending} disabled={anyBusy}>
+              Kích hoạt tài khoản
+            </Button>
+          </Popconfirm>
+        )}
 
-          {isActive && (
-            <Popconfirm
-              title="Tạm khóa tài khoản?"
-              description="Tài khoản sẽ bị khóa và tất cả phiên đăng nhập hiện tại sẽ bị thu hồi."
-              onConfirm={() => suspendMutation.mutate()}
-              okText="Tạm khóa"
-              cancelText="Hủy"
-            >
-              <Button
-                icon={<PauseCircleOutlined />}
-                loading={suspendMutation.isPending}
-                disabled={anyBusy}
-              >
-                Tạm khóa
-              </Button>
-            </Popconfirm>
-          )}
+        {canSuspend && isActive && (
+          <Popconfirm
+            title="Tạm khóa tài khoản?"
+            description="Tài khoản sẽ bị khóa và tất cả phiên đăng nhập hiện tại sẽ bị thu hồi."
+            onConfirm={() => suspendMutation.mutate()}
+            okText="Tạm khóa"
+            cancelText="Hủy"
+          >
+            <Button icon={<PauseCircleOutlined />} loading={suspendMutation.isPending} disabled={anyBusy}>
+              Tạm khóa
+            </Button>
+          </Popconfirm>
+        )}
 
-          {!isDisabled && (
-            <Popconfirm
-              title="Vô hiệu hóa tài khoản?"
-              description="Tài khoản sẽ bị vô hiệu hóa vĩnh viễn và không thể đăng nhập."
-              onConfirm={() => disableMutation.mutate()}
-              okText="Vô hiệu hóa"
-              okButtonProps={{ danger: true }}
-              cancelText="Hủy"
+        {canUpdate && !isDisabled && (
+          <Popconfirm
+            title="Vô hiệu hóa tài khoản?"
+            description="Tài khoản sẽ bị vô hiệu hóa vĩnh viễn và không thể đăng nhập."
+            onConfirm={() => disableMutation.mutate()}
+            okText="Vô hiệu hóa"
+            okButtonProps={{ danger: true }}
+            cancelText="Hủy"
+          >
+            <Button
+              danger
+              icon={<CloseCircleOutlined />}
+              loading={disableMutation.isPending}
+              disabled={anyBusy}
             >
-              <Button
-                danger
-                icon={<CloseCircleOutlined />}
-                loading={disableMutation.isPending}
-                disabled={anyBusy}
-              >
-                Vô hiệu hóa
-              </Button>
-            </Popconfirm>
-          )}
+              Vô hiệu hóa
+            </Button>
+          </Popconfirm>
+        )}
 
+        {canUpdate && (
           <Popconfirm
             title="Thu hồi tất cả phiên đăng nhập?"
             description="Người dùng sẽ bị đăng xuất khỏi tất cả thiết bị."
@@ -305,8 +347,8 @@ export function AccountTab({ employee, canManage }: Props) {
               Thu hồi sessions
             </Button>
           </Popconfirm>
-        </Space>
-      )}
+        )}
+      </Space>
     </div>
   );
 }

@@ -1,28 +1,35 @@
 import { useMemo, useState } from 'react';
-import { Button, Drawer, Group, Select, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
+import { Button, Drawer, Group, Select, SimpleGrid, Stack, Text, TextInput, Textarea } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconEdit, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { DomainExcelImportModal } from '../../features/import-export/DomainExcelImportModal';
 import { downloadDepartmentsExport } from '../../features/import-export/excelFilesApi';
 import { ImportExportToolbar } from '../../features/import-export/ImportExportToolbar';
 import { useHrmCoreTemplateDownload } from '../../features/import-export/useHrmCoreTemplateDownload';
 import { createDepartment, updateDepartment } from '../../features/organization/departmentsApi';
 import type { Department } from '../../features/organization/organizationTypes';
 import { useDepartments } from '../../features/organization/useDepartments';
+import { useUnitsSelect } from '../../features/organization/useUnits';
 import { ConfirmActionModal } from '../../shared/components/ConfirmActionModal';
 import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
 import { TableActionsMenu } from '../../shared/components/TableActionsMenu';
-import { mockUnits } from '../../shared/mocks/mockOrganization';
 
-type DepartmentFormValues = Omit<Department, 'id'>;
+type DepartmentFormValues = {
+  code: string;
+  unitId: string;
+  name: string;
+  note: string;
+  status: string;
+};
 
 const statusOptions = [
-  { value: 'ACTIVE', label: 'Đang hoạt động' },
-  { value: 'INACTIVE', label: 'Tạm ngưng' },
+  { value: 'ACTIVE', label: 'Äang hoáº¡t Ä‘á»™ng' },
+  { value: 'INACTIVE', label: 'Táº¡m ngÆ°ng' },
 ];
 
 export function DepartmentsPage() {
@@ -37,8 +44,10 @@ export function DepartmentsPage() {
   const [editing, setEditing] = useState<Department | null>(null);
   const [confirmInactive, setConfirmInactive] = useState<Department | null>(null);
   const [open, setOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const { data, isLoading, error, refetch } = useDepartments(params);
+  const unitsSelect = useUnitsSelect();
   const templateDownload = useHrmCoreTemplateDownload('departments');
 
   const exportMutation = useMutation({
@@ -46,8 +55,8 @@ export function DepartmentsPage() {
     onError: () => {
       notifications.show({
         color: 'red',
-        title: 'Không xuất được Excel',
-        message: 'Vui lòng thử lại sau.',
+        title: 'KhĂ´ng xuáº¥t Ä‘Æ°á»£c Excel',
+        message: 'Vui lĂ²ng thá»­ láº¡i sau.',
       });
     },
   });
@@ -57,23 +66,26 @@ export function DepartmentsPage() {
       code: '',
       unitId: '',
       name: '',
-      type: '',
-      effectiveFrom: new Date().toISOString().slice(0, 10),
-      effectiveTo: '',
+      note: '',
       status: 'ACTIVE',
     },
     validate: {
-      code: (value) => (value.trim() ? null : 'Nhập mã phòng ban.'),
-      unitId: (value) => (value ? null : 'Chọn đơn vị.'),
-      name: (value) => (value.trim() ? null : 'Nhập tên phòng ban.'),
-      type: (value) => (value.trim() ? null : 'Nhập loại phòng ban.'),
-      effectiveFrom: (value) => (value ? null : 'Chọn ngày hiệu lực.'),
+      code: (value) => (value.trim() ? null : 'Nháº­p mĂ£ phĂ²ng ban.'),
+      unitId: (value) => (value ? null : 'Chá»n Ä‘Æ¡n vá»‹.'),
+      name: (value) => (value.trim() ? null : 'Nháº­p tĂªn phĂ²ng ban.'),
     },
   });
 
   const mutation = useMutation({
     mutationFn: async (values: DepartmentFormValues) => {
-      const payload = { ...values, effectiveTo: values.effectiveTo || undefined };
+      const payload = {
+        code: values.code.trim(),
+        unitId: values.unitId,
+        name: values.name.trim(),
+        note: values.note.trim() || undefined,
+        status: values.status,
+      };
+
       if (editing) {
         return updateDepartment(editing.id, payload);
       }
@@ -82,8 +94,8 @@ export function DepartmentsPage() {
     onSuccess: async () => {
       notifications.show({
         color: 'green',
-        title: editing ? 'Đã cập nhật phòng ban' : 'Đã tạo phòng ban',
-        message: 'Cấu trúc tổ chức đã được cập nhật.',
+        title: editing ? 'ÄĂ£ cáº­p nháº­t phĂ²ng ban' : 'ÄĂ£ táº¡o phĂ²ng ban',
+        message: 'Cáº¥u trĂºc tá»• chá»©c Ä‘Ă£ Ä‘Æ°á»£c cáº­p nháº­t.',
       });
       setOpen(false);
       setEditing(null);
@@ -93,19 +105,26 @@ export function DepartmentsPage() {
     onError: () => {
       notifications.show({
         color: 'red',
-        title: 'Không lưu được phòng ban',
-        message: 'Vui lòng kiểm tra dữ liệu và thử lại.',
+        title: 'KhĂ´ng lÆ°u Ä‘Æ°á»£c phĂ²ng ban',
+        message: 'Vui lĂ²ng kiá»ƒm tra dá»¯ liá»‡u vĂ  thá»­ láº¡i.',
       });
     },
   });
 
   const inactiveMutation = useMutation({
-    mutationFn: (record: Department) => updateDepartment(record.id, { ...record, status: 'INACTIVE' }),
+    mutationFn: (record: Department) =>
+      updateDepartment(record.id, {
+        code: record.code,
+        unitId: record.unitId,
+        name: record.name,
+        note: record.note ?? undefined,
+        status: 'INACTIVE',
+      }),
     onSuccess: async () => {
       notifications.show({
         color: 'green',
-        title: 'Đã tạm ngưng phòng ban',
-        message: 'Trạng thái phòng ban đã được cập nhật.',
+        title: 'ÄĂ£ táº¡m ngÆ°ng phĂ²ng ban',
+        message: 'Tráº¡ng thĂ¡i phĂ²ng ban Ä‘Ă£ Ä‘Æ°á»£c cáº­p nháº­t.',
       });
       setConfirmInactive(null);
       await queryClient.invalidateQueries({ queryKey: ['departments'] });
@@ -113,20 +132,23 @@ export function DepartmentsPage() {
     onError: () => {
       notifications.show({
         color: 'red',
-        title: 'Không tạm ngưng được phòng ban',
-        message: 'Vui lòng thử lại.',
+        title: 'KhĂ´ng táº¡m ngÆ°ng Ä‘Æ°á»£c phĂ²ng ban',
+        message: 'Vui lĂ²ng thá»­ láº¡i.',
       });
     },
   });
 
+  const unitOptions = (unitsSelect.data ?? []).map((item) => ({
+    value: item.id,
+    label: `${item.name} (${item.code})`,
+  }));
+
   const columns = useMemo<DataTableColumn<Department>[]>(
     () => [
-      { key: 'code', header: 'Mã', width: 120, render: (record) => <Text fw={600}>{record.code}</Text> },
-      { key: 'name', header: 'Tên phòng ban', render: (record) => record.name },
-      { key: 'type', header: 'Loại', width: 140, render: (record) => record.type },
-      { key: 'effectiveFrom', header: 'Hiệu lực từ', width: 140, render: (record) => record.effectiveFrom },
-      { key: 'effectiveTo', header: 'Hiệu lực đến', width: 140, render: (record) => record.effectiveTo || '-' },
-      { key: 'status', header: 'Trạng thái', width: 140, render: (record) => <StatusTag status={record.status} /> },
+      { key: 'code', header: 'MĂ£', width: 120, render: (record) => <Text fw={600}>{record.code}</Text> },
+      { key: 'name', header: 'TĂªn phĂ²ng ban', render: (record) => record.name },
+      { key: 'unit', header: 'ÄÆ¡n vá»‹', render: (record) => record.unit?.name ?? '-' },
+      { key: 'status', header: 'Tráº¡ng thĂ¡i', width: 140, render: (record) => <StatusTag status={record.status} /> },
       {
         key: 'actions',
         header: '',
@@ -136,16 +158,22 @@ export function DepartmentsPage() {
           <TableActionsMenu
             actions={[
               {
-                label: 'Chỉnh sửa',
+                label: 'Chá»‰nh sá»­a',
                 icon: <IconEdit size={16} />,
                 onClick: () => {
                   setEditing(record);
-                  form.setValues({ ...record, effectiveTo: record.effectiveTo ?? '' });
+                  form.setValues({
+                    code: record.code,
+                    unitId: record.unitId,
+                    name: record.name,
+                    note: record.note ?? '',
+                    status: record.status,
+                  });
                   setOpen(true);
                 },
               },
               {
-                label: 'Tạm ngưng',
+                label: 'Táº¡m ngÆ°ng',
                 icon: <IconX size={16} />,
                 color: 'red',
                 disabled: record.status === 'INACTIVE',
@@ -162,12 +190,13 @@ export function DepartmentsPage() {
   return (
     <>
       <PageHeader
-        title="Phòng ban"
-        subtitle="Quản lý phòng ban theo đơn vị và trạng thái hiệu lực."
+        title="PhĂ²ng ban"
+        subtitle="Quáº£n lĂ½ phĂ²ng ban theo Ä‘Æ¡n vá»‹, tráº¡ng thĂ¡i vĂ  import Excel ngay trĂªn mĂ n danh má»¥c."
         actions={
           <>
             <ImportExportToolbar
               onDownloadTemplate={templateDownload.downloadTemplate}
+              onImport={() => setImportOpen(true)}
               onExport={() => exportMutation.mutateAsync()}
               isDownloadingTemplate={templateDownload.isDownloadingTemplate}
               isExporting={exportMutation.isPending}
@@ -180,7 +209,7 @@ export function DepartmentsPage() {
                 setOpen(true);
               }}
             >
-              Tạo phòng ban
+              Táº¡o phĂ²ng ban
             </Button>
           </>
         }
@@ -189,7 +218,7 @@ export function DepartmentsPage() {
       <Stack gap="md">
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
           <TextInput
-            placeholder="Tìm mã hoặc tên"
+            placeholder="TĂ¬m mĂ£ hoáº·c tĂªn"
             leftSection={<IconSearch size={17} />}
             value={params.search}
             onChange={(event) =>
@@ -197,16 +226,16 @@ export function DepartmentsPage() {
             }
           />
           <Select
-            placeholder="Đơn vị"
+            placeholder="ÄÆ¡n vá»‹"
             clearable
-            data={mockUnits.map((item) => ({ value: item.id, label: item.name }))}
+            data={unitOptions}
             value={params.unitId ?? null}
             onChange={(value) =>
               setParams((current) => ({ ...current, unitId: value ?? undefined, page: 1 }))
             }
           />
           <Select
-            placeholder="Trạng thái"
+            placeholder="Tráº¡ng thĂ¡i"
             clearable
             data={statusOptions}
             value={params.status ?? null}
@@ -225,10 +254,9 @@ export function DepartmentsPage() {
           error={error}
           onRetry={() => void refetch()}
           onPageChange={(page, pageSize) => setParams((current) => ({ ...current, page, pageSize }))}
-          emptyTitle="Chưa có phòng ban"
-          emptyDescription="Không có phòng ban phù hợp với bộ lọc hiện tại."
+          emptyTitle="ChÆ°a cĂ³ phĂ²ng ban"
+          emptyDescription="KhĂ´ng cĂ³ phĂ²ng ban phĂ¹ há»£p vá»›i bá»™ lá»c hiá»‡n táº¡i."
         />
-
       </Stack>
 
       <Drawer
@@ -238,41 +266,42 @@ export function DepartmentsPage() {
           setEditing(null);
           form.reset();
         }}
-        title={editing ? 'Chỉnh sửa phòng ban' : 'Tạo phòng ban'}
+        title={editing ? 'Chá»‰nh sá»­a phĂ²ng ban' : 'Táº¡o phĂ²ng ban'}
         position="right"
         size="lg"
       >
         <form onSubmit={form.onSubmit((values) => mutation.mutate(values))}>
           <Stack gap="sm">
-            <TextInput label="Mã" withAsterisk {...form.getInputProps('code')} />
-            <Select
-              label="Đơn vị"
-              data={mockUnits.map((item) => ({ value: item.id, label: item.name }))}
-              withAsterisk
-              {...form.getInputProps('unitId')}
-            />
-            <TextInput label="Tên phòng ban" withAsterisk {...form.getInputProps('name')} />
-            <TextInput label="Loại phòng ban" withAsterisk {...form.getInputProps('type')} />
-            <TextInput label="Hiệu lực từ" type="date" withAsterisk {...form.getInputProps('effectiveFrom')} />
-            <TextInput label="Hiệu lực đến" type="date" {...form.getInputProps('effectiveTo')} />
-            <Select label="Trạng thái" data={statusOptions} withAsterisk {...form.getInputProps('status')} />
+            <TextInput label="MĂ£ phĂ²ng ban" withAsterisk {...form.getInputProps('code')} />
+            <Select label="ÄÆ¡n vá»‹" data={unitOptions} withAsterisk searchable {...form.getInputProps('unitId')} />
+            <TextInput label="TĂªn phĂ²ng ban" withAsterisk {...form.getInputProps('name')} />
+            <Textarea label="Ghi chĂº" minRows={3} {...form.getInputProps('note')} />
+            <Select label="Tráº¡ng thĂ¡i" data={statusOptions} withAsterisk {...form.getInputProps('status')} />
             <Group justify="flex-end" mt="md">
               <Button variant="default" onClick={() => setOpen(false)}>
-                Hủy
+                Há»§y
               </Button>
               <Button type="submit" loading={mutation.isPending}>
-                Lưu
+                LÆ°u
               </Button>
             </Group>
           </Stack>
         </form>
       </Drawer>
 
+      <DomainExcelImportModal
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        title="Import Excel PhĂ²ng ban"
+        module="departments"
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['departments'] })}
+      />
+
       <ConfirmActionModal
         opened={Boolean(confirmInactive)}
-        title="Tạm ngưng phòng ban?"
-        message="Phòng ban sẽ được chuyển sang trạng thái tạm ngưng. Dữ liệu lịch sử không bị xóa."
-        confirmLabel="Tạm ngưng"
+        title="Táº¡m ngÆ°ng phĂ²ng ban?"
+        message="PhĂ²ng ban sáº½ Ä‘Æ°á»£c chuyá»ƒn sang tráº¡ng thĂ¡i táº¡m ngÆ°ng. Dá»¯ liá»‡u lá»‹ch sá»­ khĂ´ng bá»‹ xĂ³a."
+        confirmLabel="Táº¡m ngÆ°ng"
         loading={inactiveMutation.isPending}
         onClose={() => setConfirmInactive(null)}
         onConfirm={() => {
@@ -281,7 +310,6 @@ export function DepartmentsPage() {
           }
         }}
       />
-
     </>
   );
 }

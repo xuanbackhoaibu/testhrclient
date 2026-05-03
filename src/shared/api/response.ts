@@ -17,7 +17,7 @@ type BackendPaginatedResponse<T> =
 function fallbackPagination(params: ListQueryParams = {}, total = 0): PaginationMeta {
   const page = params.page ?? 1;
   const pageSize = params.pageSize ?? Math.max(total, 10);
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
 
   return {
     page,
@@ -39,7 +39,8 @@ function completePagination(
   const pageSize = pagination?.pageSize ?? fallback.pageSize;
   const resolvedTotal = pagination?.total ?? fallback.total;
   const totalPages =
-    pagination?.totalPages ?? Math.max(1, Math.ceil(resolvedTotal / pageSize));
+    pagination?.totalPages ??
+    (resolvedTotal === 0 ? 0 : Math.ceil(resolvedTotal / pageSize));
 
   return {
     page,

@@ -6,11 +6,12 @@ import { IconEdit, IconEye, IconPlus, IconSearch } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 
-import { canCreateEmployee, canEditEmployee } from '../../features/auth/permissions';
 import { useAuth } from '../../features/auth/useAuth';
 import { createEmployee, getEmployee, getNextEmployeeCode, updateEmployee } from '../../features/employees/employeesApi';
 import type { Employee, EmployeePayload } from '../../features/employees/employeeTypes';
 import { useEmployees } from '../../features/employees/useEmployees';
+import { DomainExcelImportModal } from '../../features/import-export/DomainExcelImportModal';
+import { PostImportAccountModal } from '../../features/import-export/PostImportAccountModal';
 import { downloadEmployeesExport } from '../../features/import-export/excelFilesApi';
 import { ImportExportToolbar } from '../../features/import-export/ImportExportToolbar';
 import { useHrmCoreTemplateDownload } from '../../features/import-export/useHrmCoreTemplateDownload';
@@ -110,11 +111,13 @@ const emptyEmployeeFormValues: EmployeePayload = {
 
 export function EmployeesPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const mayCreateEmployee = canCreateEmployee(user);
-  const mayEditEmployee = canEditEmployee(user);
+  const { can } = useAuth();
+  const mayCreateEmployee = can('hr.employee.create');
+  const mayEditEmployee = can('hr.employee.update');
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [postImport, setPostImport] = useState<{ batchId: string; count: number } | null>(null);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [suggestedEmployeeCode, setSuggestedEmployeeCode] = useState('');
   const [isLoadingNextCode, setIsLoadingNextCode] = useState(false);
@@ -438,6 +441,7 @@ export function EmployeesPage() {
           <>
             <ImportExportToolbar
               onDownloadTemplate={templateDownload.downloadTemplate}
+              onImport={() => setImportOpen(true)}
               onExport={() => exportMutation.mutateAsync()}
               isDownloadingTemplate={templateDownload.isDownloadingTemplate}
               isExporting={exportMutation.isPending}
@@ -608,6 +612,27 @@ export function EmployeesPage() {
         </form>
       </Drawer>
 
+      <DomainExcelImportModal
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        title="Import Excel Nhân sự"
+        module="employees"
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['employees'] })}
+        onAfterCommit={(result) => {
+          if (can('auth.account.create')) {
+            setPostImport({ batchId: result.batchId, count: 0 });
+          }
+        }}
+      />
+
+      {postImport && (
+        <PostImportAccountModal
+          open={true}
+          batchId={postImport.batchId}
+          importedCount={postImport.count}
+          onClose={() => setPostImport(null)}
+        />
+      )}
     </>
   );
 }

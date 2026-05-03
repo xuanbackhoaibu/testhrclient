@@ -1,7 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
-import { HRM_ROLES } from '../features/auth/permissions';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { MainLayout } from '../layouts/MainLayout';
 import { AttendancePage } from '../pages/attendance/AttendancePage';
@@ -49,7 +48,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.units,
         element: (
-          <ProtectedRoute roles={[HRM_ROLES.SUPER_ADMIN, HRM_ROLES.ADMIN, HRM_ROLES.HR]}>
+          <ProtectedRoute permissions={['hr.unit.read']}>
             <UnitsPage />
           </ProtectedRoute>
         ),
@@ -57,7 +56,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.departments,
         element: (
-          <ProtectedRoute roles={[HRM_ROLES.SUPER_ADMIN, HRM_ROLES.ADMIN, HRM_ROLES.HR]}>
+          <ProtectedRoute permissions={['hr.department.read']}>
             <DepartmentsPage />
           </ProtectedRoute>
         ),
@@ -65,7 +64,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.positions,
         element: (
-          <ProtectedRoute roles={[HRM_ROLES.SUPER_ADMIN, HRM_ROLES.ADMIN, HRM_ROLES.HR]}>
+          <ProtectedRoute permissions={['hr.position.read']}>
             <PositionsPage />
           </ProtectedRoute>
         ),
@@ -79,7 +78,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.imports,
         element: (
-          <ProtectedRoute roles={[HRM_ROLES.SUPER_ADMIN, HRM_ROLES.ADMIN, HRM_ROLES.HR]}>
+          <ProtectedRoute permissions={['hr.employee.import']}>
             <ImportsPage />
           </ProtectedRoute>
         ),
@@ -87,7 +86,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.auditLogs,
         element: (
-          <ProtectedRoute roles={[HRM_ROLES.SUPER_ADMIN, HRM_ROLES.ADMIN, HRM_ROLES.HR]}>
+          <ProtectedRoute permissions={['hr.employee.read']}>
             <AuditLogsPage />
           </ProtectedRoute>
         ),
@@ -95,7 +94,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.settings,
         element: (
-          <ProtectedRoute roles={[HRM_ROLES.SUPER_ADMIN, HRM_ROLES.ADMIN]}>
+          <ProtectedRoute permissions={['hr.unit.read']}>
             <SettingsPage />
           </ProtectedRoute>
         ),

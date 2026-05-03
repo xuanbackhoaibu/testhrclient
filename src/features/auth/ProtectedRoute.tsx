@@ -10,9 +10,11 @@ import { useAuthStore } from './authStore';
 export function ProtectedRoute({
   children,
   roles,
+  permissions,
 }: {
   children: ReactNode;
   roles?: HrmRole[];
+  permissions?: string[];
 }) {
   const location = useLocation();
   const { isAuthenticated, isLoading, user } = useAuthStore();
@@ -27,6 +29,15 @@ export function ProtectedRoute({
 
   if (roles?.length && !hasAnyRole(user, roles)) {
     return <Result status="403" title="403" subTitle="Bạn không có quyền truy cập chức năng này." />;
+  }
+
+  if (permissions?.length) {
+    const userPermissions = user?.permissions ?? [];
+    const isSuperWildcard = userPermissions.includes('*');
+    const hasAll = isSuperWildcard || permissions.every((p) => userPermissions.includes(p));
+    if (!hasAll) {
+      return <Result status="403" title="403" subTitle="Bạn không có quyền truy cập chức năng này." />;
+    }
   }
 
   return <>{children}</>;

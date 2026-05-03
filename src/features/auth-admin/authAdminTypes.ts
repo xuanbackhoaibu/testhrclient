@@ -95,6 +95,28 @@ export interface SendActivationResult {
   maskedEmail?: string | null;
 }
 
+export interface RoleDefinition {
+  name: string;
+  label: string;
+  description?: string;
+  isSensitive?: boolean;
+}
+
+export interface BulkProvisionFromBatchInput {
+  batchId: string;
+  defaultRoles?: string[];
+  initialStatus?: 'PENDING_ACTIVATION' | 'ACTIVE';
+  sendActivationEmail?: boolean;
+}
+
+export interface BulkProvisionFromBatchResult {
+  total: number;
+  created: number;
+  skipped: number;
+  failed: number;
+  errors?: Array<{ employeeId: string; reason: string }>;
+}
+
 export const SENSITIVE_ROLES = new Set(['SUPER_ADMIN', 'super_admin', 'IAM_ADMIN', 'iam_admin']);
 
 export const ACCOUNT_STATUS_LABELS: Record<string, string> = {

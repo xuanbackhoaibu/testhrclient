@@ -4,7 +4,6 @@ import { useParams } from 'react-router-dom';
 
 import type { AttendanceRecord } from '../../features/attendance/attendanceTypes';
 import type { AuditLog } from '../../features/audit/auditTypes';
-import { canAssignRole, canManageAccount } from '../../features/auth/permissions';
 import { useAuth } from '../../features/auth/useAuth';
 import type { Contract } from '../../features/contracts/contractTypes';
 import type { LeaveRequest } from '../../features/leave/leaveTypes';
@@ -19,12 +18,11 @@ import { AccessTab } from './tabs/AccessTab';
 
 export function EmployeeDetailPage() {
   const { id } = useParams();
-  const { user } = useAuth();
-  const mayManageAccount = canManageAccount(user);
-  const mayAssignRole = canAssignRole(user, 'HR');
+  const { can } = useAuth();
+  const canReadAccount = can('auth.account.read');
 
   const { data, isLoading, error, refetch } = useEmployeeDetail(id, {
-    includeAccount: mayManageAccount,
+    includeAccount: canReadAccount,
   });
 
   if (isLoading) {
@@ -131,7 +129,7 @@ export function EmployeeDetailPage() {
             label: 'Tài khoản',
             children: (
               <Card>
-                <AccountTab employee={employee} canManage={mayManageAccount} />
+                <AccountTab employee={employee} />
               </Card>
             ),
           },
@@ -140,7 +138,7 @@ export function EmployeeDetailPage() {
             label: 'Quyền truy cập',
             children: (
               <Card>
-                <AccessTab employee={employee} canManage={mayAssignRole} />
+                <AccessTab employee={employee} />
               </Card>
             ),
           },

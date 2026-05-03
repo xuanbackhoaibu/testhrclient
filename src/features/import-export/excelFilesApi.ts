@@ -4,6 +4,7 @@ import type { ListQueryParams } from '../../shared/types/api';
 export type ExcelDomainKey =
   | 'organization-units'
   | 'departments'
+  | 'positions'
   | 'employees'
   | 'employee-assignments';
 
@@ -21,6 +22,7 @@ export function downloadImportTemplate(domainKey: ExcelDomainKey) {
   const fallbackByDomain: Record<ExcelDomainKey, string> = {
     'organization-units': 'Mau_import_DonVi.xlsx',
     departments: 'Mau_import_PhongBan.xlsx',
+    positions: 'Mau_import_ChucVu.xlsx',
     employees: 'Mau_import_NhanSu.xlsx',
     'employee-assignments': 'Mau_import_PhanCongNhanSu.xlsx',
   };

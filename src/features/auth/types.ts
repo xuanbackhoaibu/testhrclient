@@ -1,3 +1,12 @@
+export type ScopeClaim = {
+  system: string;
+  scopeType: string;
+  resourceType?: string;
+  resourceIds?: string[];
+  unitIds?: string[];
+  departmentIds?: string[];
+};
+
 export interface AuthUser {
   id: string;
   authUserId?: string;
@@ -17,6 +26,10 @@ export interface AuthUser {
     positionId: string | null;
   } | null;
   roles: string[];
+  permissions: string[];
+  permissionVersion?: number;
+  tokenVersion?: number;
+  scopes?: ScopeClaim[];
   dataScopes: Array<{
     scopeType: string;
     unitId: string | null;

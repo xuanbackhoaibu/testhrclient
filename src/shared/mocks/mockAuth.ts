@@ -26,6 +26,7 @@ export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
       positionId: 'pos-hrm',
     },
     roles: ['SUPER_ADMIN'],
+    permissions: ['*'],
     dataScopes: [{ scopeType: 'GLOBAL', unitId: null, departmentId: null }],
   },
   ADMIN: {
@@ -44,6 +45,14 @@ export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
       positionId: 'pos-hrm',
     },
     roles: ['ADMIN'],
+    permissions: [
+      'hr.employee.read', 'hr.employee.create', 'hr.employee.update', 'hr.employee.import', 'hr.employee.export',
+      'hr.unit.read', 'hr.unit.create', 'hr.unit.update', 'hr.unit.import', 'hr.unit.export',
+      'hr.department.read', 'hr.department.create', 'hr.department.update', 'hr.department.import', 'hr.department.export',
+      'hr.position.read', 'hr.position.create', 'hr.position.update', 'hr.position.import', 'hr.position.export',
+      'auth.account.read', 'auth.account.create', 'auth.account.update', 'auth.account.suspend', 'auth.account.activate', 'auth.account.send_activation',
+      'auth.role.read', 'auth.role.assign', 'auth.permission.read',
+    ],
     dataScopes: [{ scopeType: 'GLOBAL', unitId: null, departmentId: null }],
   },
   HR: {
@@ -62,6 +71,14 @@ export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
       positionId: 'pos-hrm',
     },
     roles: ['HR'],
+    permissions: [
+      'hr.employee.read', 'hr.employee.create', 'hr.employee.update', 'hr.employee.import', 'hr.employee.export',
+      'hr.unit.read', 'hr.unit.create', 'hr.unit.update', 'hr.unit.import',
+      'hr.department.read', 'hr.department.create', 'hr.department.update', 'hr.department.import',
+      'hr.position.read', 'hr.position.create', 'hr.position.update', 'hr.position.import',
+      'auth.account.read', 'auth.account.create', 'auth.account.update', 'auth.account.send_activation',
+      'auth.role.read', 'auth.role.assign',
+    ],
     dataScopes: [{ scopeType: 'GLOBAL', unitId: null, departmentId: null }],
   },
   BAN_LANH_DAO: {
@@ -80,6 +97,7 @@ export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
       positionId: 'pos-sls',
     },
     roles: ['BAN_LANH_DAO'],
+    permissions: ['hr.employee.read'],
     dataScopes: [{ scopeType: 'GLOBAL', unitId: null, departmentId: null }],
   },
   BAN_LANH_DAO_DON_VI: {
@@ -98,6 +116,7 @@ export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
       positionId: 'pos-sls',
     },
     roles: ['BAN_LANH_DAO_DON_VI'],
+    permissions: ['hr.employee.read'],
     dataScopes: [
       { scopeType: 'UNIT', unitId: 'le-01', departmentId: null },
       { scopeType: 'DEPARTMENT', unitId: null, departmentId: 'ou-sales' },
@@ -119,6 +138,7 @@ export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
       positionId: 'pos-hro',
     },
     roles: ['EMPLOYEE'],
+    permissions: [],
     dataScopes: [{ scopeType: 'SELF', unitId: null, departmentId: null }],
   },
 };

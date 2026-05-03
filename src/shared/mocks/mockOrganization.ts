@@ -7,12 +7,12 @@ export const mockUnits: Unit[] = [
 ];
 
 export const mockDepartments: Department[] = [
-  { id: 'ou-hq', code: 'OU-HQ', unitId: 'le-01', name: 'Head Office', type: 'DIVISION', effectiveFrom: '2024-01-01', status: 'ACTIVE' },
-  { id: 'ou-hr', code: 'OU-HR', unitId: 'le-01', name: 'Human Resources', type: 'DEPARTMENT', effectiveFrom: '2024-01-01', status: 'ACTIVE' },
-  { id: 'ou-sales', code: 'OU-SALES', unitId: 'le-01', name: 'Sales', type: 'DEPARTMENT', effectiveFrom: '2024-01-01', status: 'ACTIVE' },
-  { id: 'ou-retail', code: 'OU-RETAIL', unitId: 'le-02', name: 'Retail Operations', type: 'DIVISION', effectiveFrom: '2024-01-01', status: 'ACTIVE' },
-  { id: 'ou-it', code: 'OU-IT', unitId: 'le-01', name: 'Technology', type: 'DEPARTMENT', effectiveFrom: '2024-01-01', status: 'ACTIVE' },
-  { id: 'ou-legacy', code: 'OU-LEGACY', unitId: 'le-03', name: 'Legacy Support', type: 'TEAM', effectiveFrom: '2023-01-01', effectiveTo: '2025-12-31', status: 'INACTIVE' },
+  { id: 'ou-hq', code: 'OU-HQ', unitId: 'le-01', name: 'Head Office', status: 'ACTIVE' },
+  { id: 'ou-hr', code: 'OU-HR', unitId: 'le-01', name: 'Human Resources', status: 'ACTIVE' },
+  { id: 'ou-sales', code: 'OU-SALES', unitId: 'le-01', name: 'Sales', status: 'ACTIVE' },
+  { id: 'ou-retail', code: 'OU-RETAIL', unitId: 'le-02', name: 'Retail Operations', status: 'ACTIVE' },
+  { id: 'ou-it', code: 'OU-IT', unitId: 'le-01', name: 'Technology', status: 'ACTIVE' },
+  { id: 'ou-legacy', code: 'OU-LEGACY', unitId: 'le-03', name: 'Legacy Support', status: 'INACTIVE' },
 ];
 
 export const mockPositions: Position[] = [

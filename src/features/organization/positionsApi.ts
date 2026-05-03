@@ -7,6 +7,7 @@ import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../sh
 import type { Position, PositionSelectOption } from './organizationTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
+type PositionPayload = Omit<Position, 'id'>;
 
 export async function listPositions(params: ListQueryParams = {}): Promise<PaginatedResponse<Position>> {
   if (isMockMode) {
@@ -45,7 +46,7 @@ export async function listPositionsSelect(): Promise<PositionSelectOption[]> {
   return api.get<PositionSelectOption[]>('/positions/select');
 }
 
-export async function createPosition(payload: Omit<Position, 'id'>): Promise<Position> {
+export async function createPosition(payload: PositionPayload): Promise<Position> {
   if (isMockMode) {
     await mockDelay();
     const position = { id: generateId('pos'), ...payload };
@@ -57,7 +58,7 @@ export async function createPosition(payload: Omit<Position, 'id'>): Promise<Pos
   return api.post<Position>('/positions', payload);
 }
 
-export async function updatePosition(id: string, payload: Partial<Omit<Position, 'id'>>): Promise<Position> {
+export async function updatePosition(id: string, payload: Partial<PositionPayload>): Promise<Position> {
   if (isMockMode) {
     await mockDelay();
     const position = mockPositions.find((item) => item.id === id);

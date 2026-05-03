@@ -1,8 +1,8 @@
 import axios, { type AxiosRequestConfig } from 'axios';
-import { message } from 'antd';
 
 import { clearSession, getAccessToken } from '../../features/auth/authClient';
-import { ApiError, type ApiEnvelope, type ApiErrorResponse } from './api.types';
+import { ApiError, type ApiEnvelope } from './api.types';
+import { handleAxiosResponseError } from './errorHandler';
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -14,31 +14,6 @@ function isApiEnvelope<T>(body: unknown): body is ApiEnvelope<T> {
     typeof body.success === 'boolean' &&
     typeof body.statusCode === 'number'
   );
-}
-
-function isApiErrorResponse(body: unknown): body is ApiErrorResponse {
-  return (
-    isObject(body) &&
-    body.success === false &&
-    typeof body.statusCode === 'number' &&
-    typeof body.message === 'string'
-  );
-}
-
-async function parseJsonBlob(value: unknown, contentType?: string): Promise<unknown> {
-  if (
-    typeof Blob === 'undefined' ||
-    !(value instanceof Blob) ||
-    !String(contentType ?? '').includes('application/json')
-  ) {
-    return value;
-  }
-
-  try {
-    return JSON.parse(await value.text()) as unknown;
-  } catch {
-    return value;
-  }
 }
 
 export function unwrapApiEnvelope<T>(body: unknown): T {
@@ -78,7 +53,7 @@ export function getFilenameFromContentDisposition(value?: string): string | null
 }
 
 export const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL: import.meta.env.VITE_HR_API_BASE_URL ?? import.meta.env.VITE_API_BASE_URL,
   timeout: 15000,
 });
 
@@ -92,32 +67,11 @@ axiosInstance.interceptors.request.use((config) => {
 
 axiosInstance.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const status = error.response?.status as number | undefined;
-    const payload = await parseJsonBlob(
-      error.response?.data,
-      error.response?.headers?.['content-type'],
-    );
-    const apiError = isApiErrorResponse(payload)
-      ? new ApiError(payload)
-      : new ApiError({
-          statusCode: status ?? 0,
-          message: error.message || 'Không thể kết nối đến API',
-          errorCode: status ? `HTTP_${status}` : 'NETWORK_ERROR',
-          requestId: error.response?.headers?.['x-request-id'],
-        });
-
-    if (apiError.statusCode === 401) {
+  (error) =>
+    handleAxiosResponseError(error, () => {
       clearSession();
       window.location.assign('/login');
-    }
-
-    if (apiError.statusCode === 403) {
-      message.error('Bạn không có quyền thực hiện thao tác này.');
-    }
-
-    return Promise.reject(apiError);
-  },
+    }),
 );
 
 export const api = {

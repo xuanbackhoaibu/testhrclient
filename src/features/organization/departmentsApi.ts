@@ -7,6 +7,7 @@ import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../sh
 import type { Department, DepartmentSelectOption } from './organizationTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
+type DepartmentPayload = Pick<Department, 'code' | 'unitId' | 'name' | 'status' | 'note'>;
 
 export async function listDepartments(params: ListQueryParams = {}): Promise<PaginatedResponse<Department>> {
   if (isMockMode) {
@@ -47,7 +48,7 @@ export async function listDepartmentsSelect(unitId?: string): Promise<Department
   });
 }
 
-export async function createDepartment(payload: Omit<Department, 'id'>): Promise<Department> {
+export async function createDepartment(payload: DepartmentPayload): Promise<Department> {
   if (isMockMode) {
     await mockDelay();
     const department = { id: generateId('ou'), ...payload };
@@ -59,7 +60,7 @@ export async function createDepartment(payload: Omit<Department, 'id'>): Promise
   return api.post<Department>('/departments', payload);
 }
 
-export async function updateDepartment(id: string, payload: Partial<Omit<Department, 'id'>>): Promise<Department> {
+export async function updateDepartment(id: string, payload: Partial<DepartmentPayload>): Promise<Department> {
   if (isMockMode) {
     await mockDelay();
     const department = mockDepartments.find((item) => item.id === id);

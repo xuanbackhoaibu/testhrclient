@@ -15,11 +15,12 @@ function readHttpStatus(error: unknown): number | undefined {
 
 export function useAuth() {
   const store = useAuthStore();
+  const user = store.user ?? getStoredUser();
 
   async function refreshCurrentUser(): Promise<void> {
     try {
-      const user = await getCurrentUser();
-      setSessionUser(user);
+      const freshUser = await getCurrentUser();
+      setSessionUser(freshUser);
       useAuthStore.getState().setError(null);
     } catch (error: unknown) {
       const status = readHttpStatus(error);
@@ -48,12 +49,27 @@ export function useAuth() {
   }
 
   function hasRole(role: string): boolean {
-    return hasNormalizedRole(store.user ?? getStoredUser(), role as never);
+    return hasNormalizedRole(user, role as never);
+  }
+
+  function can(permission: string): boolean {
+    const perms = user?.permissions;
+    if (!perms?.length) return false;
+    return perms.includes('*') || perms.includes(permission);
+  }
+
+  function canAny(permissions: string[]): boolean {
+    return permissions.some((p) => can(p));
+  }
+
+  function canAll(permissions: string[]): boolean {
+    return permissions.every((p) => can(p));
   }
 
   return {
-    user: store.user ?? getStoredUser(),
-    roles: store.user?.roles ?? getStoredUser()?.roles ?? [],
+    user,
+    roles: user?.roles ?? [],
+    permissions: user?.permissions ?? [],
     isAuthenticated: store.isAuthenticated,
     isLoading: store.isLoading,
     error: store.error,
@@ -61,5 +77,8 @@ export function useAuth() {
     logout,
     refreshCurrentUser,
     hasRole,
+    can,
+    canAny,
+    canAll,
   };
 }

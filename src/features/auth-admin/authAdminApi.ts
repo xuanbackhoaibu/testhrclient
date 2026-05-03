@@ -5,9 +5,12 @@ import type {
   AssignPermissionsResult,
   AssignRolesInput,
   AssignRolesResult,
+  BulkProvisionFromBatchInput,
+  BulkProvisionFromBatchResult,
   EffectivePermissionsResult,
   ProvisionFromEmployeeInput,
   ProvisionFromEmployeeResult,
+  RoleDefinition,
   RevokeSessionsResult,
   SendActivationResult,
   UpdateAccountStatusInput,
@@ -92,5 +95,18 @@ export async function getEffectivePermissions(
 ): Promise<EffectivePermissionsResult> {
   return authAdminApi.get<EffectivePermissionsResult>(
     `${BASE}/users/${authUserId}/effective-permissions`,
+  );
+}
+
+export async function getRoles(): Promise<RoleDefinition[]> {
+  return authAdminApi.get<RoleDefinition[]>(`${BASE}/roles`);
+}
+
+export async function bulkProvisionFromBatch(
+  input: BulkProvisionFromBatchInput,
+): Promise<BulkProvisionFromBatchResult> {
+  return authAdminApi.post<BulkProvisionFromBatchResult>(
+    `${BASE}/accounts/bulk-provision-from-batch`,
+    input,
   );
 }
