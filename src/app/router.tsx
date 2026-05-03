@@ -17,6 +17,7 @@ import { LoginPage } from '../pages/LoginPage';
 import { MovementsPage } from '../pages/movements/MovementsPage';
 import { OffboardingPage } from '../pages/offboarding/OffboardingPage';
 import { OnboardingPage } from '../pages/onboarding/OnboardingPage';
+import { BusinessSectorsPage } from '../pages/organization/BusinessSectorsPage';
 import { UnitsPage } from '../pages/organization/UnitsPage';
 import { DepartmentsPage } from '../pages/organization/DepartmentsPage';
 import { PositionsPage } from '../pages/organization/PositionsPage';
@@ -57,6 +58,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute permissions={[HR_PERMISSIONS.READ]}>
             <EmployeeDetailPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.businessSectors,
+        element: (
+          <ProtectedRoute permissions={[HR_PERMISSIONS.READ]}>
+            <BusinessSectorsPage />
           </ProtectedRoute>
         ),
       },

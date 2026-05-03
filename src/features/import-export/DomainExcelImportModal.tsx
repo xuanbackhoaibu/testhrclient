@@ -1,14 +1,17 @@
 import { useMemo, useState } from 'react';
-import { Table } from 'antd';
-import { message } from 'antd';
+import { Table, message } from 'antd';
 import { useMutation } from '@tanstack/react-query';
 
+import { showDownloadError } from './downloadError';
+import {
+  downloadImportErrorReport,
+  downloadImportTemplate,
+  type ExcelDomainKey,
+} from './excelFilesApi';
 import {
   ExcelImportModal,
   type ImportPreviewStat,
 } from './ExcelImportModal';
-import { showDownloadError } from './downloadError';
-import { downloadImportErrorReport, downloadImportTemplate, type ExcelDomainKey } from './excelFilesApi';
 import {
   commitDomainImport,
   listDomainImportRows,
@@ -22,7 +25,11 @@ interface DomainExcelImportModalProps {
   title: string;
   module: ExcelDomainKey;
   onSuccess?: () => void | Promise<void>;
-  onAfterCommit?: (result: { batchId: string; jobId: string; status: string }) => void;
+  onAfterCommit?: (result: {
+    batchId: string;
+    jobId: string;
+    status: string;
+  }) => void;
 }
 
 function renderMessages(value: unknown): string {
@@ -55,9 +62,15 @@ export function DomainExcelImportModal({
   const [rows, setRows] = useState<HrmCoreStagingRow[]>([]);
   const [summary, setSummary] = useState<ImportPreviewStat[]>([]);
 
+  const description =
+    module === 'organization-units'
+      ? 'Tải file mẫu, chọn file Excel, xem kết quả validate và import trực tiếp ngay trên màn hiện tại. Cột linh_vuc phải là mã lĩnh vực đã tồn tại trong danh mục Lĩnh vực.'
+      : 'Tải file mẫu, chọn file Excel, xem kết quả validate và import trực tiếp ngay trên màn hiện tại.';
+
   const templateMutation = useMutation({
     mutationFn: () => downloadImportTemplate(module),
-    onError: (error) => showDownloadError(error, 'Tải mẫu Excel thất bại.'),
+    onError: (error) =>
+      showDownloadError(error, 'Tải mẫu Excel thất bại.'),
   });
 
   const previewMutation = useMutation({
@@ -99,7 +112,8 @@ export function DomainExcelImportModal({
       if (!batchId) throw new Error('Missing batch preview');
       return downloadImportErrorReport(batchId);
     },
-    onError: (error) => showDownloadError(error, 'Tải file lỗi thất bại.'),
+    onError: (error) =>
+      showDownloadError(error, 'Tải file lỗi thất bại.'),
   });
 
   function handleClose() {
@@ -119,7 +133,9 @@ export function DomainExcelImportModal({
 
   const categorizedRows = useMemo(() => {
     const errorRows = rows.filter((row) => row.validationStatus === 'ERROR');
-    const warningRows = rows.filter((row) => row.validationStatus === 'WARNING');
+    const warningRows = rows.filter(
+      (row) => row.validationStatus === 'WARNING',
+    );
     return { errorRows, warningRows };
   }, [rows]);
 
@@ -128,15 +144,18 @@ export function DomainExcelImportModal({
     { title: 'Trạng thái', dataIndex: 'validationStatus', width: 120 },
     {
       title: 'Dữ liệu',
-      render: (_: unknown, row: HrmCoreStagingRow) => JSON.stringify(row.rawDataJson),
+      render: (_: unknown, row: HrmCoreStagingRow) =>
+        JSON.stringify(row.rawDataJson),
     },
     {
       title: 'Lỗi',
-      render: (_: unknown, row: HrmCoreStagingRow) => renderMessages(row.validationErrorsJson),
+      render: (_: unknown, row: HrmCoreStagingRow) =>
+        renderMessages(row.validationErrorsJson),
     },
     {
       title: 'Cảnh báo',
-      render: (_: unknown, row: HrmCoreStagingRow) => renderMessages(row.validationWarningsJson),
+      render: (_: unknown, row: HrmCoreStagingRow) =>
+        renderMessages(row.validationWarningsJson),
     },
   ];
 
@@ -145,11 +164,21 @@ export function DomainExcelImportModal({
       open={open}
       onClose={handleClose}
       title={title}
-      description="Tải file mẫu, chọn file Excel, xem kết quả validate và import trực tiếp ngay trên màn hiện tại."
+      description={description}
       onDownloadTemplate={() => templateMutation.mutateAsync()}
-      onUpload={(file) => previewMutation.mutateAsync(file).then(() => undefined)}
-      onCommit={hasPreview && !hasErrors ? () => commitMutation.mutateAsync().then(() => undefined) : undefined}
-      onDownloadErrors={hasPreview ? () => errorReportMutation.mutateAsync().then(() => undefined) : undefined}
+      onUpload={(file) =>
+        previewMutation.mutateAsync(file).then(() => undefined)
+      }
+      onCommit={
+        hasPreview && !hasErrors
+          ? () => commitMutation.mutateAsync().then(() => undefined)
+          : undefined
+      }
+      onDownloadErrors={
+        hasPreview
+          ? () => errorReportMutation.mutateAsync().then(() => undefined)
+          : undefined
+      }
       summary={summary}
       previewContent={
         <Table

@@ -4,6 +4,7 @@ export const ROUTES = {
   root: '/',
   dashboard: '/dashboard',
   employees: '/employees',
+  businessSectors: '/organization/business-sectors',
   units: '/organization/units',
   departments: '/organization/departments',
   positions: '/organization/positions',
@@ -17,4 +18,3 @@ export const ROUTES = {
   auditLogs: '/audit-logs',
   settings: '/settings',
 } as const;
-

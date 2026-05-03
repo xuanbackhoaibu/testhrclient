@@ -2,9 +2,16 @@ export interface BusinessSectorSummary {
   id: string;
   code: string;
   name: string;
+  status?: string;
+  note?: string | null;
 }
 
 export type BusinessSectorOption = BusinessSectorSummary;
+
+export interface BusinessSector extends BusinessSectorSummary {
+  status: string;
+  note?: string | null;
+}
 
 export interface Unit {
   id: string;

@@ -1,9 +1,65 @@
-import type { Unit, Department, Position } from '../../features/organization/organizationTypes';
+import type {
+  BusinessSector,
+  Department,
+  Position,
+  Unit,
+} from '../../features/organization/organizationTypes';
+
+export const mockBusinessSectors: BusinessSector[] = [
+  {
+    id: 'sector-hc',
+    code: 'HC',
+    name: 'Hacom Holdings',
+    status: 'ACTIVE',
+    note: 'Danh mục lĩnh vực mặc định cho HACOM.',
+  },
+  {
+    id: 'sector-tech',
+    code: 'TECH',
+    name: 'Công nghệ',
+    status: 'ACTIVE',
+    note: 'Lĩnh vực công nghệ.',
+  },
+  {
+    id: 'sector-service',
+    code: 'SERVICE',
+    name: 'Dịch vụ',
+    status: 'ACTIVE',
+    note: 'Lĩnh vực dịch vụ.',
+  },
+];
 
 export const mockUnits: Unit[] = [
-  { id: 'le-01', code: 'LE-01', name: 'HACOM Holdings', shortName: 'HACOM', taxCode: '0101234567', status: 'ACTIVE' },
-  { id: 'le-02', code: 'LE-02', name: 'HACOM Retail', shortName: 'HACOM Retail', taxCode: '0101234568', status: 'ACTIVE' },
-  { id: 'le-03', code: 'LE-03', name: 'HACOM Services', shortName: 'HACOM Services', taxCode: '0101234569', status: 'INACTIVE' },
+  {
+    id: 'le-01',
+    code: 'LE-01',
+    name: 'HACOM Holdings',
+    shortName: 'HACOM',
+    taxCode: '0101234567',
+    status: 'ACTIVE',
+    sectorId: 'sector-hc',
+    sector: mockBusinessSectors[0],
+  },
+  {
+    id: 'le-02',
+    code: 'LE-02',
+    name: 'HACOM Retail',
+    shortName: 'HACOM Retail',
+    taxCode: '0101234568',
+    status: 'ACTIVE',
+    sectorId: 'sector-tech',
+    sector: mockBusinessSectors[1],
+  },
+  {
+    id: 'le-03',
+    code: 'LE-03',
+    name: 'HACOM Services',
+    shortName: 'HACOM Services',
+    taxCode: '0101234569',
+    status: 'INACTIVE',
+    sectorId: 'sector-service',
+    sector: mockBusinessSectors[2],
+  },
 ];
 
 export const mockDepartments: Department[] = [

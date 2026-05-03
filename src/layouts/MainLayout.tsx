@@ -50,6 +50,7 @@ const mainItems: NavItem[] = [
 ];
 
 const orgItems: NavItem[] = [
+  { label: "Lĩnh vực", path: ROUTES.businessSectors, icon: IconBuildingBank },
   { label: "Đơn vị", path: ROUTES.units, icon: IconBuildingBank },
   { label: "Phòng ban", path: ROUTES.departments, icon: IconSitemap },
   { label: "Chức vụ", path: ROUTES.positions, icon: IconBriefcase },
@@ -58,6 +59,7 @@ const orgItems: NavItem[] = [
 const routeTitles: Record<string, string> = {
   [ROUTES.dashboard]: "Dashboard",
   [ROUTES.employees]: "Nhân sự",
+  [ROUTES.businessSectors]: "Lĩnh vực",
   [ROUTES.units]: "Đơn vị",
   [ROUTES.departments]: "Phòng ban",
   [ROUTES.positions]: "Chức vụ",
