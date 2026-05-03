@@ -3,7 +3,12 @@ import { message } from 'antd';
 import { getCurrentUser } from './authApi';
 import { clearSession, getStoredUser, login as loginClient, logout as logoutClient, setSessionUser } from './authClient';
 import { useAuthStore } from './authStore';
-import { hasRole as hasNormalizedRole } from './permissions';
+import {
+  hasAllPermissions,
+  hasAnyPermission,
+  hasPermission,
+  hasRole as hasNormalizedRole,
+} from './permissions';
 import type { DemoRole, LoginCredentials } from './types';
 
 function readHttpStatus(error: unknown): number | undefined {
@@ -53,17 +58,15 @@ export function useAuth() {
   }
 
   function can(permission: string): boolean {
-    const perms = user?.permissions;
-    if (!perms?.length) return false;
-    return perms.includes('*') || perms.includes(permission);
+    return hasPermission(user, permission);
   }
 
   function canAny(permissions: string[]): boolean {
-    return permissions.some((p) => can(p));
+    return hasAnyPermission(user, permissions);
   }
 
   function canAll(permissions: string[]): boolean {
-    return permissions.every((p) => can(p));
+    return hasAllPermissions(user, permissions);
   }
 
   return {

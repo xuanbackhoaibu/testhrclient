@@ -5,6 +5,8 @@ import { notifications } from '@mantine/notifications';
 import { IconEdit, IconPlus, IconSearch } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { HR_PERMISSIONS } from '../../features/auth/permissions';
+import { useAuth } from '../../features/auth/useAuth';
 import { DomainExcelImportModal } from '../../features/import-export/DomainExcelImportModal';
 import { downloadPositionsExport } from '../../features/import-export/excelFilesApi';
 import { ImportExportToolbar } from '../../features/import-export/ImportExportToolbar';
@@ -25,6 +27,9 @@ const statusOptions = [
 ];
 
 export function PositionsPage() {
+  const { can } = useAuth();
+  const canWritePositions = can(HR_PERMISSIONS.WRITE);
+  const canImportPositions = can(HR_PERMISSIONS.IMPORT);
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<Position | null>(null);
   const [open, setOpen] = useState(false);
@@ -154,21 +159,24 @@ export function PositionsPage() {
           <>
             <ImportExportToolbar
               onDownloadTemplate={templateDownload.downloadTemplate}
-              onImport={() => setImportOpen(true)}
+              onImport={canImportPositions ? () => setImportOpen(true) : undefined}
               onExport={() => exportMutation.mutateAsync()}
               isDownloadingTemplate={templateDownload.isDownloadingTemplate}
               isExporting={exportMutation.isPending}
+              canImport={canImportPositions}
             />
-            <Button
-              leftSection={<IconPlus size={18} />}
-              onClick={() => {
-                setEditing(null);
-                form.reset();
-                setOpen(true);
-              }}
-            >
-              Táº¡o chá»©c vá»¥
-            </Button>
+            {canWritePositions ? (
+              <Button
+                leftSection={<IconPlus size={18} />}
+                onClick={() => {
+                  setEditing(null);
+                  form.reset();
+                  setOpen(true);
+                }}
+              >
+                Táº¡o chá»©c vá»¥
+              </Button>
+            ) : null}
           </>
         }
       />

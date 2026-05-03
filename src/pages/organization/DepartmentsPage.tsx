@@ -5,6 +5,8 @@ import { notifications } from '@mantine/notifications';
 import { IconEdit, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { HR_PERMISSIONS } from '../../features/auth/permissions';
+import { useAuth } from '../../features/auth/useAuth';
 import { DomainExcelImportModal } from '../../features/import-export/DomainExcelImportModal';
 import { downloadDepartmentsExport } from '../../features/import-export/excelFilesApi';
 import { ImportExportToolbar } from '../../features/import-export/ImportExportToolbar';
@@ -33,6 +35,9 @@ const statusOptions = [
 ];
 
 export function DepartmentsPage() {
+  const { can } = useAuth();
+  const canWriteDepartments = can(HR_PERMISSIONS.WRITE);
+  const canImportDepartments = can(HR_PERMISSIONS.IMPORT);
   const queryClient = useQueryClient();
   const [params, setParams] = useState({
     page: 1,
@@ -196,21 +201,26 @@ export function DepartmentsPage() {
           <>
             <ImportExportToolbar
               onDownloadTemplate={templateDownload.downloadTemplate}
-              onImport={() => setImportOpen(true)}
+              onImport={
+                canImportDepartments ? () => setImportOpen(true) : undefined
+              }
               onExport={() => exportMutation.mutateAsync()}
               isDownloadingTemplate={templateDownload.isDownloadingTemplate}
               isExporting={exportMutation.isPending}
+              canImport={canImportDepartments}
             />
-            <Button
-              leftSection={<IconPlus size={18} />}
-              onClick={() => {
-                setEditing(null);
-                form.reset();
-                setOpen(true);
-              }}
-            >
-              Táº¡o phĂ²ng ban
-            </Button>
+            {canWriteDepartments ? (
+              <Button
+                leftSection={<IconPlus size={18} />}
+                onClick={() => {
+                  setEditing(null);
+                  form.reset();
+                  setOpen(true);
+                }}
+              >
+                Táº¡o phĂ²ng ban
+              </Button>
+            ) : null}
           </>
         }
       />

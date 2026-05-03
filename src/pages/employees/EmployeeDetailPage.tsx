@@ -2,6 +2,7 @@ import { Card, Col, Descriptions, Row, Table, Tabs } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useParams } from 'react-router-dom';
 
+import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import type { AttendanceRecord } from '../../features/attendance/attendanceTypes';
 import type { AuditLog } from '../../features/audit/auditTypes';
 import { useAuth } from '../../features/auth/useAuth';
@@ -19,7 +20,7 @@ import { AccessTab } from './tabs/AccessTab';
 export function EmployeeDetailPage() {
   const { id } = useParams();
   const { can } = useAuth();
-  const canReadAccount = can('auth.account.read');
+  const canReadAccount = can(HR_PERMISSIONS.PROVISION);
 
   const { data, isLoading, error, refetch } = useEmployeeDetail(id, {
     includeAccount: canReadAccount,

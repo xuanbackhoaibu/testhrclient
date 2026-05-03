@@ -4,7 +4,7 @@ export interface BusinessSectorSummary {
   name: string;
 }
 
-export interface BusinessSectorOption extends BusinessSectorSummary {}
+export type BusinessSectorOption = BusinessSectorSummary;
 
 export interface Unit {
   id: string;

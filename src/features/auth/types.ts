@@ -3,7 +3,9 @@ export type ScopeClaim = {
   scopeType: string;
   resourceType?: string;
   resourceIds?: string[];
+  unitId?: string;
   unitIds?: string[];
+  departmentId?: string;
   departmentIds?: string[];
 };
 

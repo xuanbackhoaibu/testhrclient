@@ -26,6 +26,7 @@ import {
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../features/auth/useAuth";
+import { HR_PERMISSIONS } from "../features/auth/permissions";
 import { BrandLogo } from "../shared/components/BrandLogo";
 import { ROUTES } from "../shared/constants/routes";
 
@@ -85,13 +86,13 @@ export function MainLayout() {
   const { user, logout, can } = useAuth();
 
   const visibleMainItems = mainItems.filter((item) => {
-    if (item.path === ROUTES.employees) return can("hr.employee.read");
-    if (item.path === ROUTES.auditLogs) return can("hr.employee.read");
-    if (item.path === ROUTES.settings) return can("hr.unit.read");
+    if (item.path === ROUTES.employees) return can(HR_PERMISSIONS.READ);
+    if (item.path === ROUTES.auditLogs) return can(HR_PERMISSIONS.AUDIT_READ);
+    if (item.path === ROUTES.settings) return can(HR_PERMISSIONS.READ);
     return true;
   });
 
-  const showOrganizationMenu = can("hr.unit.read");
+  const showOrganizationMenu = can(HR_PERMISSIONS.READ);
   const selectedPath = location.pathname.startsWith("/employees/")
     ? ROUTES.employees
     : location.pathname;

@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Button, Drawer, Group, Select, SimpleGrid, Stack, Text, TextInput, Textarea, Tooltip } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconEdit, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { HR_PERMISSIONS } from '../../features/auth/permissions';
+import { useAuth } from '../../features/auth/useAuth';
 import { DomainExcelImportModal } from '../../features/import-export/DomainExcelImportModal';
 import { downloadUnitsExport } from '../../features/import-export/excelFilesApi';
 import { ImportExportToolbar } from '../../features/import-export/ImportExportToolbar';
@@ -54,6 +56,9 @@ function TruncatedCell({ value }: { value?: string | null }) {
 }
 
 export function UnitsPage() {
+  const { can } = useAuth();
+  const canWriteUnits = can(HR_PERMISSIONS.WRITE);
+  const canImportUnits = can(HR_PERMISSIONS.IMPORT);
   const queryClient = useQueryClient();
   const [params, setParams] = useState({
     page: 1,
@@ -171,7 +176,7 @@ export function UnitsPage() {
     setOpen(true);
   }
 
-  function openEditDrawer(record: Unit) {
+  const openEditDrawer = useCallback((record: Unit) => {
     setEditing(record);
     setCodeManuallyEdited(true);
     form.setValues({
@@ -185,7 +190,7 @@ export function UnitsPage() {
       status: record.status,
     });
     setOpen(true);
-  }
+  }, [form]);
 
   function closeDrawer() {
     setOpen(false);
@@ -247,24 +252,28 @@ export function UnitsPage() {
         render: (record) => (
           <TableActionsMenu
             actions={[
-              {
-                label: 'Chá»‰nh sá»­a',
-                icon: <IconEdit size={16} />,
-                onClick: () => openEditDrawer(record),
-              },
-              {
-                label: 'Táº¡m ngÆ°ng',
-                icon: <IconX size={16} />,
-                color: 'red',
-                disabled: record.status === 'INACTIVE',
-                onClick: () => setConfirmInactive(record),
-              },
+              ...(canWriteUnits
+                ? [
+                    {
+                      label: 'Chá»‰nh sá»­a',
+                      icon: <IconEdit size={16} />,
+                      onClick: () => openEditDrawer(record),
+                    },
+                    {
+                      label: 'Táº¡m ngÆ°ng',
+                      icon: <IconX size={16} />,
+                      color: 'red' as const,
+                      disabled: record.status === 'INACTIVE',
+                      onClick: () => setConfirmInactive(record),
+                    },
+                  ]
+                : []),
             ]}
           />
         ),
       },
     ],
-    [],
+    [canWriteUnits, openEditDrawer],
   );
 
   return (
@@ -276,14 +285,17 @@ export function UnitsPage() {
           <>
             <ImportExportToolbar
               onDownloadTemplate={templateDownload.downloadTemplate}
-              onImport={() => setImportOpen(true)}
+              onImport={canImportUnits ? () => setImportOpen(true) : undefined}
               onExport={() => exportMutation.mutateAsync()}
               isDownloadingTemplate={templateDownload.isDownloadingTemplate}
               isExporting={exportMutation.isPending}
+              canImport={canImportUnits}
             />
-            <Button leftSection={<IconPlus size={18} />} onClick={openCreateDrawer}>
-              Táº¡o Ä‘Æ¡n vá»‹
-            </Button>
+            {canWriteUnits ? (
+              <Button leftSection={<IconPlus size={18} />} onClick={openCreateDrawer}>
+                Táº¡o Ä‘Æ¡n vá»‹
+              </Button>
+            ) : null}
           </>
         }
       />

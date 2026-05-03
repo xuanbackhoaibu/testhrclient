@@ -64,6 +64,18 @@ export async function handleAxiosResponseError(
           | undefined,
       });
 
+  if (import.meta.env.DEV) {
+    console.error('[HR API ERROR]', {
+      method: error.config?.method?.toUpperCase() ?? 'UNKNOWN',
+      url: error.config?.url ?? 'UNKNOWN',
+      status: apiError.statusCode,
+      message: apiError.message,
+      errorCode: apiError.errorCode,
+      requestId: apiError.requestId,
+      response: payload,
+    });
+  }
+
   if (apiError.statusCode === 401) {
     onUnauthenticated();
     return Promise.reject(apiError);

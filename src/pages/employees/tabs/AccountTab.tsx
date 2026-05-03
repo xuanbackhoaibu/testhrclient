@@ -18,6 +18,7 @@ import {
   updateAccountStatus,
 } from '../../../features/auth-admin/authAdminApi';
 import { ACCOUNT_STATUS_LABELS } from '../../../features/auth-admin/authAdminTypes';
+import { HR_PERMISSIONS } from '../../../features/auth/permissions';
 import { useAuth } from '../../../features/auth/useAuth';
 import type { Employee } from '../../../features/employees/employeeTypes';
 import { api } from '../../../shared/api/httpClient';
@@ -44,12 +45,12 @@ export function AccountTab({ employee }: Props) {
   const { can } = useAuth();
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
-  const canRead = can('auth.account.read');
-  const canCreate = can('auth.account.create');
-  const canSendActivation = can('auth.account.send_activation');
-  const canActivate = can('auth.account.activate');
-  const canSuspend = can('auth.account.suspend');
-  const canUpdate = can('auth.account.update');
+  const canRead = can(HR_PERMISSIONS.PROVISION);
+  const canCreate = can(HR_PERMISSIONS.PROVISION);
+  const canSendActivation = can(HR_PERMISSIONS.PROVISION);
+  const canActivate = can(HR_PERMISSIONS.PROVISION);
+  const canSuspend = can(HR_PERMISSIONS.PROVISION);
+  const canUpdate = can(HR_PERMISSIONS.PROVISION);
 
   const { data: authUser, isLoading, error, refetch } = useQuery({
     queryKey: ['auth-user-by-employee', employee.id],

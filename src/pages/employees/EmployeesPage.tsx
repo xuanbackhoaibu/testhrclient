@@ -7,6 +7,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../features/auth/useAuth';
+import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import { createEmployee, getEmployee, getNextEmployeeCode, updateEmployee } from '../../features/employees/employeesApi';
 import type { Employee, EmployeePayload } from '../../features/employees/employeeTypes';
 import { useEmployees } from '../../features/employees/useEmployees';
@@ -112,8 +113,10 @@ const emptyEmployeeFormValues: EmployeePayload = {
 export function EmployeesPage() {
   const navigate = useNavigate();
   const { can } = useAuth();
-  const mayCreateEmployee = can('hr.employee.create');
-  const mayEditEmployee = can('hr.employee.update');
+  const mayCreateEmployee = can(HR_PERMISSIONS.WRITE);
+  const mayEditEmployee = can(HR_PERMISSIONS.WRITE);
+  const mayImportEmployees = can(HR_PERMISSIONS.IMPORT);
+  const mayProvisionAccounts = can(HR_PERMISSIONS.PROVISION);
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -441,10 +444,11 @@ export function EmployeesPage() {
           <>
             <ImportExportToolbar
               onDownloadTemplate={templateDownload.downloadTemplate}
-              onImport={() => setImportOpen(true)}
+              onImport={mayImportEmployees ? () => setImportOpen(true) : undefined}
               onExport={() => exportMutation.mutateAsync()}
               isDownloadingTemplate={templateDownload.isDownloadingTemplate}
               isExporting={exportMutation.isPending}
+              canImport={mayImportEmployees}
             />
             {mayCreateEmployee ? (
             <Button leftSection={<IconPlus size={18} />} onClick={() => void openCreateDrawer()}>
@@ -619,7 +623,7 @@ export function EmployeesPage() {
         module="employees"
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ['employees'] })}
         onAfterCommit={(result) => {
-          if (can('auth.account.create')) {
+          if (mayProvisionAccounts) {
             setPostImport({ batchId: result.batchId, count: 0 });
           }
         }}

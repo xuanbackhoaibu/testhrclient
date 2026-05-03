@@ -9,6 +9,7 @@ import {
   getEffectivePermissions,
 } from '../../../features/auth-admin/authAdminApi';
 import { SENSITIVE_ROLES } from '../../../features/auth-admin/authAdminTypes';
+import { HR_PERMISSIONS } from '../../../features/auth/permissions';
 import { useAvailableRoles } from '../../../features/auth-admin/useAvailableRoles';
 import { useAuth } from '../../../features/auth/useAuth';
 import type { Employee } from '../../../features/employees/employeeTypes';
@@ -26,9 +27,9 @@ export function AccessTab({ employee }: Props) {
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
 
-  const canReadRoles = can('auth.role.read');
-  const canAssignRoles = can('auth.role.assign');
-  const canReadPerms = can('auth.permission.read');
+  const canReadRoles = can(HR_PERMISSIONS.AUTHORITY_READ);
+  const canAssignRoles = can(HR_PERMISSIONS.AUTHORITY_WRITE);
+  const canReadPerms = can(HR_PERMISSIONS.AUTHORITY_READ);
   const { asSelectOptions: roleOptions } = useAvailableRoles();
 
   const authUserId = employee.authUserId;
