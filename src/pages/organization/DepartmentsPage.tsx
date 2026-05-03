@@ -1,25 +1,41 @@
-import { useMemo, useState } from 'react';
-import { Button, Drawer, Group, Select, SimpleGrid, Stack, Text, TextInput, Textarea } from '@mantine/core';
-import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
-import { IconEdit, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMemo, useState } from "react";
+import {
+  Button,
+  Drawer,
+  Group,
+  Select,
+  SimpleGrid,
+  Stack,
+  Text,
+  TextInput,
+  Textarea,
+} from "@mantine/core";
+import { useForm } from "@mantine/form";
+import { notifications } from "@mantine/notifications";
+import { IconEdit, IconPlus, IconSearch, IconX } from "@tabler/icons-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { HR_PERMISSIONS } from '../../features/auth/permissions';
-import { useAuth } from '../../features/auth/useAuth';
-import { DomainExcelImportModal } from '../../features/import-export/DomainExcelImportModal';
-import { downloadDepartmentsExport } from '../../features/import-export/excelFilesApi';
-import { ImportExportToolbar } from '../../features/import-export/ImportExportToolbar';
-import { useHrmCoreTemplateDownload } from '../../features/import-export/useHrmCoreTemplateDownload';
-import { createDepartment, updateDepartment } from '../../features/organization/departmentsApi';
-import type { Department } from '../../features/organization/organizationTypes';
-import { useDepartments } from '../../features/organization/useDepartments';
-import { useUnitsSelect } from '../../features/organization/useUnits';
-import { ConfirmActionModal } from '../../shared/components/ConfirmActionModal';
-import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
-import { PageHeader } from '../../shared/components/PageHeader';
-import { StatusTag } from '../../shared/components/StatusTag';
-import { TableActionsMenu } from '../../shared/components/TableActionsMenu';
+import { HR_PERMISSIONS } from "../../features/auth/permissions";
+import { useAuth } from "../../features/auth/useAuth";
+import { DomainExcelImportModal } from "../../features/import-export/DomainExcelImportModal";
+import { downloadDepartmentsExport } from "../../features/import-export/excelFilesApi";
+import { ImportExportToolbar } from "../../features/import-export/ImportExportToolbar";
+import { useHrmCoreTemplateDownload } from "../../features/import-export/useHrmCoreTemplateDownload";
+import {
+  createDepartment,
+  updateDepartment,
+} from "../../features/organization/departmentsApi";
+import type { Department } from "../../features/organization/organizationTypes";
+import { useDepartments } from "../../features/organization/useDepartments";
+import { useUnitsSelect } from "../../features/organization/useUnits";
+import { ConfirmActionModal } from "../../shared/components/ConfirmActionModal";
+import {
+  DataTable,
+  type DataTableColumn,
+} from "../../shared/components/DataTable";
+import { PageHeader } from "../../shared/components/PageHeader";
+import { StatusTag } from "../../shared/components/StatusTag";
+import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 
 type DepartmentFormValues = {
   code: string;
@@ -30,8 +46,8 @@ type DepartmentFormValues = {
 };
 
 const statusOptions = [
-  { value: 'ACTIVE', label: 'Äang hoáº¡t Ä‘á»™ng' },
-  { value: 'INACTIVE', label: 'Táº¡m ngÆ°ng' },
+  { value: "ACTIVE", label: "Đang hoạt động" },
+  { value: "INACTIVE", label: "Tạm ngưng" },
 ];
 
 export function DepartmentsPage() {
@@ -42,42 +58,44 @@ export function DepartmentsPage() {
   const [params, setParams] = useState({
     page: 1,
     pageSize: 10,
-    search: '',
+    search: "",
     unitId: undefined as string | undefined,
     status: undefined as string | undefined,
   });
   const [editing, setEditing] = useState<Department | null>(null);
-  const [confirmInactive, setConfirmInactive] = useState<Department | null>(null);
+  const [confirmInactive, setConfirmInactive] = useState<Department | null>(
+    null,
+  );
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
   const { data, isLoading, error, refetch } = useDepartments(params);
   const unitsSelect = useUnitsSelect();
-  const templateDownload = useHrmCoreTemplateDownload('departments');
+  const templateDownload = useHrmCoreTemplateDownload("departments");
 
   const exportMutation = useMutation({
     mutationFn: () => downloadDepartmentsExport(params),
     onError: () => {
       notifications.show({
-        color: 'red',
-        title: 'KhĂ´ng xuáº¥t Ä‘Æ°á»£c Excel',
-        message: 'Vui lĂ²ng thá»­ láº¡i sau.',
+        color: "red",
+        title: "Không xuất được Excel",
+        message: "Vui lòng thử lại sau.",
       });
     },
   });
 
   const form = useForm<DepartmentFormValues>({
     initialValues: {
-      code: '',
-      unitId: '',
-      name: '',
-      note: '',
-      status: 'ACTIVE',
+      code: "",
+      unitId: "",
+      name: "",
+      note: "",
+      status: "ACTIVE",
     },
     validate: {
-      code: (value) => (value.trim() ? null : 'Nháº­p mĂ£ phĂ²ng ban.'),
-      unitId: (value) => (value ? null : 'Chá»n Ä‘Æ¡n vá»‹.'),
-      name: (value) => (value.trim() ? null : 'Nháº­p tĂªn phĂ²ng ban.'),
+      code: (value) => (value.trim() ? null : "Nhập mã phòng ban."),
+      unitId: (value) => (value ? null : "Chọn đơn vị."),
+      name: (value) => (value.trim() ? null : "Nhập tên phòng ban."),
     },
   });
 
@@ -98,20 +116,20 @@ export function DepartmentsPage() {
     },
     onSuccess: async () => {
       notifications.show({
-        color: 'green',
-        title: editing ? 'ÄĂ£ cáº­p nháº­t phĂ²ng ban' : 'ÄĂ£ táº¡o phĂ²ng ban',
-        message: 'Cáº¥u trĂºc tá»• chá»©c Ä‘Ă£ Ä‘Æ°á»£c cáº­p nháº­t.',
+        color: "green",
+        title: editing ? "Đã cập nhật phòng ban" : "Đã tạo phòng ban",
+        message: "Cấu trúc tổ chức đã được cập nhật.",
       });
       setOpen(false);
       setEditing(null);
       form.reset();
-      await queryClient.invalidateQueries({ queryKey: ['departments'] });
+      await queryClient.invalidateQueries({ queryKey: ["departments"] });
     },
     onError: () => {
       notifications.show({
-        color: 'red',
-        title: 'KhĂ´ng lÆ°u Ä‘Æ°á»£c phĂ²ng ban',
-        message: 'Vui lĂ²ng kiá»ƒm tra dá»¯ liá»‡u vĂ  thá»­ láº¡i.',
+        color: "red",
+        title: "Không lưu được phòng ban",
+        message: "Vui lòng kiểm tra dữ liệu và thử lại.",
       });
     },
   });
@@ -123,22 +141,22 @@ export function DepartmentsPage() {
         unitId: record.unitId,
         name: record.name,
         note: record.note ?? undefined,
-        status: 'INACTIVE',
+        status: "INACTIVE",
       }),
     onSuccess: async () => {
       notifications.show({
-        color: 'green',
-        title: 'ÄĂ£ táº¡m ngÆ°ng phĂ²ng ban',
-        message: 'Tráº¡ng thĂ¡i phĂ²ng ban Ä‘Ă£ Ä‘Æ°á»£c cáº­p nháº­t.',
+        color: "green",
+        title: "Đã tạm ngưng phòng ban",
+        message: "Trạng thái phòng ban đã được cập nhật.",
       });
       setConfirmInactive(null);
-      await queryClient.invalidateQueries({ queryKey: ['departments'] });
+      await queryClient.invalidateQueries({ queryKey: ["departments"] });
     },
     onError: () => {
       notifications.show({
-        color: 'red',
-        title: 'KhĂ´ng táº¡m ngÆ°ng Ä‘Æ°á»£c phĂ²ng ban',
-        message: 'Vui lĂ²ng thá»­ láº¡i.',
+        color: "red",
+        title: "Không tạm ngưng được phòng ban",
+        message: "Vui lòng thử lại.",
       });
     },
   });
@@ -150,20 +168,34 @@ export function DepartmentsPage() {
 
   const columns = useMemo<DataTableColumn<Department>[]>(
     () => [
-      { key: 'code', header: 'MĂ£', width: 120, render: (record) => <Text fw={600}>{record.code}</Text> },
-      { key: 'name', header: 'TĂªn phĂ²ng ban', render: (record) => record.name },
-      { key: 'unit', header: 'ÄÆ¡n vá»‹', render: (record) => record.unit?.name ?? '-' },
-      { key: 'status', header: 'Tráº¡ng thĂ¡i', width: 140, render: (record) => <StatusTag status={record.status} /> },
       {
-        key: 'actions',
-        header: '',
+        key: "code",
+        header: "Mã",
+        width: 120,
+        render: (record) => <Text fw={600}>{record.code}</Text>,
+      },
+      { key: "name", header: "Tên phòng ban", render: (record) => record.name },
+      {
+        key: "unit",
+        header: "Đơn vị",
+        render: (record) => record.unit?.name ?? "-",
+      },
+      {
+        key: "status",
+        header: "Trạng thái",
+        width: 140,
+        render: (record) => <StatusTag status={record.status} />,
+      },
+      {
+        key: "actions",
+        header: "",
         width: 70,
-        align: 'right',
+        align: "right",
         render: (record) => (
           <TableActionsMenu
             actions={[
               {
-                label: 'Chá»‰nh sá»­a',
+                label: "Chỉnh sửa",
                 icon: <IconEdit size={16} />,
                 onClick: () => {
                   setEditing(record);
@@ -171,17 +203,17 @@ export function DepartmentsPage() {
                     code: record.code,
                     unitId: record.unitId,
                     name: record.name,
-                    note: record.note ?? '',
+                    note: record.note ?? "",
                     status: record.status,
                   });
                   setOpen(true);
                 },
               },
               {
-                label: 'Táº¡m ngÆ°ng',
+                label: "Tạm ngưng",
                 icon: <IconX size={16} />,
-                color: 'red',
-                disabled: record.status === 'INACTIVE',
+                color: "red",
+                disabled: record.status === "INACTIVE",
                 onClick: () => setConfirmInactive(record),
               },
             ]}
@@ -195,8 +227,8 @@ export function DepartmentsPage() {
   return (
     <>
       <PageHeader
-        title="PhĂ²ng ban"
-        subtitle="Quáº£n lĂ½ phĂ²ng ban theo Ä‘Æ¡n vá»‹, tráº¡ng thĂ¡i vĂ  import Excel ngay trĂªn mĂ n danh má»¥c."
+        title="Phòng ban"
+        subtitle="Quản lý phòng ban theo đơn vị, trạng thái và import Excel ngay trên màn danh mục."
         actions={
           <>
             <ImportExportToolbar
@@ -218,7 +250,7 @@ export function DepartmentsPage() {
                   setOpen(true);
                 }}
               >
-                Táº¡o phĂ²ng ban
+                Tạo phòng ban
               </Button>
             ) : null}
           </>
@@ -228,29 +260,41 @@ export function DepartmentsPage() {
       <Stack gap="md">
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
           <TextInput
-            placeholder="TĂ¬m mĂ£ hoáº·c tĂªn"
+            placeholder="Tìm mã hoặc tên"
             leftSection={<IconSearch size={17} />}
             value={params.search}
             onChange={(event) =>
-              setParams((current) => ({ ...current, search: event.currentTarget.value, page: 1 }))
+              setParams((current) => ({
+                ...current,
+                search: event.currentTarget.value,
+                page: 1,
+              }))
             }
           />
           <Select
-            placeholder="ÄÆ¡n vá»‹"
+            placeholder="Đơn vị"
             clearable
             data={unitOptions}
             value={params.unitId ?? null}
             onChange={(value) =>
-              setParams((current) => ({ ...current, unitId: value ?? undefined, page: 1 }))
+              setParams((current) => ({
+                ...current,
+                unitId: value ?? undefined,
+                page: 1,
+              }))
             }
           />
           <Select
-            placeholder="Tráº¡ng thĂ¡i"
+            placeholder="Trạng thái"
             clearable
             data={statusOptions}
             value={params.status ?? null}
             onChange={(value) =>
-              setParams((current) => ({ ...current, status: value ?? undefined, page: 1 }))
+              setParams((current) => ({
+                ...current,
+                status: value ?? undefined,
+                page: 1,
+              }))
             }
           />
         </SimpleGrid>
@@ -263,9 +307,11 @@ export function DepartmentsPage() {
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}
-          onPageChange={(page, pageSize) => setParams((current) => ({ ...current, page, pageSize }))}
-          emptyTitle="ChÆ°a cĂ³ phĂ²ng ban"
-          emptyDescription="KhĂ´ng cĂ³ phĂ²ng ban phĂ¹ há»£p vá»›i bá»™ lá»c hiá»‡n táº¡i."
+          onPageChange={(page, pageSize) =>
+            setParams((current) => ({ ...current, page, pageSize }))
+          }
+          emptyTitle="Chưa có phòng ban"
+          emptyDescription="Không có phòng ban phù hợp với bộ lọc hiện tại."
         />
       </Stack>
 
@@ -276,23 +322,46 @@ export function DepartmentsPage() {
           setEditing(null);
           form.reset();
         }}
-        title={editing ? 'Chá»‰nh sá»­a phĂ²ng ban' : 'Táº¡o phĂ²ng ban'}
+        title={editing ? "Chỉnh sửa phòng ban" : "Tạo phòng ban"}
         position="right"
         size="lg"
       >
         <form onSubmit={form.onSubmit((values) => mutation.mutate(values))}>
           <Stack gap="sm">
-            <TextInput label="MĂ£ phĂ²ng ban" withAsterisk {...form.getInputProps('code')} />
-            <Select label="ÄÆ¡n vá»‹" data={unitOptions} withAsterisk searchable {...form.getInputProps('unitId')} />
-            <TextInput label="TĂªn phĂ²ng ban" withAsterisk {...form.getInputProps('name')} />
-            <Textarea label="Ghi chĂº" minRows={3} {...form.getInputProps('note')} />
-            <Select label="Tráº¡ng thĂ¡i" data={statusOptions} withAsterisk {...form.getInputProps('status')} />
+            <TextInput
+              label="Mã phòng ban"
+              withAsterisk
+              {...form.getInputProps("code")}
+            />
+            <Select
+              label="Đơn vị"
+              data={unitOptions}
+              withAsterisk
+              searchable
+              {...form.getInputProps("unitId")}
+            />
+            <TextInput
+              label="Tên phòng ban"
+              withAsterisk
+              {...form.getInputProps("name")}
+            />
+            <Textarea
+              label="Ghi chú"
+              minRows={3}
+              {...form.getInputProps("note")}
+            />
+            <Select
+              label="Trạng thái"
+              data={statusOptions}
+              withAsterisk
+              {...form.getInputProps("status")}
+            />
             <Group justify="flex-end" mt="md">
               <Button variant="default" onClick={() => setOpen(false)}>
-                Há»§y
+                Hủy
               </Button>
               <Button type="submit" loading={mutation.isPending}>
-                LÆ°u
+                Lưu
               </Button>
             </Group>
           </Stack>
@@ -302,16 +371,18 @@ export function DepartmentsPage() {
       <DomainExcelImportModal
         open={importOpen}
         onOpenChange={setImportOpen}
-        title="Import Excel PhĂ²ng ban"
+        title="Import Excel Phòng ban"
         module="departments"
-        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['departments'] })}
+        onSuccess={() =>
+          queryClient.invalidateQueries({ queryKey: ["departments"] })
+        }
       />
 
       <ConfirmActionModal
         opened={Boolean(confirmInactive)}
-        title="Táº¡m ngÆ°ng phĂ²ng ban?"
-        message="PhĂ²ng ban sáº½ Ä‘Æ°á»£c chuyá»ƒn sang tráº¡ng thĂ¡i táº¡m ngÆ°ng. Dá»¯ liá»‡u lá»‹ch sá»­ khĂ´ng bá»‹ xĂ³a."
-        confirmLabel="Táº¡m ngÆ°ng"
+        title="Tạm ngưng phòng ban?"
+        message="Phòng ban sẽ được chuyển sang trạng thái tạm ngưng. Dữ liệu lịch sử không bị xóa."
+        confirmLabel="Tạm ngưng"
         loading={inactiveMutation.isPending}
         onClose={() => setConfirmInactive(null)}
         onConfirm={() => {

@@ -1,32 +1,46 @@
-import { useCallback, useMemo, useState } from 'react';
-import { Button, Drawer, Group, Select, SimpleGrid, Stack, Text, TextInput, Textarea, Tooltip } from '@mantine/core';
-import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
-import { IconEdit, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useMemo, useState } from "react";
+import {
+  Button,
+  Drawer,
+  Group,
+  Select,
+  SimpleGrid,
+  Stack,
+  Text,
+  TextInput,
+  Textarea,
+  Tooltip,
+} from "@mantine/core";
+import { useForm } from "@mantine/form";
+import { notifications } from "@mantine/notifications";
+import { IconEdit, IconPlus, IconSearch, IconX } from "@tabler/icons-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { HR_PERMISSIONS } from '../../features/auth/permissions';
-import { useAuth } from '../../features/auth/useAuth';
-import { DomainExcelImportModal } from '../../features/import-export/DomainExcelImportModal';
-import { downloadUnitsExport } from '../../features/import-export/excelFilesApi';
-import { ImportExportToolbar } from '../../features/import-export/ImportExportToolbar';
-import { useHrmCoreTemplateDownload } from '../../features/import-export/useHrmCoreTemplateDownload';
-import { useBusinessSectorsSelect } from '../../features/organization/useBusinessSectors';
+import { HR_PERMISSIONS } from "../../features/auth/permissions";
+import { useAuth } from "../../features/auth/useAuth";
+import { DomainExcelImportModal } from "../../features/import-export/DomainExcelImportModal";
+import { downloadUnitsExport } from "../../features/import-export/excelFilesApi";
+import { ImportExportToolbar } from "../../features/import-export/ImportExportToolbar";
+import { useHrmCoreTemplateDownload } from "../../features/import-export/useHrmCoreTemplateDownload";
+import { useBusinessSectorsSelect } from "../../features/organization/useBusinessSectors";
 import {
   createUnit,
   generateUnitShortCode,
   isValidUnitCode,
   normalizeUnitCodeInput,
   updateUnit,
-} from '../../features/organization/unitsApi';
-import type { Unit } from '../../features/organization/organizationTypes';
-import { useUnits } from '../../features/organization/useUnits';
-import { ApiError } from '../../shared/api/api.types';
-import { ConfirmActionModal } from '../../shared/components/ConfirmActionModal';
-import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
-import { PageHeader } from '../../shared/components/PageHeader';
-import { StatusTag } from '../../shared/components/StatusTag';
-import { TableActionsMenu } from '../../shared/components/TableActionsMenu';
+} from "../../features/organization/unitsApi";
+import type { Unit } from "../../features/organization/organizationTypes";
+import { useUnits } from "../../features/organization/useUnits";
+import { ApiError } from "../../shared/api/api.types";
+import { ConfirmActionModal } from "../../shared/components/ConfirmActionModal";
+import {
+  DataTable,
+  type DataTableColumn,
+} from "../../shared/components/DataTable";
+import { PageHeader } from "../../shared/components/PageHeader";
+import { StatusTag } from "../../shared/components/StatusTag";
+import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 
 type UnitFormValues = {
   code: string;
@@ -40,12 +54,12 @@ type UnitFormValues = {
 };
 
 const statusOptions = [
-  { value: 'ACTIVE', label: 'Äang hoáº¡t Ä‘á»™ng' },
-  { value: 'INACTIVE', label: 'Táº¡m ngÆ°ng' },
+  { value: "ACTIVE", label: "Đang hoạt động" },
+  { value: "INACTIVE", label: "Tạm ngưng" },
 ];
 
 function TruncatedCell({ value }: { value?: string | null }) {
-  const display = value || '-';
+  const display = value || "-";
   return (
     <Tooltip label={display} disabled={!value || display.length < 24}>
       <Text span className="truncate-cell">
@@ -63,7 +77,7 @@ export function UnitsPage() {
   const [params, setParams] = useState({
     page: 1,
     pageSize: 10,
-    search: '',
+    search: "",
     status: undefined as string | undefined,
   });
   const [editing, setEditing] = useState<Unit | null>(null);
@@ -73,42 +87,42 @@ export function UnitsPage() {
   const [codeManuallyEdited, setCodeManuallyEdited] = useState(false);
   const { data, isLoading, error, refetch } = useUnits(params);
   const sectorsQuery = useBusinessSectorsSelect();
-  const templateDownload = useHrmCoreTemplateDownload('organization-units');
+  const templateDownload = useHrmCoreTemplateDownload("organization-units");
 
   const exportMutation = useMutation({
     mutationFn: () => downloadUnitsExport(params),
     onError: () => {
       notifications.show({
-        color: 'red',
-        title: 'KhĂ´ng xuáº¥t Ä‘Æ°á»£c Excel',
-        message: 'Vui lĂ²ng thá»­ láº¡i sau.',
+        color: "red",
+        title: "Không xuất được Excel",
+        message: "Vui lòng thử lại sau.",
       });
     },
   });
 
   const form = useForm<UnitFormValues>({
     initialValues: {
-      code: '',
-      sectorId: '',
-      name: '',
-      shortName: '',
-      taxCode: '',
-      address: '',
-      note: '',
-      status: 'ACTIVE',
+      code: "",
+      sectorId: "",
+      name: "",
+      shortName: "",
+      taxCode: "",
+      address: "",
+      note: "",
+      status: "ACTIVE",
     },
     validate: {
       code: (value) => {
         const code = normalizeUnitCodeInput(value);
         if (!code) {
-          return 'MĂ£ Ä‘Æ¡n vá»‹ khĂ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng.';
+          return "Mã đơn vị không được để trống.";
         }
-        return isValidUnitCode(code) ? null : 'MĂ£ Ä‘Æ¡n vá»‹ khĂ´ng Ä‘Ăºng Ä‘á»‹nh dáº¡ng.';
+        return isValidUnitCode(code) ? null : "Mã đơn vị không đúng định dạng.";
       },
-      sectorId: (value) => (value ? null : 'Vui lĂ²ng chá»n lÄ©nh vá»±c.'),
-      name: (value) => (value.trim() ? null : 'Vui lĂ²ng nháº­p tĂªn Ä‘Æ¡n vá»‹.'),
-      shortName: (value) => (value.trim() ? null : 'Nháº­p KH Ä‘Æ¡n vá»‹.'),
-      taxCode: (value) => (value.trim() ? null : 'Nháº­p mĂ£ sá»‘ thuáº¿.'),
+      sectorId: (value) => (value ? null : "Vui lòng chọn lĩnh vực."),
+      name: (value) => (value.trim() ? null : "Vui lòng nhập tên đơn vị."),
+      shortName: (value) => (value.trim() ? null : "Nhập KH đơn vị."),
+      taxCode: (value) => (value.trim() ? null : "Nhập mã số thuế."),
     },
   });
 
@@ -119,7 +133,7 @@ export function UnitsPage() {
 
   function applyApiErrors(error: unknown) {
     if (!(error instanceof ApiError)) {
-      return 'Vui lĂ²ng kiá»ƒm tra dá»¯ liá»‡u vĂ  thá»­ láº¡i.';
+      return "Vui lòng kiểm tra dữ liệu và thử lại.";
     }
 
     error.errors.forEach((item) => {
@@ -153,17 +167,17 @@ export function UnitsPage() {
     },
     onSuccess: async () => {
       notifications.show({
-        color: 'green',
-        title: editing ? 'ÄĂ£ cáº­p nháº­t Ä‘Æ¡n vá»‹' : 'ÄĂ£ táº¡o Ä‘Æ¡n vá»‹',
-        message: 'Dá»¯ liá»‡u Ä‘Ă£ Ä‘Æ°á»£c lÆ°u.',
+        color: "green",
+        title: editing ? "Đã cập nhật đơn vị" : "Đã tạo đơn vị",
+        message: "Dữ liệu đã được lưu.",
       });
       closeDrawer();
-      await queryClient.invalidateQueries({ queryKey: ['units'] });
+      await queryClient.invalidateQueries({ queryKey: ["units"] });
     },
     onError: (error) => {
       notifications.show({
-        color: 'red',
-        title: 'KhĂ´ng lÆ°u Ä‘Æ°á»£c Ä‘Æ¡n vá»‹',
+        color: "red",
+        title: "Không lưu được đơn vị",
         message: applyApiErrors(error),
       });
     },
@@ -176,21 +190,25 @@ export function UnitsPage() {
     setOpen(true);
   }
 
-  const openEditDrawer = useCallback((record: Unit) => {
-    setEditing(record);
-    setCodeManuallyEdited(true);
-    form.setValues({
-      code: record.code,
-      sectorId: record.sectorId ?? record.businessSectorId ?? record.sector?.id ?? '',
-      name: record.name,
-      shortName: record.shortName ?? '',
-      taxCode: record.taxCode ?? '',
-      address: record.address ?? '',
-      note: record.note ?? '',
-      status: record.status,
-    });
-    setOpen(true);
-  }, [form]);
+  const openEditDrawer = useCallback(
+    (record: Unit) => {
+      setEditing(record);
+      setCodeManuallyEdited(true);
+      form.setValues({
+        code: record.code,
+        sectorId:
+          record.sectorId ?? record.businessSectorId ?? record.sector?.id ?? "",
+        name: record.name,
+        shortName: record.shortName ?? "",
+        taxCode: record.taxCode ?? "",
+        address: record.address ?? "",
+        note: record.note ?? "",
+        status: record.status,
+      });
+      setOpen(true);
+    },
+    [form],
+  );
 
   function closeDrawer() {
     setOpen(false);
@@ -200,9 +218,12 @@ export function UnitsPage() {
   }
 
   function handleNameChange(value: string) {
-    form.setFieldValue('name', value);
+    form.setFieldValue("name", value);
     if (!codeManuallyEdited) {
-      form.setFieldValue('code', value.trim() ? generateUnitShortCode(value) : '');
+      form.setFieldValue(
+        "code",
+        value.trim() ? generateUnitShortCode(value) : "",
+      );
     }
   }
 
@@ -210,60 +231,91 @@ export function UnitsPage() {
     mutationFn: (record: Unit) =>
       updateUnit(record.id, {
         code: record.code,
-        sectorId: record.sectorId ?? record.businessSectorId ?? record.sector?.id ?? '',
+        sectorId:
+          record.sectorId ?? record.businessSectorId ?? record.sector?.id ?? "",
         name: record.name,
         shortName: record.shortName,
         taxCode: record.taxCode,
         address: record.address ?? undefined,
         note: record.note ?? undefined,
-        status: 'INACTIVE',
+        status: "INACTIVE",
       }),
     onSuccess: async () => {
       notifications.show({
-        color: 'green',
-        title: 'ÄĂ£ táº¡m ngÆ°ng Ä‘Æ¡n vá»‹',
-        message: 'Tráº¡ng thĂ¡i Ä‘Æ¡n vá»‹ Ä‘Ă£ Ä‘Æ°á»£c cáº­p nháº­t.',
+        color: "green",
+        title: "Đã tạm ngưng đơn vị",
+        message: "Trạng thái đơn vị đã được cập nhật.",
       });
       setConfirmInactive(null);
-      await queryClient.invalidateQueries({ queryKey: ['units'] });
+      await queryClient.invalidateQueries({ queryKey: ["units"] });
     },
     onError: () => {
       notifications.show({
-        color: 'red',
-        title: 'KhĂ´ng táº¡m ngÆ°ng Ä‘Æ°á»£c Ä‘Æ¡n vá»‹',
-        message: 'Vui lĂ²ng thá»­ láº¡i.',
+        color: "red",
+        title: "Không tạm ngưng được đơn vị",
+        message: "Vui lòng thử lại.",
       });
     },
   });
 
   const columns = useMemo<DataTableColumn<Unit>[]>(
     () => [
-      { key: 'code', header: 'MĂ£', width: 120, render: (record) => <Text fw={600}>{record.code}</Text> },
-      { key: 'name', header: 'TĂªn Ä‘Æ¡n vá»‹', render: (record) => <TruncatedCell value={record.name} /> },
-      { key: 'sector', header: 'LÄ©nh vá»±c', render: (record) => <TruncatedCell value={record.businessSector?.name ?? record.sector?.name} /> },
-      { key: 'shortName', header: 'KH Ä‘Æ¡n vá»‹', render: (record) => record.shortName || '-' },
-      { key: 'taxCode', header: 'MĂ£ sá»‘ thuáº¿', render: (record) => <TruncatedCell value={record.taxCode} /> },
-      { key: 'status', header: 'Tráº¡ng thĂ¡i', width: 140, render: (record) => <StatusTag status={record.status} /> },
       {
-        key: 'actions',
-        header: '',
+        key: "code",
+        header: "Mã",
+        width: 120,
+        render: (record) => <Text fw={600}>{record.code}</Text>,
+      },
+      {
+        key: "name",
+        header: "Tên đơn vị",
+        render: (record) => <TruncatedCell value={record.name} />,
+      },
+      {
+        key: "sector",
+        header: "Lĩnh vực",
+        render: (record) => (
+          <TruncatedCell
+            value={record.businessSector?.name ?? record.sector?.name}
+          />
+        ),
+      },
+      {
+        key: "shortName",
+        header: "KH đơn vị",
+        render: (record) => record.shortName || "-",
+      },
+      {
+        key: "taxCode",
+        header: "Mã số thuế",
+        render: (record) => <TruncatedCell value={record.taxCode} />,
+      },
+      {
+        key: "status",
+        header: "Trạng thái",
+        width: 140,
+        render: (record) => <StatusTag status={record.status} />,
+      },
+      {
+        key: "actions",
+        header: "",
         width: 70,
-        align: 'right',
+        align: "right",
         render: (record) => (
           <TableActionsMenu
             actions={[
               ...(canWriteUnits
                 ? [
                     {
-                      label: 'Chá»‰nh sá»­a',
+                      label: "Chỉnh sửa",
                       icon: <IconEdit size={16} />,
                       onClick: () => openEditDrawer(record),
                     },
                     {
-                      label: 'Táº¡m ngÆ°ng',
+                      label: "Tạm ngưng",
                       icon: <IconX size={16} />,
-                      color: 'red' as const,
-                      disabled: record.status === 'INACTIVE',
+                      color: "red" as const,
+                      disabled: record.status === "INACTIVE",
                       onClick: () => setConfirmInactive(record),
                     },
                   ]
@@ -279,8 +331,8 @@ export function UnitsPage() {
   return (
     <>
       <PageHeader
-        title="ÄÆ¡n vá»‹"
-        subtitle="Quáº£n lĂ½ Ä‘Æ¡n vá»‹, lÄ©nh vá»±c, mĂ£ sá»‘ thuáº¿ vĂ  thĂ´ng tin danh má»¥c dĂ¹ng cho HRM."
+        title="Đơn vị"
+        subtitle="Quản lý đơn vị, lĩnh vực, mã số thuế và thông tin danh mục dùng cho HRM."
         actions={
           <>
             <ImportExportToolbar
@@ -292,8 +344,11 @@ export function UnitsPage() {
               canImport={canImportUnits}
             />
             {canWriteUnits ? (
-              <Button leftSection={<IconPlus size={18} />} onClick={openCreateDrawer}>
-                Táº¡o Ä‘Æ¡n vá»‹
+              <Button
+                leftSection={<IconPlus size={18} />}
+                onClick={openCreateDrawer}
+              >
+                Tạo đơn vị
               </Button>
             ) : null}
           </>
@@ -303,20 +358,28 @@ export function UnitsPage() {
       <Stack gap="md">
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <TextInput
-            placeholder="TĂ¬m mĂ£ hoáº·c tĂªn"
+            placeholder="Tìm mã hoặc tên"
             leftSection={<IconSearch size={17} />}
             value={params.search}
             onChange={(event) =>
-              setParams((current) => ({ ...current, search: event.currentTarget.value, page: 1 }))
+              setParams((current) => ({
+                ...current,
+                search: event.currentTarget.value,
+                page: 1,
+              }))
             }
           />
           <Select
-            placeholder="Tráº¡ng thĂ¡i"
+            placeholder="Trạng thái"
             clearable
             data={statusOptions}
             value={params.status ?? null}
             onChange={(value) =>
-              setParams((current) => ({ ...current, status: value ?? undefined, page: 1 }))
+              setParams((current) => ({
+                ...current,
+                status: value ?? undefined,
+                page: 1,
+              }))
             }
           />
         </SimpleGrid>
@@ -329,51 +392,79 @@ export function UnitsPage() {
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}
-          onPageChange={(page, pageSize) => setParams((current) => ({ ...current, page, pageSize }))}
-          emptyTitle="ChÆ°a cĂ³ Ä‘Æ¡n vá»‹"
-          emptyDescription="KhĂ´ng cĂ³ Ä‘Æ¡n vá»‹ phĂ¹ há»£p vá»›i bá»™ lá»c hiá»‡n táº¡i."
+          onPageChange={(page, pageSize) =>
+            setParams((current) => ({ ...current, page, pageSize }))
+          }
+          emptyTitle="Chưa có đơn vị"
+          emptyDescription="Không có đơn vị phù hợp với bộ lọc hiện tại."
         />
       </Stack>
 
-      <Drawer opened={open} onClose={closeDrawer} title={editing ? 'Chá»‰nh sá»­a Ä‘Æ¡n vá»‹' : 'Táº¡o Ä‘Æ¡n vá»‹'} position="right" size="lg">
+      <Drawer
+        opened={open}
+        onClose={closeDrawer}
+        title={editing ? "Chỉnh sửa đơn vị" : "Tạo đơn vị"}
+        position="right"
+        size="lg"
+      >
         <form onSubmit={form.onSubmit((values) => mutation.mutate(values))}>
           <Stack gap="sm">
             <TextInput
-              label="MĂ£ Ä‘Æ¡n vá»‹"
+              label="Mã đơn vị"
               withAsterisk
               value={form.values.code}
               error={form.errors.code}
               onChange={(event) => {
                 setCodeManuallyEdited(true);
-                form.setFieldValue('code', normalizeUnitCodeInput(event.currentTarget.value));
+                form.setFieldValue(
+                  "code",
+                  normalizeUnitCodeInput(event.currentTarget.value),
+                );
               }}
             />
             <TextInput
-              label="TĂªn Ä‘Æ¡n vá»‹"
+              label="Tên đơn vị"
               withAsterisk
               value={form.values.name}
               error={form.errors.name}
               onChange={(event) => handleNameChange(event.currentTarget.value)}
             />
             <Select
-              label="LÄ©nh vá»±c"
+              label="Lĩnh vực"
               withAsterisk
               searchable
               data={sectorOptions}
               disabled={sectorsQuery.isLoading}
-              {...form.getInputProps('sectorId')}
+              {...form.getInputProps("sectorId")}
             />
-            <TextInput label="KH Ä‘Æ¡n vá»‹" withAsterisk {...form.getInputProps('shortName')} />
-            <TextInput label="MĂ£ sá»‘ thuáº¿" withAsterisk {...form.getInputProps('taxCode')} />
-            <TextInput label="Äá»‹a chá»‰" {...form.getInputProps('address')} />
-            <Textarea label="Ghi chĂº" minRows={3} {...form.getInputProps('note')} />
-            <Select label="Tráº¡ng thĂ¡i" data={statusOptions} withAsterisk {...form.getInputProps('status')} />
+            <TextInput
+              label="KH đơn vị"
+              withAsterisk
+              {...form.getInputProps("shortName")}
+            />
+            <TextInput
+              label="Mã số thuế"
+              withAsterisk
+              {...form.getInputProps("taxCode")}
+            />
+            <TextInput label="Địa chỉ" {...form.getInputProps("address")} />
+            <Textarea
+              label="Ghi chú"
+              minRows={3}
+              {...form.getInputProps("note")}
+            />
+            <Select
+              label="Trạng thái"
+              data={statusOptions}
+              withAsterisk
+              {...form.getInputProps("status")}
+            />
             <Group justify="flex-end" mt="md">
               <Button variant="default" onClick={closeDrawer}>
-                Há»§y
+                Hủy
               </Button>
               <Button type="submit" loading={mutation.isPending}>
-                LÆ°u
+                Lưu
               </Button>
             </Group>
           </Stack>
@@ -383,16 +474,16 @@ export function UnitsPage() {
       <DomainExcelImportModal
         open={importOpen}
         onOpenChange={setImportOpen}
-        title="Import Excel ÄÆ¡n vá»‹"
+        title="Import Excel Đơn vị"
         module="organization-units"
-        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['units'] })}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ["units"] })}
       />
 
       <ConfirmActionModal
         opened={Boolean(confirmInactive)}
-        title="Táº¡m ngÆ°ng Ä‘Æ¡n vá»‹?"
-        message="ÄÆ¡n vá»‹ sáº½ Ä‘Æ°á»£c chuyá»ƒn sang tráº¡ng thĂ¡i táº¡m ngÆ°ng. Dá»¯ liá»‡u lá»‹ch sá»­ khĂ´ng bá»‹ xĂ³a."
-        confirmLabel="Táº¡m ngÆ°ng"
+        title="Tạm ngưng đơn vị?"
+        message="Đơn vị sẽ được chuyển sang trạng thái tạm ngưng. Dữ liệu lịch sử không bị xóa."
+        confirmLabel="Tạm ngưng"
         loading={inactiveMutation.isPending}
         onClose={() => setConfirmInactive(null)}
         onConfirm={() => {
