@@ -62,6 +62,7 @@ const orgItems: NavItem[] = [
 const iamItems: NavItem[] = [
   { label: "Tài khoản", path: ROUTES.accounts, icon: IconUserCheck },
   { label: "Role", path: ROUTES.roles, icon: IconShield },
+  { label: "Nhóm quyền", path: ROUTES.permissionGroups, icon: IconShield },
   { label: "Permission", path: ROUTES.permissions, icon: IconKey },
 ];
 
@@ -83,6 +84,7 @@ const routeTitles: Record<string, string> = {
   [ROUTES.settings]: "Cài đặt",
   [ROUTES.accounts]: "Tài khoản",
   [ROUTES.roles]: "Role",
+  [ROUTES.permissionGroups]: "Nhóm quyền",
   [ROUTES.permissions]: "Permission",
 };
 

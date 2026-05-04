@@ -20,6 +20,7 @@ import { OnboardingPage } from '../pages/onboarding/OnboardingPage';
 import { AccountsPage } from '../pages/accounts/AccountsPage';
 import { RolesPage } from '../pages/roles/RolesPage';
 import { PermissionsPage } from '../pages/permissions/PermissionsPage';
+import { PermissionGroupsPage } from '../pages/permission-groups/PermissionGroupsPage';
 import { BusinessSectorsPage } from '../pages/organization/BusinessSectorsPage';
 import { UnitsPage } from '../pages/organization/UnitsPage';
 import { DepartmentsPage } from '../pages/organization/DepartmentsPage';
@@ -149,6 +150,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute permissions={[HR_PERMISSIONS.AUTHORITY_READ]}>
             <PermissionsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.permissionGroups,
+        element: (
+          <ProtectedRoute permissions={[HR_PERMISSIONS.AUTHORITY_READ]}>
+            <PermissionGroupsPage />
           </ProtectedRoute>
         ),
       },

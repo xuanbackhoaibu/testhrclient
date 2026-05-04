@@ -1,5 +1,12 @@
 export type AuthAccountStatus = 'PENDING_ACTIVATION' | 'ACTIVE' | 'SUSPENDED' | 'DISABLED';
-export type AuthAccountState = 'INACTIVE' | 'ACTIVE' | 'LOCKED' | 'DISABLED' | 'DEACTIVATED' | 'TOMBSTONED' | string;
+export type AuthAccountState =
+  | 'INACTIVE'
+  | 'ACTIVE'
+  | 'LOCKED'
+  | 'DISABLED'
+  | 'DEACTIVATED'
+  | 'TOMBSTONED'
+  | string;
 
 export interface AuthAdminUser {
   authUserId: string;
@@ -60,6 +67,17 @@ export interface UpdateAccountStatusResult {
   revokedSessions: boolean;
 }
 
+export interface LifecycleActionResult {
+  authUserId: string;
+  accountState: string;
+}
+
+export interface ResetPasswordResult {
+  authUserId: string;
+  tempPassword: string;
+  mustChangePassword: boolean;
+}
+
 export interface RevokeSessionsResult {
   authUserId: string;
   revokedSessions: boolean;
@@ -102,21 +120,57 @@ export interface SendActivationResult {
   maskedEmail?: string | null;
 }
 
+// ─── Role types ───────────────────────────────────────────────────────────────
+
 export interface RoleDefinition {
   id?: string;
   key?: string;
   name: string;
   label?: string;
-  description?: string;
+  description?: string | null;
   status?: string;
   isSensitive?: boolean;
+  isSystem?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
+
+export interface RoleDetail extends RoleDefinition {
+  id: string;
+  key: string;
+  permissions: PermissionDefinition[];
+  permissionGroups: PermissionGroupDefinition[];
+}
+
+export interface CreateRoleInput {
+  key: string;
+  name: string;
+  description?: string;
+  isSensitive?: boolean;
+}
+
+export interface UpdateRoleInput {
+  name?: string;
+  description?: string;
+  status?: 'active' | 'disabled';
+  isSensitive?: boolean;
+}
+
+// ─── Permission types ─────────────────────────────────────────────────────────
 
 export interface PermissionDefinition {
   id: string;
   key: string;
+  name?: string | null;
   description?: string | null;
   domain?: string | null;
+  system?: string | null;
+  module?: string | null;
+  action?: string | null;
+  isSensitive?: boolean;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface PermissionSystemGroup {
@@ -128,6 +182,62 @@ export interface PermissionsGroupedResult {
   systems: PermissionSystemGroup[];
   total: number;
 }
+
+export interface ListPermissionsParams {
+  search?: string;
+  system?: string;
+  module?: string;
+  status?: string;
+  isSensitive?: boolean;
+}
+
+export interface CreatePermissionInput {
+  key: string;
+  name?: string;
+  description?: string;
+  isSensitive?: boolean;
+}
+
+export interface UpdatePermissionInput {
+  name?: string;
+  description?: string;
+  isSensitive?: boolean;
+}
+
+// ─── Permission Group types ───────────────────────────────────────────────────
+
+export interface PermissionGroupDefinition {
+  id: string;
+  key: string;
+  name: string;
+  description?: string | null;
+  system?: string | null;
+  module?: string | null;
+  status: string;
+  permissionCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PermissionGroupDetail extends PermissionGroupDefinition {
+  permissions: PermissionDefinition[];
+}
+
+export interface CreatePermissionGroupInput {
+  key: string;
+  name: string;
+  description?: string;
+  system?: string;
+  module?: string;
+}
+
+export interface UpdatePermissionGroupInput {
+  name?: string;
+  description?: string;
+  status?: 'active' | 'inactive';
+}
+
+// ─── User list types ──────────────────────────────────────────────────────────
 
 export interface ListUsersParams {
   search?: string;
@@ -159,7 +269,9 @@ export interface BulkProvisionFromBatchResult {
   errors?: Array<{ employeeId: string; reason: string }>;
 }
 
-export const SENSITIVE_ROLES = new Set(['SUPER_ADMIN', 'super_admin', 'IAM_ADMIN', 'iam_admin']);
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+export const SENSITIVE_ROLES = new Set(['super_admin', 'security_admin', 'SUPER_ADMIN', 'IAM_ADMIN', 'iam_admin']);
 
 export const ACCOUNT_STATUS_LABELS: Record<string, string> = {
   NOT_CREATED: 'Chưa tạo tài khoản',
@@ -169,6 +281,15 @@ export const ACCOUNT_STATUS_LABELS: Record<string, string> = {
   DISABLED: 'Vô hiệu hóa',
   INACTIVE: 'Chờ kích hoạt',
   LOCKED: 'Bị khóa',
-  DEACTIVATED: 'Đã hủy kích hoạt',
-  TOMBSTONED: 'Đã xóa',
+  DEACTIVATED: 'Đã vô hiệu',
+  TOMBSTONED: 'Đã xóa mềm',
+};
+
+export const ACCOUNT_STATE_COLOR: Record<string, string> = {
+  ACTIVE: 'green',
+  INACTIVE: 'yellow',
+  LOCKED: 'orange',
+  DISABLED: 'red',
+  DEACTIVATED: 'red',
+  TOMBSTONED: 'gray',
 };
