@@ -15,7 +15,6 @@ import { notifications } from "@mantine/notifications";
 import { IconEdit, IconPlus, IconSearch, IconX } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
 import { DomainExcelImportModal } from "../../features/import-export/DomainExcelImportModal";
 import { downloadDepartmentsExport } from "../../features/import-export/excelFilesApi";

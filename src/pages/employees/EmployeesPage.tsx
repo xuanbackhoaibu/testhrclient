@@ -7,7 +7,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../features/auth/useAuth';
-import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import { createEmployee, getEmployee, getNextEmployeeCode, updateEmployee } from '../../features/employees/employeesApi';
 import type { Employee, EmployeePayload } from '../../features/employees/employeeTypes';
 import { useEmployees } from '../../features/employees/useEmployees';

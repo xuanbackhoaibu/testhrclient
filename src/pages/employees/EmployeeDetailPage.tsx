@@ -2,7 +2,6 @@ import { Card, Col, Descriptions, Row, Table, Tabs } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useParams } from 'react-router-dom';
 
-import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import type { AttendanceRecord } from '../../features/attendance/attendanceTypes';
 import type { AuditLog } from '../../features/audit/auditTypes';
 import { useAuth } from '../../features/auth/useAuth';

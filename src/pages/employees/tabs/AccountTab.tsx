@@ -18,7 +18,6 @@ import {
   updateAccountStatus,
 } from '../../../features/auth-admin/authAdminApi';
 import { ACCOUNT_STATUS_LABELS } from '../../../features/auth-admin/authAdminTypes';
-import { HR_PERMISSIONS } from '../../../features/auth/permissions';
 import { useAuth } from '../../../features/auth/useAuth';
 import type { Employee } from '../../../features/employees/employeeTypes';
 import { api } from '../../../shared/api/httpClient';

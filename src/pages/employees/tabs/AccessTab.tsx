@@ -9,7 +9,6 @@ import {
   getEffectivePermissions,
 } from '../../../features/auth-admin/authAdminApi';
 import { SENSITIVE_ROLES } from '../../../features/auth-admin/authAdminTypes';
-import { HR_PERMISSIONS } from '../../../features/auth/permissions';
 import { useAvailableRoles } from '../../../features/auth-admin/useAvailableRoles';
 import { useAuth } from '../../../features/auth/useAuth';
 import type { Employee } from '../../../features/employees/employeeTypes';

@@ -22,7 +22,6 @@ import { IconEdit, IconPlus, IconSearch } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../features/auth/useAuth';
-import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import {
   getPermissionsGrouped,
   createPermission,
