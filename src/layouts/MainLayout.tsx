@@ -102,17 +102,17 @@ export function MainLayout() {
   const { user, logout, can, hasAnyPermission } = useAuth();
 
   const visibleMainItems = mainItems.filter((item) => {
-    if (item.path === ROUTES.employees) return can(HR_PERMISSIONS.READ);
+    if (item.path === ROUTES.employees) return can(HR_PERMISSIONS.EMPLOYEE_READ);
     if (item.path === ROUTES.auditLogs) return can(HR_PERMISSIONS.AUDIT_READ);
-    if (item.path === ROUTES.settings) return can(HR_PERMISSIONS.READ);
+    if (item.path === ROUTES.settings) return can(HR_PERMISSIONS.EMPLOYEE_READ);
     return true;
   });
 
   const showOrganizationMenu = hasAnyPermission([
-    'hr.unit.read',
-    'hr.department.read',
-    'hr.position.read',
-    'hr.business_sector.read',
+    HR_PERMISSIONS.UNIT_READ,
+    HR_PERMISSIONS.DEPARTMENT_READ,
+    HR_PERMISSIONS.POSITION_READ,
+    HR_PERMISSIONS.BUSINESS_SECTOR_READ,
   ]);
   const showIamMenu =
     can(AUTH_ADMIN_PERMISSIONS.USERS_READ) ||

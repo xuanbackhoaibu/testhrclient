@@ -19,6 +19,7 @@ export type ApiErrorResponse = {
   errorCode?: string;
   errors?: ApiErrorDetail[];
   requestId?: string;
+  requiredPermissions?: string[];
 };
 
 export type ApiEnvelope<T> = ApiSuccessResponse<T> | ApiErrorResponse;
@@ -43,6 +44,7 @@ export interface ApiErrorPayload {
   errorCode?: string;
   errors?: ApiErrorDetail[];
   requestId?: string;
+  requiredPermissions?: string[];
 }
 
 export class ApiError extends Error {
@@ -50,6 +52,7 @@ export class ApiError extends Error {
   errorCode: string;
   errors: ApiErrorDetail[];
   requestId?: string;
+  requiredPermissions?: string[];
 
   constructor(payload: ApiErrorPayload | ApiErrorResponse) {
     super(payload.message);
@@ -58,5 +61,6 @@ export class ApiError extends Error {
     this.errorCode = payload.errorCode ?? 'API_ERROR';
     this.errors = payload.errors ?? [];
     this.requestId = payload.requestId;
+    this.requiredPermissions = payload.requiredPermissions;
   }
 }

@@ -15,6 +15,7 @@ import { notifications } from "@mantine/notifications";
 import { IconEdit, IconPlus, IconSearch } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
 import { DomainExcelImportModal } from "../../features/import-export/DomainExcelImportModal";
 import { downloadPositionsExport } from "../../features/import-export/excelFilesApi";
@@ -30,6 +31,7 @@ import {
   DataTable,
   type DataTableColumn,
 } from "../../shared/components/DataTable";
+import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
 import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
@@ -42,9 +44,10 @@ const statusOptions = [
 ];
 
 export function PositionsPage() {
-  const { can } = useAuth();
-  const canWritePositions = can('hr.position.create');
-  const canImportPositions = can('hr.position.create');
+  const { can, permissions, roles } = useAuth();
+  const canCreatePosition = can(HR_PERMISSIONS.POSITION_CREATE);
+  const canEditPosition = can(HR_PERMISSIONS.POSITION_UPDATE);
+  const canImportPositions = can(HR_PERMISSIONS.POSITION_CREATE);
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<Position | null>(null);
   const [open, setOpen] = useState(false);
@@ -86,6 +89,21 @@ export function PositionsPage() {
 
   const mutation = useMutation({
     mutationFn: async (values: PositionFormValues) => {
+      const requiredPermission = editing
+        ? HR_PERMISSIONS.POSITION_UPDATE
+        : HR_PERMISSIONS.POSITION_CREATE;
+      const allowed = editing ? canEditPosition : canCreatePosition;
+      debugPermissionCheck({
+        action: editing ? "position.update" : "position.create",
+        required: requiredPermission,
+        permissions,
+        roles,
+        allowed,
+      });
+      if (!allowed) {
+        throw new Error("Ban khong co quyen luu chuc vu.");
+      }
+
       const payload = {
         code: values.code.trim(),
         name: values.name.trim(),
@@ -163,7 +181,18 @@ export function PositionsPage() {
               {
                 label: "Chỉnh sửa",
                 icon: <IconEdit size={16} />,
+                disabled: !canEditPosition,
                 onClick: () => {
+                  debugPermissionCheck({
+                    action: "position.update",
+                    required: HR_PERMISSIONS.POSITION_UPDATE,
+                    permissions,
+                    roles,
+                    allowed: canEditPosition,
+                  });
+                  if (!canEditPosition) {
+                    return;
+                  }
                   setEditing(record);
                   form.setValues({
                     code: record.code,
@@ -181,7 +210,7 @@ export function PositionsPage() {
         ),
       },
     ],
-    [form],
+    [canEditPosition, form, permissions, roles],
   );
 
   return (
@@ -201,10 +230,20 @@ export function PositionsPage() {
               isExporting={exportMutation.isPending}
               canImport={canImportPositions}
             />
-            {canWritePositions ? (
+            {canCreatePosition ? (
               <Button
                 leftSection={<IconPlus size={18} />}
                 onClick={() => {
+                  debugPermissionCheck({
+                    action: "position.create",
+                    required: HR_PERMISSIONS.POSITION_CREATE,
+                    permissions,
+                    roles,
+                    allowed: canCreatePosition,
+                  });
+                  if (!canCreatePosition) {
+                    return;
+                  }
                   setEditing(null);
                   form.reset();
                   setOpen(true);
@@ -304,7 +343,7 @@ export function PositionsPage() {
               <Button variant="default" onClick={() => setOpen(false)}>
                 Hủy
               </Button>
-              <Button type="submit" loading={mutation.isPending}>
+              <Button type="submit" loading={mutation.isPending} disabled={editing ? !canEditPosition : !canCreatePosition}>
                 Lưu
               </Button>
             </Group>

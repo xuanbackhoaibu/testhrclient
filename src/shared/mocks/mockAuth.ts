@@ -12,6 +12,7 @@ export const MOCK_TOKENS: Record<DemoRole, string> = {
 export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
   SUPER_ADMIN: {
     id: 'usr-super-admin',
+    userId: 'usr-super-admin',
     externalAuthUserId: 'auth-1000',
     email: 'super.admin@hacom.local',
     fullName: 'Super Admin',
@@ -31,6 +32,7 @@ export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
   },
   ADMIN: {
     id: 'usr-admin',
+    userId: 'usr-admin',
     externalAuthUserId: 'auth-1001-admin',
     email: 'admin@hacom.local',
     fullName: 'Admin',
@@ -59,6 +61,7 @@ export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
   },
   HR: {
     id: 'usr-hr-admin',
+    userId: 'usr-hr-admin',
     externalAuthUserId: 'auth-1001',
     email: 'hr.admin@hacom.local',
     fullName: 'Nguyen Ha Linh',
@@ -87,6 +90,7 @@ export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
   },
   BAN_LANH_DAO: {
     id: 'usr-leadership',
+    userId: 'usr-leadership',
     externalAuthUserId: 'auth-1002-leader',
     email: 'leadership@hacom.local',
     fullName: 'Ban Lanh Dao',
@@ -106,6 +110,7 @@ export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
   },
   BAN_LANH_DAO_DON_VI: {
     id: 'usr-manager',
+    userId: 'usr-manager',
     externalAuthUserId: 'auth-1002',
     email: 'manager.ops@hacom.local',
     fullName: 'Tran Minh Quan',
@@ -128,6 +133,7 @@ export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
   },
   EMPLOYEE: {
     id: 'usr-employee',
+    userId: 'usr-employee',
     externalAuthUserId: 'auth-1003',
     email: 'employee@hacom.local',
     fullName: 'Le Thanh Mai',

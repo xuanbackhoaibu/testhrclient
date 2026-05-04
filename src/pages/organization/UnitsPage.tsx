@@ -16,6 +16,7 @@ import { notifications } from "@mantine/notifications";
 import { IconEdit, IconPlus, IconSearch, IconX } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
 import { DomainExcelImportModal } from "../../features/import-export/DomainExcelImportModal";
 import { downloadUnitsExport } from "../../features/import-export/excelFilesApi";
@@ -37,6 +38,7 @@ import {
   DataTable,
   type DataTableColumn,
 } from "../../shared/components/DataTable";
+import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
 import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
@@ -69,9 +71,10 @@ function TruncatedCell({ value }: { value?: string | null }) {
 }
 
 export function UnitsPage() {
-  const { can } = useAuth();
-  const canWriteUnits = can('hr.unit.create');
-  const canImportUnits = can('hr.unit.create');
+  const { can, permissions, roles } = useAuth();
+  const canCreateUnit = can(HR_PERMISSIONS.UNIT_CREATE);
+  const canEditUnit = can(HR_PERMISSIONS.UNIT_UPDATE);
+  const canImportUnits = can(HR_PERMISSIONS.UNIT_CREATE);
   const queryClient = useQueryClient();
   const [params, setParams] = useState({
     page: 1,
@@ -158,6 +161,21 @@ export function UnitsPage() {
 
   const mutation = useMutation({
     mutationFn: async (values: UnitFormValues) => {
+      const requiredPermission = editing
+        ? HR_PERMISSIONS.UNIT_UPDATE
+        : HR_PERMISSIONS.UNIT_CREATE;
+      const allowed = editing ? canEditUnit : canCreateUnit;
+      debugPermissionCheck({
+        action: editing ? "unit.update" : "unit.create",
+        required: requiredPermission,
+        permissions,
+        roles,
+        allowed,
+      });
+      if (!allowed) {
+        throw new Error("Ban khong co quyen luu don vi.");
+      }
+
       const payload = normalizeUnitPayload(values);
       if (editing) {
         return updateUnit(editing.id, payload);
@@ -183,6 +201,17 @@ export function UnitsPage() {
   });
 
   function openCreateDrawer() {
+    debugPermissionCheck({
+      action: "unit.create",
+      required: HR_PERMISSIONS.UNIT_CREATE,
+      permissions,
+      roles,
+      allowed: canCreateUnit,
+    });
+    if (!canCreateUnit) {
+      return;
+    }
+
     setEditing(null);
     setCodeManuallyEdited(false);
     form.reset();
@@ -191,6 +220,17 @@ export function UnitsPage() {
 
   const openEditDrawer = useCallback(
     (record: Unit) => {
+      debugPermissionCheck({
+        action: "unit.update",
+        required: HR_PERMISSIONS.UNIT_UPDATE,
+        permissions,
+        roles,
+        allowed: canEditUnit,
+      });
+      if (!canEditUnit) {
+        return;
+      }
+
       setEditing(record);
       setCodeManuallyEdited(true);
       form.setValues({
@@ -206,7 +246,7 @@ export function UnitsPage() {
       });
       setOpen(true);
     },
-    [form],
+    [canEditUnit, form, permissions, roles],
   );
 
   function closeDrawer() {
@@ -227,8 +267,19 @@ export function UnitsPage() {
   }
 
   const inactiveMutation = useMutation({
-    mutationFn: (record: Unit) =>
-      updateUnit(record.id, {
+    mutationFn: (record: Unit) => {
+      debugPermissionCheck({
+        action: "unit.update",
+        required: HR_PERMISSIONS.UNIT_UPDATE,
+        permissions,
+        roles,
+        allowed: canEditUnit,
+      });
+      if (!canEditUnit) {
+        throw new Error("Ban khong co quyen tam ngung don vi.");
+      }
+
+      return updateUnit(record.id, {
         code: record.code,
         sectorId:
           record.sectorId ?? record.businessSectorId ?? record.sector?.id ?? "",
@@ -238,7 +289,8 @@ export function UnitsPage() {
         address: record.address ?? undefined,
         note: record.note ?? undefined,
         status: "INACTIVE",
-      }),
+      });
+    },
     onSuccess: async () => {
       notifications.show({
         color: "green",
@@ -303,7 +355,7 @@ export function UnitsPage() {
         render: (record) => (
           <TableActionsMenu
             actions={[
-              ...(canWriteUnits
+              ...(canEditUnit
                 ? [
                     {
                       label: "Chỉnh sửa",
@@ -314,8 +366,20 @@ export function UnitsPage() {
                       label: "Tạm ngưng",
                       icon: <IconX size={16} />,
                       color: "red" as const,
-                      disabled: record.status === "INACTIVE",
-                      onClick: () => setConfirmInactive(record),
+                      disabled: record.status === "INACTIVE" || !canEditUnit,
+                      onClick: () => {
+                        debugPermissionCheck({
+                          action: "unit.update",
+                          required: HR_PERMISSIONS.UNIT_UPDATE,
+                          permissions,
+                          roles,
+                          allowed: canEditUnit,
+                        });
+                        if (!canEditUnit) {
+                          return;
+                        }
+                        setConfirmInactive(record);
+                      },
                     },
                   ]
                 : []),
@@ -324,7 +388,7 @@ export function UnitsPage() {
         ),
       },
     ],
-    [canWriteUnits, openEditDrawer],
+    [canEditUnit, openEditDrawer, permissions, roles],
   );
 
   return (
@@ -342,7 +406,7 @@ export function UnitsPage() {
               isExporting={exportMutation.isPending}
               canImport={canImportUnits}
             />
-            {canWriteUnits ? (
+            {canCreateUnit ? (
               <Button
                 leftSection={<IconPlus size={18} />}
                 onClick={openCreateDrawer}
@@ -462,7 +526,7 @@ export function UnitsPage() {
               <Button variant="default" onClick={closeDrawer}>
                 Hủy
               </Button>
-              <Button type="submit" loading={mutation.isPending}>
+              <Button type="submit" loading={mutation.isPending} disabled={editing ? !canEditUnit : !canCreateUnit}>
                 Lưu
               </Button>
             </Group>

@@ -9,14 +9,16 @@ export type ScopeClaim = {
   departmentIds?: string[];
 };
 
-export interface AuthUser {
+export interface CurrentUser {
   id: string;
+  userId: string;
   authUserId?: string;
   auth_user_id?: string;
+  authPrincipalUserId?: string;
   externalAuthUserId: string;
   email: string;
   fullName: string;
-  accountStatus?: string;
+  accountStatus: string;
   account_status?: string;
   employeeId: string | null;
   employee?: {
@@ -39,6 +41,8 @@ export interface AuthUser {
     departmentId: string | null;
   }>;
 }
+
+export type AuthUser = CurrentUser;
 
 export type DemoRole =
   | 'SUPER_ADMIN'

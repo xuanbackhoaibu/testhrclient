@@ -1,4 +1,10 @@
-import { api } from '../../shared/api/httpClient';
+import { api, httpClient, unwrapApiEnvelope } from '../../shared/api/httpClient';
+import { ApiError } from '../../shared/api/api.types';
+import {
+  debugApiError,
+  debugApiRequest,
+  debugApiResponse,
+} from '../../shared/debug/hrmDebug';
 import { normalizePaginatedResponse } from '../../shared/api/response';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import {
@@ -125,7 +131,39 @@ export async function updateBusinessSector(
     return entity;
   }
 
-  return api.patch<BusinessSector>(`/business-sectors/${id}`, payload);
+  const url = `/business-sectors/${id}`;
+  debugApiRequest({
+    action: 'business-sector.update',
+    method: 'PATCH',
+    url: `${httpClient.defaults.baseURL ?? ''}${url}`,
+    payload,
+  });
+
+  try {
+    const response = await httpClient.patch(url, payload);
+    const data = unwrapApiEnvelope<BusinessSector>(response.data);
+    debugApiResponse({
+      action: 'business-sector.update',
+      method: 'PATCH',
+      url: `${httpClient.defaults.baseURL ?? ''}${url}`,
+      payload,
+      status: response.status,
+      requestId: response.headers['x-request-id'] as string | undefined,
+    });
+    return data;
+  } catch (error) {
+    const apiError = error instanceof ApiError ? error : undefined;
+    debugApiError({
+      action: 'business-sector.update',
+      method: 'PATCH',
+      url: `${httpClient.defaults.baseURL ?? ''}${url}`,
+      payload,
+      status: apiError?.statusCode,
+      requestId: apiError?.requestId,
+      responseBody: apiError,
+    });
+    throw error;
+  }
 }
 
 export async function deactivateBusinessSector(

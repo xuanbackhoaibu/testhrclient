@@ -1,8 +1,10 @@
 import { message } from 'antd';
 
+import { queryClient } from '../../app/queryClient';
 import { getCurrentUser } from './authApi';
-import { clearSession, getStoredUser, login as loginClient, logout as logoutClient, setSessionUser } from './authClient';
+import { clearSession, login as loginClient, logout as logoutClient, setSessionUser } from './authClient';
 import { useAuthStore } from './authStore';
+import { CURRENT_USER_QUERY_KEY } from './currentUser';
 import {
   hasAllPermissions,
   hasAnyPermission,
@@ -20,12 +22,14 @@ function readHttpStatus(error: unknown): number | undefined {
 
 export function useAuth() {
   const store = useAuthStore();
-  const user = store.user ?? getStoredUser();
+  const user = store.user;
 
   async function refreshCurrentUser(): Promise<void> {
     try {
       const freshUser = await getCurrentUser();
       setSessionUser(freshUser);
+      await queryClient.invalidateQueries({ queryKey: CURRENT_USER_QUERY_KEY });
+      await queryClient.refetchQueries({ queryKey: CURRENT_USER_QUERY_KEY });
       useAuthStore.getState().setError(null);
     } catch (error: unknown) {
       const status = readHttpStatus(error);

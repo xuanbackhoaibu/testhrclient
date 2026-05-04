@@ -1,5 +1,11 @@
-import { api } from '../../shared/api/httpClient';
+import { api, httpClient, unwrapApiEnvelope } from '../../shared/api/httpClient';
+import { ApiError } from '../../shared/api/api.types';
 import { normalizePaginatedResponse } from '../../shared/api/response';
+import {
+  debugApiError,
+  debugApiRequest,
+  debugApiResponse,
+} from '../../shared/debug/hrmDebug';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { mockDepartments, mockPositions, mockUnits } from '../../shared/mocks/mockOrganization';
@@ -319,7 +325,39 @@ export async function updateEmployee(id: string, payload: Partial<EmployeePayloa
     return employee;
   }
 
-  return api.patch<Employee>(`/employees/${id}`, payload);
+  const url = `/employees/${id}`;
+  debugApiRequest({
+    action: 'employee.update',
+    method: 'PATCH',
+    url: `${httpClient.defaults.baseURL ?? ''}${url}`,
+    payload,
+  });
+
+  try {
+    const response = await httpClient.patch(url, payload);
+    const data = unwrapApiEnvelope<Employee>(response.data);
+    debugApiResponse({
+      action: 'employee.update',
+      method: 'PATCH',
+      url: `${httpClient.defaults.baseURL ?? ''}${url}`,
+      payload,
+      status: response.status,
+      requestId: response.headers['x-request-id'] as string | undefined,
+    });
+    return data;
+  } catch (error) {
+    const apiError = error instanceof ApiError ? error : undefined;
+    debugApiError({
+      action: 'employee.update',
+      method: 'PATCH',
+      url: `${httpClient.defaults.baseURL ?? ''}${url}`,
+      payload,
+      status: apiError?.statusCode,
+      requestId: apiError?.requestId,
+      responseBody: apiError,
+    });
+    throw error;
+  }
 }
 
 export async function getEmployeeAssignments(id: string): Promise<EmployeeAssignment[]> {

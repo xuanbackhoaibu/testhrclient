@@ -11,8 +11,48 @@ export const HRM_ROLES = {
 
 export type HrmRole = (typeof HRM_ROLES)[keyof typeof HRM_ROLES];
 
-// HR permission constants — map to standard DB codes (system.module.action)
 export const HR_PERMISSIONS = {
+  DASHBOARD_READ: 'hr.dashboard.read',
+
+  BUSINESS_SECTOR_READ: 'hr.business_sector.read',
+  BUSINESS_SECTOR_CREATE: 'hr.business_sector.create',
+  BUSINESS_SECTOR_UPDATE: 'hr.business_sector.update',
+  BUSINESS_SECTOR_DELETE: 'hr.business_sector.delete',
+
+  UNIT_READ: 'hr.unit.read',
+  UNIT_CREATE: 'hr.unit.create',
+  UNIT_UPDATE: 'hr.unit.update',
+  UNIT_DELETE: 'hr.unit.delete',
+
+  DEPARTMENT_READ: 'hr.department.read',
+  DEPARTMENT_CREATE: 'hr.department.create',
+  DEPARTMENT_UPDATE: 'hr.department.update',
+  DEPARTMENT_DELETE: 'hr.department.delete',
+
+  POSITION_READ: 'hr.position.read',
+  POSITION_CREATE: 'hr.position.create',
+  POSITION_UPDATE: 'hr.position.update',
+  POSITION_DELETE: 'hr.position.delete',
+
+  EMPLOYEE_READ: 'hr.employee.read',
+  EMPLOYEE_CREATE: 'hr.employee.create',
+  EMPLOYEE_UPDATE: 'hr.employee.update',
+  EMPLOYEE_DELETE: 'hr.employee.delete',
+  EMPLOYEE_IMPORT: 'hr.employee.import',
+  EMPLOYEE_EXPORT: 'hr.employee.export',
+
+  ACCOUNT_READ: 'hr.account.read',
+  ACCOUNT_CREATE: 'hr.account.create',
+  ACCOUNT_UPDATE: 'hr.account.update',
+  ACCOUNT_LOCK: 'hr.account.lock',
+  ACCOUNT_DEACTIVATE: 'hr.account.deactivate',
+  ACCOUNT_RESTORE: 'hr.account.restore',
+  ACCOUNT_RESET_PASSWORD: 'hr.account.reset_password',
+  ACCOUNT_ASSIGN_ROLE: 'hr.account.assign_role',
+  ACCOUNT_ASSIGN_PERMISSION: 'hr.account.assign_permission',
+  ACCOUNT_DELETE: 'hr.account.delete',
+
+  // Compatibility aliases for existing pages/routes in this repo.
   READ: 'hr.employee.read',
   WRITE: 'hr.employee.create',
   IMPORT: 'hr.employee.import',
@@ -22,8 +62,6 @@ export const HR_PERMISSIONS = {
   AUTHORITY_WRITE: 'auth.role.manage',
 } as const;
 
-// Auth-admin permission constants — map to standard DB codes (system.module.action)
-// Route prefix is /api/v1/auth-admin/* but permissions use auth.* namespace (not auth-admin.*)
 export const AUTH_ADMIN_PERMISSIONS = {
   USERS_READ: 'auth.user.read',
   USERS_UPDATE: 'auth.user.update_status',
@@ -37,82 +75,6 @@ export const AUTH_ADMIN_PERMISSIONS = {
   PERMISSION_GROUPS_READ: 'auth.role.read',
   PERMISSION_GROUPS_ASSIGN: 'auth.permission_group.manage',
 } as const;
-
-// Backward-compat expansion for tokens that still carry legacy admin.hr.* permissions.
-// Tokens issued by the new system already carry granular hr.*/auth.* codes directly.
-const PERMISSION_ALIASES: Record<string, string[]> = {
-  // ── Legacy admin.hr.* → granular hr.* ───────────────────────────────────
-  'admin.hr.read': [
-    'hr.employee.read',
-    'hr.unit.read',
-    'hr.department.read',
-    'hr.position.read',
-    'hr.business_sector.read',
-    'hr.account.read',
-  ],
-  'admin.hr.write': [
-    'admin.hr.read',
-    'hr.employee.create',
-    'hr.employee.update',
-    'hr.unit.create',
-    'hr.unit.update',
-    'hr.unit.delete',
-    'hr.department.create',
-    'hr.department.update',
-    'hr.department.delete',
-    'hr.position.create',
-    'hr.position.update',
-    'hr.position.delete',
-    'hr.business_sector.create',
-    'hr.business_sector.update',
-    'hr.business_sector.delete',
-  ],
-  'admin.hr.import': ['admin.hr.read', 'hr.employee.import'],
-  'admin.hr.provision': [
-    'admin.hr.read',
-    'hr.account.create',
-    'hr.account.update',
-    'hr.account.lock',
-    'hr.account.deactivate',
-    'hr.account.restore',
-    'hr.account.reset_password',
-    'hr.account.assign_role',
-    'hr.account.assign_permission',
-    'hr.account.delete',
-    'auth.user.read',
-    'auth.user.update_status',
-    'auth.user.revoke_sessions',
-    'auth.user.send_activation',
-    'auth.user.provision',
-  ],
-  'admin.authority.read': ['auth.user.read', 'auth.role.read'],
-  'admin.authority.write': [
-    'auth.role.manage',
-    'auth.user.assign_role',
-    'auth.user.assign_permission',
-  ],
-  'admin.audit.read': ['hr.employee.read'],
-  'admin.users.read': ['auth.user.read'],
-  'admin.users.write': ['auth.user.read', 'auth.user.update_status'],
-  'admin.users.lock': ['auth.user.update_status', 'hr.account.lock'],
-  'admin.users.unlock': ['auth.user.update_status', 'hr.account.lock'],
-  'admin.users.deactivate': ['auth.user.update_status', 'hr.account.deactivate'],
-  'admin.users.revoke_sessions': ['auth.user.revoke_sessions'],
-  // ── Legacy hr.employee.* compound codes ──────────────────────────────────
-  'hr.employee.write': ['hr.employee.create', 'hr.employee.update'],
-  'hr.employee.provision': ['hr.account.create', 'hr.account.update'],
-  'hr.account.link': ['hr.account.update'],
-  // ── Legacy auth.account.* → hr.account.* ─────────────────────────────────
-  'auth.account.read': ['hr.account.read'],
-  'auth.account.create': ['hr.account.create'],
-  'auth.account.update': ['hr.account.update'],
-  'auth.account.activate': ['hr.account.restore'],
-  'auth.account.suspend': ['hr.account.lock'],
-  'auth.account.send_activation': ['hr.account.reset_password'],
-  // ── Legacy auth.role.assign / auth.permission.assign ─────────────────────
-  'auth.role.assign': ['auth.user.assign_role', 'auth.role.manage'],
-  'auth.permission.assign': ['auth.user.assign_permission'],
-};
 
 const ROLE_ALIASES: Record<string, HrmRole> = {
   SUPER_ADMIN: HRM_ROLES.SUPER_ADMIN,
@@ -146,25 +108,11 @@ export function normalizeRoles(roles: string[]): HrmRole[] {
   );
 }
 
-function expandPermissionSet(permissions: string[]): Set<string> {
-  const expanded = new Set<string>();
-  const stack = [...permissions];
-
-  while (stack.length > 0) {
-    const permission = stack.pop()?.trim();
-    if (!permission || expanded.has(permission)) {
-      continue;
-    }
-
-    expanded.add(permission);
-    for (const alias of PERMISSION_ALIASES[permission] ?? []) {
-      if (!expanded.has(alias)) {
-        stack.push(alias);
-      }
-    }
-  }
-
-  return expanded;
+function isSuperAdmin(user: AuthUser | null | undefined): boolean {
+  return (
+    user?.roles?.some((role) => role.trim().toLowerCase() === 'super_admin') ??
+    false
+  );
 }
 
 export function hasPermission(
@@ -175,27 +123,41 @@ export function hasPermission(
     return false;
   }
 
-  const permissions = user.permissions ?? [];
-  if (!permissions.length) {
-    return false;
+  if (isSuperAdmin(user)) {
+    return true;
   }
 
-  const expanded = expandPermissionSet(permissions);
-  return expanded.has('*') || expanded.has(permission);
+  return user.permissions?.includes(permission) ?? false;
 }
 
 export function hasAnyPermission(
   user: AuthUser | null | undefined,
   permissions: string[],
 ): boolean {
-  return permissions.some((permission) => hasPermission(user, permission));
+  if (!user) {
+    return false;
+  }
+
+  if (isSuperAdmin(user)) {
+    return true;
+  }
+
+  return permissions.some((permission) => user.permissions?.includes(permission));
 }
 
 export function hasAllPermissions(
   user: AuthUser | null | undefined,
   permissions: string[],
 ): boolean {
-  return permissions.every((permission) => hasPermission(user, permission));
+  if (!user) {
+    return false;
+  }
+
+  if (isSuperAdmin(user)) {
+    return true;
+  }
+
+  return permissions.every((permission) => user.permissions?.includes(permission));
 }
 
 export function hasRole(user: AuthUser | null | undefined, role: string) {
@@ -205,7 +167,9 @@ export function hasRole(user: AuthUser | null | undefined, role: string) {
   }
 
   const normalizedRole = normalizeRole(role);
-  return normalizedRole ? normalizeRoles(user?.roles ?? []).includes(normalizedRole) : false;
+  return normalizedRole
+    ? normalizeRoles(user?.roles ?? []).includes(normalizedRole)
+    : false;
 }
 
 export function hasAnyRole(user: AuthUser | null | undefined, roles: string[]) {

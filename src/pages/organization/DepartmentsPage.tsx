@@ -15,6 +15,7 @@ import { notifications } from "@mantine/notifications";
 import { IconEdit, IconPlus, IconSearch, IconX } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
 import { DomainExcelImportModal } from "../../features/import-export/DomainExcelImportModal";
 import { downloadDepartmentsExport } from "../../features/import-export/excelFilesApi";
@@ -32,6 +33,7 @@ import {
   DataTable,
   type DataTableColumn,
 } from "../../shared/components/DataTable";
+import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
 import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
@@ -50,9 +52,10 @@ const statusOptions = [
 ];
 
 export function DepartmentsPage() {
-  const { can } = useAuth();
-  const canWriteDepartments = can('hr.department.create');
-  const canImportDepartments = can('hr.department.create');
+  const { can, permissions, roles } = useAuth();
+  const canCreateDepartment = can(HR_PERMISSIONS.DEPARTMENT_CREATE);
+  const canEditDepartment = can(HR_PERMISSIONS.DEPARTMENT_UPDATE);
+  const canImportDepartments = can(HR_PERMISSIONS.DEPARTMENT_CREATE);
   const queryClient = useQueryClient();
   const [params, setParams] = useState({
     page: 1,
@@ -100,6 +103,21 @@ export function DepartmentsPage() {
 
   const mutation = useMutation({
     mutationFn: async (values: DepartmentFormValues) => {
+      const requiredPermission = editing
+        ? HR_PERMISSIONS.DEPARTMENT_UPDATE
+        : HR_PERMISSIONS.DEPARTMENT_CREATE;
+      const allowed = editing ? canEditDepartment : canCreateDepartment;
+      debugPermissionCheck({
+        action: editing ? "department.update" : "department.create",
+        required: requiredPermission,
+        permissions,
+        roles,
+        allowed,
+      });
+      if (!allowed) {
+        throw new Error("Ban khong co quyen luu phong ban.");
+      }
+
       const payload = {
         code: values.code.trim(),
         unitId: values.unitId,
@@ -134,14 +152,26 @@ export function DepartmentsPage() {
   });
 
   const inactiveMutation = useMutation({
-    mutationFn: (record: Department) =>
-      updateDepartment(record.id, {
+    mutationFn: (record: Department) => {
+      debugPermissionCheck({
+        action: "department.update",
+        required: HR_PERMISSIONS.DEPARTMENT_UPDATE,
+        permissions,
+        roles,
+        allowed: canEditDepartment,
+      });
+      if (!canEditDepartment) {
+        throw new Error("Ban khong co quyen tam ngung phong ban.");
+      }
+
+      return updateDepartment(record.id, {
         code: record.code,
         unitId: record.unitId,
         name: record.name,
         note: record.note ?? undefined,
         status: "INACTIVE",
-      }),
+      });
+    },
     onSuccess: async () => {
       notifications.show({
         color: "green",
@@ -196,7 +226,18 @@ export function DepartmentsPage() {
               {
                 label: "Chỉnh sửa",
                 icon: <IconEdit size={16} />,
+                disabled: !canEditDepartment,
                 onClick: () => {
+                  debugPermissionCheck({
+                    action: "department.update",
+                    required: HR_PERMISSIONS.DEPARTMENT_UPDATE,
+                    permissions,
+                    roles,
+                    allowed: canEditDepartment,
+                  });
+                  if (!canEditDepartment) {
+                    return;
+                  }
                   setEditing(record);
                   form.setValues({
                     code: record.code,
@@ -212,15 +253,27 @@ export function DepartmentsPage() {
                 label: "Tạm ngưng",
                 icon: <IconX size={16} />,
                 color: "red",
-                disabled: record.status === "INACTIVE",
-                onClick: () => setConfirmInactive(record),
+                disabled: record.status === "INACTIVE" || !canEditDepartment,
+                onClick: () => {
+                  debugPermissionCheck({
+                    action: "department.update",
+                    required: HR_PERMISSIONS.DEPARTMENT_UPDATE,
+                    permissions,
+                    roles,
+                    allowed: canEditDepartment,
+                  });
+                  if (!canEditDepartment) {
+                    return;
+                  }
+                  setConfirmInactive(record);
+                },
               },
             ]}
           />
         ),
       },
     ],
-    [form],
+    [canEditDepartment, form, permissions, roles],
   );
 
   return (
@@ -240,10 +293,20 @@ export function DepartmentsPage() {
               isExporting={exportMutation.isPending}
               canImport={canImportDepartments}
             />
-            {canWriteDepartments ? (
+            {canCreateDepartment ? (
               <Button
                 leftSection={<IconPlus size={18} />}
                 onClick={() => {
+                  debugPermissionCheck({
+                    action: "department.create",
+                    required: HR_PERMISSIONS.DEPARTMENT_CREATE,
+                    permissions,
+                    roles,
+                    allowed: canCreateDepartment,
+                  });
+                  if (!canCreateDepartment) {
+                    return;
+                  }
                   setEditing(null);
                   form.reset();
                   setOpen(true);
@@ -359,7 +422,7 @@ export function DepartmentsPage() {
               <Button variant="default" onClick={() => setOpen(false)}>
                 Hủy
               </Button>
-              <Button type="submit" loading={mutation.isPending}>
+              <Button type="submit" loading={mutation.isPending} disabled={editing ? !canEditDepartment : !canCreateDepartment}>
                 Lưu
               </Button>
             </Group>

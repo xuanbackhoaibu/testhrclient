@@ -1,8 +1,10 @@
 import axios from 'axios';
 
+import { queryClient } from '../../app/queryClient';
 import { MOCK_AUTH_USERS, MOCK_TOKENS, getMockUserByToken } from '../../shared/mocks/mockAuth';
 import { STORAGE_KEYS, getStoredString, removeStoredString, setStoredString } from '../../shared/utils/storage';
 import { useAuthStore } from './authStore';
+import { CURRENT_USER_QUERY_KEY, normalizeCurrentUser } from './currentUser';
 import type { AuthUser, DemoRole, LoginCredentials } from './types';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
@@ -49,15 +51,19 @@ export function setAccessToken(token: string): void {
 }
 
 export function setSessionUser(user: AuthUser | null): void {
+  const normalizedUser = user ? normalizeCurrentUser(user) : null;
+
   if (user) {
-    setStoredString(STORAGE_KEYS.currentUser, JSON.stringify(user));
+    setStoredString(STORAGE_KEYS.currentUser, JSON.stringify(normalizedUser));
+    queryClient.setQueryData(CURRENT_USER_QUERY_KEY, normalizedUser);
   } else {
     removeStoredString(STORAGE_KEYS.currentUser);
+    queryClient.removeQueries({ queryKey: CURRENT_USER_QUERY_KEY });
   }
 
   useAuthStore.getState().setSession({
     accessToken: getAccessToken(),
-    user,
+    user: normalizedUser,
   });
 }
 
@@ -68,7 +74,7 @@ export function getStoredUser(): AuthUser | null {
   }
 
   try {
-    return JSON.parse(raw) as AuthUser;
+    return normalizeCurrentUser(JSON.parse(raw));
   } catch {
     return null;
   }
@@ -100,10 +106,10 @@ export async function login(input: DemoRole | LoginCredentials = 'HR'): Promise<
   if (isMockMode) {
     const role = typeof input === 'string' ? input : 'HR';
     const token = MOCK_TOKENS[role];
-    const user = MOCK_AUTH_USERS[role];
+    const user = normalizeCurrentUser(MOCK_AUTH_USERS[role]);
     setStoredString(STORAGE_KEYS.accessToken, token);
-    setStoredString(STORAGE_KEYS.currentUser, JSON.stringify(user));
-    useAuthStore.getState().setSession({ accessToken: token, user });
+    queryClient.clear();
+    setSessionUser(user);
     return;
   }
 
@@ -144,6 +150,7 @@ export async function login(input: DemoRole | LoginCredentials = 'HR'): Promise<
     const nextAction = responseData?.nextAction;
 
     setAccessToken(accessToken);
+    queryClient.clear();
     setSessionUser(null);
 
     if (mustChangePassword || nextAction === 'CHANGE_PASSWORD_REQUIRED') {
@@ -165,10 +172,12 @@ export function handleCallback(): string {
   }
 
   setStoredString(STORAGE_KEYS.accessToken, token);
+  queryClient.clear();
+  setSessionUser(null);
 
   const mockUser = getMockUserByToken(token);
   if (mockUser) {
-    setStoredString(STORAGE_KEYS.currentUser, JSON.stringify(mockUser));
+    setSessionUser(normalizeCurrentUser(mockUser));
   }
 
   return token;
@@ -177,6 +186,7 @@ export function handleCallback(): string {
 export function clearSession(): void {
   removeStoredString(STORAGE_KEYS.accessToken);
   removeStoredString(STORAGE_KEYS.currentUser);
+  queryClient.clear();
   useAuthStore.getState().clearSession();
 }
 

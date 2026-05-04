@@ -6,6 +6,7 @@ import { IconEdit, IconEye, IconPlus, IconSearch } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 
+import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import { useAuth } from '../../features/auth/useAuth';
 import { createEmployee, getEmployeeById, getNextEmployeeCode, updateEmployee } from '../../features/employees/employeesApi';
 import type { Employee, EmployeePayload } from '../../features/employees/employeeTypes';
@@ -23,6 +24,7 @@ import { useDepartmentsSelect } from '../../features/organization/useDepartments
 import { usePositionsSelect } from '../../features/organization/usePositions';
 import { useUnitsSelect } from '../../features/organization/useUnits';
 import { ApiError } from '../../shared/api/api.types';
+import { debugPermissionCheck } from '../../shared/debug/hrmDebug';
 
 const employmentStatusOptions = [
   { value: 'ACTIVE', label: 'Đang làm việc' },
@@ -111,11 +113,11 @@ const emptyEmployeeFormValues: EmployeePayload = {
 
 export function EmployeesPage() {
   const navigate = useNavigate();
-  const { can } = useAuth();
-  const mayCreateEmployee = can('hr.employee.create');
-  const mayEditEmployee = can('hr.employee.update');
-  const mayImportEmployees = can('hr.employee.import');
-  const mayProvisionAccounts = can('hr.account.create');
+  const { can, permissions, roles } = useAuth();
+  const mayCreateEmployee = can(HR_PERMISSIONS.EMPLOYEE_CREATE);
+  const mayEditEmployee = can(HR_PERMISSIONS.EMPLOYEE_UPDATE);
+  const mayImportEmployees = can(HR_PERMISSIONS.EMPLOYEE_IMPORT);
+  const mayProvisionAccounts = can(HR_PERMISSIONS.ACCOUNT_CREATE);
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -270,6 +272,17 @@ export function EmployeesPage() {
   });
 
   async function openCreateDrawer() {
+    debugPermissionCheck({
+      action: 'employee.create',
+      required: HR_PERMISSIONS.EMPLOYEE_CREATE,
+      permissions,
+      roles,
+      allowed: mayCreateEmployee,
+    });
+    if (!mayCreateEmployee) {
+      return;
+    }
+
     setEditing(null);
     setSuggestedEmployeeCode('');
     setNextCodeError(null);
@@ -293,6 +306,13 @@ export function EmployeesPage() {
   }
 
   const openEditDrawer = useCallback(async (employeeId: string) => {
+    debugPermissionCheck({
+      action: 'employee.update',
+      required: HR_PERMISSIONS.EMPLOYEE_UPDATE,
+      permissions,
+      roles,
+      allowed: mayEditEmployee,
+    });
     if (!mayEditEmployee) {
       return;
     }
@@ -319,7 +339,7 @@ export function EmployeesPage() {
     form.setValues(values);
     form.resetDirty(values);
     setOpen(true);
-  }, [form, mayEditEmployee]);
+  }, [form, mayEditEmployee, permissions, roles]);
 
   function closeEmployeeDrawer() {
     setOpen(false);
@@ -331,6 +351,28 @@ export function EmployeesPage() {
   }
 
   function submitEmployee(values: EmployeePayload) {
+    const requiredPermission = editing
+      ? HR_PERMISSIONS.EMPLOYEE_UPDATE
+      : HR_PERMISSIONS.EMPLOYEE_CREATE;
+    const allowed = editing ? mayEditEmployee : mayCreateEmployee;
+    debugPermissionCheck({
+      action: editing ? 'employee.update' : 'employee.create',
+      required: requiredPermission,
+      permissions,
+      roles,
+      allowed,
+    });
+    if (!allowed) {
+      notifications.show({
+        color: 'red',
+        title: 'Khong co quyen thao tac',
+        message: editing
+          ? 'Ban khong co quyen sua nhan su.'
+          : 'Ban khong co quyen tao nhan su.',
+      });
+      return;
+    }
+
     const normalizedValues = normalizeEmployeePayload(values);
     form.setValues(normalizedValues);
     if (
@@ -609,7 +651,7 @@ export function EmployeesPage() {
               >
                 Hủy
               </Button>
-              <Button type="submit" loading={createMutation.isPending || updateMutation.isPending || isLoadingNextCode}>
+              <Button type="submit" loading={createMutation.isPending || updateMutation.isPending || isLoadingNextCode} disabled={editing ? !mayEditEmployee : !mayCreateEmployee}>
                 Lưu
               </Button>
             </Group>

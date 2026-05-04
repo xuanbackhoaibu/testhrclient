@@ -15,6 +15,7 @@ import { notifications } from '@mantine/notifications';
 import { IconEdit, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import { useAuth } from '../../features/auth/useAuth';
 import {
   createBusinessSector,
@@ -29,6 +30,7 @@ import {
   DataTable,
   type DataTableColumn,
 } from '../../shared/components/DataTable';
+import { debugPermissionCheck } from '../../shared/debug/hrmDebug';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
 import { TableActionsMenu } from '../../shared/components/TableActionsMenu';
@@ -46,8 +48,10 @@ const statusOptions = [
 ];
 
 export function BusinessSectorsPage() {
-  const { can } = useAuth();
-  const canWrite = can('hr.business_sector.create');
+  const { can, permissions, roles } = useAuth();
+  const canCreateBusinessSector = can(HR_PERMISSIONS.BUSINESS_SECTOR_CREATE);
+  const canEditBusinessSector = can(HR_PERMISSIONS.BUSINESS_SECTOR_UPDATE);
+  const canDeleteBusinessSector = can(HR_PERMISSIONS.BUSINESS_SECTOR_DELETE);
   const queryClient = useQueryClient();
   const [params, setParams] = useState({
     page: 1,
@@ -79,6 +83,23 @@ export function BusinessSectorsPage() {
 
   const mutation = useMutation({
     mutationFn: async (values: BusinessSectorFormValues) => {
+      const requiredPermission = editing
+        ? HR_PERMISSIONS.BUSINESS_SECTOR_UPDATE
+        : HR_PERMISSIONS.BUSINESS_SECTOR_CREATE;
+      const allowed = editing
+        ? canEditBusinessSector
+        : canCreateBusinessSector;
+      debugPermissionCheck({
+        action: editing ? 'business-sector.update' : 'business-sector.create',
+        required: requiredPermission,
+        permissions,
+        roles,
+        allowed,
+      });
+      if (!allowed) {
+        throw new Error('Ban khong co quyen luu linh vuc.');
+      }
+
       const payload = {
         code: normalizeBusinessSectorCode(values.code),
         name: values.name.trim(),
@@ -115,7 +136,20 @@ export function BusinessSectorsPage() {
   });
 
   const inactiveMutation = useMutation({
-    mutationFn: (record: BusinessSector) => deactivateBusinessSector(record.id),
+    mutationFn: (record: BusinessSector) => {
+      debugPermissionCheck({
+        action: 'business-sector.delete',
+        required: HR_PERMISSIONS.BUSINESS_SECTOR_DELETE,
+        permissions,
+        roles,
+        allowed: canDeleteBusinessSector,
+      });
+      if (!canDeleteBusinessSector) {
+        throw new Error('Ban khong co quyen tam ngung linh vuc.');
+      }
+
+      return deactivateBusinessSector(record.id);
+    },
     onSuccess: async () => {
       notifications.show({
         color: 'green',
@@ -170,12 +204,23 @@ export function BusinessSectorsPage() {
         render: (record) => (
           <TableActionsMenu
             actions={
-              canWrite
+              canEditBusinessSector || canDeleteBusinessSector
                 ? [
                     {
                       label: 'Chỉnh sửa',
                       icon: <IconEdit size={16} />,
+                      disabled: !canEditBusinessSector,
                       onClick: () => {
+                        debugPermissionCheck({
+                          action: 'business-sector.update',
+                          required: HR_PERMISSIONS.BUSINESS_SECTOR_UPDATE,
+                          permissions,
+                          roles,
+                          allowed: canEditBusinessSector,
+                        });
+                        if (!canEditBusinessSector) {
+                          return;
+                        }
                         setEditing(record);
                         form.setValues({
                           code: record.code,
@@ -190,8 +235,21 @@ export function BusinessSectorsPage() {
                       label: 'Tạm ngừng',
                       icon: <IconX size={16} />,
                       color: 'red' as const,
-                      disabled: record.status === 'INACTIVE',
-                      onClick: () => setConfirmInactive(record),
+                      disabled:
+                        record.status === 'INACTIVE' || !canDeleteBusinessSector,
+                      onClick: () => {
+                        debugPermissionCheck({
+                          action: 'business-sector.delete',
+                          required: HR_PERMISSIONS.BUSINESS_SECTOR_DELETE,
+                          permissions,
+                          roles,
+                          allowed: canDeleteBusinessSector,
+                        });
+                        if (!canDeleteBusinessSector) {
+                          return;
+                        }
+                        setConfirmInactive(record);
+                      },
                     },
                   ]
                 : []
@@ -200,7 +258,7 @@ export function BusinessSectorsPage() {
         ),
       },
     ],
-    [canWrite, form],
+    [canDeleteBusinessSector, canEditBusinessSector, form, permissions, roles],
   );
 
   return (
@@ -209,10 +267,17 @@ export function BusinessSectorsPage() {
         title="Lĩnh vực"
         subtitle="Danh mục lĩnh vực dùng cho đơn vị và import Excel. Cột linh_vuc trong file import phải khớp mã lĩnh vực tại đây."
         actions={
-          canWrite ? (
+          canCreateBusinessSector ? (
             <Button
               leftSection={<IconPlus size={18} />}
               onClick={() => {
+                debugPermissionCheck({
+                  action: 'business-sector.create',
+                  required: HR_PERMISSIONS.BUSINESS_SECTOR_CREATE,
+                  permissions,
+                  roles,
+                  allowed: canCreateBusinessSector,
+                });
                 setEditing(null);
                 form.reset();
                 setOpen(true);
@@ -321,7 +386,7 @@ export function BusinessSectorsPage() {
               >
                 Hủy
               </Button>
-              <Button type="submit" loading={mutation.isPending}>
+              <Button type="submit" loading={mutation.isPending} disabled={editing ? !canEditBusinessSector : !canCreateBusinessSector}>
                 Lưu
               </Button>
             </Group>

@@ -1,5 +1,11 @@
-import { api } from '../../shared/api/httpClient';
+import { api, httpClient, unwrapApiEnvelope } from '../../shared/api/httpClient';
+import { ApiError } from '../../shared/api/api.types';
 import { normalizePaginatedResponse } from '../../shared/api/response';
+import {
+  debugApiError,
+  debugApiRequest,
+  debugApiResponse,
+} from '../../shared/debug/hrmDebug';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockDepartments } from '../../shared/mocks/mockOrganization';
@@ -80,5 +86,37 @@ export async function updateDepartment(id: string, payload: Partial<DepartmentPa
     return department;
   }
 
-  return api.patch<Department>(`/departments/${id}`, payload);
+  const url = `/departments/${id}`;
+  debugApiRequest({
+    action: 'department.update',
+    method: 'PATCH',
+    url: `${httpClient.defaults.baseURL ?? ''}${url}`,
+    payload,
+  });
+
+  try {
+    const response = await httpClient.patch(url, payload);
+    const data = unwrapApiEnvelope<Department>(response.data);
+    debugApiResponse({
+      action: 'department.update',
+      method: 'PATCH',
+      url: `${httpClient.defaults.baseURL ?? ''}${url}`,
+      payload,
+      status: response.status,
+      requestId: response.headers['x-request-id'] as string | undefined,
+    });
+    return data;
+  } catch (error) {
+    const apiError = error instanceof ApiError ? error : undefined;
+    debugApiError({
+      action: 'department.update',
+      method: 'PATCH',
+      url: `${httpClient.defaults.baseURL ?? ''}${url}`,
+      payload,
+      status: apiError?.statusCode,
+      requestId: apiError?.requestId,
+      responseBody: apiError,
+    });
+    throw error;
+  }
 }

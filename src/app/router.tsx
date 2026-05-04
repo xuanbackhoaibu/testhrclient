@@ -54,7 +54,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.employees,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.READ]}>
+          <ProtectedRoute permissions={[HR_PERMISSIONS.EMPLOYEE_READ]}>
             <EmployeesPage />
           </ProtectedRoute>
         ),
@@ -62,7 +62,7 @@ export const router = createBrowserRouter([
       {
         path: '/employees/:id',
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.READ]}>
+          <ProtectedRoute permissions={[HR_PERMISSIONS.EMPLOYEE_READ]}>
             <EmployeeDetailPage />
           </ProtectedRoute>
         ),
@@ -70,7 +70,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.businessSectors,
         element: (
-          <ProtectedRoute permissions={['hr.business_sector.read']}>
+          <ProtectedRoute permissions={[HR_PERMISSIONS.BUSINESS_SECTOR_READ]}>
             <BusinessSectorsPage />
           </ProtectedRoute>
         ),
@@ -78,7 +78,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.units,
         element: (
-          <ProtectedRoute permissions={['hr.unit.read']}>
+          <ProtectedRoute permissions={[HR_PERMISSIONS.UNIT_READ]}>
             <UnitsPage />
           </ProtectedRoute>
         ),
@@ -86,7 +86,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.departments,
         element: (
-          <ProtectedRoute permissions={['hr.department.read']}>
+          <ProtectedRoute permissions={[HR_PERMISSIONS.DEPARTMENT_READ]}>
             <DepartmentsPage />
           </ProtectedRoute>
         ),
@@ -94,7 +94,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.positions,
         element: (
-          <ProtectedRoute permissions={['hr.position.read']}>
+          <ProtectedRoute permissions={[HR_PERMISSIONS.POSITION_READ]}>
             <PositionsPage />
           </ProtectedRoute>
         ),
@@ -108,7 +108,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.imports,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.IMPORT]}>
+          <ProtectedRoute permissions={[HR_PERMISSIONS.EMPLOYEE_IMPORT]}>
             <ImportsPage />
           </ProtectedRoute>
         ),
@@ -124,7 +124,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.settings,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.READ]}>
+          <ProtectedRoute permissions={[HR_PERMISSIONS.EMPLOYEE_READ]}>
             <SettingsPage />
           </ProtectedRoute>
         ),

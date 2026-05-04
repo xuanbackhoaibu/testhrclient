@@ -2,11 +2,12 @@ import type { PropsWithChildren } from 'react';
 import { useEffect, useState } from 'react';
 import { MantineProvider, createTheme } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+import { queryClient } from './queryClient';
 import { getCurrentUser } from '../features/auth/authApi';
 import { clearSession, getAccessToken, getStoredUser, setSessionUser } from '../features/auth/authClient';
 import { useAuthStore } from '../features/auth/authStore';
+import { QueryClientProvider } from '@tanstack/react-query';
 
 function readHttpStatus(error: unknown): number | undefined {
   return (
@@ -14,15 +15,6 @@ function readHttpStatus(error: unknown): number | undefined {
     (error as { response?: { status?: number } })?.response?.status
   );
 }
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
 
 const theme = createTheme({
   primaryColor: 'blue',
@@ -62,10 +54,13 @@ function AuthBootstrap({ children }: PropsWithChildren) {
         return;
       }
 
-      const storedUser = getStoredUser();
-      useAuthStore.getState().setSession({ accessToken: token, user: storedUser });
-
       const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
+      const storedUser = getStoredUser();
+      useAuthStore.getState().setSession({
+        accessToken: token,
+        user: isMockMode ? storedUser : null,
+      });
+
       if (isMockMode && storedUser) {
         setSessionUser(storedUser);
         useAuthStore.getState().setLoading(false);
