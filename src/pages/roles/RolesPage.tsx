@@ -238,25 +238,37 @@ export function RolesPage() {
             placeholder="vd: hr_manager"
             description="Lowercase, dấu gạch dưới hoặc chấm"
             value={createForm.key}
-            onChange={(e) => setCreateForm((f) => ({ ...f, key: e.currentTarget.value }))}
+            onChange={(e) => {
+              const value = e.currentTarget.value;
+              setCreateForm((f) => ({ ...f, key: value }));
+            }}
             required
           />
           <TextInput
             label="Tên hiển thị"
             value={createForm.name}
-            onChange={(e) => setCreateForm((f) => ({ ...f, name: e.currentTarget.value }))}
+            onChange={(e) => {
+              const value = e.currentTarget.value;
+              setCreateForm((f) => ({ ...f, name: value }));
+            }}
             required
           />
           <Textarea
             label="Mô tả"
             value={createForm.description}
-            onChange={(e) => setCreateForm((f) => ({ ...f, description: e.currentTarget.value }))}
+            onChange={(e) => {
+              const value = e.currentTarget.value;
+              setCreateForm((f) => ({ ...f, description: value }));
+            }}
             rows={2}
           />
           <Switch
             label="Role nhạy cảm"
             checked={createForm.isSensitive}
-            onChange={(e) => setCreateForm((f) => ({ ...f, isSensitive: e.currentTarget.checked }))}
+            onChange={(e) => {
+              const checked = e.currentTarget.checked;
+              setCreateForm((f) => ({ ...f, isSensitive: checked }));
+            }}
           />
           <Group justify="flex-end">
             <Button variant="default" onClick={closeCreate}>Hủy</Button>

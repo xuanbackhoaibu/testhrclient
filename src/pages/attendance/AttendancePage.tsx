@@ -57,10 +57,10 @@ export function AttendancePage() {
               <Select allowClear placeholder="Employee" style={{ width: '100%' }} options={mockEmployees.map((item) => ({ value: item.id, label: item.fullName }))} onChange={(value) => setParams((current) => ({ ...current, employeeId: value }))} />
             </Col>
             <Col xs={24} md={4}>
-              <Input type="date" onChange={(event) => setParams((current) => ({ ...current, fromDate: event.target.value || undefined }))} />
+              <Input type="date" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, fromDate: value })); }} />
             </Col>
             <Col xs={24} md={4}>
-              <Input type="date" onChange={(event) => setParams((current) => ({ ...current, toDate: event.target.value || undefined }))} />
+              <Input type="date" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, toDate: value })); }} />
             </Col>
             <Col xs={24} md={5}>
               <Select allowClear placeholder="Source" style={{ width: '100%' }} options={ATTENDANCE_SOURCE_OPTIONS.map((item) => ({ value: item, label: item }))} onChange={(value) => setParams((current) => ({ ...current, source: value }))} />

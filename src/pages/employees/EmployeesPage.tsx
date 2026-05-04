@@ -508,9 +508,10 @@ export function EmployeesPage() {
             placeholder="Tìm tên, email, SĐT"
             leftSection={<IconSearch size={17} />}
             value={params.search}
-            onChange={(event) =>
-              setParams((current) => ({ ...current, search: event.currentTarget.value, page: 1 }))
-            }
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              setParams((current) => ({ ...current, search: value, page: 1 }));
+            }}
           />
           <Select
             placeholder="Trạng thái"

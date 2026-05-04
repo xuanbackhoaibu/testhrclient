@@ -424,13 +424,14 @@ export function UnitsPage() {
             placeholder="Tìm mã hoặc tên"
             leftSection={<IconSearch size={17} />}
             value={params.search}
-            onChange={(event) =>
+            onChange={(event) => {
+              const value = event.currentTarget.value;
               setParams((current) => ({
                 ...current,
-                search: event.currentTarget.value,
+                search: value,
                 page: 1,
-              }))
-            }
+              }));
+            }}
           />
           <Select
             placeholder="Trạng thái"

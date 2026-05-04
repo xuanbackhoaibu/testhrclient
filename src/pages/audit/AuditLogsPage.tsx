@@ -41,19 +41,19 @@ export function AuditLogsPage() {
               <Select allowClear placeholder="Entity type" style={{ width: '100%' }} options={['EMPLOYEE', 'LEAVE_REQUEST', 'DEPARTMENT', 'UNIT', 'CONTRACT', 'IMPORT_BATCH'].map((item) => ({ value: item, label: item }))} onChange={(value) => setParams((current) => ({ ...current, entityType: value }))} />
             </Col>
             <Col xs={24} md={4}>
-              <Input placeholder="Entity ID" onChange={(event) => setParams((current) => ({ ...current, entityId: event.target.value || undefined }))} />
+              <Input placeholder="Entity ID" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, entityId: value })); }} />
             </Col>
             <Col xs={24} md={4}>
-              <Input placeholder="Action" onChange={(event) => setParams((current) => ({ ...current, action: event.target.value || undefined }))} />
+              <Input placeholder="Action" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, action: value })); }} />
             </Col>
             <Col xs={24} md={4}>
-              <Input placeholder="Actor user ID" onChange={(event) => setParams((current) => ({ ...current, actorUserId: event.target.value || undefined }))} />
+              <Input placeholder="Actor user ID" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, actorUserId: value })); }} />
             </Col>
             <Col xs={24} md={3}>
-              <Input type="date" onChange={(event) => setParams((current) => ({ ...current, fromDate: event.target.value || undefined }))} />
+              <Input type="date" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, fromDate: value })); }} />
             </Col>
             <Col xs={24} md={3}>
-              <Input type="date" onChange={(event) => setParams((current) => ({ ...current, toDate: event.target.value || undefined }))} />
+              <Input type="date" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, toDate: value })); }} />
             </Col>
           </Row>
 

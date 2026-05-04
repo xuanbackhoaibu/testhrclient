@@ -198,24 +198,36 @@ export function PermissionsPage() {
             placeholder="vd: hr.employee.read"
             description="Bắt buộc dạng system.module.action (lowercase)"
             value={createForm.key}
-            onChange={(e) => setCreateForm((f) => ({ ...f, key: e.currentTarget.value }))}
+            onChange={(e) => {
+              const value = e.currentTarget.value;
+              setCreateForm((f) => ({ ...f, key: value }));
+            }}
             required
           />
           <TextInput
             label="Tên hiển thị"
             value={createForm.name ?? ''}
-            onChange={(e) => setCreateForm((f) => ({ ...f, name: e.currentTarget.value }))}
+            onChange={(e) => {
+              const value = e.currentTarget.value;
+              setCreateForm((f) => ({ ...f, name: value }));
+            }}
           />
           <Textarea
             label="Mô tả"
             value={createForm.description ?? ''}
-            onChange={(e) => setCreateForm((f) => ({ ...f, description: e.currentTarget.value }))}
+            onChange={(e) => {
+              const value = e.currentTarget.value;
+              setCreateForm((f) => ({ ...f, description: value }));
+            }}
             rows={2}
           />
           <Switch
             label="Permission nhạy cảm"
             checked={createForm.isSensitive}
-            onChange={(e) => setCreateForm((f) => ({ ...f, isSensitive: e.currentTarget.checked }))}
+            onChange={(e) => {
+              const checked = e.currentTarget.checked;
+              setCreateForm((f) => ({ ...f, isSensitive: checked }));
+            }}
           />
           <Group justify="flex-end">
             <Button variant="default" onClick={closeCreate}>Hủy</Button>
@@ -243,18 +255,27 @@ export function PermissionsPage() {
             <TextInput
               label="Tên hiển thị"
               value={editForm.name ?? ''}
-              onChange={(e) => setEditForm((f) => ({ ...f, name: e.currentTarget.value }))}
+              onChange={(e) => {
+                const value = e.currentTarget.value;
+                setEditForm((f) => ({ ...f, name: value }));
+              }}
             />
             <Textarea
               label="Mô tả"
               value={editForm.description ?? ''}
-              onChange={(e) => setEditForm((f) => ({ ...f, description: e.currentTarget.value }))}
+              onChange={(e) => {
+                const value = e.currentTarget.value;
+                setEditForm((f) => ({ ...f, description: value }));
+              }}
               rows={2}
             />
             <Switch
               label="Permission nhạy cảm"
               checked={editForm.isSensitive ?? false}
-              onChange={(e) => setEditForm((f) => ({ ...f, isSensitive: e.currentTarget.checked }))}
+              onChange={(e) => {
+                const checked = e.currentTarget.checked;
+                setEditForm((f) => ({ ...f, isSensitive: checked }));
+              }}
             />
             <Group justify="space-between" mt="xs">
               {editPerm.status !== 'disabled' && (

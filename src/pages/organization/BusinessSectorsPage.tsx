@@ -295,13 +295,14 @@ export function BusinessSectorsPage() {
             placeholder="Tìm mã hoặc tên lĩnh vực"
             leftSection={<IconSearch size={17} />}
             value={params.search}
-            onChange={(event) =>
+            onChange={(event) => {
+              const value = event.currentTarget.value;
               setParams((current) => ({
                 ...current,
-                search: event.currentTarget.value,
+                search: value,
                 page: 1,
-              }))
-            }
+              }));
+            }}
           />
           <Select
             placeholder="Trạng thái"

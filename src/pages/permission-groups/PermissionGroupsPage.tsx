@@ -239,20 +239,29 @@ export function PermissionGroupsPage() {
             placeholder="vd: hr.employee.management"
             description="Dạng dotted lowercase"
             value={createForm.key}
-            onChange={(e) => setCreateForm((f) => ({ ...f, key: e.currentTarget.value }))}
+            onChange={(e) => {
+              const value = e.currentTarget.value;
+              setCreateForm((f) => ({ ...f, key: value }));
+            }}
             required
           />
           <TextInput
             label="Tên"
             placeholder="Quản lý nhân viên HR"
             value={createForm.name}
-            onChange={(e) => setCreateForm((f) => ({ ...f, name: e.currentTarget.value }))}
+            onChange={(e) => {
+              const value = e.currentTarget.value;
+              setCreateForm((f) => ({ ...f, name: value }));
+            }}
             required
           />
           <Textarea
             label="Mô tả"
             value={createForm.description}
-            onChange={(e) => setCreateForm((f) => ({ ...f, description: e.currentTarget.value }))}
+            onChange={(e) => {
+              const value = e.currentTarget.value;
+              setCreateForm((f) => ({ ...f, description: value }));
+            }}
             rows={2}
           />
           <Group grow>
@@ -260,13 +269,19 @@ export function PermissionGroupsPage() {
               label="Hệ thống"
               placeholder="hr"
               value={createForm.system}
-              onChange={(e) => setCreateForm((f) => ({ ...f, system: e.currentTarget.value }))}
+              onChange={(e) => {
+                const value = e.currentTarget.value;
+                setCreateForm((f) => ({ ...f, system: value }));
+              }}
             />
             <TextInput
               label="Module"
               placeholder="employee"
               value={createForm.module}
-              onChange={(e) => setCreateForm((f) => ({ ...f, module: e.currentTarget.value }))}
+              onChange={(e) => {
+                const value = e.currentTarget.value;
+                setCreateForm((f) => ({ ...f, module: value }));
+              }}
             />
           </Group>
           <Group justify="flex-end">
@@ -301,12 +316,18 @@ export function PermissionGroupsPage() {
                 <TextInput
                   label="Tên"
                   value={editGroup.name}
-                  onChange={(e) => setEditGroup((g) => g ? { ...g, name: e.currentTarget.value } : g)}
+                  onChange={(e) => {
+                    const value = e.currentTarget.value;
+                    setEditGroup((g) => g ? { ...g, name: value } : g);
+                  }}
                 />
                 <Textarea
                   label="Mô tả"
                   value={editGroup.description}
-                  onChange={(e) => setEditGroup((g) => g ? { ...g, description: e.currentTarget.value } : g)}
+                  onChange={(e) => {
+                    const value = e.currentTarget.value;
+                    setEditGroup((g) => g ? { ...g, description: value } : g);
+                  }}
                   rows={2}
                 />
                 <Group justify="flex-end">
