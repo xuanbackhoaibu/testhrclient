@@ -11,11 +11,18 @@ export interface AuthAdminUser {
   accountStatus: AuthAccountStatus | string;
   accountState: AuthAccountState;
   isActive: boolean;
+  mustChangePassword?: boolean;
   tokenVersion?: number;
   permissionVersion?: number;
   lastSeen?: string | null;
+  lastLoginAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface ForceChangePasswordResult {
+  authUserId: string;
+  mustChangePassword: boolean;
 }
 
 export interface ProvisionFromEmployeeInput {
@@ -96,10 +103,45 @@ export interface SendActivationResult {
 }
 
 export interface RoleDefinition {
+  id?: string;
+  key?: string;
   name: string;
-  label: string;
+  label?: string;
   description?: string;
+  status?: string;
   isSensitive?: boolean;
+}
+
+export interface PermissionDefinition {
+  id: string;
+  key: string;
+  description?: string | null;
+  domain?: string | null;
+}
+
+export interface PermissionSystemGroup {
+  domain: string;
+  permissions: PermissionDefinition[];
+}
+
+export interface PermissionsGroupedResult {
+  systems: PermissionSystemGroup[];
+  total: number;
+}
+
+export interface ListUsersParams {
+  search?: string;
+  status?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface ListUsersResult {
+  data: AuthAdminUser[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 export interface BulkProvisionFromBatchInput {

@@ -17,10 +17,14 @@ import { LoginPage } from '../pages/LoginPage';
 import { MovementsPage } from '../pages/movements/MovementsPage';
 import { OffboardingPage } from '../pages/offboarding/OffboardingPage';
 import { OnboardingPage } from '../pages/onboarding/OnboardingPage';
+import { AccountsPage } from '../pages/accounts/AccountsPage';
+import { RolesPage } from '../pages/roles/RolesPage';
+import { PermissionsPage } from '../pages/permissions/PermissionsPage';
 import { BusinessSectorsPage } from '../pages/organization/BusinessSectorsPage';
 import { UnitsPage } from '../pages/organization/UnitsPage';
 import { DepartmentsPage } from '../pages/organization/DepartmentsPage';
 import { PositionsPage } from '../pages/organization/PositionsPage';
+import { ChangePasswordPage } from '../pages/ChangePasswordPage';
 import { RouteErrorPage } from '../pages/RouteErrorPage';
 import { SettingsPage } from '../pages/settings/SettingsPage';
 import { ROUTES } from '../shared/constants/routes';
@@ -32,6 +36,7 @@ export const router = createBrowserRouter([
     children: [
       { path: ROUTES.login, element: <LoginPage /> },
       { path: ROUTES.authCallback, element: <AuthCallbackPage /> },
+      { path: ROUTES.changePassword, element: <ChangePasswordPage /> },
     ],
   },
   {
@@ -120,6 +125,30 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute permissions={[HR_PERMISSIONS.READ]}>
             <SettingsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.accounts,
+        element: (
+          <ProtectedRoute permissions={[HR_PERMISSIONS.PROVISION]}>
+            <AccountsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.roles,
+        element: (
+          <ProtectedRoute permissions={[HR_PERMISSIONS.AUTHORITY_READ]}>
+            <RolesPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.permissions,
+        element: (
+          <ProtectedRoute permissions={[HR_PERMISSIONS.AUTHORITY_READ]}>
+            <PermissionsPage />
           </ProtectedRoute>
         ),
       },

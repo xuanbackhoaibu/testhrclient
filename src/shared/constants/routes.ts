@@ -17,4 +17,8 @@ export const ROUTES = {
   imports: '/imports',
   auditLogs: '/audit-logs',
   settings: '/settings',
+  accounts: '/accounts',
+  roles: '/roles',
+  permissions: '/permissions',
+  changePassword: '/change-password',
 } as const;

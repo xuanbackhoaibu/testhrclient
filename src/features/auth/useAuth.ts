@@ -29,6 +29,12 @@ export function useAuth() {
       useAuthStore.getState().setError(null);
     } catch (error: unknown) {
       const status = readHttpStatus(error);
+      const errorCode = (error as { errorCode?: string })?.errorCode;
+      if (status === 403 && errorCode === 'CHANGE_PASSWORD_REQUIRED') {
+        // Keep session; redirect will happen via ProtectedRoute or interceptor
+        return;
+      }
+
       if (status === 403) {
         clearSession();
         useAuthStore.getState().setError('Tài khoản đã xác thực nhưng chưa được cấp quyền HRM.');

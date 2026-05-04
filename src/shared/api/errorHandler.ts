@@ -81,6 +81,11 @@ export async function handleAxiosResponseError(
     return Promise.reject(apiError);
   }
 
+  if (apiError.statusCode === 403 && apiError.errorCode === 'CHANGE_PASSWORD_REQUIRED') {
+    window.location.assign('/change-password');
+    return Promise.reject(apiError);
+  }
+
   // 422: validation errors — show first field error, let component handle the rest
   if (apiError.statusCode === 422) {
     const first = apiError.errors[0];

@@ -8,6 +8,10 @@ import type {
   BulkProvisionFromBatchInput,
   BulkProvisionFromBatchResult,
   EffectivePermissionsResult,
+  ForceChangePasswordResult,
+  ListUsersParams,
+  ListUsersResult,
+  PermissionsGroupedResult,
   ProvisionFromEmployeeInput,
   ProvisionFromEmployeeResult,
   RoleDefinition,
@@ -100,6 +104,30 @@ export async function getEffectivePermissions(
 
 export async function getRoles(): Promise<RoleDefinition[]> {
   return authAdminApi.get<RoleDefinition[]>(`${BASE}/roles`);
+}
+
+export async function listUsers(params?: ListUsersParams): Promise<ListUsersResult> {
+  const query = new URLSearchParams();
+  if (params?.search) query.set('search', params.search);
+  if (params?.status) query.set('status', params.status);
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.pageSize) query.set('pageSize', String(params.pageSize));
+  const qs = query.toString();
+  return authAdminApi.get<ListUsersResult>(`${BASE}/users${qs ? `?${qs}` : ''}`);
+}
+
+export async function getPermissionsGrouped(): Promise<PermissionsGroupedResult> {
+  return authAdminApi.get<PermissionsGroupedResult>(`${BASE}/permissions/grouped`);
+}
+
+export async function forceChangePassword(
+  authUserId: string,
+  reason?: string,
+): Promise<ForceChangePasswordResult> {
+  return authAdminApi.patch<ForceChangePasswordResult>(
+    `${BASE}/users/${authUserId}/force-change-password`,
+    { reason },
+  );
 }
 
 export async function bulkProvisionFromBatch(

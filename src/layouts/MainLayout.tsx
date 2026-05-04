@@ -17,10 +17,13 @@ import {
   IconBuildingBank,
   IconChevronDown,
   IconDashboard,
+  IconKey,
   IconLogout,
   IconSettings,
+  IconShield,
   IconSitemap,
   IconTransfer,
+  IconUserCheck,
   IconUsers,
 } from "@tabler/icons-react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -56,6 +59,12 @@ const orgItems: NavItem[] = [
   { label: "Chức vụ", path: ROUTES.positions, icon: IconBriefcase },
 ];
 
+const iamItems: NavItem[] = [
+  { label: "Tài khoản", path: ROUTES.accounts, icon: IconUserCheck },
+  { label: "Role", path: ROUTES.roles, icon: IconShield },
+  { label: "Permission", path: ROUTES.permissions, icon: IconKey },
+];
+
 const routeTitles: Record<string, string> = {
   [ROUTES.dashboard]: "Dashboard",
   [ROUTES.employees]: "Nhân sự",
@@ -72,6 +81,9 @@ const routeTitles: Record<string, string> = {
   [ROUTES.imports]: "Imports",
   [ROUTES.auditLogs]: "Audit logs",
   [ROUTES.settings]: "Cài đặt",
+  [ROUTES.accounts]: "Tài khoản",
+  [ROUTES.roles]: "Role",
+  [ROUTES.permissions]: "Permission",
 };
 
 function isActive(pathname: string, path: string) {
@@ -95,6 +107,7 @@ export function MainLayout() {
   });
 
   const showOrganizationMenu = can(HR_PERMISSIONS.READ);
+  const showIamMenu = can(HR_PERMISSIONS.PROVISION) || can(HR_PERMISSIONS.AUTHORITY_READ);
   const selectedPath = location.pathname.startsWith("/employees/")
     ? ROUTES.employees
     : location.pathname;
@@ -202,6 +215,34 @@ export function MainLayout() {
                       />
                     );
                   })}
+                </NavLink>
+              ) : null}
+
+              {showIamMenu ? (
+                <NavLink
+                  label="Phân quyền"
+                  leftSection={<IconShield size={18} />}
+                  defaultOpened={iamItems.some((item) => isActive(location.pathname, item.path))}
+                  className="app-nav-link"
+                >
+                  {iamItems
+                    .filter((item) => {
+                      if (item.path === ROUTES.accounts) return can(HR_PERMISSIONS.PROVISION);
+                      return can(HR_PERMISSIONS.AUTHORITY_READ);
+                    })
+                    .map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <NavLink
+                          key={item.path}
+                          label={item.label}
+                          leftSection={<Icon size={17} />}
+                          active={isActive(location.pathname, item.path)}
+                          onClick={() => goTo(item.path)}
+                          className="app-nav-link"
+                        />
+                      );
+                    })}
                 </NavLink>
               ) : null}
 

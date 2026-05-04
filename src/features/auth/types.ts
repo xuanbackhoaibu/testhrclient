@@ -31,6 +31,7 @@ export interface AuthUser {
   permissions: string[];
   permissionVersion?: number;
   tokenVersion?: number;
+  mustChangePassword?: boolean;
   scopes?: ScopeClaim[];
   dataScopes: Array<{
     scopeType: string;

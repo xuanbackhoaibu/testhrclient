@@ -19,8 +19,12 @@ interface AuthServiceLoginResponse {
   error?: string;
   data?: {
     accessToken?: string;
+    mustChangePassword?: boolean;
+    nextAction?: string;
   };
   accessToken?: string;
+  mustChangePassword?: boolean;
+  nextAction?: string;
 }
 
 export function getAccessToken(): string | null {
@@ -131,13 +135,22 @@ export async function login(input: DemoRole | LoginCredentials = 'HR'): Promise<
       withCredentials: true,
     });
 
-    const accessToken = response.data.data?.accessToken ?? response.data.accessToken;
+    const responseData = response.data.data ?? response.data;
+    const accessToken = responseData?.accessToken;
     if (!accessToken) {
       throw new Error('Auth service login response did not include accessToken.');
     }
 
+    const mustChangePassword = Boolean(responseData?.mustChangePassword);
+    const nextAction = responseData?.nextAction;
+
     setAccessToken(accessToken);
     setSessionUser(null);
+
+    if (mustChangePassword || nextAction === 'CHANGE_PASSWORD_REQUIRED') {
+      window.location.assign('/change-password');
+      return;
+    }
   } catch (error) {
     throw new Error(readAuthLoginError(error), { cause: error });
   }
