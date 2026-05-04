@@ -21,7 +21,32 @@ export const HR_PERMISSIONS = {
   AUTHORITY_WRITE: 'admin.authority.write',
 } as const;
 
+export const AUTH_ADMIN_PERMISSIONS = {
+  USERS_READ: 'auth-admin.users.read',
+  USERS_UPDATE: 'auth-admin.users.update',
+  USERS_PROVISION: 'auth-admin.users.provision',
+  USERS_REVOKE_SESSIONS: 'auth-admin.users.revoke-sessions',
+  USERS_SEND_ACTIVATION: 'auth-admin.users.send-activation',
+  ROLES_READ: 'auth-admin.roles.read',
+  ROLES_ASSIGN: 'auth-admin.roles.assign',
+  PERMISSIONS_READ: 'auth-admin.permissions.read',
+  PERMISSIONS_ASSIGN: 'auth-admin.permissions.assign',
+  PERMISSION_GROUPS_READ: 'auth-admin.permission-groups.read',
+  PERMISSION_GROUPS_ASSIGN: 'auth-admin.permission-groups.assign',
+} as const;
+
 const PERMISSION_ALIASES: Record<string, string[]> = {
+  'auth-admin.users.read': ['auth.user.read', 'admin.hr.provision'],
+  'auth-admin.users.update': ['auth.user.update_status', 'admin.hr.provision'],
+  'auth-admin.users.provision': ['auth.user.provision', 'admin.hr.provision'],
+  'auth-admin.users.revoke-sessions': ['auth.user.revoke_sessions', 'admin.hr.provision'],
+  'auth-admin.users.send-activation': ['auth.user.send_activation', 'admin.hr.provision'],
+  'auth-admin.roles.read': ['auth.role.read', 'admin.authority.read'],
+  'auth-admin.roles.assign': ['auth.user.assign_role', 'auth.role.manage', 'admin.authority.write'],
+  'auth-admin.permissions.read': ['auth.permission.read', 'admin.authority.read'],
+  'auth-admin.permissions.assign': ['auth.user.assign_permission', 'auth.permission.manage', 'admin.authority.write'],
+  'auth-admin.permission-groups.read': ['auth.permission.read', 'admin.authority.read'],
+  'auth-admin.permission-groups.assign': ['auth.permission_group.manage', 'admin.authority.write'],
   'admin.hr.read': [
     'hr.employee.read',
     'hr.unit.read',
@@ -142,10 +167,6 @@ export function hasPermission(
     return false;
   }
 
-  if (hasRole(user, HRM_ROLES.SUPER_ADMIN)) {
-    return true;
-  }
-
   const permissions = user.permissions ?? [];
   if (!permissions.length) {
     return false;
@@ -169,13 +190,18 @@ export function hasAllPermissions(
   return permissions.every((permission) => hasPermission(user, permission));
 }
 
-export function hasRole(user: AuthUser | null | undefined, role: HrmRole) {
-  return normalizeRoles(user?.roles ?? []).includes(role);
+export function hasRole(user: AuthUser | null | undefined, role: string) {
+  const rawRoles = new Set(user?.roles ?? []);
+  if (rawRoles.has(role)) {
+    return true;
+  }
+
+  const normalizedRole = normalizeRole(role);
+  return normalizedRole ? normalizeRoles(user?.roles ?? []).includes(normalizedRole) : false;
 }
 
-export function hasAnyRole(user: AuthUser | null | undefined, roles: HrmRole[]) {
-  const actual = normalizeRoles(user?.roles ?? []);
-  return roles.some((role) => actual.includes(role));
+export function hasAnyRole(user: AuthUser | null | undefined, roles: string[]) {
+  return roles.some((role) => hasRole(user, role));
 }
 
 export function canViewEmployees(user: AuthUser | null | undefined) {

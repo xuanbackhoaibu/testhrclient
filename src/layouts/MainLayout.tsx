@@ -29,7 +29,7 @@ import {
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../features/auth/useAuth";
-import { HR_PERMISSIONS } from "../features/auth/permissions";
+import { AUTH_ADMIN_PERMISSIONS, HR_PERMISSIONS } from "../features/auth/permissions";
 import { BrandLogo } from "../shared/components/BrandLogo";
 import { ROUTES } from "../shared/constants/routes";
 
@@ -109,7 +109,11 @@ export function MainLayout() {
   });
 
   const showOrganizationMenu = can(HR_PERMISSIONS.READ);
-  const showIamMenu = can(HR_PERMISSIONS.PROVISION) || can(HR_PERMISSIONS.AUTHORITY_READ);
+  const showIamMenu =
+    can(AUTH_ADMIN_PERMISSIONS.USERS_READ) ||
+    can(AUTH_ADMIN_PERMISSIONS.ROLES_READ) ||
+    can(AUTH_ADMIN_PERMISSIONS.PERMISSIONS_READ) ||
+    can(AUTH_ADMIN_PERMISSIONS.PERMISSION_GROUPS_READ);
   const selectedPath = location.pathname.startsWith("/employees/")
     ? ROUTES.employees
     : location.pathname;
@@ -229,8 +233,10 @@ export function MainLayout() {
                 >
                   {iamItems
                     .filter((item) => {
-                      if (item.path === ROUTES.accounts) return can(HR_PERMISSIONS.PROVISION);
-                      return can(HR_PERMISSIONS.AUTHORITY_READ);
+                      if (item.path === ROUTES.accounts) return can(AUTH_ADMIN_PERMISSIONS.USERS_READ);
+                      if (item.path === ROUTES.roles) return can(AUTH_ADMIN_PERMISSIONS.ROLES_READ);
+                      if (item.path === ROUTES.permissions) return can(AUTH_ADMIN_PERMISSIONS.PERMISSIONS_READ);
+                      return can(AUTH_ADMIN_PERMISSIONS.PERMISSION_GROUPS_READ);
                     })
                     .map((item) => {
                       const Icon = item.icon;

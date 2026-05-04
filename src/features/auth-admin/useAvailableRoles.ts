@@ -3,13 +3,13 @@ import { getRoles } from './authAdminApi';
 import type { RoleDefinition } from './authAdminTypes';
 
 const FALLBACK_ROLES: RoleDefinition[] = [
-  { name: 'EMPLOYEE', label: 'Employee', isSensitive: false },
-  { name: 'HR_ADMIN', label: 'HR Admin', isSensitive: false },
-  { name: 'HR', label: 'HR', isSensitive: false },
-  { name: 'ADMIN', label: 'Admin', isSensitive: false },
-  { name: 'BAN_LANH_DAO', label: 'Ban lanh dao', isSensitive: false },
-  { name: 'BAN_LANH_DAO_DON_VI', label: 'Ban lanh dao don vi', isSensitive: false },
-  { name: 'SUPER_ADMIN', label: 'Super Admin', isSensitive: true },
+  { key: 'EMPLOYEE', name: 'Employee', label: 'Employee', isSensitive: false },
+  { key: 'HR_ADMIN', name: 'HR Admin', label: 'HR Admin', isSensitive: false },
+  { key: 'HR', name: 'HR', label: 'HR', isSensitive: false },
+  { key: 'ADMIN', name: 'Admin', label: 'Admin', isSensitive: false },
+  { key: 'BAN_LANH_DAO', name: 'Ban lanh dao', label: 'Ban lanh dao', isSensitive: false },
+  { key: 'BAN_LANH_DAO_DON_VI', name: 'Ban lanh dao don vi', label: 'Ban lanh dao don vi', isSensitive: false },
+  { key: 'SUPER_ADMIN', name: 'Super Admin', label: 'Super Admin', isSensitive: true },
 ];
 
 export function useAvailableRoles() {
@@ -27,7 +27,7 @@ export function useAvailableRoles() {
     isLoading,
     asSelectOptions: roles.map((role) => ({
       label: role.label ?? role.name,
-      value: role.name,
+      value: role.key ?? role.name,
     })),
   };
 }

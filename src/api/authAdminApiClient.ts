@@ -24,7 +24,7 @@ function resolveAuthApiBaseUrl(): string {
   return '';
 }
 
-export const authAdminAxiosInstance = axios.create({
+export const authAdminApiClient = axios.create({
   baseURL: resolveAuthApiBaseUrl(),
   timeout: 15000,
   headers: {
@@ -32,7 +32,7 @@ export const authAdminAxiosInstance = axios.create({
   },
 });
 
-authAdminAxiosInstance.interceptors.request.use((config) => {
+authAdminApiClient.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -40,7 +40,7 @@ authAdminAxiosInstance.interceptors.request.use((config) => {
   return config;
 });
 
-authAdminAxiosInstance.interceptors.response.use(
+authAdminApiClient.interceptors.response.use(
   (response) => response,
   (error) =>
     handleAxiosResponseError(error, () => {
@@ -51,27 +51,27 @@ authAdminAxiosInstance.interceptors.response.use(
 
 export const authAdminApi = {
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await authAdminAxiosInstance.get(url, config);
+    const response = await authAdminApiClient.get(url, config);
     return unwrapApiEnvelope<T>(response.data);
   },
 
   async post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await authAdminAxiosInstance.post(url, data, config);
+    const response = await authAdminApiClient.post(url, data, config);
     return unwrapApiEnvelope<T>(response.data);
   },
 
   async patch<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await authAdminAxiosInstance.patch(url, data, config);
+    const response = await authAdminApiClient.patch(url, data, config);
     return unwrapApiEnvelope<T>(response.data);
   },
 
   async put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await authAdminAxiosInstance.put(url, data, config);
+    const response = await authAdminApiClient.put(url, data, config);
     return unwrapApiEnvelope<T>(response.data);
   },
 
   async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await authAdminAxiosInstance.delete(url, config);
+    const response = await authAdminApiClient.delete(url, config);
     return unwrapApiEnvelope<T>(response.data);
   },
 };

@@ -1,7 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
-import { HR_PERMISSIONS } from '../features/auth/permissions';
+import { AUTH_ADMIN_PERMISSIONS, HR_PERMISSIONS } from '../features/auth/permissions';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { MainLayout } from '../layouts/MainLayout';
 import { AttendancePage } from '../pages/attendance/AttendancePage';
@@ -132,7 +132,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.accounts,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.PROVISION]}>
+          <ProtectedRoute permissions={[AUTH_ADMIN_PERMISSIONS.USERS_READ]}>
             <AccountsPage />
           </ProtectedRoute>
         ),
@@ -140,7 +140,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.roles,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.AUTHORITY_READ]}>
+          <ProtectedRoute permissions={[AUTH_ADMIN_PERMISSIONS.ROLES_READ]}>
             <RolesPage />
           </ProtectedRoute>
         ),
@@ -148,7 +148,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.permissions,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.AUTHORITY_READ]}>
+          <ProtectedRoute permissions={[AUTH_ADMIN_PERMISSIONS.PERMISSIONS_READ]}>
             <PermissionsPage />
           </ProtectedRoute>
         ),
@@ -156,7 +156,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.permissionGroups,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.AUTHORITY_READ]}>
+          <ProtectedRoute permissions={[AUTH_ADMIN_PERMISSIONS.PERMISSION_GROUPS_READ]}>
             <PermissionGroupsPage />
           </ProtectedRoute>
         ),

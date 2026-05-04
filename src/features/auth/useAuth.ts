@@ -67,11 +67,11 @@ export function useAuth() {
     return hasPermission(user, permission);
   }
 
-  function canAny(permissions: string[]): boolean {
+  function hasAnyPermissionForUser(permissions: string[]): boolean {
     return hasAnyPermission(user, permissions);
   }
 
-  function canAll(permissions: string[]): boolean {
+  function hasAllPermissionsForUser(permissions: string[]): boolean {
     return hasAllPermissions(user, permissions);
   }
 
@@ -86,8 +86,11 @@ export function useAuth() {
     logout,
     refreshCurrentUser,
     hasRole,
+    hasPermission: can,
+    hasAnyPermission: hasAnyPermissionForUser,
+    hasAllPermissions: hasAllPermissionsForUser,
     can,
-    canAny,
-    canAll,
+    canAny: hasAnyPermissionForUser,
+    canAll: hasAllPermissionsForUser,
   };
 }
