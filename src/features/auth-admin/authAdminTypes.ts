@@ -12,6 +12,7 @@ export interface AuthAdminUser {
   authUserId: string;
   email: string;
   username?: string;
+  // chat-auth HR projection ID, not hr-api-service employee.id
   hrEmployeeId?: string | null;
   employeeCode?: string | null;
   displayName?: string | null;

@@ -1,5 +1,5 @@
 import { ApiError } from '../../shared/api/api.types';
-import { getEmployee } from '../employees/employeesApi';
+import { getEmployeesByAuthUserIds } from '../employees/employeesApi';
 import type { Employee } from '../employees/employeeTypes';
 import {
   assignPermissions,
@@ -129,18 +129,6 @@ function normalizeAuthzError(
   throw error instanceof Error ? error : new Error(`Khong the ${action}.`);
 }
 
-async function getEmployeeForAccount(account: AuthAdminUser): Promise<Employee | null> {
-  if (!account.hrEmployeeId) {
-    return null;
-  }
-
-  try {
-    return await getEmployee(account.hrEmployeeId);
-  } catch {
-    return null;
-  }
-}
-
 async function getRolesForAccount(accountId: string): Promise<Role[]> {
   try {
     const [roleCatalog, effective] = await Promise.all([
@@ -158,6 +146,38 @@ async function getRolesForAccount(accountId: string): Promise<Role[]> {
     });
   } catch {
     return [];
+  }
+}
+
+async function getEmployeesByAuthUserIdMap(
+  accounts: AuthAdminUser[],
+): Promise<Map<string, Employee>> {
+  const authUserIds = Array.from(
+    new Set(accounts.map((account) => account.authUserId).filter(Boolean)),
+  );
+  if (authUserIds.length === 0) {
+    return new Map();
+  }
+
+  try {
+    const employees = await getEmployeesByAuthUserIds(authUserIds, {
+      source: 'accountAuthorizationService.listAccountManagementRows',
+    });
+    return new Map(
+      employees
+        .filter((employee): employee is Employee & { authUserId: string } =>
+          Boolean(employee.authUserId),
+        )
+        .map((employee) => [employee.authUserId, employee] as const),
+    );
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn(
+        '[accountAuthorizationService] could not load HR employees for auth users',
+        error,
+      );
+    }
+    return new Map();
   }
 }
 
@@ -360,13 +380,12 @@ export async function listAccountManagementRows(
       'Ban khong co quyen xem danh sach tai khoan.',
     ),
   );
+  const employeesByAuthUserId = await getEmployeesByAuthUserIdMap(result.data);
 
   const rows = await Promise.all(
     result.data.map(async (account) => {
-      const [employee, roles] = await Promise.all([
-        getEmployeeForAccount(account),
-        getRolesForAccount(account.authUserId),
-      ]);
+      const roles = await getRolesForAccount(account.authUserId);
+      const employee = employeesByAuthUserId.get(account.authUserId) ?? null;
 
       return {
         account,

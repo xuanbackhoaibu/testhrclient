@@ -22,6 +22,20 @@ import type {
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
 const employeeCodePattern = /^\d{6}$/;
 
+type EmployeeApiDebugContext = {
+  source: string;
+  idSemanticType: 'employeeId' | 'authUserIds';
+  value: string | string[];
+};
+
+function debugEmployeeApiRequest(context: EmployeeApiDebugContext) {
+  if (!import.meta.env.DEV) {
+    return;
+  }
+
+  console.debug('[employeesApi]', context);
+}
+
 function findNextMockEmployeeCode() {
   const usedCodes = new Set(
     mockEmployees
@@ -70,17 +84,53 @@ export async function listEmployees(params: ListQueryParams = {}): Promise<Pagin
   return normalizePaginatedResponse<Employee>(response, params);
 }
 
-export async function getEmployee(id: string): Promise<Employee> {
+export async function getEmployeeById(
+  employeeId: string,
+  options?: { source?: string },
+): Promise<Employee> {
   if (isMockMode) {
     await mockDelay();
-    const employee = mockEmployees.find((item) => item.id === id);
+    const employee = mockEmployees.find((item) => item.id === employeeId);
     if (!employee) {
       throw new Error('Employee not found');
     }
     return employee;
   }
 
-  return api.get<Employee>(`/employees/${id}`);
+  debugEmployeeApiRequest({
+    source: options?.source ?? 'unknown',
+    idSemanticType: 'employeeId',
+    value: employeeId,
+  });
+  return api.get<Employee>(`/employees/${employeeId}`);
+}
+
+export async function getEmployeesByAuthUserIds(
+  authUserIds: string[],
+  options?: { source?: string },
+): Promise<Employee[]> {
+  const normalizedAuthUserIds = Array.from(
+    new Set(authUserIds.map((value) => value.trim()).filter(Boolean)),
+  );
+  if (normalizedAuthUserIds.length === 0) {
+    return [];
+  }
+
+  if (isMockMode) {
+    await mockDelay();
+    return mockEmployees.filter((employee) =>
+      employee.authUserId ? normalizedAuthUserIds.includes(employee.authUserId) : false,
+    );
+  }
+
+  debugEmployeeApiRequest({
+    source: options?.source ?? 'unknown',
+    idSemanticType: 'authUserIds',
+    value: normalizedAuthUserIds,
+  });
+  return api.post<Employee[]>('/employees/batch-by-auth-user-ids', {
+    authUserIds: normalizedAuthUserIds,
+  });
 }
 
 export async function getEmployeeAccount(id: string): Promise<EmployeeAccount> {
@@ -274,7 +324,9 @@ export async function updateEmployee(id: string, payload: Partial<EmployeePayloa
 
 export async function getEmployeeAssignments(id: string): Promise<EmployeeAssignment[]> {
   if (isMockMode) {
-    const employee = await getEmployee(id);
+    const employee = await getEmployeeById(id, {
+      source: 'employeesApi.getEmployeeAssignments',
+    });
     return employee.currentEmployeeAssignment ? [employee.currentEmployeeAssignment] : [];
   }
 

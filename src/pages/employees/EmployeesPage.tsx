@@ -7,7 +7,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../features/auth/useAuth';
-import { createEmployee, getEmployee, getNextEmployeeCode, updateEmployee } from '../../features/employees/employeesApi';
+import { createEmployee, getEmployeeById, getNextEmployeeCode, updateEmployee } from '../../features/employees/employeesApi';
 import type { Employee, EmployeePayload } from '../../features/employees/employeeTypes';
 import { useEmployees } from '../../features/employees/useEmployees';
 import { DomainExcelImportModal } from '../../features/import-export/DomainExcelImportModal';
@@ -296,7 +296,9 @@ export function EmployeesPage() {
     if (!mayEditEmployee) {
       return;
     }
-    const detail = await getEmployee(employeeId);
+    const detail = await getEmployeeById(employeeId, {
+      source: 'EmployeesPage.openEditDrawer',
+    });
     setEditing(detail);
     setSuggestedEmployeeCode('');
     setNextCodeError(null);
