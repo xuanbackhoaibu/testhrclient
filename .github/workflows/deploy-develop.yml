@@ -89,9 +89,9 @@ jobs:
           VITE_API_BASE_URL: ${{ vars.VITE_HR_API_BASE_URL != '' && vars.VITE_HR_API_BASE_URL || '/api/v1' }}
           VITE_USE_MOCKS: ${{ vars.VITE_HR_USE_MOCKS != '' && vars.VITE_HR_USE_MOCKS || 'false' }}
           VITE_AUTH_MODE: ${{ vars.VITE_HR_AUTH_MODE != '' && vars.VITE_HR_AUTH_MODE || 'chat-auth' }}
-          VITE_CHAT_AUTH_BASE_URL: ${{ vars.VITE_CHAT_AUTH_BASE_URL != '' && vars.VITE_CHAT_AUTH_BASE_URL || '/api/v1/auth' }}
-          VITE_CHAT_AUTH_LOGIN_URL: ${{ vars.VITE_CHAT_AUTH_LOGIN_URL != '' && vars.VITE_CHAT_AUTH_LOGIN_URL || '/api/v1/auth/login' }}
-          VITE_CHAT_AUTH_LOGOUT_URL: ${{ vars.VITE_CHAT_AUTH_LOGOUT_URL != '' && vars.VITE_CHAT_AUTH_LOGOUT_URL || '/api/v1/auth/logout' }}
+          VITE_APP_SYSTEM_CODE: ${{ vars.VITE_APP_SYSTEM_CODE != '' && vars.VITE_APP_SYSTEM_CODE || 'HRM' }}
+          VITE_AUTH_SERVICE_CLIENT_ID: ${{ vars.VITE_AUTH_SERVICE_CLIENT_ID != '' && vars.VITE_AUTH_SERVICE_CLIENT_ID || vars.VITE_CHAT_AUTH_CLIENT_ID != '' && vars.VITE_CHAT_AUTH_CLIENT_ID || 'hr-web-client' }}
+          VITE_AUTH_SERVICE_REDIRECT_URI: ${{ vars.VITE_AUTH_SERVICE_REDIRECT_URI != '' && vars.VITE_AUTH_SERVICE_REDIRECT_URI || vars.VITE_CHAT_AUTH_REDIRECT_URI != '' && vars.VITE_CHAT_AUTH_REDIRECT_URI || '/auth/callback' }}
           VITE_CHAT_AUTH_CLIENT_ID: ${{ vars.VITE_CHAT_AUTH_CLIENT_ID != '' && vars.VITE_CHAT_AUTH_CLIENT_ID || 'hr-web-client' }}
           VITE_CHAT_AUTH_REDIRECT_URI: ${{ vars.VITE_CHAT_AUTH_REDIRECT_URI != '' && vars.VITE_CHAT_AUTH_REDIRECT_URI || '/auth/callback' }}
         run: |
@@ -102,6 +102,9 @@ jobs:
           if [ "${GITHUB_REF_NAME}" = "develop" ]; then
             tags+=("--tag" "${IMAGE_REPOSITORY}:develop")
           fi
+          # URL vars (VITE_AUTH_API_BASE_URL, VITE_AUTH_SERVICE_BASE_URL, *_LOGIN_URL,
+          # *_LOGOUT_URL) are baked as placeholders at build time and replaced at
+          # container startup from the server .env via deploy/docker/entrypoint.sh.
           docker buildx build \
             --file Dockerfile \
             --target production \
@@ -110,9 +113,9 @@ jobs:
             --build-arg VITE_API_BASE_URL="${VITE_API_BASE_URL}" \
             --build-arg VITE_USE_MOCKS="${VITE_USE_MOCKS}" \
             --build-arg VITE_AUTH_MODE="${VITE_AUTH_MODE}" \
-            --build-arg VITE_CHAT_AUTH_BASE_URL="${VITE_CHAT_AUTH_BASE_URL}" \
-            --build-arg VITE_CHAT_AUTH_LOGIN_URL="${VITE_CHAT_AUTH_LOGIN_URL}" \
-            --build-arg VITE_CHAT_AUTH_LOGOUT_URL="${VITE_CHAT_AUTH_LOGOUT_URL}" \
+            --build-arg VITE_APP_SYSTEM_CODE="${VITE_APP_SYSTEM_CODE}" \
+            --build-arg VITE_AUTH_SERVICE_CLIENT_ID="${VITE_AUTH_SERVICE_CLIENT_ID}" \
+            --build-arg VITE_AUTH_SERVICE_REDIRECT_URI="${VITE_AUTH_SERVICE_REDIRECT_URI}" \
             --build-arg VITE_CHAT_AUTH_CLIENT_ID="${VITE_CHAT_AUTH_CLIENT_ID}" \
             --build-arg VITE_CHAT_AUTH_REDIRECT_URI="${VITE_CHAT_AUTH_REDIRECT_URI}" \
             "${tags[@]}" \
