@@ -52,8 +52,8 @@ const statusOptions = [
 
 export function DepartmentsPage() {
   const { can } = useAuth();
-  const canWriteDepartments = can(HR_PERMISSIONS.WRITE);
-  const canImportDepartments = can(HR_PERMISSIONS.IMPORT);
+  const canWriteDepartments = can('hr.department.create');
+  const canImportDepartments = can('hr.department.create');
   const queryClient = useQueryClient();
   const [params, setParams] = useState({
     page: 1,

@@ -46,7 +46,7 @@ const DOMAIN_LABEL: Record<string, string> = {
 export function PermissionsPage() {
   const { can } = useAuth();
   const queryClient = useQueryClient();
-  const canManage = can(HR_PERMISSIONS.AUTHORITY_WRITE);
+  const canManage = can('auth.permission.create');
 
   const [search, setSearch] = useState('');
   const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);

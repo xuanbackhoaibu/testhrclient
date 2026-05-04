@@ -48,7 +48,7 @@ const statusOptions = [
 
 export function BusinessSectorsPage() {
   const { can } = useAuth();
-  const canWrite = can(HR_PERMISSIONS.WRITE);
+  const canWrite = can('hr.business_sector.create');
   const queryClient = useQueryClient();
   const [params, setParams] = useState({
     page: 1,

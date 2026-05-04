@@ -99,7 +99,7 @@ export function MainLayout() {
   const [opened, { toggle, close }] = useDisclosure();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, can } = useAuth();
+  const { user, logout, can, hasAnyPermission } = useAuth();
 
   const visibleMainItems = mainItems.filter((item) => {
     if (item.path === ROUTES.employees) return can(HR_PERMISSIONS.READ);
@@ -108,7 +108,12 @@ export function MainLayout() {
     return true;
   });
 
-  const showOrganizationMenu = can(HR_PERMISSIONS.READ);
+  const showOrganizationMenu = hasAnyPermission([
+    'hr.unit.read',
+    'hr.department.read',
+    'hr.position.read',
+    'hr.business_sector.read',
+  ]);
   const showIamMenu =
     can(AUTH_ADMIN_PERMISSIONS.USERS_READ) ||
     can(AUTH_ADMIN_PERMISSIONS.ROLES_READ) ||

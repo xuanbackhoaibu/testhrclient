@@ -44,7 +44,7 @@ const STATUS_COLOR: Record<string, string> = { active: 'green', inactive: 'gray'
 export function PermissionGroupsPage() {
   const { can } = useAuth();
   const queryClient = useQueryClient();
-  const canManage = can(HR_PERMISSIONS.AUTHORITY_WRITE);
+  const canManage = can('auth.permission_group.manage');
 
   const [search, setSearch] = useState('');
   const [systemFilter, setSystemFilter] = useState<string | null>(null);

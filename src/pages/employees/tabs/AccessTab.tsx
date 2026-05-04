@@ -27,9 +27,9 @@ export function AccessTab({ employee }: Props) {
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
 
-  const canReadRoles = can(HR_PERMISSIONS.AUTHORITY_READ);
-  const canAssignRoles = can(HR_PERMISSIONS.AUTHORITY_WRITE);
-  const canReadPerms = can(HR_PERMISSIONS.AUTHORITY_READ);
+  const canReadRoles = can('auth.role.read');
+  const canAssignRoles = can('hr.account.assign_role');
+  const canReadPerms = can('auth.role.read');
   const { asSelectOptions: roleOptions } = useAvailableRoles();
 
   const authUserId = employee.authUserId;

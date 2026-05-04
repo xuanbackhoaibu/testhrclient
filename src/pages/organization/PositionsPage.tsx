@@ -44,8 +44,8 @@ const statusOptions = [
 
 export function PositionsPage() {
   const { can } = useAuth();
-  const canWritePositions = can(HR_PERMISSIONS.WRITE);
-  const canImportPositions = can(HR_PERMISSIONS.IMPORT);
+  const canWritePositions = can('hr.position.create');
+  const canImportPositions = can('hr.position.create');
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<Position | null>(null);
   const [open, setOpen] = useState(false);

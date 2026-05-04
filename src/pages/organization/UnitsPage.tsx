@@ -71,8 +71,8 @@ function TruncatedCell({ value }: { value?: string | null }) {
 
 export function UnitsPage() {
   const { can } = useAuth();
-  const canWriteUnits = can(HR_PERMISSIONS.WRITE);
-  const canImportUnits = can(HR_PERMISSIONS.IMPORT);
+  const canWriteUnits = can('hr.unit.create');
+  const canImportUnits = can('hr.unit.create');
   const queryClient = useQueryClient();
   const [params, setParams] = useState({
     page: 1,

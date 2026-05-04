@@ -20,7 +20,7 @@ import { AccessTab } from './tabs/AccessTab';
 export function EmployeeDetailPage() {
   const { id } = useParams();
   const { can } = useAuth();
-  const canReadAccount = can(HR_PERMISSIONS.PROVISION);
+  const canReadAccount = can('hr.account.read');
 
   const { data, isLoading, error, refetch } = useEmployeeDetail(id, {
     includeAccount: canReadAccount,

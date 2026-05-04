@@ -70,7 +70,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.businessSectors,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.READ]}>
+          <ProtectedRoute permissions={['hr.business_sector.read']}>
             <BusinessSectorsPage />
           </ProtectedRoute>
         ),
@@ -78,7 +78,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.units,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.READ]}>
+          <ProtectedRoute permissions={['hr.unit.read']}>
             <UnitsPage />
           </ProtectedRoute>
         ),
@@ -86,7 +86,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.departments,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.READ]}>
+          <ProtectedRoute permissions={['hr.department.read']}>
             <DepartmentsPage />
           </ProtectedRoute>
         ),
@@ -94,7 +94,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.positions,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.READ]}>
+          <ProtectedRoute permissions={['hr.position.read']}>
             <PositionsPage />
           </ProtectedRoute>
         ),

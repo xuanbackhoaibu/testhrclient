@@ -113,10 +113,10 @@ const emptyEmployeeFormValues: EmployeePayload = {
 export function EmployeesPage() {
   const navigate = useNavigate();
   const { can } = useAuth();
-  const mayCreateEmployee = can(HR_PERMISSIONS.WRITE);
-  const mayEditEmployee = can(HR_PERMISSIONS.WRITE);
-  const mayImportEmployees = can(HR_PERMISSIONS.IMPORT);
-  const mayProvisionAccounts = can(HR_PERMISSIONS.PROVISION);
+  const mayCreateEmployee = can('hr.employee.create');
+  const mayEditEmployee = can('hr.employee.update');
+  const mayImportEmployees = can('hr.employee.import');
+  const mayProvisionAccounts = can('hr.account.create');
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);

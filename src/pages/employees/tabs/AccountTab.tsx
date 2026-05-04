@@ -45,12 +45,12 @@ export function AccountTab({ employee }: Props) {
   const { can } = useAuth();
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
-  const canRead = can(HR_PERMISSIONS.PROVISION);
-  const canCreate = can(HR_PERMISSIONS.PROVISION);
-  const canSendActivation = can(HR_PERMISSIONS.PROVISION);
-  const canActivate = can(HR_PERMISSIONS.PROVISION);
-  const canSuspend = can(HR_PERMISSIONS.PROVISION);
-  const canUpdate = can(HR_PERMISSIONS.PROVISION);
+  const canRead = can('hr.account.read');
+  const canCreate = can('hr.account.create');
+  const canSendActivation = can('hr.account.reset_password');
+  const canActivate = can('hr.account.restore');
+  const canSuspend = can('hr.account.lock');
+  const canUpdate = can('hr.account.update');
 
   const { data: authUser, isLoading, error, refetch } = useQuery({
     queryKey: ['auth-user-by-employee', employee.id],
