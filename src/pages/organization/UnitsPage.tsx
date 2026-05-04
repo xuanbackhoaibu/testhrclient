@@ -350,7 +350,7 @@ export function UnitsPage() {
       {
         key: "actions",
         header: "",
-        width: 70,
+        width: 108,
         align: "right",
         render: (record) => (
           <TableActionsMenu

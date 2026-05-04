@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { ActionIcon, Menu, Tooltip } from '@mantine/core';
+import type { MouseEvent, ReactNode } from 'react';
+import { ActionIcon, Group, Tooltip } from '@mantine/core';
 import { IconDotsVertical } from '@tabler/icons-react';
 
 export interface TableActionItem {
@@ -15,37 +15,47 @@ interface TableActionsMenuProps {
   label?: string;
 }
 
-export function TableActionsMenu({ actions, label = 'Thao tác' }: TableActionsMenuProps) {
+function stopRowClick(event: MouseEvent<HTMLElement>) {
+  event.stopPropagation();
+}
+
+export function TableActionsMenu({
+  actions,
+  label = 'Thao tac',
+}: TableActionsMenuProps) {
+  const visibleActions = actions.filter(Boolean);
+
+  if (visibleActions.length === 0) {
+    return null;
+  }
+
   return (
-    <Menu position="bottom-end" shadow="md" width={190}>
-      <Menu.Target>
-        <Tooltip label={label}>
+    <Group
+      gap={4}
+      justify="flex-end"
+      wrap="nowrap"
+      onMouseDown={stopRowClick}
+      aria-label={label}
+    >
+      {visibleActions.map((action) => (
+        <Tooltip key={action.label} label={action.label}>
           <ActionIcon
             variant="subtle"
-            color="gray"
-            aria-label={label}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <IconDotsVertical size={18} />
-          </ActionIcon>
-        </Tooltip>
-      </Menu.Target>
-      <Menu.Dropdown>
-        {actions.map((action) => (
-          <Menu.Item
-            key={action.label}
-            leftSection={action.icon}
-            color={action.color}
+            color={action.color ?? 'gray'}
+            aria-label={action.label}
             disabled={action.disabled}
+            onMouseDown={stopRowClick}
             onClick={(event) => {
-              event.stopPropagation();
-              action.onClick();
+              stopRowClick(event);
+              if (!action.disabled) {
+                action.onClick();
+              }
             }}
           >
-            {action.label}
-          </Menu.Item>
-        ))}
-      </Menu.Dropdown>
-    </Menu>
+            {action.icon ?? <IconDotsVertical size={16} />}
+          </ActionIcon>
+        </Tooltip>
+      ))}
+    </Group>
   );
 }

@@ -173,7 +173,7 @@ export function PositionsPage() {
       {
         key: "actions",
         header: "",
-        width: 70,
+        width: 72,
         align: "right",
         render: (record) => (
           <TableActionsMenu
