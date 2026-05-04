@@ -36,7 +36,6 @@ import {
 import type {
   CreatePermissionGroupInput,
   PermissionGroupDefinition,
-  PermissionGroupDetail,
 } from '../../features/auth-admin/authAdminTypes';
 
 const STATUS_LABEL: Record<string, string> = { active: 'Đang dùng', inactive: 'Vô hiệu' };

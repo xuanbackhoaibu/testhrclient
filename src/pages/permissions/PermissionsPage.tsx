@@ -8,7 +8,6 @@ import {
   Group,
   Loader,
   Modal,
-  Select,
   Stack,
   Switch,
   Text,
