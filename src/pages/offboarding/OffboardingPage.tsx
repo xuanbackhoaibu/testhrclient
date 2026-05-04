@@ -1,46 +1,68 @@
-import { useState } from 'react';
-import { Button, Card, Drawer, Form, Modal, Select, Space, Table, Tabs, message } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from "react";
+import {
+  Button,
+  Card,
+  Drawer,
+  Form,
+  Modal,
+  Select,
+  Space,
+  Table,
+  Tabs,
+  message,
+} from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { completeOffboardingInstance, createOffboardingInstance, updateOffboardingItem } from '../../features/offboarding/offboardingApi';
-import type { OffboardingInstance, OffboardingInstancePayload } from '../../features/offboarding/offboardingTypes';
-import { useOffboarding } from '../../features/offboarding/useOffboarding';
-import { mockEmployees } from '../../shared/mocks/mockEmployees';
-import { ErrorState } from '../../shared/components/ErrorState';
-import { LoadingState } from '../../shared/components/LoadingState';
-import { PageHeader } from '../../shared/components/PageHeader';
-import { StatusTag } from '../../shared/components/StatusTag';
-import { formatDate } from '../../shared/utils/date';
+import {
+  completeOffboardingInstance,
+  createOffboardingInstance,
+  updateOffboardingItem,
+} from "../../features/offboarding/offboardingApi";
+import type {
+  OffboardingInstance,
+  OffboardingInstancePayload,
+} from "../../features/offboarding/offboardingTypes";
+import { useOffboarding } from "../../features/offboarding/useOffboarding";
+import { mockEmployees } from "../../shared/mocks/mockEmployees";
+import { ErrorState } from "../../shared/components/ErrorState";
+import { LoadingState } from "../../shared/components/LoadingState";
+import { PageHeader } from "../../shared/components/PageHeader";
+import { StatusTag } from "../../shared/components/StatusTag";
+import { formatDate } from "../../shared/utils/date";
 
 export function OffboardingPage() {
   const queryClient = useQueryClient();
   const [form] = Form.useForm<OffboardingInstancePayload>();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<OffboardingInstance | null>(null);
-  const { data, isLoading, error, refetch } = useOffboarding({ page: 1, pageSize: 50 });
+  const { data, isLoading, error, refetch } = useOffboarding({
+    page: 1,
+    pageSize: 50,
+  });
 
   const createMutation = useMutation({
     mutationFn: createOffboardingInstance,
     onSuccess: async () => {
-      message.success('Đã tạo offboarding instance.');
+      message.success("Đã tạo đợt offboarding.");
       setOpen(false);
       form.resetFields();
-      await queryClient.invalidateQueries({ queryKey: ['offboarding'] });
+      await queryClient.invalidateQueries({ queryKey: ["offboarding"] });
     },
   });
 
   const itemMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) => updateOffboardingItem(id, { status }),
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      updateOffboardingItem(id, { status }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['offboarding'] });
+      await queryClient.invalidateQueries({ queryKey: ["offboarding"] });
     },
   });
 
   const completeMutation = useMutation({
     mutationFn: completeOffboardingInstance,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['offboarding'] });
+      await queryClient.invalidateQueries({ queryKey: ["offboarding"] });
       setSelected(null);
     },
   });
@@ -55,12 +77,24 @@ export function OffboardingPage() {
 
   return (
     <>
-      <PageHeader title="Offboarding" subtitle="Templates và instances cho employee offboarding." actions={<Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Create instance</Button>} />
+      <PageHeader
+        title="Offboarding"
+        subtitle="Mẫu và đợt offboarding cho nhân viên."
+        actions={
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setOpen(true)}
+          >
+            Tạo đợt
+          </Button>
+        }
+      />
       <Tabs
         items={[
           {
-            key: 'instances',
-            label: 'Instances',
+            key: "instances",
+            label: "Đợt",
             children: (
               <Card className="page-card">
                 <Table
@@ -68,19 +102,34 @@ export function OffboardingPage() {
                   dataSource={data.instances}
                   pagination={false}
                   columns={[
-                    { title: 'Employee', dataIndex: 'employeeName' },
-                    { title: 'Template', dataIndex: 'templateName' },
-                    { title: 'Start date', render: (_, record) => formatDate(record.startDate) },
-                    { title: 'Status', render: (_, record) => <StatusTag status={record.status} /> },
-                    { title: 'Actions', render: (_, record) => <Button onClick={() => setSelected(record)}>View checklist</Button> },
+                    { title: "Nhân viên", dataIndex: "employeeName" },
+                    { title: "Mẫu", dataIndex: "templateName" },
+                    {
+                      title: "Ngày bắt đầu",
+                      render: (_, record) => formatDate(record.startDate),
+                    },
+                    {
+                      title: "Trạng thái",
+                      render: (_, record) => (
+                        <StatusTag status={record.status} />
+                      ),
+                    },
+                    {
+                      title: "Thao tác",
+                      render: (_, record) => (
+                        <Button onClick={() => setSelected(record)}>
+                          Xem danh sách kiểm tra
+                        </Button>
+                      ),
+                    },
                   ]}
                 />
               </Card>
             ),
           },
           {
-            key: 'templates',
-            label: 'Templates',
+            key: "templates",
+            label: "Mẫu",
             children: (
               <Card className="page-card">
                 <Table
@@ -88,9 +137,14 @@ export function OffboardingPage() {
                   dataSource={data.templates}
                   pagination={false}
                   columns={[
-                    { title: 'Name', dataIndex: 'name' },
-                    { title: 'Item count', dataIndex: 'itemCount' },
-                    { title: 'Status', render: (_, record) => <StatusTag status={record.status} /> },
+                    { title: "Tên", dataIndex: "name" },
+                    { title: "Số lượng mục", dataIndex: "itemCount" },
+                    {
+                      title: "Trạng thái",
+                      render: (_, record) => (
+                        <StatusTag status={record.status} />
+                      ),
+                    },
                   ]}
                 />
               </Card>
@@ -99,47 +153,112 @@ export function OffboardingPage() {
         ]}
       />
 
-      <Drawer title="Create offboarding instance" open={open} width={420} destroyOnClose onClose={() => { setOpen(false); form.resetFields(); }} extra={<Button type="primary" loading={createMutation.isPending} onClick={() => void form.submit()}>Save</Button>}>
-        <Form form={form} layout="vertical" onFinish={(values) => createMutation.mutate(values)}>
-          <Form.Item name="employeeId" label="Employee" rules={[{ required: true }]}>
-            <Select options={mockEmployees.map((item) => ({ value: item.id, label: item.fullName }))} />
+      <Drawer
+        title="Tạo đợt offboarding"
+        open={open}
+        width={420}
+        destroyOnClose
+        onClose={() => {
+          setOpen(false);
+          form.resetFields();
+        }}
+        extra={
+          <Button
+            type="primary"
+            loading={createMutation.isPending}
+            onClick={() => void form.submit()}
+          >
+            Lưu
+          </Button>
+        }
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={(values) => createMutation.mutate(values)}
+        >
+          <Form.Item
+            name="employeeId"
+            label="Nhân viên"
+            rules={[{ required: true }]}
+          >
+            <Select
+              options={mockEmployees.map((item) => ({
+                value: item.id,
+                label: item.fullName,
+              }))}
+            />
           </Form.Item>
-          <Form.Item name="templateName" label="Template" rules={[{ required: true }]}>
-            <Select options={data.templates.map((item) => ({ value: item.name, label: item.name }))} />
+          <Form.Item
+            name="templateName"
+            label="Mẫu"
+            rules={[{ required: true }]}
+          >
+            <Select
+              options={data.templates.map((item) => ({
+                value: item.name,
+                label: item.name,
+              }))}
+            />
           </Form.Item>
-          <Form.Item name="startDate" label="Start date" rules={[{ required: true }]}>
-            <Select options={[{ value: '2026-04-25', label: '2026-04-25' }, { value: '2026-05-01', label: '2026-05-01' }]} />
+          <Form.Item
+            name="startDate"
+            label="Ngày bắt đầu"
+            rules={[{ required: true }]}
+          >
+            <Select
+              options={[
+                { value: "2026-04-25", label: "2026-04-25" },
+                { value: "2026-05-01", label: "2026-05-01" },
+              ]}
+            />
           </Form.Item>
         </Form>
       </Drawer>
 
-      <Modal open={Boolean(selected)} title="Offboarding checklist" footer={null} width={760} onCancel={() => setSelected(null)}>
-        <Space direction="vertical" style={{ width: '100%' }}>
+      <Modal
+        open={Boolean(selected)}
+        title="Danh sách kiểm tra offboarding"
+        footer={null}
+        width={760}
+        onCancel={() => setSelected(null)}
+      >
+        <Space direction="vertical" style={{ width: "100%" }}>
           <Table
             rowKey="id"
             dataSource={selected?.items ?? []}
             pagination={false}
             columns={[
-              { title: 'Item', dataIndex: 'title' },
-              { title: 'Owner', dataIndex: 'owner' },
-              { title: 'Status', render: (_, record) => <StatusTag status={record.status} /> },
+              { title: "Mục", dataIndex: "title" },
+              { title: "Phụ trách", dataIndex: "owner" },
               {
-                title: 'Actions',
+                title: "Trạng thái",
+                render: (_, record) => <StatusTag status={record.status} />,
+              },
+              {
+                title: "Thao tác",
                 render: (_, record) => (
                   <Select
                     size="small"
                     style={{ width: 150 }}
                     value={record.status}
-                    options={['DRAFT', 'IN_PROGRESS', 'COMPLETED'].map((item) => ({ value: item, label: item }))}
-                    onChange={(value) => itemMutation.mutate({ id: record.id, status: value })}
+                    options={["DRAFT", "IN_PROGRESS", "COMPLETED"].map(
+                      (item) => ({ value: item, label: item }),
+                    )}
+                    onChange={(value) =>
+                      itemMutation.mutate({ id: record.id, status: value })
+                    }
                   />
                 ),
               },
             ]}
           />
-          {selected && selected.status !== 'COMPLETED' ? (
-            <Button type="primary" onClick={() => completeMutation.mutate(selected.id)}>
-              Complete instance
+          {selected && selected.status !== "COMPLETED" ? (
+            <Button
+              type="primary"
+              onClick={() => completeMutation.mutate(selected.id)}
+            >
+              Hoàn thành đợt
             </Button>
           ) : null}
         </Space>
@@ -147,4 +266,3 @@ export function OffboardingPage() {
     </>
   );
 }
-

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   ActionIcon,
   Badge,
@@ -14,9 +14,9 @@ import {
   Text,
   TextInput,
   Tooltip,
-} from '@mantine/core';
-import { useDebouncedValue, useDisclosure } from '@mantine/hooks';
-import { notifications } from '@mantine/notifications';
+} from "@mantine/core";
+import { useDebouncedValue, useDisclosure } from "@mantine/hooks";
+import { notifications } from "@mantine/notifications";
 import {
   IconDots,
   IconEye,
@@ -29,15 +29,15 @@ import {
   IconTrash,
   IconUserCheck,
   IconUserOff,
-} from '@tabler/icons-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+} from "@tabler/icons-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 
-import { useAuth } from '../../features/auth/useAuth';
-import { AUTH_ADMIN_PERMISSIONS } from '../../features/auth/permissions';
-import { AccountAuthorizationModal } from '../../features/auth-admin/AccountAuthorizationModal';
-import { listAccountManagementRows } from '../../features/auth-admin/accountAuthorizationService';
-import { useAccountAuthorization } from '../../features/auth-admin/useAccountAuthorization';
+import { useAuth } from "../../features/auth/useAuth";
+import { AUTH_ADMIN_PERMISSIONS } from "../../features/auth/permissions";
+import { AccountAuthorizationModal } from "../../features/auth-admin/AccountAuthorizationModal";
+import { listAccountManagementRows } from "../../features/auth-admin/accountAuthorizationService";
+import { useAccountAuthorization } from "../../features/auth-admin/useAccountAuthorization";
 import {
   activateAccount,
   forceChangePassword,
@@ -47,52 +47,68 @@ import {
   unlockAccount,
   lockAccount,
   deactivateAccount,
-} from '../../features/auth-admin/authAdminApi';
+} from "../../features/auth-admin/authAdminApi";
 import {
   ACCOUNT_STATE_COLOR,
   ACCOUNT_STATUS_LABELS,
   type AuthAdminUser,
-} from '../../features/auth-admin/authAdminTypes';
-import type { AccountManagementRow } from '../../features/auth-admin/accountAuthorizationTypes';
-import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
-import { PageHeader } from '../../shared/components/PageHeader';
+} from "../../features/auth-admin/authAdminTypes";
+import type { AccountManagementRow } from "../../features/auth-admin/accountAuthorizationTypes";
+import {
+  DataTable,
+  type DataTableColumn,
+} from "../../shared/components/DataTable";
+import { PageHeader } from "../../shared/components/PageHeader";
 
 const STATUS_OPTIONS = [
-  { value: '', label: 'Tat ca trang thai' },
-  { value: 'ACTIVE', label: 'Dang hoat dong' },
-  { value: 'PENDING_ACTIVATION', label: 'Cho kich hoat' },
-  { value: 'LOCKED', label: 'Bi khoa' },
-  { value: 'DISABLED', label: 'Vo hieu' },
-  { value: 'DEACTIVATED', label: 'Da vo hieu' },
-  { value: 'SOFT_DELETED', label: 'Da xoa mem' },
+  { value: "", label: "Tất cả trạng thái" },
+  { value: "ACTIVE", label: "Đang hoạt động" },
+  { value: "PENDING_ACTIVATION", label: "Chờ kích hoạt" },
+  { value: "LOCKED", label: "Bị khóa" },
+  { value: "DISABLED", label: "Vô hiệu" },
+  { value: "DEACTIVATED", label: "Đã vô hiệu" },
+  { value: "SOFT_DELETED", label: "Đã xóa mềm" },
 ];
 
 function accountDisplayName(row: AccountManagementRow) {
-  return row.employee?.fullName ?? row.account.displayName ?? row.account.username ?? '-';
+  return (
+    row.employee?.fullName ??
+    row.account.displayName ??
+    row.account.username ??
+    "-"
+  );
 }
 
 function unitName(row: AccountManagementRow) {
-  return row.employee?.currentEmployeeAssignment?.unitName ?? row.employee?.unitName ?? '-';
+  return (
+    row.employee?.currentEmployeeAssignment?.unitName ??
+    row.employee?.unitName ??
+    "-"
+  );
 }
 
 function departmentName(row: AccountManagementRow) {
-  return row.employee?.currentEmployeeAssignment?.departmentName ?? row.employee?.departmentName ?? '-';
+  return (
+    row.employee?.currentEmployeeAssignment?.departmentName ??
+    row.employee?.departmentName ??
+    "-"
+  );
 }
 
 function firstLoginStatus(account: AuthAdminUser) {
   if (account.mustChangePassword) {
-    return { color: 'orange', label: 'Must change password' };
+    return { color: "orange", label: "Phải đổi mật khẩu" };
   }
 
   if (!account.lastLoginAt) {
-    return { color: 'yellow', label: 'First login' };
+    return { color: "yellow", label: "Lần đăng nhập đầu tiên" };
   }
 
-  return { color: 'green', label: 'Normal' };
+  return { color: "green", label: "Bình thường" };
 }
 
 function disabledTooltip(disabled: boolean) {
-  return disabled ? 'Ban khong co quyen thuc hien thao tac nay' : '';
+  return disabled ? "Bạn không có quyền thực hiện thao tác này" : "";
 }
 
 export function AccountsPage() {
@@ -113,8 +129,8 @@ export function AccountsPage() {
     AUTH_ADMIN_PERMISSIONS.USERS_UPDATE,
   ]);
 
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('');
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const [debouncedSearch] = useDebouncedValue(search, 300);
 
@@ -124,16 +140,22 @@ export function AccountsPage() {
     label: string;
     color: string;
   } | null>(null);
-  const [confirmReason, setConfirmReason] = useState('');
+  const [confirmReason, setConfirmReason] = useState("");
   const [resetResult, setResetResult] = useState<string | null>(null);
-  const [selectedRow, setSelectedRow] = useState<AccountManagementRow | null>(null);
-  const [authorizationAccountId, setAuthorizationAccountId] = useState<string | null>(null);
+  const [selectedRow, setSelectedRow] = useState<AccountManagementRow | null>(
+    null,
+  );
+  const [authorizationAccountId, setAuthorizationAccountId] = useState<
+    string | null
+  >(null);
 
-  const [confirmOpened, { open: openConfirm, close: closeConfirm }] = useDisclosure(false);
-  const [detailOpened, { open: openDetail, close: closeDetail }] = useDisclosure(false);
+  const [confirmOpened, { open: openConfirm, close: closeConfirm }] =
+    useDisclosure(false);
+  const [detailOpened, { open: openDetail, close: closeDetail }] =
+    useDisclosure(false);
 
   const accountsQuery = useQuery({
-    queryKey: ['auth-admin-users', debouncedSearch, status, page],
+    queryKey: ["auth-admin-users", debouncedSearch, status, page],
     queryFn: () =>
       listAccountManagementRows({
         search: debouncedSearch || undefined,
@@ -148,14 +170,15 @@ export function AccountsPage() {
     selectedRow?.account.authUserId ?? null,
     detailOpened,
   );
-  const detailRoles = detailAuthorizationQuery.data?.roles ?? selectedRow?.roles ?? [];
+  const detailRoles =
+    detailAuthorizationQuery.data?.roles ?? selectedRow?.roles ?? [];
 
   const invalidateList = async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['auth-admin-users'] }),
+      queryClient.invalidateQueries({ queryKey: ["auth-admin-users"] }),
       selectedRow?.account.authUserId
         ? queryClient.invalidateQueries({
-            queryKey: ['account-authorization', selectedRow.account.authUserId],
+            queryKey: ["account-authorization", selectedRow.account.authUserId],
           })
         : Promise.resolve(),
     ]);
@@ -172,60 +195,64 @@ export function AccountsPage() {
       reason: string;
     }) => {
       switch (type) {
-        case 'lock':
+        case "lock":
           return lockAccount(userId, reason);
-        case 'unlock':
+        case "unlock":
           return unlockAccount(userId, reason);
-        case 'deactivate':
+        case "deactivate":
           return deactivateAccount(userId, reason);
-        case 'activate':
+        case "activate":
           return activateAccount(userId, reason);
-        case 'soft-delete':
+        case "soft-delete":
           return softDeleteAccount(userId, reason);
-        case 'revoke-sessions':
+        case "revoke-sessions":
           return revokeSessions(userId, reason);
         default:
-          throw new Error('Hanh dong khong hop le');
+          throw new Error("Hành động không hợp lệ");
       }
     },
     onSuccess: async () => {
-      notifications.show({ color: 'green', message: 'Thuc hien thanh cong.' });
+      notifications.show({ color: "green", message: "Thực hiện thành công." });
       await invalidateList();
       closeConfirm();
-      setConfirmReason('');
+      setConfirmReason("");
       if (selectedRow) {
         await detailAuthorizationQuery.refetch();
       }
     },
     onError: (error: Error) => {
-      notifications.show({ color: 'red', message: error.message });
+      notifications.show({ color: "red", message: error.message });
     },
   });
 
   const resetPasswordMutation = useMutation({
-    mutationFn: ({ userId, reason }: { userId: string; reason: string }) => resetPassword(userId, reason),
+    mutationFn: ({ userId, reason }: { userId: string; reason: string }) =>
+      resetPassword(userId, reason),
     onSuccess: async (result) => {
       await invalidateList();
       closeConfirm();
-      setConfirmReason('');
+      setConfirmReason("");
       setResetResult(result.tempPassword);
     },
     onError: (error: Error) => {
-      notifications.show({ color: 'red', message: error.message });
+      notifications.show({ color: "red", message: error.message });
     },
   });
 
   const forceChangeMutation = useMutation({
     mutationFn: (userId: string) => forceChangePassword(userId),
     onSuccess: async () => {
-      notifications.show({ color: 'green', message: 'Da bat yeu cau doi mat khau.' });
+      notifications.show({
+        color: "green",
+        message: "Đã bắt yêu cầu đổi mật khẩu.",
+      });
       await invalidateList();
       if (selectedRow) {
         await detailAuthorizationQuery.refetch();
       }
     },
     onError: (error: Error) => {
-      notifications.show({ color: 'red', message: error.message });
+      notifications.show({ color: "red", message: error.message });
     },
   });
 
@@ -233,10 +260,10 @@ export function AccountsPage() {
     type: string,
     row: AccountManagementRow,
     label: string,
-    color = 'blue',
+    color = "blue",
   ) => {
     setConfirmAction({ type, row, label, color });
-    setConfirmReason('');
+    setConfirmReason("");
     openConfirm();
   };
 
@@ -245,7 +272,7 @@ export function AccountsPage() {
       return;
     }
 
-    if (confirmAction.type === 'reset-password') {
+    if (confirmAction.type === "reset-password") {
       resetPasswordMutation.mutate({
         userId: confirmAction.row.account.authUserId,
         reason: confirmReason,
@@ -262,12 +289,12 @@ export function AccountsPage() {
 
   const columns: DataTableColumn<AccountManagementRow>[] = [
     {
-      key: 'account',
-      header: 'Ma nhan vien / username',
+      key: "account",
+      header: "Mã nhân viên / username",
       render: (row) => (
         <Stack gap={2}>
           <Text fw={600} size="sm">
-            {row.account.employeeCode ?? '-'}
+            {row.account.employeeCode ?? "-"}
           </Text>
           <Text size="xs" c="dimmed">
             {row.account.username ?? row.account.email}
@@ -276,37 +303,42 @@ export function AccountsPage() {
       ),
     },
     {
-      key: 'fullName',
-      header: 'Ho ten',
+      key: "fullName",
+      header: "Họ tên",
       render: (row) => <Text size="sm">{accountDisplayName(row)}</Text>,
     },
     {
-      key: 'email',
-      header: 'Email',
+      key: "email",
+      header: "Email",
       render: (row) => <Text size="sm">{row.account.email}</Text>,
     },
     {
-      key: 'unit',
-      header: 'Don vi',
+      key: "unit",
+      header: "Đơn vị",
       render: (row) => <Text size="sm">{unitName(row)}</Text>,
     },
     {
-      key: 'department',
-      header: 'Phong ban',
+      key: "department",
+      header: "Phòng ban",
       render: (row) => <Text size="sm">{departmentName(row)}</Text>,
     },
     {
-      key: 'status',
-      header: 'Trang thai tai khoan',
+      key: "status",
+      header: "Trạng thái tài khoản",
       render: (row) => (
-        <Badge color={ACCOUNT_STATE_COLOR[row.account.accountState] ?? 'gray'} variant="light" size="sm">
-          {ACCOUNT_STATUS_LABELS[row.account.accountState] ?? row.account.accountState}
+        <Badge
+          color={ACCOUNT_STATE_COLOR[row.account.accountState] ?? "gray"}
+          variant="light"
+          size="sm"
+        >
+          {ACCOUNT_STATUS_LABELS[row.account.accountState] ??
+            row.account.accountState}
         </Badge>
       ),
     },
     {
-      key: 'roles',
-      header: 'Vai tro hien tai',
+      key: "roles",
+      header: "Vai trò hiện tại",
       render: (row) => (
         <Group gap={4}>
           {row.roles.length === 0 ? (
@@ -329,8 +361,8 @@ export function AccountsPage() {
       ),
     },
     {
-      key: 'firstLogin',
-      header: 'First login / mustChangePassword',
+      key: "firstLogin",
+      header: "Lần đầu / Phải đổi mật khẩu",
       render: (row) => {
         const state = firstLoginStatus(row.account);
         return (
@@ -341,10 +373,14 @@ export function AccountsPage() {
       },
     },
     {
-      key: 'actions',
-      header: '',
+      key: "actions",
+      header: "",
       render: (row) => (
-        <Group gap={4} justify="flex-end" onClick={(event) => event.stopPropagation()}>
+        <Group
+          gap={4}
+          justify="flex-end"
+          onClick={(event) => event.stopPropagation()}
+        >
           <Tooltip label="Xem chi tiet">
             <ActionIcon
               variant="subtle"
@@ -364,7 +400,9 @@ export function AccountsPage() {
                 variant="subtle"
                 size="sm"
                 disabled={!canAuthorizeAccounts}
-                onClick={() => setAuthorizationAccountId(row.account.authUserId)}
+                onClick={() =>
+                  setAuthorizationAccountId(row.account.authUserId)
+                }
               >
                 <IconShield size={15} />
               </ActionIcon>
@@ -375,60 +413,95 @@ export function AccountsPage() {
             <span>
               <Menu withinPortal position="bottom-end" shadow="sm">
                 <Menu.Target>
-                  <ActionIcon variant="subtle" size="sm" disabled={!canUpdateAccounts}>
+                  <ActionIcon
+                    variant="subtle"
+                    size="sm"
+                    disabled={!canUpdateAccounts}
+                  >
                     <IconDots size={15} />
                   </ActionIcon>
                 </Menu.Target>
                 <Menu.Dropdown>
-                  <Menu.Label>Tai khoan</Menu.Label>
+                  <Menu.Label>Tài khoản</Menu.Label>
 
-                  {row.account.accountState === 'ACTIVE' ? (
+                  {row.account.accountState === "ACTIVE" ? (
                     <Menu.Item
                       leftSection={<IconLock size={14} />}
                       color="orange"
-                      onClick={() => handleAction('lock', row, 'Khoa tai khoan', 'orange')}
+                      onClick={() =>
+                        handleAction("lock", row, "Khóa tài khoản", "orange")
+                      }
                     >
-                      Khoa tai khoan
+                      Khóa tài khoản
                     </Menu.Item>
                   ) : null}
 
-                  {row.account.accountState === 'LOCKED' ? (
+                  {row.account.accountState === "LOCKED" ? (
                     <Menu.Item
                       leftSection={<IconLockOpen size={14} />}
                       color="green"
-                      onClick={() => handleAction('unlock', row, 'Mo khoa tai khoan', 'green')}
+                      onClick={() =>
+                        handleAction(
+                          "unlock",
+                          row,
+                          "Mở khóa tài khoản",
+                          "green",
+                        )
+                      }
                     >
-                      Mo khoa
+                      Mở khóa
                     </Menu.Item>
                   ) : null}
 
-                  {row.account.accountState === 'ACTIVE' ? (
+                  {row.account.accountState === "ACTIVE" ? (
                     <Menu.Item
                       leftSection={<IconUserOff size={14} />}
                       color="red"
-                      onClick={() => handleAction('deactivate', row, 'Vo hieu tai khoan', 'red')}
+                      onClick={() =>
+                        handleAction(
+                          "deactivate",
+                          row,
+                          "Vô hiệu tài khoản",
+                          "red",
+                        )
+                      }
                     >
-                      Vo hieu tai khoan
+                      Vô hiệu tài khoản
                     </Menu.Item>
                   ) : null}
 
-                  {row.account.accountState === 'DEACTIVATED' || row.account.accountState === 'DISABLED' ? (
+                  {row.account.accountState === "DEACTIVATED" ||
+                  row.account.accountState === "DISABLED" ? (
                     <Menu.Item
                       leftSection={<IconUserCheck size={14} />}
                       color="green"
-                      onClick={() => handleAction('activate', row, 'Kich hoat lai tai khoan', 'green')}
+                      onClick={() =>
+                        handleAction(
+                          "activate",
+                          row,
+                          "Kích hoạt lại tài khoản",
+                          "green",
+                        )
+                      }
                     >
-                      Kich hoat lai
+                      Kích hoạt lại
                     </Menu.Item>
                   ) : null}
 
-                  {row.account.accountState !== 'TOMBSTONED' ? (
+                  {row.account.accountState !== "TOMBSTONED" ? (
                     <Menu.Item
                       leftSection={<IconTrash size={14} />}
                       color="red"
-                      onClick={() => handleAction('soft-delete', row, 'Xoa mem tai khoan', 'red')}
+                      onClick={() =>
+                        handleAction(
+                          "soft-delete",
+                          row,
+                          "Xóa mềm tài khoản",
+                          "red",
+                        )
+                      }
                     >
-                      Xoa mem
+                      Xóa mềm
                     </Menu.Item>
                   ) : null}
 
@@ -436,24 +509,40 @@ export function AccountsPage() {
 
                   <Menu.Item
                     leftSection={<IconKey size={14} />}
-                    onClick={() => handleAction('reset-password', row, 'Reset mat khau', 'blue')}
+                    onClick={() =>
+                      handleAction(
+                        "reset-password",
+                        row,
+                        "Đặt lại mật khẩu",
+                        "blue",
+                      )
+                    }
                   >
-                    Reset mat khau
+                    Đặt lại mật khẩu
                   </Menu.Item>
 
                   <Menu.Item
                     leftSection={<IconRefresh size={14} />}
                     color="orange"
-                    onClick={() => forceChangeMutation.mutate(row.account.authUserId)}
+                    onClick={() =>
+                      forceChangeMutation.mutate(row.account.authUserId)
+                    }
                   >
-                    Buoc doi mat khau
+                    Bắt đổi mật khẩu
                   </Menu.Item>
 
                   <Menu.Item
                     leftSection={<IconRefresh size={14} />}
-                    onClick={() => handleAction('revoke-sessions', row, 'Thu hoi session', 'gray')}
+                    onClick={() =>
+                      handleAction(
+                        "revoke-sessions",
+                        row,
+                        "Thu hồi phiên",
+                        "gray",
+                      )
+                    }
                   >
-                    Thu hoi session
+                    Thu hồi phiên
                   </Menu.Item>
                 </Menu.Dropdown>
               </Menu>
@@ -467,14 +556,14 @@ export function AccountsPage() {
   return (
     <Stack gap="md">
       <PageHeader
-        title="Quan ly tai khoan"
-        subtitle="Quan tri tai khoan dang nhap va phan quyen cho nhan su"
-        breadcrumbs={['He thong', 'Tai khoan']}
+        title="Quản lý tài khoản"
+        subtitle="Quản trị tài khoản đăng nhập và phân quyền cho nhân sự"
+        breadcrumbs={["Hệ thống", "Tài khoản"]}
       />
 
       <Group gap="sm">
         <TextInput
-          placeholder="Tim theo email, username, ma nhan su..."
+          placeholder="Tìm theo email, username, mã nhân sự..."
           leftSection={<IconSearch size={16} />}
           value={search}
           onChange={(event) => {
@@ -487,7 +576,7 @@ export function AccountsPage() {
           data={STATUS_OPTIONS}
           value={status}
           onChange={(value) => {
-            setStatus(value ?? '');
+            setStatus(value ?? "");
             setPage(1);
           }}
           w={220}
@@ -506,15 +595,16 @@ export function AccountsPage() {
                 page: accountsQuery.data.page,
                 pageSize: accountsQuery.data.pageSize,
                 totalPages: accountsQuery.data.totalPages,
-                hasNextPage: accountsQuery.data.page < accountsQuery.data.totalPages,
+                hasNextPage:
+                  accountsQuery.data.page < accountsQuery.data.totalPages,
                 hasPreviousPage: accountsQuery.data.page > 1,
               }
             : undefined
         }
         loading={accountsQuery.isLoading}
         error={accountsQuery.error}
-        emptyTitle="Khong co tai khoan"
-        emptyDescription="Chua co tai khoan nao khop voi bo loc"
+        emptyTitle="Không có tài khoản"
+        emptyDescription="Chưa có tài khoản nào khớp với bộ lọc"
         onPageChange={(nextPage) => setPage(nextPage)}
         onRowClick={(row) => {
           if (row.employee?.id) {
@@ -532,33 +622,35 @@ export function AccountsPage() {
         opened={confirmOpened}
         onClose={() => {
           closeConfirm();
-          setConfirmReason('');
+          setConfirmReason("");
         }}
-        title={confirmAction?.label ?? 'Xac nhan'}
+        title={confirmAction?.label ?? "Xác nhân"}
         size="sm"
       >
         {confirmAction ? (
           <Stack>
             <Text size="sm">
-              Thuc hien <strong>{confirmAction.label}</strong> cho tai khoan{' '}
+              Thực hiện <strong>{confirmAction.label}</strong> cho tài khoản{" "}
               <strong>{confirmAction.row.account.email}</strong>?
             </Text>
             <TextInput
-              label="Ly do (tuy chon)"
-              placeholder="Nhap ly do"
+              label="Lý do (tùy chọn)"
+              placeholder="Nhập lý do"
               value={confirmReason}
               onChange={(event) => setConfirmReason(event.currentTarget.value)}
             />
             <Group justify="flex-end">
               <Button variant="default" onClick={closeConfirm}>
-                Huy
+                Hủy
               </Button>
               <Button
                 color={confirmAction.color}
                 onClick={handleConfirm}
-                loading={lifecycleMutation.isPending || resetPasswordMutation.isPending}
+                loading={
+                  lifecycleMutation.isPending || resetPasswordMutation.isPending
+                }
               >
-                Xac nhan
+                Xác nhân
               </Button>
             </Group>
           </Stack>
@@ -568,12 +660,13 @@ export function AccountsPage() {
       <Modal
         opened={Boolean(resetResult)}
         onClose={() => setResetResult(null)}
-        title="Mat khau tam thoi"
+        title="Mật khẩu tạm thời"
         size="sm"
       >
         <Stack>
           <Text size="sm">
-            Mat khau tam thoi da duoc tao. Vui long gui cho nguoi dung qua kenh an toan:
+            Mật khẩu tạm thời đã được tạo. Vui lòng gửi cho người dùng qua kênh
+            an toàn:
           </Text>
           <Text
             ff="monospace"
@@ -581,11 +674,11 @@ export function AccountsPage() {
             size="lg"
             ta="center"
             p="md"
-            style={{ background: '#f8f9fa', borderRadius: 8 }}
+            style={{ background: "#f8f9fa", borderRadius: 8 }}
           >
             {resetResult}
           </Text>
-          <Button onClick={() => setResetResult(null)}>Dong</Button>
+          <Button onClick={() => setResetResult(null)}>Đóng</Button>
         </Stack>
       </Modal>
 
@@ -595,7 +688,11 @@ export function AccountsPage() {
           closeDetail();
           setSelectedRow(null);
         }}
-        title={selectedRow ? `Tai khoan: ${selectedRow.account.email}` : 'Chi tiet tai khoan'}
+        title={
+          selectedRow
+            ? `Tài khoản: ${selectedRow.account.email}`
+            : "Chi tiết tài khoản"
+        }
         position="right"
         size="lg"
       >
@@ -603,19 +700,19 @@ export function AccountsPage() {
           <Stack>
             <Box>
               <Text size="xs" c="dimmed">
-                Ho ten
+                Họ tên
               </Text>
               <Text size="sm">{accountDisplayName(selectedRow)}</Text>
             </Box>
             <Box>
               <Text size="xs" c="dimmed">
-                Ma nhan vien
+                Mã nhân viên
               </Text>
-              <Text size="sm">{selectedRow.account.employeeCode ?? '-'}</Text>
+              <Text size="sm">{selectedRow.account.employeeCode ?? "-"}</Text>
             </Box>
             <Box>
               <Text size="xs" c="dimmed">
-                Don vi / phong ban
+                Đơn vị / phòng ban
               </Text>
               <Text size="sm">
                 {unitName(selectedRow)} / {departmentName(selectedRow)}
@@ -623,15 +720,22 @@ export function AccountsPage() {
             </Box>
             <Box>
               <Text size="xs" c="dimmed">
-                Trang thai
+                Trạng thái
               </Text>
-              <Badge color={ACCOUNT_STATE_COLOR[selectedRow.account.accountState] ?? 'gray'} variant="light">
-                {ACCOUNT_STATUS_LABELS[selectedRow.account.accountState] ?? selectedRow.account.accountState}
+              <Badge
+                color={
+                  ACCOUNT_STATE_COLOR[selectedRow.account.accountState] ??
+                  "gray"
+                }
+                variant="light"
+              >
+                {ACCOUNT_STATUS_LABELS[selectedRow.account.accountState] ??
+                  selectedRow.account.accountState}
               </Badge>
             </Box>
             <Box>
               <Text size="xs" c="dimmed">
-                Vai tro hien tai
+                Vai trò hiện tại
               </Text>
               <Group gap={4}>
                 {detailRoles.length === 0 ? (
@@ -649,16 +753,18 @@ export function AccountsPage() {
             </Box>
 
             <Group justify="space-between" mt="sm">
-              <Text fw={600}>Quyen hieu luc</Text>
+              <Text fw={600}>Quyền hiệu lực</Text>
               <Tooltip label={disabledTooltip(!canAuthorizeAccounts)}>
                 <span>
                   <Button
                     size="xs"
                     leftSection={<IconShield size={14} />}
                     disabled={!canAuthorizeAccounts}
-                    onClick={() => setAuthorizationAccountId(selectedRow.account.authUserId)}
+                    onClick={() =>
+                      setAuthorizationAccountId(selectedRow.account.authUserId)
+                    }
                   >
-                    Phan quyen
+                    Phân quyền
                   </Button>
                 </span>
               </Tooltip>
@@ -670,37 +776,44 @@ export function AccountsPage() {
               </Group>
             ) : detailAuthorizationQuery.data ? (
               <Stack gap="xs">
-                {detailAuthorizationQuery.data.effectivePermissions.length === 0 ? (
+                {detailAuthorizationQuery.data.effectivePermissions.length ===
+                0 ? (
                   <Text size="sm" c="dimmed">
-                    Khong co permission hieu luc nao.
+                    Không có quyền hiệu lực nào.
                   </Text>
                 ) : (
-                  detailAuthorizationQuery.data.effectivePermissions.map((entry) => (
-                    <Box
-                      key={entry.permission.code}
-                      p="sm"
-                      style={{
-                        border: '1px solid var(--mantine-color-gray-3)',
-                        borderRadius: 8,
-                      }}
-                    >
-                      <Text size="sm" fw={600}>
-                        {entry.permission.code}
-                      </Text>
-                      <Group gap={4} mt={6}>
-                        {entry.sources.map((source) => (
-                          <Badge key={`${source.type}-${source.id}-${source.code}`} size="sm" variant="light">
-                            {source.type}: {source.code}
-                          </Badge>
-                        ))}
-                      </Group>
-                    </Box>
-                  ))
+                  detailAuthorizationQuery.data.effectivePermissions.map(
+                    (entry) => (
+                      <Box
+                        key={entry.permission.code}
+                        p="sm"
+                        style={{
+                          border: "1px solid var(--mantine-color-gray-3)",
+                          borderRadius: 8,
+                        }}
+                      >
+                        <Text size="sm" fw={600}>
+                          {entry.permission.code}
+                        </Text>
+                        <Group gap={4} mt={6}>
+                          {entry.sources.map((source) => (
+                            <Badge
+                              key={`${source.type}-${source.id}-${source.code}`}
+                              size="sm"
+                              variant="light"
+                            >
+                              {source.type}: {source.code}
+                            </Badge>
+                          ))}
+                        </Group>
+                      </Box>
+                    ),
+                  )
                 )}
               </Stack>
             ) : (
               <Text size="sm" c="dimmed">
-                Khong tai duoc thong tin quyen.
+                Không tải được thông tin quyền.
               </Text>
             )}
           </Stack>

@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from "react";
 import {
   Alert,
   Badge,
@@ -16,20 +16,29 @@ import {
   Text,
   TextInput,
   Tooltip,
-} from '@mantine/core';
-import { notifications } from '@mantine/notifications';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+} from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { useAuth } from '../auth/useAuth';
-import { AUTH_ADMIN_PERMISSIONS } from '../auth/permissions';
-import { getPermissionGroups, getPermissionsGrouped, getRoles } from './authAdminApi';
+import { useAuth } from "../auth/useAuth";
+import { AUTH_ADMIN_PERMISSIONS } from "../auth/permissions";
+import {
+  getPermissionGroups,
+  getPermissionsGrouped,
+  getRoles,
+} from "./authAdminApi";
 import {
   getMissingDirectPermissionGroupEndpoints,
   updateAccountDirectPermissions,
   updateAccountRoles,
-} from './accountAuthorizationService';
-import type { EffectivePermission, Permission, PermissionGroup, Role } from './accountAuthorizationTypes';
-import { useAccountAuthorization } from './useAccountAuthorization';
+} from "./accountAuthorizationService";
+import type {
+  EffectivePermission,
+  Permission,
+  PermissionGroup,
+  Role,
+} from "./accountAuthorizationTypes";
+import { useAccountAuthorization } from "./useAccountAuthorization";
 
 type Props = {
   accountId: string | null;
@@ -39,24 +48,24 @@ type Props = {
 };
 
 const PERMISSION_SOURCE_LABELS: Record<string, string> = {
-  ROLE: 'From Role',
-  PERMISSION_GROUP: 'From Permission Group',
-  DIRECT_PERMISSION: 'Direct Permission',
-  DIRECT_PERMISSION_GROUP: 'Direct Permission Group',
+  ROLE: "Từ Vai trò",
+  PERMISSION_GROUP: "Từ Nhóm quyền",
+  DIRECT_PERMISSION: "Quyền trực tiếp",
+  DIRECT_PERMISSION_GROUP: "Nhóm quyền trực tiếp",
 };
 
 function badgeColorForSource(sourceType: string) {
   switch (sourceType) {
-    case 'ROLE':
-      return 'blue';
-    case 'PERMISSION_GROUP':
-      return 'violet';
-    case 'DIRECT_PERMISSION':
-      return 'orange';
-    case 'DIRECT_PERMISSION_GROUP':
-      return 'teal';
+    case "ROLE":
+      return "blue";
+    case "PERMISSION_GROUP":
+      return "violet";
+    case "DIRECT_PERMISSION":
+      return "orange";
+    case "DIRECT_PERMISSION_GROUP":
+      return "teal";
     default:
-      return 'gray';
+      return "gray";
   }
 }
 
@@ -68,7 +77,12 @@ function roleOptionLabel(role: Role) {
   return role.description ? `${role.name} (${role.code})` : role.name;
 }
 
-export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdated }: Props) {
+export function AccountAuthorizationModal({
+  accountId,
+  opened,
+  onClose,
+  onUpdated,
+}: Props) {
   const queryClient = useQueryClient();
   const { user, refreshCurrentUser, hasAnyPermission } = useAuth();
   const authzQuery = useAccountAuthorization(accountId, opened);
@@ -84,34 +98,43 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
   const editDisabled = !canAssignRoles && !canAssignDirectPermissions;
 
   const [selectedRoleCodes, setSelectedRoleCodes] = useState<string[]>([]);
-  const [selectedDirectPermissionIds, setSelectedDirectPermissionIds] = useState<string[]>([]);
-  const [directPermissionReason, setDirectPermissionReason] = useState('');
-  const [roleReason, setRoleReason] = useState('');
+  const [selectedDirectPermissionIds, setSelectedDirectPermissionIds] =
+    useState<string[]>([]);
+  const [directPermissionReason, setDirectPermissionReason] = useState("");
+  const [roleReason, setRoleReason] = useState("");
   const [roleDirty, setRoleDirty] = useState(false);
   const [directPermissionDirty, setDirectPermissionDirty] = useState(false);
-  const [permissionSearch, setPermissionSearch] = useState('');
-  const [effectiveSearch, setEffectiveSearch] = useState('');
-  const [permissionSystemFilter, setPermissionSystemFilter] = useState<string | null>(null);
-  const [permissionModuleFilter, setPermissionModuleFilter] = useState<string | null>(null);
+  const [permissionSearch, setPermissionSearch] = useState("");
+  const [effectiveSearch, setEffectiveSearch] = useState("");
+  const [permissionSystemFilter, setPermissionSystemFilter] = useState<
+    string | null
+  >(null);
+  const [permissionModuleFilter, setPermissionModuleFilter] = useState<
+    string | null
+  >(null);
 
-  const deferredPermissionSearch = useDeferredValue(permissionSearch.trim().toLowerCase());
-  const deferredEffectiveSearch = useDeferredValue(effectiveSearch.trim().toLowerCase());
+  const deferredPermissionSearch = useDeferredValue(
+    permissionSearch.trim().toLowerCase(),
+  );
+  const deferredEffectiveSearch = useDeferredValue(
+    effectiveSearch.trim().toLowerCase(),
+  );
 
   const { data: roleCatalog = [] } = useQuery({
-    queryKey: ['auth-admin-role-catalog'],
-    queryFn: () => getRoles({ status: 'active' }),
+    queryKey: ["auth-admin-role-catalog"],
+    queryFn: () => getRoles({ status: "active" }),
     enabled: opened,
   });
 
   const { data: permissionCatalogGrouped } = useQuery({
-    queryKey: ['auth-admin-permission-catalog'],
+    queryKey: ["auth-admin-permission-catalog"],
     queryFn: () => getPermissionsGrouped(),
     enabled: opened,
   });
 
   const { data: permissionGroupCatalog = [] } = useQuery({
-    queryKey: ['auth-admin-permission-group-catalog'],
-    queryFn: () => getPermissionGroups({ status: 'active' }),
+    queryKey: ["auth-admin-permission-group-catalog"],
+    queryFn: () => getPermissionGroups({ status: "active" }),
     enabled: opened,
   });
 
@@ -134,8 +157,8 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
           code: permission.key,
           name: permission.name ?? permission.key,
           system: permission.system ?? permission.domain ?? systemGroup.domain,
-          module: permission.module ?? 'general',
-          action: permission.action ?? 'read',
+          module: permission.module ?? "general",
+          action: permission.action ?? "read",
           description: permission.description ?? undefined,
         })),
       ),
@@ -143,13 +166,18 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
   );
 
   const permissionById = useMemo(
-    () => new Map(permissionCatalog.map((permission) => [permission.id, permission])),
+    () =>
+      new Map(
+        permissionCatalog.map((permission) => [permission.id, permission]),
+      ),
     [permissionCatalog],
   );
 
   const permissionSystemOptions = useMemo(
     () =>
-      Array.from(new Set(permissionCatalog.map((permission) => permission.system)))
+      Array.from(
+        new Set(permissionCatalog.map((permission) => permission.system)),
+      )
         .sort()
         .map((value) => ({ value, label: value })),
     [permissionCatalog],
@@ -157,7 +185,9 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
 
   const permissionModuleOptions = useMemo(
     () =>
-      Array.from(new Set(permissionCatalog.map((permission) => permission.module)))
+      Array.from(
+        new Set(permissionCatalog.map((permission) => permission.module)),
+      )
         .sort()
         .map((value) => ({ value, label: value })),
     [permissionCatalog],
@@ -176,18 +206,27 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
                 permission.module,
                 permission.action,
               ]
-                .join(' ')
+                .join(" ")
                 .toLowerCase()
                 .includes(deferredPermissionSearch),
         )
         .filter((permission) =>
-          permissionSystemFilter ? permission.system === permissionSystemFilter : true,
+          permissionSystemFilter
+            ? permission.system === permissionSystemFilter
+            : true,
         )
         .filter((permission) =>
-          permissionModuleFilter ? permission.module === permissionModuleFilter : true,
+          permissionModuleFilter
+            ? permission.module === permissionModuleFilter
+            : true,
         )
         .sort((left, right) => left.code.localeCompare(right.code)),
-    [deferredPermissionSearch, permissionCatalog, permissionModuleFilter, permissionSystemFilter],
+    [
+      deferredPermissionSearch,
+      permissionCatalog,
+      permissionModuleFilter,
+      permissionSystemFilter,
+    ],
   );
 
   const filteredEffectivePermissions = useMemo(
@@ -202,29 +241,34 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
                 ...entry.sources.map((source) => source.code),
                 ...entry.sources.map((source) => source.name),
               ]
-                .join(' ')
+                .join(" ")
                 .toLowerCase()
                 .includes(deferredEffectiveSearch),
         )
-        .sort((left, right) => left.permission.code.localeCompare(right.permission.code)),
+        .sort((left, right) =>
+          left.permission.code.localeCompare(right.permission.code),
+        ),
     [authzQuery.data?.effectivePermissions, deferredEffectiveSearch],
   );
 
   const resetDraftState = () => {
     setSelectedRoleCodes(authzQuery.data?.roles.map((role) => role.code) ?? []);
     setSelectedDirectPermissionIds(
-      authzQuery.data?.directPermissions.map((permission) => permission.id) ?? [],
+      authzQuery.data?.directPermissions.map((permission) => permission.id) ??
+        [],
     );
-    setRoleReason('');
-    setDirectPermissionReason('');
+    setRoleReason("");
+    setDirectPermissionReason("");
     setRoleDirty(false);
     setDirectPermissionDirty(false);
   };
 
   const invalidateAll = async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['account-authorization', accountId] }),
-      queryClient.invalidateQueries({ queryKey: ['auth-admin-users'] }),
+      queryClient.invalidateQueries({
+        queryKey: ["account-authorization", accountId],
+      }),
+      queryClient.invalidateQueries({ queryKey: ["auth-admin-users"] }),
     ]);
   };
 
@@ -237,28 +281,37 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
     try {
       await refreshCurrentUser();
       notifications.show({
-        color: 'blue',
-        message: 'Da tai lai session hien tai sau khi cap nhat quyen.',
+        color: "blue",
+        message: "Đã tải lại session hiện tại sau khi cập nhật quyền.",
       });
     } catch {
       notifications.show({
-        color: 'yellow',
-        message: 'Quyen cua ban da thay doi. Vui long tai lai session neu giao dien chua cap nhat.',
+        color: "yellow",
+        message:
+          "Quyền của bạn đã thay đổi. Vui lòng tải lại session nếu giao diện chưa cập nhật.",
       });
     }
   };
 
   const updateRolesMutation = useMutation({
-    mutationFn: async () => updateAccountRoles(accountId!, selectedRoleCodes, roleReason.trim() || undefined),
+    mutationFn: async () =>
+      updateAccountRoles(
+        accountId!,
+        selectedRoleCodes,
+        roleReason.trim() || undefined,
+      ),
     onSuccess: async () => {
-      notifications.show({ color: 'green', message: 'Da cap nhat role cho tai khoan.' });
+      notifications.show({
+        color: "green",
+        message: "Đã cập nhật vai trò cho tài khoản.",
+      });
       await invalidateAll();
       await authzQuery.refetch();
       await handleSelfRefresh();
       await onUpdated?.();
     },
     onError: (error: Error) => {
-      notifications.show({ color: 'red', message: error.message });
+      notifications.show({ color: "red", message: error.message });
     },
   });
 
@@ -268,17 +321,24 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
         .map((permissionId) => permissionById.get(permissionId)?.code)
         .filter((code): code is string => Boolean(code));
 
-      return updateAccountDirectPermissions(accountId!, permissionCodes, directPermissionReason.trim());
+      return updateAccountDirectPermissions(
+        accountId!,
+        permissionCodes,
+        directPermissionReason.trim(),
+      );
     },
     onSuccess: async () => {
-      notifications.show({ color: 'green', message: 'Da cap nhat permission truc tiep.' });
+      notifications.show({
+        color: "green",
+        message: "Đã cập nhật quyền trực tiếp.",
+      });
       await invalidateAll();
       await authzQuery.refetch();
       await handleSelfRefresh();
       await onUpdated?.();
     },
     onError: (error: Error) => {
-      notifications.show({ color: 'red', message: error.message });
+      notifications.show({ color: "red", message: error.message });
     },
   });
 
@@ -287,40 +347,60 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
     [authzQuery.data?.roles],
   );
   const originalDirectPermissionIds = useMemo(
-    () => authzQuery.data?.directPermissions.map((permission) => permission.id).sort() ?? [],
+    () =>
+      authzQuery.data?.directPermissions
+        .map((permission) => permission.id)
+        .sort() ?? [],
     [authzQuery.data?.directPermissions],
   );
 
   const displayedRoleCodes = useMemo(
-    () => (roleDirty ? selectedRoleCodes : authzQuery.data?.roles.map((role) => role.code) ?? []),
+    () =>
+      roleDirty
+        ? selectedRoleCodes
+        : (authzQuery.data?.roles.map((role) => role.code) ?? []),
     [authzQuery.data?.roles, roleDirty, selectedRoleCodes],
   );
   const displayedDirectPermissionIds = useMemo(
     () =>
       directPermissionDirty
         ? selectedDirectPermissionIds
-        : authzQuery.data?.directPermissions.map((permission) => permission.id) ?? [],
-    [authzQuery.data?.directPermissions, directPermissionDirty, selectedDirectPermissionIds],
+        : (authzQuery.data?.directPermissions.map(
+            (permission) => permission.id,
+          ) ?? []),
+    [
+      authzQuery.data?.directPermissions,
+      directPermissionDirty,
+      selectedDirectPermissionIds,
+    ],
   );
-  const selectedRoleSet = useMemo(() => new Set(displayedRoleCodes), [displayedRoleCodes]);
+  const selectedRoleSet = useMemo(
+    () => new Set(displayedRoleCodes),
+    [displayedRoleCodes],
+  );
   const selectedDirectPermissionIdSet = useMemo(
     () => new Set(displayedDirectPermissionIds),
     [displayedDirectPermissionIds],
   );
 
   const hasRoleChanges =
-    [...displayedRoleCodes].sort().join('|') !== originalRoleCodes.join('|');
+    [...displayedRoleCodes].sort().join("|") !== originalRoleCodes.join("|");
   const hasDirectPermissionChanges =
-    [...displayedDirectPermissionIds].sort().join('|') !== originalDirectPermissionIds.join('|');
+    [...displayedDirectPermissionIds].sort().join("|") !==
+    originalDirectPermissionIds.join("|");
 
-  const disabledTooltip = 'Ban khong co quyen thuc hien thao tac nay';
-  const missingPermissionGroupEndpoints = getMissingDirectPermissionGroupEndpoints();
+  const disabledTooltip = "Bạn không có quyền thực hiện thao tác này";
+  const missingPermissionGroupEndpoints =
+    getMissingDirectPermissionGroupEndpoints();
 
   const renderEffectivePermission = (entry: EffectivePermission) => (
     <Box
       key={entry.permission.code}
       p="sm"
-      style={{ border: '1px solid var(--mantine-color-gray-3)', borderRadius: 8 }}
+      style={{
+        border: "1px solid var(--mantine-color-gray-3)",
+        borderRadius: 8,
+      }}
     >
       <Text fw={600} size="sm">
         {entry.permission.code}
@@ -331,11 +411,15 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
       <Group gap="xs" mt="xs">
         {entry.sources.length === 0 ? (
           <Badge color="gray" variant="light">
-            Chua xac dinh nguon
+            Chưa xác định nguồn
           </Badge>
         ) : (
           entry.sources.map((source) => (
-            <Badge key={`${source.type}-${source.id}-${source.code}`} color={badgeColorForSource(source.type)} variant="light">
+            <Badge
+              key={`${source.type}-${source.id}-${source.code}`}
+              color={badgeColorForSource(source.type)}
+              variant="light"
+            >
               {PERMISSION_SOURCE_LABELS[source.type]}: {source.code}
             </Badge>
           ))
@@ -351,7 +435,11 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
         resetDraftState();
         onClose();
       }}
-      title={authzQuery.data?.account.email ? `Phan quyen tai khoan: ${authzQuery.data.account.email}` : 'Phan quyen tai khoan'}
+      title={
+        authzQuery.data?.account.email
+          ? `Phan quyen tai khoan: ${authzQuery.data.account.email}`
+          : "Phan quyen tai khoan"
+      }
       size="xl"
       centered
     >
@@ -367,28 +455,35 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
         <Stack gap="md">
           <Alert color="blue" title="Thong tin chung">
             <Text size="sm">Account: {authzQuery.data.account.email}</Text>
-            <Text size="sm">Username: {authzQuery.data.account.username ?? '-'}</Text>
-            <Text size="sm">Trang thai: {authzQuery.data.account.accountState}</Text>
+            <Text size="sm">
+              Username: {authzQuery.data.account.username ?? "-"}
+            </Text>
+            <Text size="sm">
+              Trang thai: {authzQuery.data.account.accountState}
+            </Text>
           </Alert>
 
           {editDisabled ? (
             <Alert color="yellow">
-              Ban khong co quyen thuc hien thao tac nay.
+              Bạn không có quyền thực hiện thao tác này.
             </Alert>
           ) : null}
 
           <Tabs defaultValue="roles">
             <Tabs.List>
-              <Tabs.Tab value="roles">Vai tro</Tabs.Tab>
-              <Tabs.Tab value="permission-groups">Nhom quyen truc tiep</Tabs.Tab>
-              <Tabs.Tab value="permissions">Quyen truc tiep</Tabs.Tab>
-              <Tabs.Tab value="effective">Quyen hieu luc</Tabs.Tab>
+              <Tabs.Tab value="roles">Vai trò</Tabs.Tab>
+              <Tabs.Tab value="permission-groups">
+                Nhóm quyền trực tiếp
+              </Tabs.Tab>
+              <Tabs.Tab value="permissions">Quyền trực tiếp</Tabs.Tab>
+              <Tabs.Tab value="effective">Quyền hiệu lực</Tabs.Tab>
             </Tabs.List>
 
             <Tabs.Panel value="roles" pt="md">
               <Stack gap="sm">
                 <Text size="sm" c="dimmed">
-                  Chon role duoc gan cho tai khoan. Sau khi luu, he thong se tai lai effective permissions.
+                  Chọn vai trò được gán cho tài khoản. Sau khi lưu, hệ thống sẽ
+                  tải lại quyền hiệu lực.
                 </Text>
 
                 <ScrollArea h={320}>
@@ -405,8 +500,18 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
                           setRoleDirty(true);
                           setSelectedRoleCodes((current) =>
                             checked
-                              ? Array.from(new Set([...(roleDirty ? current : displayedRoleCodes), role.code]))
-                              : (roleDirty ? current : displayedRoleCodes).filter((value) => value !== role.code),
+                              ? Array.from(
+                                  new Set([
+                                    ...(roleDirty
+                                      ? current
+                                      : displayedRoleCodes),
+                                    role.code,
+                                  ]),
+                                )
+                              : (roleDirty
+                                  ? current
+                                  : displayedRoleCodes
+                                ).filter((value) => value !== role.code),
                           );
                         }}
                       />
@@ -415,22 +520,29 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
                 </ScrollArea>
 
                 <TextInput
-                  label="Ly do (tuy chon)"
-                  placeholder="Nhap ly do neu backend can audit them"
+                  label="Lý do (tùy chọn)"
+                  placeholder="Nhập lý do nếu backend cần ghi audit thêm"
                   value={roleReason}
                   onChange={(event) => setRoleReason(event.currentTarget.value)}
                   disabled={editDisabled || !canAssignRoles}
                 />
 
                 <Group justify="flex-end">
-                  <Tooltip label={editDisabled || !canAssignRoles ? disabledTooltip : ''} disabled={!editDisabled && canAssignRoles}>
+                  <Tooltip
+                    label={
+                      editDisabled || !canAssignRoles ? disabledTooltip : ""
+                    }
+                    disabled={!editDisabled && canAssignRoles}
+                  >
                     <span>
                       <Button
                         onClick={() => void updateRolesMutation.mutateAsync()}
-                        disabled={!hasRoleChanges || editDisabled || !canAssignRoles}
+                        disabled={
+                          !hasRoleChanges || editDisabled || !canAssignRoles
+                        }
                         loading={updateRolesMutation.isPending}
                       >
-                        Luu role
+                        Lưu vai trò
                       </Button>
                     </span>
                   </Tooltip>
@@ -440,16 +552,25 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
 
             <Tabs.Panel value="permission-groups" pt="md">
               <Stack gap="sm">
-                <Alert color="yellow" title="Tinh nang chua duoc backend ho tro">
-                  Chi dung khi tai khoan can ngoai le ngoai vai tro. Hien tai backend chua co endpoint gan/bo permission group truc tiep theo account, vi vay tab nay dang o che do read-only.
+                <Alert
+                  color="yellow"
+                  title="Tính năng chưa được backend hỗ trợ"
+                >
+                  Chỉ dùng khi tài khoản cần ngoại lệ ngoài vai trò. Hiện tại
+                  backend chưa có endpoint gán/bỏ nhóm quyền trực tiếp theo
+                  account, vì vậy tab này đang ở chế độ chỉ đọc.
                 </Alert>
 
                 <Text size="sm" fw={500}>
-                  Endpoint dang thieu
+                  Endpoint đang thiếu
                 </Text>
                 <Stack gap={6}>
                   {missingPermissionGroupEndpoints.map((item) => (
-                    <Text key={`${item.method}-${item.endpoint}`} size="sm" ff="monospace">
+                    <Text
+                      key={`${item.method}-${item.endpoint}`}
+                      size="sm"
+                      ff="monospace"
+                    >
                       {item.method} {item.endpoint}
                     </Text>
                   ))}
@@ -458,7 +579,8 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
                 <Divider />
 
                 <Text size="sm" fw={500}>
-                  Danh muc permission group hien co ({permissionGroupCatalog.length})
+                  Danh mục permission group hiện có (
+                  {permissionGroupCatalog.length})
                 </Text>
                 <ScrollArea h={260}>
                   <Stack gap="xs">
@@ -467,7 +589,7 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
                         id: group.id,
                         code: group.key,
                         name: group.name,
-                        system: group.system ?? 'unknown',
+                        system: group.system ?? "unknown",
                       };
 
                       return (
@@ -476,7 +598,7 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
                           checked={false}
                           disabled
                           label={`${mappedGroup.code} · ${mappedGroup.name}`}
-                          description="Backend chua ho tro gan truc tiep theo account"
+                          description="Backend chưa hỗ trợ gán trực tiếp theo account"
                         />
                       );
                     })}
@@ -487,27 +609,30 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
 
             <Tabs.Panel value="permissions" pt="md">
               <Stack gap="sm">
-                <Alert color="yellow" title="Canh bao">
-                  Gan quyen truc tiep la ngoai le, nen uu tien gan qua Role hoac Permission Group.
+                <Alert color="yellow" title="Cảnh báo">
+                  Gán quyền trực tiếp là ngoại lệ, nên ưu tiên gán qua vai trò
+                  hoặc nhóm quyền.
                 </Alert>
 
                 <Group grow align="flex-end">
                   <TextInput
-                    label="Tim permission"
+                    label="Tìm quyền"
                     placeholder="system.module.action"
                     value={permissionSearch}
-                    onChange={(event) => setPermissionSearch(event.currentTarget.value)}
+                    onChange={(event) =>
+                      setPermissionSearch(event.currentTarget.value)
+                    }
                   />
                   <Select
                     clearable
-                    label="System"
+                    label="Hệ thống"
                     data={permissionSystemOptions}
                     value={permissionSystemFilter}
                     onChange={setPermissionSystemFilter}
                   />
                   <Select
                     clearable
-                    label="Module"
+                    label="Mô-đun"
                     data={permissionModuleOptions}
                     value={permissionModuleFilter}
                     onChange={setPermissionModuleFilter}
@@ -519,7 +644,9 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
                     {filteredPermissions.map((permission) => (
                       <Checkbox
                         key={permission.id}
-                        checked={selectedDirectPermissionIdSet.has(permission.id)}
+                        checked={selectedDirectPermissionIdSet.has(
+                          permission.id,
+                        )}
                         disabled={editDisabled || !canAssignDirectPermissions}
                         label={permissionLabel(permission)}
                         description={permission.description}
@@ -530,13 +657,16 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
                             checked
                               ? Array.from(
                                   new Set([
-                                    ...(directPermissionDirty ? current : displayedDirectPermissionIds),
+                                    ...(directPermissionDirty
+                                      ? current
+                                      : displayedDirectPermissionIds),
                                     permission.id,
                                   ]),
                                 )
-                              : (directPermissionDirty ? current : displayedDirectPermissionIds).filter(
-                                  (value) => value !== permission.id,
-                                ),
+                              : (directPermissionDirty
+                                  ? current
+                                  : displayedDirectPermissionIds
+                                ).filter((value) => value !== permission.id),
                           );
                         }}
                       />
@@ -545,19 +675,30 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
                 </ScrollArea>
 
                 <TextInput
-                  label="Ly do bat buoc"
-                  placeholder="Nhap ly do de ghi audit log"
+                  label="Lý do bắt buộc"
+                  placeholder="Nhập lý do để ghi audit log"
                   value={directPermissionReason}
-                  onChange={(event) => setDirectPermissionReason(event.currentTarget.value)}
+                  onChange={(event) =>
+                    setDirectPermissionReason(event.currentTarget.value)
+                  }
                   required
                   disabled={editDisabled || !canAssignDirectPermissions}
                 />
 
                 <Group justify="flex-end">
-                  <Tooltip label={editDisabled || !canAssignDirectPermissions ? disabledTooltip : ''} disabled={!editDisabled && canAssignDirectPermissions}>
+                  <Tooltip
+                    label={
+                      editDisabled || !canAssignDirectPermissions
+                        ? disabledTooltip
+                        : ""
+                    }
+                    disabled={!editDisabled && canAssignDirectPermissions}
+                  >
                     <span>
                       <Button
-                        onClick={() => void updateDirectPermissionsMutation.mutateAsync()}
+                        onClick={() =>
+                          void updateDirectPermissionsMutation.mutateAsync()
+                        }
                         disabled={
                           !hasDirectPermissionChanges ||
                           editDisabled ||
@@ -566,7 +707,7 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
                         }
                         loading={updateDirectPermissionsMutation.isPending}
                       >
-                        Luu permission truc tiep
+                        Lưu quyền trực tiếp
                       </Button>
                     </span>
                   </Tooltip>
@@ -577,20 +718,24 @@ export function AccountAuthorizationModal({ accountId, opened, onClose, onUpdate
             <Tabs.Panel value="effective" pt="md">
               <Stack gap="sm">
                 <TextInput
-                  label="Tim quyen hieu luc"
-                  placeholder="Tim theo permission hoac nguon"
+                  label="Tìm quyền hiệu lực"
+                  placeholder="Tìm theo permission hoặc nguồn"
                   value={effectiveSearch}
-                  onChange={(event) => setEffectiveSearch(event.currentTarget.value)}
+                  onChange={(event) =>
+                    setEffectiveSearch(event.currentTarget.value)
+                  }
                 />
 
                 <ScrollArea h={420}>
                   <Stack gap="sm">
                     {filteredEffectivePermissions.length === 0 ? (
                       <Text size="sm" c="dimmed">
-                        Khong co permission hieu luc nao khop bo loc.
+                        Không có quyền hiệu lực nào khớp bộ lọc.
                       </Text>
                     ) : (
-                      filteredEffectivePermissions.map(renderEffectivePermission)
+                      filteredEffectivePermissions.map(
+                        renderEffectivePermission,
+                      )
                     )}
                   </Stack>
                 </ScrollArea>

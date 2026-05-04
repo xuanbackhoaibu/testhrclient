@@ -173,7 +173,7 @@ export function UnitsPage() {
         allowed,
       });
       if (!allowed) {
-        throw new Error("Ban khong co quyen luu don vi.");
+        throw new Error("Bạn không có quyền lưu đơn vị.");
       }
 
       const payload = normalizeUnitPayload(values);
@@ -276,7 +276,7 @@ export function UnitsPage() {
         allowed: canEditUnit,
       });
       if (!canEditUnit) {
-        throw new Error("Ban khong co quyen tam ngung don vi.");
+        throw new Error("Bạn không có quyền tạm ngưng đơn vị.");
       }
 
       return updateUnit(record.id, {
@@ -527,7 +527,11 @@ export function UnitsPage() {
               <Button variant="default" onClick={closeDrawer}>
                 Hủy
               </Button>
-              <Button type="submit" loading={mutation.isPending} disabled={editing ? !canEditUnit : !canCreateUnit}>
+              <Button
+                type="submit"
+                loading={mutation.isPending}
+                disabled={editing ? !canEditUnit : !canCreateUnit}
+              >
                 Lưu
               </Button>
             </Group>

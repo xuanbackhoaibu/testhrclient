@@ -115,7 +115,7 @@ export function DepartmentsPage() {
         allowed,
       });
       if (!allowed) {
-        throw new Error("Ban khong co quyen luu phong ban.");
+        throw new Error("Bạn không có quyền lưu phòng ban.");
       }
 
       const payload = {
@@ -161,7 +161,7 @@ export function DepartmentsPage() {
         allowed: canEditDepartment,
       });
       if (!canEditDepartment) {
-        throw new Error("Ban khong co quyen tam ngung phong ban.");
+        throw new Error("Bạn không có quyền tạm ngưng phòng ban.");
       }
 
       return updateDepartment(record.id, {
@@ -423,7 +423,11 @@ export function DepartmentsPage() {
               <Button variant="default" onClick={() => setOpen(false)}>
                 Hủy
               </Button>
-              <Button type="submit" loading={mutation.isPending} disabled={editing ? !canEditDepartment : !canCreateDepartment}>
+              <Button
+                type="submit"
+                loading={mutation.isPending}
+                disabled={editing ? !canEditDepartment : !canCreateDepartment}
+              >
                 Lưu
               </Button>
             </Group>

@@ -101,7 +101,7 @@ export function PositionsPage() {
         allowed,
       });
       if (!allowed) {
-        throw new Error("Ban khong co quyen luu chuc vu.");
+        throw new Error("Bạn không có quyền lưu chức vụ.");
       }
 
       const payload = {
@@ -344,7 +344,11 @@ export function PositionsPage() {
               <Button variant="default" onClick={() => setOpen(false)}>
                 Hủy
               </Button>
-              <Button type="submit" loading={mutation.isPending} disabled={editing ? !canEditPosition : !canCreatePosition}>
+              <Button
+                type="submit"
+                loading={mutation.isPending}
+                disabled={editing ? !canEditPosition : !canCreatePosition}
+              >
                 Lưu
               </Button>
             </Group>

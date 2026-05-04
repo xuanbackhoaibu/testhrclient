@@ -1,14 +1,22 @@
-import { useState } from 'react';
-import { Alert, Button, Checkbox, SegmentedControl, Stack, TextInput, PasswordInput } from '@mantine/core';
-import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
-import { IconAlertCircle, IconLock, IconUser } from '@tabler/icons-react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from "react";
+import {
+  Alert,
+  Button,
+  Checkbox,
+  SegmentedControl,
+  Stack,
+  TextInput,
+  PasswordInput,
+} from "@mantine/core";
+import { useForm } from "@mantine/form";
+import { notifications } from "@mantine/notifications";
+import { IconAlertCircle, IconLock, IconUser } from "@tabler/icons-react";
+import { useNavigate } from "react-router-dom";
 
-import type { DemoRole } from '../features/auth/types';
-import { useAuthStore } from '../features/auth/authStore';
-import { useAuth } from '../features/auth/useAuth';
-import { ROUTES } from '../shared/constants/routes';
+import type { DemoRole } from "../features/auth/types";
+import { useAuthStore } from "../features/auth/authStore";
+import { useAuth } from "../features/auth/useAuth";
+import { ROUTES } from "../shared/constants/routes";
 
 interface LoginFormValues {
   loginIdentifier: string;
@@ -17,38 +25,39 @@ interface LoginFormValues {
 }
 
 const demoRoles: Array<{ label: string; value: DemoRole }> = [
-  { label: 'Super Admin', value: 'SUPER_ADMIN' },
-  { label: 'Admin', value: 'ADMIN' },
-  { label: 'HR', value: 'HR' },
-  { label: 'Ban lanh dao', value: 'BAN_LANH_DAO' },
-  { label: 'Ban lanh dao don vi', value: 'BAN_LANH_DAO_DON_VI' },
-  { label: 'Employee', value: 'EMPLOYEE' },
+  { label: "Super Admin", value: "SUPER_ADMIN" },
+  { label: "Admin", value: "ADMIN" },
+  { label: "HR", value: "HR" },
+  { label: "Ban lãnh đạo", value: "BAN_LANH_DAO" },
+  { label: "Ban lãnh đạo đơn vị", value: "BAN_LANH_DAO_DON_VI" },
+  { label: "Employee", value: "EMPLOYEE" },
 ];
 
 function readLoginError(error: unknown) {
   if (error instanceof Error && error.message) {
     return error.message;
   }
-  return 'Không đăng nhập được. Vui lòng kiểm tra tài khoản và thử lại.';
+  return "Không đăng nhập được. Vui lòng kiểm tra tài khoản và thử lại.";
 }
 
 export function LoginPage() {
   const navigate = useNavigate();
   const { login, error, refreshCurrentUser } = useAuth();
-  const [role, setRole] = useState<DemoRole>('HR');
+  const [role, setRole] = useState<DemoRole>("HR");
   const [submitting, setSubmitting] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
-  const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
+  const isMockMode = import.meta.env.VITE_USE_MOCKS === "true";
 
   const form = useForm<LoginFormValues>({
     initialValues: {
-      loginIdentifier: '',
-      password: '',
+      loginIdentifier: "",
+      password: "",
       rememberMe: true,
     },
     validate: {
-      loginIdentifier: (value) => (value.trim() ? null : 'Nhập email hoặc mã nhân sự.'),
-      password: (value) => (value ? null : 'Nhập mật khẩu.'),
+      loginIdentifier: (value) =>
+        value.trim() ? null : "Nhập email hoặc mã nhân sự.",
+      password: (value) => (value ? null : "Nhập mật khẩu."),
     },
   });
 
@@ -79,15 +88,18 @@ export function LoginPage() {
       const authState = useAuthStore.getState();
       if (authState.user && authState.isAuthenticated) {
         notifications.show({
-          color: 'green',
-          title: 'Đăng nhập thành công',
-          message: 'Đang mở HRM.',
+          color: "green",
+          title: "Đăng nhập thành công",
+          message: "Đang mở HRM.",
         });
         navigate(ROUTES.dashboard, { replace: true });
         return;
       }
 
-      setLoginError(authState.error ?? 'Đăng nhập thành công nhưng chưa tải được hồ sơ HRM.');
+      setLoginError(
+        authState.error ??
+          "Đăng nhập thành công nhưng chưa tải được hồ sơ HRM.",
+      );
     } catch (loginFailure) {
       setLoginError(readLoginError(loginFailure));
     } finally {
@@ -130,7 +142,7 @@ export function LoginPage() {
               leftSection={<IconUser size={18} />}
               autoComplete="username"
               disabled={submitting}
-              {...form.getInputProps('loginIdentifier')}
+              {...form.getInputProps("loginIdentifier")}
             />
             <PasswordInput
               label="Mật khẩu"
@@ -138,12 +150,12 @@ export function LoginPage() {
               leftSection={<IconLock size={18} />}
               autoComplete="current-password"
               disabled={submitting}
-              {...form.getInputProps('password')}
+              {...form.getInputProps("password")}
             />
             <Checkbox
               label="Ghi nhớ đăng nhập"
               disabled={submitting}
-              {...form.getInputProps('rememberMe', { type: 'checkbox' })}
+              {...form.getInputProps("rememberMe", { type: "checkbox" })}
             />
             <Button type="submit" size="md" loading={submitting}>
               Đăng nhập
