@@ -3,8 +3,29 @@ import { clearSession, getAccessToken } from '../features/auth/authClient';
 import { unwrapApiEnvelope } from '../shared/api/httpClient';
 import { handleAxiosResponseError } from '../shared/api/errorHandler';
 
+function resolveAuthApiBaseUrl(): string {
+  // Explicit auth API base — points directly to chat-auth-service root (/api/v1)
+  if (import.meta.env.VITE_AUTH_API_BASE_URL) {
+    return import.meta.env.VITE_AUTH_API_BASE_URL;
+  }
+  // Derive from auth service base URL by stripping the trailing /auth segment
+  const authBase =
+    import.meta.env.VITE_AUTH_SERVICE_BASE_URL ??
+    import.meta.env.VITE_CHAT_AUTH_BASE_URL;
+  if (authBase) {
+    return authBase.replace(/\/auth\/?$/, '');
+  }
+  // Should never reach here in a correctly configured environment
+  if (import.meta.env.DEV) {
+    console.warn(
+      '[authAdminApi] VITE_AUTH_API_BASE_URL is not set and could not be derived from VITE_AUTH_SERVICE_BASE_URL. Auth-admin calls may fail.',
+    );
+  }
+  return '';
+}
+
 export const authAdminAxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_AUTH_API_BASE_URL ?? import.meta.env.VITE_API_BASE_URL,
+  baseURL: resolveAuthApiBaseUrl(),
   timeout: 15000,
   headers: {
     'x-api-contract': '2',
