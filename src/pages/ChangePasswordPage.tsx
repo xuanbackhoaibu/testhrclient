@@ -69,7 +69,6 @@ export function ChangePasswordPage() {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          withCredentials: true,
         },
       );
 

@@ -132,7 +132,6 @@ export async function login(input: DemoRole | LoginCredentials = 'HR'): Promise<
         Accept: 'application/json',
         'Content-Type': 'application/json',
       },
-      withCredentials: true,
     });
 
     const responseData = response.data.data ?? response.data;
@@ -198,7 +197,6 @@ export async function logout(): Promise<void> {
             headers: {
               Authorization: `Bearer ${accessToken}`,
             },
-            withCredentials: true,
           },
         )
         .catch(() => undefined);
