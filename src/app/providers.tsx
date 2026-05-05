@@ -1,43 +1,17 @@
 import type { PropsWithChildren } from 'react';
 import { useEffect, useState } from 'react';
-import { MantineProvider, createTheme } from '@mantine/core';
-import { Notifications } from '@mantine/notifications';
+import { App as AntApp, ConfigProvider } from 'antd';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import { queryClient } from './queryClient';
 import { getCurrentUser } from '../features/auth/authApi';
 import { clearSession, getAccessToken, getStoredUser, setSessionUser } from '../features/auth/authClient';
 import { useAuthStore } from '../features/auth/authStore';
-import { QueryClientProvider } from '@tanstack/react-query';
 
-function readHttpStatus(error: unknown): number | undefined {
-  return (
-    (error as { statusCode?: number })?.statusCode ??
-    (error as { response?: { status?: number } })?.response?.status
-  );
-}
-
-const theme = createTheme({
-  primaryColor: 'blue',
-  defaultRadius: 'md',
-  fontFamily:
-    'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-  headings: {
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    fontWeight: '650',
-  },
-  components: {
-    Paper: {
-      defaultProps: {
-        withBorder: true,
-        shadow: 'none',
-      },
-    },
-    Table: {
-      defaultProps: {
-        verticalSpacing: 'sm',
-        horizontalSpacing: 'md',
-      },
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
     },
   },
 });
@@ -54,13 +28,10 @@ function AuthBootstrap({ children }: PropsWithChildren) {
         return;
       }
 
-      const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
       const storedUser = getStoredUser();
-      useAuthStore.getState().setSession({
-        accessToken: token,
-        user: isMockMode ? storedUser : null,
-      });
+      useAuthStore.getState().setSession({ accessToken: token, user: storedUser });
 
+      const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
       if (isMockMode && storedUser) {
         setSessionUser(storedUser);
         useAuthStore.getState().setLoading(false);
@@ -73,14 +44,14 @@ function AuthBootstrap({ children }: PropsWithChildren) {
         setSessionUser(user);
         useAuthStore.getState().setError(null);
       } catch (error: unknown) {
-        const status = readHttpStatus(error);
+        const status = (error as { response?: { status?: number } })?.response?.status;
         if (status === 401 || status === 403) {
           clearSession();
           if (status === 403) {
-            useAuthStore.getState().setError('Tài khoản đã xác thực nhưng chưa được cấp quyền HRM.');
+            useAuthStore.getState().setError('Tai khoan da xac thuc nhung chua duoc cap quyen HRM.');
           }
         } else {
-          useAuthStore.getState().setError('Không tải được thông tin người dùng HRM.');
+          useAuthStore.getState().setError('Khong tai duoc thong tin nguoi dung HRM.');
         }
       }
 
@@ -100,11 +71,19 @@ function AuthBootstrap({ children }: PropsWithChildren) {
 
 export function AppProviders({ children }: PropsWithChildren) {
   return (
-    <MantineProvider theme={theme}>
-      <Notifications position="top-right" zIndex={4000} />
+    <ConfigProvider
+      theme={{
+        token: {
+          borderRadius: 8,
+          colorPrimary: '#1677ff',
+        },
+      }}
+    >
+      <AntApp>
         <QueryClientProvider client={queryClient}>
           <AuthBootstrap>{children}</AuthBootstrap>
         </QueryClientProvider>
-    </MantineProvider>
+      </AntApp>
+    </ConfigProvider>
   );
 }

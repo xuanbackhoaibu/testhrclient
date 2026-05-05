@@ -67,11 +67,11 @@ export function ContractsPage() {
 
           <Table
             rowKey="id"
-            dataSource={data.items}
+            dataSource={data.data}
             pagination={{
-              current: data.pagination.page,
-              pageSize: data.pagination.pageSize,
-              total: data.pagination.total,
+              current: data.meta.page,
+              pageSize: data.meta.pageSize,
+              total: data.meta.total,
               onChange: (page, pageSize) => setParams((current) => ({ ...current, page, pageSize })),
             }}
             columns={[
@@ -125,3 +125,4 @@ export function ContractsPage() {
     </>
   );
 }
+

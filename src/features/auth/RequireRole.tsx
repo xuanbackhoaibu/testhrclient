@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import { Alert } from 'antd';
 
-import { hasRole } from './permissions';
-import { useAuth } from './useAuth';
+import { hasRole } from '../../shared/utils/permissions';
+import { useAuthStore } from './authStore';
 
 export function RequireRole({
   roles,
@@ -11,11 +11,10 @@ export function RequireRole({
   roles: string | string[];
   children: ReactNode;
 }) {
-  const { user } = useAuth();
-  const expectedRoles = Array.isArray(roles) ? roles : [roles];
+  const userRoles = useAuthStore((state) => state.user?.roles);
 
-  if (!expectedRoles.some((role) => hasRole(user, role))) {
-    return <Alert type="warning" message="Ban khong co quyen truy cap noi dung nay." showIcon />;
+  if (!hasRole(userRoles, roles)) {
+    return <Alert type="warning" message="Bạn không có quyền truy cập nội dung này." showIcon />;
   }
 
   return <>{children}</>;

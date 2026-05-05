@@ -1,20 +1,25 @@
-export type {
-  ApiEnvelope,
-  ApiErrorDetail,
-  ApiErrorResponse,
-  ApiSuccessResponse,
-  PaginatedData,
-  PaginationMeta,
-} from '../api/api.types';
-export { ApiError } from '../api/api.types';
+export interface PaginationMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
 
-import type { PaginatedData, PaginationMeta } from '../api/api.types';
-
-export interface PaginatedResponse<T> extends PaginatedData<T> {
-  /** @deprecated Use items. Kept during API envelope rollout. */
+export interface PaginatedResponse<T> {
   data: T[];
-  /** @deprecated Use pagination. Kept during API envelope rollout. */
   meta: PaginationMeta;
+}
+
+export interface ApiResponse<T> {
+  data: T;
+  message?: string;
+}
+
+export interface ApiError {
+  message: string;
+  code?: string;
+  status?: number;
+  details?: unknown;
 }
 
 export interface ListQueryParams {
@@ -22,10 +27,9 @@ export interface ListQueryParams {
   pageSize?: number;
   search?: string;
   status?: string;
-  employmentStatus?: string;
   employeeId?: string;
-  unitId?: string;
-  departmentId?: string;
+  legalEntityId?: string;
+  orgUnitId?: string;
   movementType?: string;
   leaveType?: string;
   source?: string;
@@ -36,3 +40,4 @@ export interface ListQueryParams {
   fromDate?: string;
   toDate?: string;
 }
+

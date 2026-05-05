@@ -1,10 +1,9 @@
-import { api } from '../../shared/api/httpClient';
-import { normalizePaginatedResponse } from '../../shared/api/response';
+import { httpClient } from '../../shared/api/httpClient';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockMovements } from '../../shared/mocks/mockWorkflows';
-import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../shared/types/api';
+import type { ListQueryParams, PaginatedResponse } from '../../shared/types/api';
 import type { Movement, MovementPayload } from './movementTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
@@ -34,8 +33,8 @@ export async function listMovements(params: ListQueryParams = {}): Promise<Pagin
     return paginate(filtered, params);
   }
 
-  const response = await api.get<PaginatedData<Movement>>('/movements', { params });
-  return normalizePaginatedResponse<Movement>(response, params);
+  const response = await httpClient.get<PaginatedResponse<Movement>>('/movements', { params });
+  return response.data;
 }
 
 export async function createMovement(payload: MovementPayload): Promise<Movement> {
@@ -58,7 +57,8 @@ export async function createMovement(payload: MovementPayload): Promise<Movement
     return movement;
   }
 
-  return api.post<Movement>('/movements', payload);
+  const response = await httpClient.post<Movement>('/movements', payload);
+  return response.data;
 }
 
 async function updateMovementStatus(id: string, status: string, action: string): Promise<Movement> {
@@ -77,7 +77,8 @@ async function updateMovementStatus(id: string, status: string, action: string):
     return movement;
   }
 
-  return api.post<Movement>(`/movements/${id}/${action.toLowerCase()}`);
+  const response = await httpClient.post<Movement>(`/movements/${id}/${action.toLowerCase()}`);
+  return response.data;
 }
 
 export function submitMovement(id: string) {
@@ -95,3 +96,4 @@ export function rejectMovement(id: string) {
 export function cancelMovement(id: string) {
   return updateMovementStatus(id, 'CANCELLED', 'CANCEL');
 }
+

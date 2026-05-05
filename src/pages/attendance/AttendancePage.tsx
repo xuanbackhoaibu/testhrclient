@@ -57,10 +57,10 @@ export function AttendancePage() {
               <Select allowClear placeholder="Employee" style={{ width: '100%' }} options={mockEmployees.map((item) => ({ value: item.id, label: item.fullName }))} onChange={(value) => setParams((current) => ({ ...current, employeeId: value }))} />
             </Col>
             <Col xs={24} md={4}>
-              <Input type="date" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, fromDate: value })); }} />
+              <Input type="date" onChange={(event) => setParams((current) => ({ ...current, fromDate: event.target.value || undefined }))} />
             </Col>
             <Col xs={24} md={4}>
-              <Input type="date" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, toDate: value })); }} />
+              <Input type="date" onChange={(event) => setParams((current) => ({ ...current, toDate: event.target.value || undefined }))} />
             </Col>
             <Col xs={24} md={5}>
               <Select allowClear placeholder="Source" style={{ width: '100%' }} options={ATTENDANCE_SOURCE_OPTIONS.map((item) => ({ value: item, label: item }))} onChange={(value) => setParams((current) => ({ ...current, source: value }))} />
@@ -72,11 +72,11 @@ export function AttendancePage() {
 
           <Table
             rowKey="id"
-            dataSource={data.items}
+            dataSource={data.data}
             pagination={{
-              current: data.pagination.page,
-              pageSize: data.pagination.pageSize,
-              total: data.pagination.total,
+              current: data.meta.page,
+              pageSize: data.meta.pageSize,
+              total: data.meta.total,
               onChange: (page, pageSize) => setParams((current) => ({ ...current, page, pageSize })),
             }}
             columns={[

@@ -1,37 +1,37 @@
 import { useState } from 'react';
-import { Button, Card, Drawer, Form, Input, Select, Space, Table, message } from 'antd';
+import { Button, Card, Drawer, Form, Input, Popconfirm, Select, Space, Table, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { createPosition, updatePosition } from '../../features/organization/positionsApi';
-import type { Position } from '../../features/organization/organizationTypes';
-import { usePositions } from '../../features/organization/usePositions';
-import { ErrorState } from '../../shared/components/ErrorState';
-import { LoadingState } from '../../shared/components/LoadingState';
+import { createLegalEntity, updateLegalEntity } from '../../features/organization/legalEntitiesApi';
+import type { LegalEntity } from '../../features/organization/organizationTypes';
+import { useLegalEntities } from '../../features/organization/useLegalEntities';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
+import { ErrorState } from '../../shared/components/ErrorState';
+import { LoadingState } from '../../shared/components/LoadingState';
 
-export function PositionsPage() {
+export function LegalEntitiesPage() {
   const queryClient = useQueryClient();
-  const [form] = Form.useForm<Omit<Position, 'id'>>();
-  const [editing, setEditing] = useState<Position | null>(null);
-  const [open, setOpen] = useState(false);
+  const [form] = Form.useForm<Omit<LegalEntity, 'id'>>();
   const [params, setParams] = useState({ page: 1, pageSize: 10, search: '', status: undefined as string | undefined });
-  const { data, isLoading, error, refetch } = usePositions(params);
+  const [editing, setEditing] = useState<LegalEntity | null>(null);
+  const [open, setOpen] = useState(false);
+  const { data, isLoading, error, refetch } = useLegalEntities(params);
 
   const mutation = useMutation({
-    mutationFn: async (values: Omit<Position, 'id'>) => {
+    mutationFn: async (values: Omit<LegalEntity, 'id'>) => {
       if (editing) {
-        return updatePosition(editing.id, values);
+        return updateLegalEntity(editing.id, values);
       }
-      return createPosition(values);
+      return createLegalEntity(values);
     },
     onSuccess: async () => {
-      message.success(editing ? 'Đã cập nhật position.' : 'Đã tạo position.');
+      message.success(editing ? 'Đã cập nhật legal entity.' : 'Đã tạo legal entity.');
       setOpen(false);
       setEditing(null);
       form.resetFields();
-      await queryClient.invalidateQueries({ queryKey: ['positions'] });
+      await queryClient.invalidateQueries({ queryKey: ['legal-entities'] });
     },
   });
 
@@ -46,10 +46,18 @@ export function PositionsPage() {
   return (
     <>
       <PageHeader
-        title="Positions"
-        subtitle="Position master với basic search và status filter."
+        title="Legal Entities"
+        subtitle="Quản lý legal entity master cho HRM."
         actions={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              setEditing(null);
+              form.resetFields();
+              setOpen(true);
+            }}
+          >
             Create
           </Button>
         }
@@ -58,10 +66,10 @@ export function PositionsPage() {
       <Card className="page-card">
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
           <Space wrap>
-            <Input.Search placeholder="Search code, name, job function" allowClear onSearch={(search) => setParams((current) => ({ ...current, search }))} />
+            <Input.Search placeholder="Search code or name" allowClear onSearch={(search) => setParams((current) => ({ ...current, search }))} />
             <Select
-              allowClear
               placeholder="Status"
+              allowClear
               style={{ width: 160 }}
               options={[{ value: 'ACTIVE' }, { value: 'INACTIVE' }]}
               onChange={(value) => setParams((current) => ({ ...current, status: value }))}
@@ -80,21 +88,28 @@ export function PositionsPage() {
             columns={[
               { title: 'Code', dataIndex: 'code' },
               { title: 'Name', dataIndex: 'name' },
-              { title: 'Job function', dataIndex: 'jobFunction' },
-              { title: 'Grade', dataIndex: 'grade' },
+              { title: 'Short name', dataIndex: 'shortName' },
+              { title: 'Tax code', dataIndex: 'taxCode' },
               { title: 'Status', render: (_, record) => <StatusTag status={record.status} /> },
               {
                 title: 'Actions',
                 render: (_, record) => (
-                  <Button
-                    onClick={() => {
-                      setEditing(record);
-                      form.setFieldsValue(record);
-                      setOpen(true);
-                    }}
-                  >
-                    Edit
-                  </Button>
+                  <Space>
+                    <Button
+                      onClick={() => {
+                        setEditing(record);
+                        form.setFieldsValue(record);
+                        setOpen(true);
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    {record.status !== 'INACTIVE' ? (
+                      <Popconfirm title="Inactive legal entity?" onConfirm={() => mutation.mutate({ ...record, status: 'INACTIVE' })}>
+                        <Button danger>Inactive</Button>
+                      </Popconfirm>
+                    ) : null}
+                  </Space>
                 ),
               },
             ]}
@@ -103,10 +118,10 @@ export function PositionsPage() {
       </Card>
 
       <Drawer
-        title={editing ? 'Edit position' : 'Create position'}
+        title={editing ? 'Edit legal entity' : 'Create legal entity'}
         open={open}
-        width={420}
         destroyOnClose
+        width={440}
         onClose={() => {
           setOpen(false);
           setEditing(null);
@@ -125,10 +140,10 @@ export function PositionsPage() {
           <Form.Item name="name" label="Name" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="jobFunction" label="Job function" rules={[{ required: true }]}>
+          <Form.Item name="shortName" label="Short name" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="grade" label="Grade" rules={[{ required: true }]}>
+          <Form.Item name="taxCode" label="Tax code" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
           <Form.Item name="status" label="Status" rules={[{ required: true }]}>
