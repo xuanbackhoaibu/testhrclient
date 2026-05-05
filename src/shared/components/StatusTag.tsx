@@ -1,62 +1,26 @@
-import { Badge } from '@mantine/core';
+import { Tag } from 'antd';
 
 const STATUS_COLOR_MAP: Record<string, string> = {
   ACTIVE: 'green',
-  INACTIVE: 'gray',
-  PROBATION: 'yellow',
+  INACTIVE: 'default',
+  PROBATION: 'gold',
   TERMINATED: 'red',
-  RESIGNED: 'orange',
-  SUSPENDED: 'orange',
-  DRAFT: 'gray',
+  DRAFT: 'default',
   SUBMITTED: 'blue',
   APPROVED: 'green',
   REJECTED: 'red',
-  CANCELLED: 'orange',
+  CANCELLED: 'volcano',
   COMPLETED: 'green',
   FAILED: 'red',
-  PARTIAL_SUCCESS: 'yellow',
-  IN_PROGRESS: 'blue',
-  LINKED: 'green',
-  UNLINKED: 'gray',
-  // Account statuses
-  NOT_CREATED: 'gray',
-  PENDING_ACTIVATION: 'yellow',
-  LOCKED: 'orange',
-  DISABLED: 'red',
-  DEACTIVATED: 'red',
-  TOMBSTONED: 'dark',
-};
-
-const STATUS_LABEL_MAP: Record<string, string> = {
-  ACTIVE: 'Đang làm việc',
-  INACTIVE: 'Tạm ngưng',
-  PROBATION: 'Thử việc',
-  TERMINATED: 'Nghỉ việc',
-  RESIGNED: 'Đã nghỉ',
-  SUSPENDED: 'Tạm dừng',
-  LINKED: 'Đã liên kết',
-  UNLINKED: 'Chưa liên kết',
-  // Account statuses
-  NOT_CREATED: 'Chưa tạo TK',
-  PENDING_ACTIVATION: 'Chờ kích hoạt',
-  LOCKED: 'Bị khóa',
-  DISABLED: 'Vô hiệu hóa',
-  DEACTIVATED: 'Đã hủy kích hoạt',
-  TOMBSTONED: 'Đã xóa',
+  PARTIAL_SUCCESS: 'gold',
+  IN_PROGRESS: 'processing',
 };
 
 export function StatusTag({ status }: { status?: string | null }) {
   if (!status) {
-    return (
-      <Badge color="gray" variant="light">
-        -
-      </Badge>
-    );
+    return <Tag>-</Tag>;
   }
 
-  return (
-    <Badge color={STATUS_COLOR_MAP[status] ?? 'gray'} variant="light" radius="sm">
-      {STATUS_LABEL_MAP[status] ?? status}
-    </Badge>
-  );
+  return <Tag color={STATUS_COLOR_MAP[status] ?? 'default'}>{status}</Tag>;
 }
+

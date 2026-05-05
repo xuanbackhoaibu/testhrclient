@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import type { ListQueryParams } from '../../shared/types/api';
-import { listPositions, listPositionsSelect } from './positionsApi';
+import { listPositions } from './positionsApi';
 
 export function usePositions(params: ListQueryParams) {
   return useQuery({
@@ -10,9 +10,3 @@ export function usePositions(params: ListQueryParams) {
   });
 }
 
-export function usePositionsSelect() {
-  return useQuery({
-    queryKey: ['positions', 'select'],
-    queryFn: listPositionsSelect,
-  });
-}

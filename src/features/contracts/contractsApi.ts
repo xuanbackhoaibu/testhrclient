@@ -1,10 +1,9 @@
-import { api } from '../../shared/api/httpClient';
-import { normalizePaginatedResponse } from '../../shared/api/response';
+import { httpClient } from '../../shared/api/httpClient';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockContracts } from '../../shared/mocks/mockWorkflows';
-import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../shared/types/api';
+import type { ListQueryParams, PaginatedResponse } from '../../shared/types/api';
 import type { Contract, ContractPayload } from './contractTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
@@ -25,8 +24,8 @@ export async function listContracts(params: ListQueryParams = {}): Promise<Pagin
     return paginate(filtered, params);
   }
 
-  const response = await api.get<PaginatedData<Contract>>('/contracts', { params });
-  return normalizePaginatedResponse<Contract>(response, params);
+  const response = await httpClient.get<PaginatedResponse<Contract>>('/contracts', { params });
+  return response.data;
 }
 
 export async function createContract(payload: ContractPayload): Promise<Contract> {
@@ -43,7 +42,8 @@ export async function createContract(payload: ContractPayload): Promise<Contract
     return contract;
   }
 
-  return api.post<Contract>('/contracts', payload);
+  const response = await httpClient.post<Contract>('/contracts', payload);
+  return response.data;
 }
 
 export async function updateContract(id: string, payload: Partial<ContractPayload>): Promise<Contract> {
@@ -65,7 +65,8 @@ export async function updateContract(id: string, payload: Partial<ContractPayloa
     return contract;
   }
 
-  return api.patch<Contract>(`/contracts/${id}`, payload);
+  const response = await httpClient.patch<Contract>(`/contracts/${id}`, payload);
+  return response.data;
 }
 
 export async function terminateContract(id: string, payload: { endDate: string }): Promise<Contract> {
@@ -88,5 +89,6 @@ export async function terminateContract(id: string, payload: { endDate: string }
     return contract;
   }
 
-  return api.post<Contract>(`/contracts/${id}/terminate`, payload);
+  const response = await httpClient.post<Contract>(`/contracts/${id}/terminate`, payload);
+  return response.data;
 }

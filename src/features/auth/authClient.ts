@@ -1,48 +1,15 @@
-import axios from 'axios';
-
-import { queryClient } from '../../app/queryClient';
 import { MOCK_AUTH_USERS, MOCK_TOKENS, getMockUserByToken } from '../../shared/mocks/mockAuth';
 import { STORAGE_KEYS, getStoredString, removeStoredString, setStoredString } from '../../shared/utils/storage';
 import { useAuthStore } from './authStore';
-import { CURRENT_USER_QUERY_KEY, normalizeCurrentUser } from './currentUser';
-import type { AuthUser, DemoRole, LoginCredentials } from './types';
+import type { AuthUser, DemoRole } from './types';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
 
-interface AuthServiceLoginPayload {
-  loginIdentifier: string;
-  password: string;
-  rememberMe?: boolean;
-}
-
-interface AuthServiceLoginResponse {
-  success?: boolean;
-  message?: string;
-  error?: string;
-  data?: {
-    accessToken?: string;
-    mustChangePassword?: boolean;
-    nextAction?: string;
-  };
-  accessToken?: string;
-  mustChangePassword?: boolean;
-  nextAction?: string;
-}
-
 export function getAccessToken(): string | null {
-  const token = getStoredString(STORAGE_KEYS.accessToken)?.trim();
-  if (!token || token === 'undefined' || token === 'null') {
-    return null;
-  }
-
-  return token;
+  return getStoredString(STORAGE_KEYS.accessToken);
 }
 
 export function setAccessToken(token: string): void {
-  if (!token.trim() || token === 'undefined' || token === 'null') {
-    throw new Error('Invalid access token.');
-  }
-
   setStoredString(STORAGE_KEYS.accessToken, token);
   useAuthStore.getState().setSession({
     accessToken: token,
@@ -51,19 +18,15 @@ export function setAccessToken(token: string): void {
 }
 
 export function setSessionUser(user: AuthUser | null): void {
-  const normalizedUser = user ? normalizeCurrentUser(user) : null;
-
   if (user) {
-    setStoredString(STORAGE_KEYS.currentUser, JSON.stringify(normalizedUser));
-    queryClient.setQueryData(CURRENT_USER_QUERY_KEY, normalizedUser);
+    setStoredString(STORAGE_KEYS.currentUser, JSON.stringify(user));
   } else {
     removeStoredString(STORAGE_KEYS.currentUser);
-    queryClient.removeQueries({ queryKey: CURRENT_USER_QUERY_KEY });
   }
 
   useAuthStore.getState().setSession({
     accessToken: getAccessToken(),
-    user: normalizedUser,
+    user,
   });
 }
 
@@ -74,91 +37,37 @@ export function getStoredUser(): AuthUser | null {
   }
 
   try {
-    return normalizeCurrentUser(JSON.parse(raw));
+    return JSON.parse(raw) as AuthUser;
   } catch {
     return null;
   }
 }
 
-function readAuthLoginError(error: unknown): string {
-  if (axios.isAxiosError(error)) {
-    const payload = error.response?.data as { message?: unknown; error?: unknown; code?: unknown } | undefined;
-    if (typeof payload?.message === 'string') {
-      return payload.message;
-    }
-    if (typeof payload?.error === 'string') {
-      return payload.error;
-    }
-    if (typeof payload?.code === 'string') {
-      return `Login failed: ${payload.code}`;
-    }
-  }
-
-  return error instanceof Error ? error.message : 'Login failed.';
-}
-
-function readAuthEnv(primary: string, fallback: string): string | undefined {
-  const env = import.meta.env as Record<string, string | undefined>;
-  return env[primary] || env[fallback];
-}
-
-export async function login(input: DemoRole | LoginCredentials = 'HR'): Promise<void> {
+export async function login(role: DemoRole = 'HR_ADMIN'): Promise<void> {
   if (isMockMode) {
-    const role = typeof input === 'string' ? input : 'HR';
     const token = MOCK_TOKENS[role];
-    const user = normalizeCurrentUser(MOCK_AUTH_USERS[role]);
+    const user = MOCK_AUTH_USERS[role];
     setStoredString(STORAGE_KEYS.accessToken, token);
-    queryClient.clear();
-    setSessionUser(user);
+    setStoredString(STORAGE_KEYS.currentUser, JSON.stringify(user));
+    useAuthStore.getState().setSession({ accessToken: token, user });
     return;
   }
 
-  const loginUrl = readAuthEnv(
-    'VITE_AUTH_SERVICE_LOGIN_URL',
-    'VITE_CHAT_AUTH_LOGIN_URL',
-  );
-
-  if (!loginUrl) {
-    throw new Error('VITE_AUTH_SERVICE_LOGIN_URL is required.');
-  }
-
-  if (typeof input === 'string') {
-    throw new Error('Real auth requires loginIdentifier and password.');
-  }
-
-  const payload: AuthServiceLoginPayload = {
-    loginIdentifier: input.loginIdentifier.trim(),
-    password: input.password,
-    rememberMe: input.rememberMe,
-  };
+  const loginUrl = import.meta.env.VITE_CHAT_AUTH_LOGIN_URL;
+  const redirectUri = import.meta.env.VITE_CHAT_AUTH_REDIRECT_URI;
+  const clientId = import.meta.env.VITE_CHAT_AUTH_CLIENT_ID;
 
   try {
-    const response = await axios.post<AuthServiceLoginResponse>(loginUrl, payload, {
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-    });
-
-    const responseData = response.data.data ?? response.data;
-    const accessToken = responseData?.accessToken;
-    if (!accessToken) {
-      throw new Error('Auth service login response did not include accessToken.');
+    const url = new URL(loginUrl);
+    if (redirectUri) {
+      url.searchParams.set('redirect_uri', redirectUri);
     }
-
-    const mustChangePassword = Boolean(responseData?.mustChangePassword);
-    const nextAction = responseData?.nextAction;
-
-    setAccessToken(accessToken);
-    queryClient.clear();
-    setSessionUser(null);
-
-    if (mustChangePassword || nextAction === 'CHANGE_PASSWORD_REQUIRED') {
-      window.location.assign('/change-password');
-      return;
+    if (clientId) {
+      url.searchParams.set('client_id', clientId);
     }
-  } catch (error) {
-    throw new Error(readAuthLoginError(error), { cause: error });
+    window.location.assign(url.toString());
+  } catch {
+    window.location.assign(loginUrl);
   }
 }
 
@@ -168,16 +77,14 @@ export function handleCallback(): string {
   const token = query.get('access_token') ?? query.get('token') ?? hash.get('access_token') ?? hash.get('token');
 
   if (!token) {
-    throw new Error('Không tìm thấy access token từ dịch vụ xác thực.');
+    throw new Error('Không tìm thấy access token từ chat-auth-service.');
   }
 
   setStoredString(STORAGE_KEYS.accessToken, token);
-  queryClient.clear();
-  setSessionUser(null);
 
   const mockUser = getMockUserByToken(token);
   if (mockUser) {
-    setSessionUser(normalizeCurrentUser(mockUser));
+    setStoredString(STORAGE_KEYS.currentUser, JSON.stringify(mockUser));
   }
 
   return token;
@@ -186,34 +93,20 @@ export function handleCallback(): string {
 export function clearSession(): void {
   removeStoredString(STORAGE_KEYS.accessToken);
   removeStoredString(STORAGE_KEYS.currentUser);
-  queryClient.clear();
   useAuthStore.getState().clearSession();
 }
 
-export async function logout(): Promise<void> {
-  const accessToken = getAccessToken();
+export function logout(): void {
+  clearSession();
 
   if (!isMockMode) {
-    const logoutUrl = readAuthEnv(
-      'VITE_AUTH_SERVICE_LOGOUT_URL',
-      'VITE_CHAT_AUTH_LOGOUT_URL',
-    );
-    if (logoutUrl && accessToken) {
-      await axios
-        .post(
-          logoutUrl,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          },
-        )
-        .catch(() => undefined);
+    const logoutUrl = import.meta.env.VITE_CHAT_AUTH_LOGOUT_URL;
+    if (logoutUrl) {
+      window.location.assign(logoutUrl);
+      return;
     }
   }
 
-  clearSession();
-
   window.location.assign('/login');
 }
+

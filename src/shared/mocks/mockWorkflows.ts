@@ -8,7 +8,7 @@ import type { OffboardingInstance, OffboardingTemplate } from '../../features/of
 import type { OnboardingInstance, OnboardingTemplate } from '../../features/onboarding/onboardingTypes';
 
 export const mockMovements: Movement[] = [
-  { id: 'mov-01', employeeId: 'emp-03', employeeName: 'Le Thanh Mai', movementType: 'TRANSFER', effectiveDate: '2026-04-28', reason: 'Retail staffing rebalance', afterJson: { departmentId: 'ou-sales', departmentName: 'Sales' }, status: 'DRAFT' },
+  { id: 'mov-01', employeeId: 'emp-03', employeeName: 'Le Thanh Mai', movementType: 'TRANSFER', effectiveDate: '2026-04-28', reason: 'Retail staffing rebalance', afterJson: { orgUnitId: 'ou-sales', orgUnitName: 'Sales' }, status: 'DRAFT' },
   { id: 'mov-02', employeeId: 'emp-04', employeeName: 'Pham Duc Anh', movementType: 'PROMOTION', effectiveDate: '2026-05-01', reason: 'Delivery performance', afterJson: { positionName: 'Engineering Lead', grade: 'M1' }, status: 'SUBMITTED' },
   { id: 'mov-03', employeeId: 'emp-07', employeeName: 'Bui Hong Nhung', movementType: 'TERMINATION', effectiveDate: '2026-03-12', reason: 'Offboarding completed', afterJson: { employmentStatus: 'TERMINATED' }, status: 'APPROVED' },
 ];
@@ -84,7 +84,7 @@ export const mockImportBatches: ImportBatch[] = [
     errorSummary: [
       { rowNo: 18, field: 'companyEmail', message: 'Invalid email format' },
       { rowNo: 43, field: 'employeeCode', message: 'Duplicated employee code' },
-      { rowNo: 99, field: 'unitId', message: 'Unknown legal entity' },
+      { rowNo: 99, field: 'legalEntityId', message: 'Unknown legal entity' },
     ],
   },
   {
@@ -126,7 +126,7 @@ export const mockAuditLogs: AuditLog[] = [
   },
   {
     id: 'adt-03',
-    entityType: 'DEPARTMENT',
+    entityType: 'ORG_UNIT',
     entityId: 'ou-sales',
     action: 'UPDATE',
     actorUserId: 'usr-hr-admin',

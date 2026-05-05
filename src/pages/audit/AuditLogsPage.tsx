@@ -38,22 +38,22 @@ export function AuditLogsPage() {
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
           <Row gutter={12}>
             <Col xs={24} md={6}>
-              <Select allowClear placeholder="Entity type" style={{ width: '100%' }} options={['EMPLOYEE', 'LEAVE_REQUEST', 'DEPARTMENT', 'UNIT', 'CONTRACT', 'IMPORT_BATCH'].map((item) => ({ value: item, label: item }))} onChange={(value) => setParams((current) => ({ ...current, entityType: value }))} />
+              <Select allowClear placeholder="Entity type" style={{ width: '100%' }} options={['EMPLOYEE', 'LEAVE_REQUEST', 'ORG_UNIT', 'LEGAL_ENTITY', 'CONTRACT', 'IMPORT_BATCH'].map((item) => ({ value: item, label: item }))} onChange={(value) => setParams((current) => ({ ...current, entityType: value }))} />
             </Col>
             <Col xs={24} md={4}>
-              <Input placeholder="Entity ID" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, entityId: value })); }} />
+              <Input placeholder="Entity ID" onChange={(event) => setParams((current) => ({ ...current, entityId: event.target.value || undefined }))} />
             </Col>
             <Col xs={24} md={4}>
-              <Input placeholder="Action" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, action: value })); }} />
+              <Input placeholder="Action" onChange={(event) => setParams((current) => ({ ...current, action: event.target.value || undefined }))} />
             </Col>
             <Col xs={24} md={4}>
-              <Input placeholder="Actor user ID" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, actorUserId: value })); }} />
+              <Input placeholder="Actor user ID" onChange={(event) => setParams((current) => ({ ...current, actorUserId: event.target.value || undefined }))} />
             </Col>
             <Col xs={24} md={3}>
-              <Input type="date" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, fromDate: value })); }} />
+              <Input type="date" onChange={(event) => setParams((current) => ({ ...current, fromDate: event.target.value || undefined }))} />
             </Col>
             <Col xs={24} md={3}>
-              <Input type="date" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, toDate: value })); }} />
+              <Input type="date" onChange={(event) => setParams((current) => ({ ...current, toDate: event.target.value || undefined }))} />
             </Col>
           </Row>
 
@@ -61,11 +61,11 @@ export function AuditLogsPage() {
 
           <Table
             rowKey="id"
-            dataSource={data.items}
+            dataSource={data.data}
             pagination={{
-              current: data.pagination.page,
-              pageSize: data.pagination.pageSize,
-              total: data.pagination.total,
+              current: data.meta.page,
+              pageSize: data.meta.pageSize,
+              total: data.meta.total,
               onChange: (page, pageSize) => setParams((current) => ({ ...current, page, pageSize })),
             }}
             columns={[
@@ -95,3 +95,4 @@ export function AuditLogsPage() {
     </>
   );
 }
+

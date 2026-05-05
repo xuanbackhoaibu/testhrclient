@@ -1,26 +1,26 @@
-import { Box, Center, Container, Paper, Stack, Text } from '@mantine/core';
+import { Card, Col, Layout, Row, Typography } from 'antd';
 import { Outlet } from 'react-router-dom';
 
-import { BrandLogo } from '../shared/components/BrandLogo';
+const { Content } = Layout;
 
 export function AuthLayout() {
   return (
-    <Box mih="100vh" bg="#f6f8fb" px="md" py="xl">
-      <Center mih="calc(100vh - 64px)">
-        <Container size={420} w="100%">
-          <Paper p="xl" radius="md">
-            <Stack gap="lg">
-              <Stack gap={2}>
-                <BrandLogo />
-                <Text c="dimmed" size="sm">
-                  Đăng nhập hệ thống nhân sự nội bộ.
-                </Text>
-              </Stack>
+    <Layout style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #eef5ff 0%, #f7f9fc 100%)' }}>
+      <Content style={{ padding: 24 }}>
+        <Row justify="center" align="middle" style={{ minHeight: 'calc(100vh - 48px)' }}>
+          <Col xs={24} sm={20} md={14} lg={10} xl={8}>
+            <Card bordered={false} className="page-card">
+              <Typography.Title level={2} style={{ marginTop: 0, marginBottom: 8 }}>
+                HACOM HRM
+              </Typography.Title>
+              <Typography.Paragraph type="secondary">
+                HR Core Platform uses chat-auth-service for login, logout, token, and session.
+              </Typography.Paragraph>
               <Outlet />
-            </Stack>
-          </Paper>
-        </Container>
-      </Center>
-    </Box>
+            </Card>
+          </Col>
+        </Row>
+      </Content>
+    </Layout>
   );
 }

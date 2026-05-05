@@ -12,7 +12,7 @@ export interface DashboardSummary {
   pendingMovements: number;
   onboardingInProgress: number;
   offboardingInProgress: number;
-  employeesByUnit: DashboardMetric[];
+  employeesByLegalEntity: DashboardMetric[];
   employeesByEmploymentStatus: DashboardMetric[];
 }
 

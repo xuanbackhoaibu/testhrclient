@@ -1,10 +1,9 @@
-import { api } from '../../shared/api/httpClient';
-import { normalizePaginatedResponse } from '../../shared/api/response';
+import { httpClient } from '../../shared/api/httpClient';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockLeaveRequests } from '../../shared/mocks/mockWorkflows';
-import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../shared/types/api';
+import type { ListQueryParams, PaginatedResponse } from '../../shared/types/api';
 import type { LeaveRequest, LeaveRequestPayload } from './leaveTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
@@ -26,8 +25,8 @@ export async function listLeaveRequests(params: ListQueryParams = {}): Promise<P
     return paginate(filtered, params);
   }
 
-  const response = await api.get<PaginatedData<LeaveRequest>>('/leave/requests', { params });
-  return normalizePaginatedResponse<LeaveRequest>(response, params);
+  const response = await httpClient.get<PaginatedResponse<LeaveRequest>>('/leave-requests', { params });
+  return response.data;
 }
 
 export async function createLeaveRequest(payload: LeaveRequestPayload): Promise<LeaveRequest> {
@@ -45,7 +44,8 @@ export async function createLeaveRequest(payload: LeaveRequestPayload): Promise<
     return leaveRequest;
   }
 
-  return api.post<LeaveRequest>('/leave/requests', payload);
+  const response = await httpClient.post<LeaveRequest>('/leave-requests', payload);
+  return response.data;
 }
 
 async function updateLeaveStatus(id: string, status: string, action: string): Promise<LeaveRequest> {
@@ -67,7 +67,8 @@ async function updateLeaveStatus(id: string, status: string, action: string): Pr
     return leave;
   }
 
-  return api.post<LeaveRequest>(`/leave/requests/${id}/${action.toLowerCase()}`);
+  const response = await httpClient.post<LeaveRequest>(`/leave-requests/${id}/${action.toLowerCase()}`);
+  return response.data;
 }
 
 export function submitLeaveRequest(id: string) {

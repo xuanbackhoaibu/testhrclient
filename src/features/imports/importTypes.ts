@@ -1,11 +1,7 @@
 export interface ImportErrorSummary {
-  rowNumber?: number;
-  rowNo?: number;
+  rowNo: number;
   field: string;
   message: string;
-  value?: string | null;
-  errorCode?: string;
-  suggestion?: string;
 }
 
 export interface ImportBatch {
@@ -21,55 +17,3 @@ export interface ImportBatch {
   errorSummary: ImportErrorSummary[];
 }
 
-export interface SuggestedCode {
-  key: string;
-  name: string;
-  code: string;
-  unitKey?: string;
-  unitName?: string;
-}
-
-export interface HrmCoreImportSummary {
-  units: number;
-  departments: number;
-  employees: number;
-  assignments: number;
-  errors: number;
-  warnings: number;
-}
-
-export interface HrmCorePreview {
-  batchId: string;
-  status: string;
-  summary: HrmCoreImportSummary;
-  suggestedCodes: {
-    units: SuggestedCode[];
-    departments: SuggestedCode[];
-  };
-  canCommit: boolean;
-}
-
-export interface HrmCoreStagingRow {
-  id: string;
-  rowNumber: number;
-  rowKind: string;
-  rawDataJson: Record<string, unknown>;
-  normalizedDataJson: Record<string, unknown>;
-  validationStatus: string;
-  validationErrorsJson: ImportErrorSummary[];
-  validationWarningsJson: ImportErrorSummary[];
-}
-
-export interface DomainImportPreview {
-  jobId: string;
-  batchId: string;
-  importType: string;
-  status: string;
-  totalRows: number;
-  validRows: number;
-  invalidRows: number;
-  warnings: number;
-  warningRows: number;
-  errors: ImportErrorSummary[];
-  canCommit: boolean;
-}
