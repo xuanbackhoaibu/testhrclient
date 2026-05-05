@@ -271,6 +271,46 @@ export interface BulkProvisionFromBatchResult {
   errors?: Array<{ employeeId: string; reason: string }>;
 }
 
+// ─── Bulk provision from employee selection ───────────────────────────────────
+
+export interface BulkProvisionEmployeeItem {
+  employeeId: string;
+  employeeCode: string;
+  fullName: string;
+  email: string;
+  unitCode?: string;
+  unitName?: string;
+  departmentName?: string;
+  positionName?: string;
+}
+
+export interface BulkProvisionFromEmployeesInput {
+  employees: BulkProvisionEmployeeItem[];
+  sendOtp?: boolean;
+  skipExisting?: boolean;
+}
+
+export type BulkProvisionItemStatus = 'CREATED' | 'SKIPPED' | 'FAILED' | 'INVALID';
+
+export interface BulkProvisionItemResult {
+  employeeId: string;
+  employeeCode: string;
+  fullName: string;
+  accountId: string | null;
+  username: string | null;
+  status: BulkProvisionItemStatus;
+  initialPassword?: string;
+  reason: string | null;
+}
+
+export interface BulkProvisionFromEmployeesResult {
+  total: number;
+  created: number;
+  skipped: number;
+  failed: number;
+  results: BulkProvisionItemResult[];
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const SENSITIVE_ROLES = new Set(['super_admin', 'security_admin', 'SUPER_ADMIN', 'IAM_ADMIN', 'iam_admin']);

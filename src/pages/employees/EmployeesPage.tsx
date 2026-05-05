@@ -13,7 +13,14 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconEdit, IconEye, IconPlus, IconSearch } from "@tabler/icons-react";
+import {
+  IconEdit,
+  IconEye,
+  IconPlus,
+  IconSearch,
+  IconUserCheck,
+  IconUsers,
+} from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
@@ -30,6 +37,9 @@ import type {
   EmployeePayload,
 } from "../../features/employees/employeeTypes";
 import { useEmployees } from "../../features/employees/useEmployees";
+import { AccountDetailDrawer } from "../../features/employees/AccountDetailDrawer";
+import { BulkProvisionModal } from "../../features/employees/BulkProvisionModal";
+import { ProvisionAccountModal } from "../../features/employees/ProvisionAccountModal";
 import { DomainExcelImportModal } from "../../features/import-export/DomainExcelImportModal";
 import { PostImportAccountModal } from "../../features/import-export/PostImportAccountModal";
 import { downloadEmployeesExport } from "../../features/import-export/excelFilesApi";
@@ -154,6 +164,10 @@ export function EmployeesPage() {
     count: number;
   } | null>(null);
   const [editing, setEditing] = useState<Employee | null>(null);
+  const [provisionTarget, setProvisionTarget] = useState<Employee | null>(null);
+  const [accountDetailTarget, setAccountDetailTarget] = useState<Employee | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkProvisionOpen, setBulkProvisionOpen] = useState(false);
   const [suggestedEmployeeCode, setSuggestedEmployeeCode] = useState("");
   const [isLoadingNextCode, setIsLoadingNextCode] = useState(false);
   const [nextCodeError, setNextCodeError] = useState<string | null>(null);
@@ -469,6 +483,11 @@ export function EmployeesPage() {
     createMutation.mutate(normalizedValues);
   }
 
+  const selectedEmployees = useMemo(
+    () => (data?.items ?? []).filter((emp) => selectedIds.has(emp.id)),
+    [data?.items, selectedIds],
+  );
+
   const columns = useMemo<DataTableColumn<Employee>[]>(
     () => [
       {
@@ -526,9 +545,51 @@ export function EmployeesPage() {
         ),
       },
       {
+        key: "account_actions",
+        header: "Tài khoản",
+        width: 140,
+        align: "center",
+        render: (record) => {
+          if (!mayProvisionAccounts) return null;
+          if (record.authUserId) {
+            return (
+              <Tooltip label="Xem tài khoản">
+                <Button
+                  size="xs"
+                  variant="light"
+                  leftSection={<IconEye size={14} />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAccountDetailTarget(record);
+                  }}
+                >
+                  Xem TK
+                </Button>
+              </Tooltip>
+            );
+          }
+          return (
+            <Tooltip label="Cấp tài khoản đăng nhập">
+              <Button
+                size="xs"
+                variant="light"
+                color="teal"
+                leftSection={<IconUserCheck size={14} />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setProvisionTarget(record);
+                }}
+              >
+                Cấp TK
+              </Button>
+            </Tooltip>
+          );
+        },
+      },
+      {
         key: "actions",
         header: "",
-        width: 108,
+        width: 60,
         align: "right",
         render: (record) => (
           <TableActionsMenu
@@ -552,7 +613,7 @@ export function EmployeesPage() {
         ),
       },
     ],
-    [mayEditEmployee, navigate, openEditDrawer],
+    [mayEditEmployee, mayProvisionAccounts, navigate, openEditDrawer],
   );
 
   return (
@@ -572,6 +633,16 @@ export function EmployeesPage() {
               isExporting={exportMutation.isPending}
               canImport={mayImportEmployees}
             />
+            {mayProvisionAccounts && selectedIds.size > 0 && (
+              <Button
+                leftSection={<IconUsers size={18} />}
+                variant="light"
+                color="teal"
+                onClick={() => setBulkProvisionOpen(true)}
+              >
+                Cấp TK hàng loạt ({selectedIds.size})
+              </Button>
+            )}
             {mayCreateEmployee ? (
               <Button
                 leftSection={<IconPlus size={18} />}
@@ -656,6 +727,8 @@ export function EmployeesPage() {
           onPageChange={(page, pageSize) =>
             setParams((current) => ({ ...current, page, pageSize }))
           }
+          selectedIds={mayProvisionAccounts ? selectedIds : undefined}
+          onSelectionChange={mayProvisionAccounts ? setSelectedIds : undefined}
           emptyTitle="Chưa có nhân sự"
           emptyDescription="Không tìm thấy nhân sự phù hợp với bộ lọc hiện tại."
         />
@@ -822,6 +895,34 @@ export function EmployeesPage() {
           batchId={postImport.batchId}
           importedCount={postImport.count}
           onClose={() => setPostImport(null)}
+        />
+      )}
+
+      {provisionTarget && (
+        <ProvisionAccountModal
+          employee={provisionTarget}
+          opened={Boolean(provisionTarget)}
+          onClose={() => setProvisionTarget(null)}
+        />
+      )}
+
+      {accountDetailTarget && (
+        <AccountDetailDrawer
+          employee={accountDetailTarget}
+          opened={Boolean(accountDetailTarget)}
+          onClose={() => setAccountDetailTarget(null)}
+        />
+      )}
+
+      {bulkProvisionOpen && (
+        <BulkProvisionModal
+          employees={selectedEmployees}
+          opened={bulkProvisionOpen}
+          onClose={() => setBulkProvisionOpen(false)}
+          onSuccess={() => {
+            setSelectedIds(new Set());
+            void queryClient.invalidateQueries({ queryKey: ["employees"] });
+          }}
         />
       )}
     </>

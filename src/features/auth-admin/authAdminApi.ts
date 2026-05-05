@@ -7,6 +7,8 @@ import type {
   AssignRolesResult,
   BulkProvisionFromBatchInput,
   BulkProvisionFromBatchResult,
+  BulkProvisionFromEmployeesInput,
+  BulkProvisionFromEmployeesResult,
   CreatePermissionGroupInput,
   CreatePermissionInput,
   CreateRoleInput,
@@ -294,6 +296,15 @@ export async function bulkProvisionFromBatch(
 ): Promise<BulkProvisionFromBatchResult> {
   return authAdminApi.post<BulkProvisionFromBatchResult>(
     `${BASE}/accounts/bulk-provision-from-batch`,
+    input,
+  );
+}
+
+export async function bulkProvisionFromEmployees(
+  input: BulkProvisionFromEmployeesInput,
+): Promise<BulkProvisionFromEmployeesResult> {
+  return authAdminApi.post<BulkProvisionFromEmployeesResult>(
+    `${BASE}/users/bulk-provision-from-employees`,
     input,
   );
 }

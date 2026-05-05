@@ -1,9 +1,17 @@
-import { Alert, Checkbox, Modal, Select, Space, Typography, message } from 'antd';
-import { useState } from 'react';
+import {
+  Alert,
+  Button,
+  Checkbox,
+  Group,
+  Modal,
+  Stack,
+  Text,
+} from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
 
 import { bulkProvisionFromBatch } from '../auth-admin/authAdminApi';
-import { useAvailableRoles } from '../auth-admin/useAvailableRoles';
 
 interface Props {
   open: boolean;
@@ -14,34 +22,44 @@ interface Props {
 
 export function PostImportAccountModal({ open, batchId, importedCount, onClose }: Props) {
   const [createAccounts, setCreateAccounts] = useState(false);
-  const [sendEmail, setSendEmail] = useState(true);
-  const [defaultRoles, setDefaultRoles] = useState<string[]>(['EMPLOYEE']);
-  const { asSelectOptions: roleOptions } = useAvailableRoles();
+  const [sendEmail, setSendEmail] = useState(false);
 
   const provisionMutation = useMutation({
     mutationFn: () =>
       bulkProvisionFromBatch({
         batchId,
-        defaultRoles,
-        initialStatus: 'PENDING_ACTIVATION',
+        defaultRoles: ['EMPLOYEE'],
+        initialStatus: 'ACTIVE',
         sendActivationEmail: sendEmail,
       }),
     onSuccess: (result) => {
-      const msg = `Đã tạo ${result.created}/${result.total} tài khoản.${result.failed ? ` Thất bại: ${result.failed}.` : ''}`;
-      message.success(msg);
+      notifications.show({
+        color: 'green',
+        title: 'Cấp tài khoản hoàn tất',
+        message: `Đã tạo ${result.created}/${result.total} tài khoản.${result.failed ? ` Thất bại: ${result.failed}.` : ''}`,
+      });
       onClose();
     },
     onError: (err: unknown) => {
       const status = (err as { statusCode?: number })?.statusCode;
       if (status === 404 || status === 501) {
-        message.warning('Tính năng tạo tài khoản hàng loạt chưa được hỗ trợ. Vui lòng tạo từng tài khoản thủ công trong tab Tài khoản.');
+        notifications.show({
+          color: 'yellow',
+          title: 'Tính năng chưa hỗ trợ',
+          message: 'Cấp tài khoản hàng loạt qua import chưa được hỗ trợ. Vui lòng tạo từng tài khoản trong tab Tài khoản.',
+          autoClose: false,
+        });
       } else {
-        message.error((err as { message?: string })?.message ?? 'Tạo tài khoản thất bại.');
+        notifications.show({
+          color: 'red',
+          title: 'Cấp tài khoản thất bại',
+          message: (err as { message?: string })?.message ?? 'Đã xảy ra lỗi.',
+        });
       }
     },
   });
 
-  function handleOk() {
+  function handleConfirm() {
     if (!createAccounts) {
       onClose();
       return;
@@ -52,64 +70,46 @@ export function PostImportAccountModal({ open, batchId, importedCount, onClose }
   return (
     <Modal
       title="Import thành công"
-      open={open}
-      onCancel={onClose}
-      onOk={handleOk}
-      confirmLoading={provisionMutation.isPending}
-      okText={createAccounts ? 'Tạo tài khoản' : 'Đóng'}
-      cancelText="Bỏ qua"
-      cancelButtonProps={{ style: { display: createAccounts ? undefined : 'none' } }}
+      opened={open}
+      onClose={onClose}
+      size="md"
     >
-      <Alert
-        message={`Đã import ${importedCount} nhân sự mới thành công.`}
-        type="success"
-        showIcon
-        style={{ marginBottom: 16 }}
-      />
+      <Stack gap="md">
+        <Alert color="green">
+          Đã import <strong>{importedCount}</strong> nhân sự mới thành công.
+        </Alert>
 
-      <Space direction="vertical" style={{ width: '100%' }} size="middle">
         <Checkbox
+          label="Tạo tài khoản đăng nhập cho nhân sự mới"
           checked={createAccounts}
-          onChange={(e) => setCreateAccounts(e.target.checked)}
-        >
-          Tạo tài khoản cho nhân sự mới
-        </Checkbox>
+          onChange={(e) => setCreateAccounts(e.currentTarget.checked)}
+        />
 
         {createAccounts && (
-          <Space direction="vertical" style={{ width: '100%', paddingLeft: 24 }} size="small">
-            <div>
-              <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
-                Role mặc định
-              </Typography.Text>
-              <Select
-                mode="multiple"
-                style={{ width: '100%' }}
-                value={defaultRoles}
-                onChange={setDefaultRoles}
-                options={roleOptions}
-                placeholder="Chọn role mặc định"
-              />
-            </div>
-
-            <Typography.Text type="secondary">
-              Trạng thái khởi tạo: <strong>Chờ kích hoạt (PENDING)</strong>
-            </Typography.Text>
-
+          <Stack gap="xs" pl="md">
             <Checkbox
+              label="Gửi email kích hoạt"
               checked={sendEmail}
-              onChange={(e) => setSendEmail(e.target.checked)}
-            >
-              Gửi email kích hoạt
-            </Checkbox>
-
-            <Alert
-              type="info"
-              showIcon
-              message="Chỉ nhân sự chưa có tài khoản mới được tạo. Nhân sự đã có tài khoản sẽ được bỏ qua."
+              onChange={(e) => setSendEmail(e.currentTarget.checked)}
             />
-          </Space>
+            <Text size="xs" c="dimmed">
+              Tài khoản sẽ ở trạng thái <strong>Hoạt động</strong>. Nhân sự đã có tài khoản sẽ bị bỏ qua.
+            </Text>
+          </Stack>
         )}
-      </Space>
+
+        <Group justify="flex-end">
+          {createAccounts && (
+            <Button variant="default" onClick={onClose}>Bỏ qua</Button>
+          )}
+          <Button
+            loading={provisionMutation.isPending}
+            onClick={handleConfirm}
+          >
+            {createAccounts ? 'Tạo tài khoản' : 'Đóng'}
+          </Button>
+        </Group>
+      </Stack>
     </Modal>
   );
 }
