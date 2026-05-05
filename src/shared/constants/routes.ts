@@ -4,8 +4,9 @@ export const ROUTES = {
   root: '/',
   dashboard: '/dashboard',
   employees: '/employees',
-  legalEntities: '/organization/legal-entities',
-  orgUnits: '/organization/org-units',
+  businessSectors: '/organization/business-sectors',
+  units: '/organization/units',
+  departments: '/organization/departments',
   positions: '/organization/positions',
   movements: '/movements',
   contracts: '/contracts',
@@ -16,5 +17,9 @@ export const ROUTES = {
   imports: '/imports',
   auditLogs: '/audit-logs',
   settings: '/settings',
+  accounts: '/accounts',
+  roles: '/roles',
+  permissions: '/permissions',
+  permissionGroups: '/permission-groups',
+  changePassword: '/change-password',
 } as const;
-

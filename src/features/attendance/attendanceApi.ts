@@ -1,9 +1,10 @@
-import { httpClient } from '../../shared/api/httpClient';
+import { api } from '../../shared/api/httpClient';
+import { normalizePaginatedResponse } from '../../shared/api/response';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockAttendanceRecords } from '../../shared/mocks/mockWorkflows';
-import type { ListQueryParams, PaginatedResponse } from '../../shared/types/api';
+import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../shared/types/api';
 import type { AttendancePayload, AttendanceRecord } from './attendanceTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
@@ -27,8 +28,8 @@ export async function listAttendanceRecords(params: ListQueryParams = {}): Promi
     return paginate(filtered, params);
   }
 
-  const response = await httpClient.get<PaginatedResponse<AttendanceRecord>>('/attendance-records', { params });
-  return response.data;
+  const response = await api.get<PaginatedData<AttendanceRecord>>('/attendance/records', { params });
+  return normalizePaginatedResponse<AttendanceRecord>(response, params);
 }
 
 export async function createAttendanceRecord(payload: AttendancePayload): Promise<AttendanceRecord> {
@@ -45,8 +46,7 @@ export async function createAttendanceRecord(payload: AttendancePayload): Promis
     return record;
   }
 
-  const response = await httpClient.post<AttendanceRecord>('/attendance-records', payload);
-  return response.data;
+  return api.post<AttendanceRecord>('/attendance/records', payload);
 }
 
 export async function updateAttendanceRecord(id: string, payload: Partial<AttendancePayload>): Promise<AttendanceRecord> {
@@ -68,6 +68,5 @@ export async function updateAttendanceRecord(id: string, payload: Partial<Attend
     return record;
   }
 
-  const response = await httpClient.patch<AttendanceRecord>(`/attendance-records/${id}`, payload);
-  return response.data;
+  return api.patch<AttendanceRecord>(`/attendance/records/${id}`, payload);
 }

@@ -1,0 +1,25 @@
+name: ${COMPOSE_PROJECT_NAME:-hr-dev}
+
+services:
+  hr-web-client:
+    image: ghcr.io/hacom-holding-dx/hr-web-client:${HR_WEB_VERSION:?HR_WEB_VERSION is required}
+    restart: unless-stopped
+    env_file:
+      - ${HR_WEB_ENV_FILE:-../../env/.env.hr-web.develop}
+    ports:
+      - "127.0.0.1:${HR_WEB_HOST_PORT:-3400}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      chat-platform:
+        aliases:
+          - hr-web-client
+
+networks:
+  chat-platform:
+    external: true
+    name: ${CHAT_NETWORK:?CHAT_NETWORK is required}

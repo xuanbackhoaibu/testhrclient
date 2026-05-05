@@ -1,10 +1,49 @@
-import { Card, Col, List, Row, Statistic } from 'antd';
+import { SimpleGrid, Group, Paper, Stack, Text, Title } from "@mantine/core";
 
-import { useDashboardSummary } from '../features/dashboard/useDashboardSummary';
-import { EmptyState } from '../shared/components/EmptyState';
-import { ErrorState } from '../shared/components/ErrorState';
-import { LoadingState } from '../shared/components/LoadingState';
-import { PageHeader } from '../shared/components/PageHeader';
+import { useDashboardSummary } from "../features/dashboard/useDashboardSummary";
+import { EmptyState } from "../shared/components/EmptyState";
+import { ErrorState } from "../shared/components/ErrorState";
+import { LoadingState } from "../shared/components/LoadingState";
+import { PageHeader } from "../shared/components/PageHeader";
+
+function MetricCard({ title, value }: { title: string; value: number }) {
+  return (
+    <Paper p="md" radius="md">
+      <Stack gap={4}>
+        <Text c="dimmed" size="sm">
+          {title}
+        </Text>
+        <Title order={3}>{value.toLocaleString("vi-VN")}</Title>
+      </Stack>
+    </Paper>
+  );
+}
+
+function BreakdownList({
+  title,
+  items,
+}: {
+  title: string;
+  items: Array<{ label: string; value: number }>;
+}) {
+  return (
+    <Paper p="md" radius="md">
+      <Stack gap="sm">
+        <Text fw={650}>{title}</Text>
+        {items.map((item) => (
+          <Group key={item.label} justify="space-between" gap="md">
+            <Text size="sm" c="dimmed">
+              {item.label}
+            </Text>
+            <Text size="sm" fw={650}>
+              {item.value.toLocaleString("vi-VN")}
+            </Text>
+          </Group>
+        ))}
+      </Stack>
+    </Paper>
+  );
+}
 
 export function DashboardPage() {
   const { data, isLoading, error, refetch } = useDashboardSummary();
@@ -22,62 +61,45 @@ export function DashboardPage() {
   }
 
   const metrics = [
-    { title: 'Total employees', value: data.totalEmployees },
-    { title: 'Active employees', value: data.activeEmployees },
-    { title: 'New hires this month', value: data.newHiresThisMonth },
-    { title: 'Terminated this month', value: data.terminatedThisMonth },
-    { title: 'Pending leave requests', value: data.pendingLeaveRequests },
-    { title: 'Pending movements', value: data.pendingMovements },
-    { title: 'Onboarding in progress', value: data.onboardingInProgress },
-    { title: 'Offboarding in progress', value: data.offboardingInProgress },
+    { title: "Tổng nhân sự", value: data.totalEmployees },
+    { title: "Đang làm việc", value: data.activeEmployees },
+    { title: "Tuyển mới tháng này", value: data.newHiresThisMonth },
+    { title: "Nghỉ việc tháng này", value: data.terminatedThisMonth },
+    { title: "Đơn nghỉ phép chờ duyệt", value: data.pendingLeaveRequests },
+    { title: "Điều chuyển chờ xử lý", value: data.pendingMovements },
+    { title: "Onboarding đang chạy", value: data.onboardingInProgress },
+    { title: "Offboarding đang chạy", value: data.offboardingInProgress },
   ];
 
   return (
     <>
       <PageHeader
         title="Dashboard"
-        subtitle="Snapshot cho HR Core Platform demo với mock data và auth flow tách khỏi HR backend."
+        subtitle="Tổng quan ngắn gọn cho vận hành HRM. Chi tiết nghiệp vụ xử lý trong từng phân hệ."
       />
 
-      <Row gutter={[16, 16]}>
-        {metrics.map((metric) => (
-          <Col key={metric.title} xs={24} sm={12} xl={6}>
-            <Card className="page-card metric-card">
-              <Statistic title={metric.title} value={metric.value} />
-            </Card>
-          </Col>
-        ))}
-      </Row>
+      <Stack gap="md">
+        <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="md">
+          {metrics.map((metric) => (
+            <MetricCard
+              key={metric.title}
+              title={metric.title}
+              value={metric.value}
+            />
+          ))}
+        </SimpleGrid>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 8 }}>
-        <Col xs={24} lg={12}>
-          <Card title="Employees by legal entity" className="page-card">
-            <List
-              dataSource={data.employeesByLegalEntity}
-              renderItem={(item) => (
-                <List.Item>
-                  <List.Item.Meta title={item.label} />
-                  <strong>{item.value}</strong>
-                </List.Item>
-              )}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} lg={12}>
-          <Card title="Employees by employment status" className="page-card">
-            <List
-              dataSource={data.employeesByEmploymentStatus}
-              renderItem={(item) => (
-                <List.Item>
-                  <List.Item.Meta title={item.label} />
-                  <strong>{item.value}</strong>
-                </List.Item>
-              )}
-            />
-          </Card>
-        </Col>
-      </Row>
+        <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
+          <BreakdownList
+            title="Nhân sự theo đơn vị"
+            items={data.employeesByUnit}
+          />
+          <BreakdownList
+            title="Nhân sự theo trạng thái"
+            items={data.employeesByEmploymentStatus}
+          />
+        </SimpleGrid>
+      </Stack>
     </>
   );
 }
-

@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 
 import {
-  getEmployee,
+  getEmployeeById,
+  getEmployeeAccount,
   getEmployeeAssignments,
   getEmployeeContracts,
   getEmployeeAuditLogs,
@@ -9,26 +10,31 @@ import {
   getEmployeeLeave,
 } from './employeesApi';
 
-export function useEmployeeDetail(id?: string) {
+export function useEmployeeDetail(
+  employeeId?: string,
+  options: { includeAccount?: boolean } = {},
+) {
+  const includeAccount = options.includeAccount ?? false;
+
   return useQuery({
-    queryKey: ['employee-detail', id],
-    enabled: Boolean(id),
+    queryKey: ['employee-detail', employeeId, includeAccount],
+    enabled: Boolean(employeeId),
     queryFn: async () => {
-      if (!id) {
+      if (!employeeId) {
         throw new Error('Missing employee id');
       }
 
-      const [employee, assignments, contracts, leaveRequests, attendanceRecords, auditLogs] = await Promise.all([
-        getEmployee(id),
-        getEmployeeAssignments(id),
-        getEmployeeContracts(id),
-        getEmployeeLeave(id),
-        getEmployeeAttendance(id),
-        getEmployeeAuditLogs(id),
+      const [employee, account, assignments, contracts, leaveRequests, attendanceRecords, auditLogs] = await Promise.all([
+        getEmployeeById(employeeId, { source: 'useEmployeeDetail' }),
+        includeAccount ? getEmployeeAccount(employeeId) : Promise.resolve(null),
+        getEmployeeAssignments(employeeId),
+        getEmployeeContracts(employeeId),
+        getEmployeeLeave(employeeId),
+        getEmployeeAttendance(employeeId),
+        getEmployeeAuditLogs(employeeId),
       ]);
 
-      return { employee, assignments, contracts, leaveRequests, attendanceRecords, auditLogs };
+      return { employee, account, assignments, contracts, leaveRequests, attendanceRecords, auditLogs };
     },
   });
 }
-

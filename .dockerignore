@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-ssr
+coverage
+.git
+.github
+.env
+.env.*
+!.env.example
+npm-debug.log*
+deploy/env/*.develop
+deploy/env/.env.versions

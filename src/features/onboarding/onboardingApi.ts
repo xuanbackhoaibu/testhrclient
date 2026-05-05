@@ -1,4 +1,4 @@
-import { httpClient } from '../../shared/api/httpClient';
+import { api } from '../../shared/api/httpClient';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { generateId, mockDelay } from '../../shared/mocks/mockHelpers';
@@ -15,8 +15,7 @@ export async function listOnboardingTemplates(params: ListQueryParams = {}): Pro
     return mockOnboardingTemplates;
   }
 
-  const response = await httpClient.get<OnboardingTemplate[]>('/onboarding/templates');
-  return response.data;
+  return api.get<OnboardingTemplate[]>('/onboarding/templates');
 }
 
 export async function listOnboardingInstances(params: ListQueryParams = {}): Promise<OnboardingInstance[]> {
@@ -26,8 +25,7 @@ export async function listOnboardingInstances(params: ListQueryParams = {}): Pro
     return mockOnboardingInstances;
   }
 
-  const response = await httpClient.get<OnboardingInstance[]>('/onboarding/instances');
-  return response.data;
+  return api.get<OnboardingInstance[]>('/onboarding/instances');
 }
 
 export async function createOnboardingInstance(payload: OnboardingInstancePayload): Promise<OnboardingInstance> {
@@ -51,8 +49,7 @@ export async function createOnboardingInstance(payload: OnboardingInstancePayloa
     return instance;
   }
 
-  const response = await httpClient.post<OnboardingInstance>('/onboarding/instances', payload);
-  return response.data;
+  return api.post<OnboardingInstance>('/onboarding/instances', payload);
 }
 
 export async function updateOnboardingItem(id: string, payload: { status: string }): Promise<OnboardingInstance> {
@@ -69,8 +66,7 @@ export async function updateOnboardingItem(id: string, payload: { status: string
     return instance;
   }
 
-  const response = await httpClient.patch<OnboardingInstance>(`/onboarding/items/${id}`, payload);
-  return response.data;
+  return api.patch<OnboardingInstance>(`/onboarding/items/${id}`, payload);
 }
 
 export async function completeOnboardingInstance(id: string): Promise<OnboardingInstance> {
@@ -85,6 +81,5 @@ export async function completeOnboardingInstance(id: string): Promise<Onboarding
     return instance;
   }
 
-  const response = await httpClient.post<OnboardingInstance>(`/onboarding/instances/${id}/complete`);
-  return response.data;
+  return api.post<OnboardingInstance>(`/onboarding/instances/${id}/complete`);
 }

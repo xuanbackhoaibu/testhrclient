@@ -1,22 +1,61 @@
-export interface LegalEntity {
+export interface BusinessSectorSummary {
+  id: string;
+  code: string;
+  name: string;
+  status?: string;
+  note?: string | null;
+}
+
+export type BusinessSectorOption = BusinessSectorSummary;
+
+export interface BusinessSector extends BusinessSectorSummary {
+  status: string;
+  note?: string | null;
+}
+
+export interface Unit {
   id: string;
   code: string;
   name: string;
   shortName: string;
+  abbreviation?: string | null;
   taxCode: string;
+  address?: string | null;
+  note?: string | null;
   status: string;
+  sectorId?: string | null;
+  businessSectorId?: string | null;
+  sector?: BusinessSectorSummary | null;
+  businessSector?: BusinessSectorSummary | null;
 }
 
-export interface OrgUnit {
+export interface UnitSelectOption {
   id: string;
   code: string;
-  legalEntityId: string;
-  parentId?: string;
   name: string;
-  type: string;
-  effectiveFrom: string;
-  effectiveTo?: string;
+  shortName?: string | null;
+  sectorId?: string | null;
+}
+
+export interface Department {
+  id: string;
+  code: string;
+  unitId: string;
+  name: string;
   status: string;
+  note?: string | null;
+  unit?: {
+    id: string;
+    code: string;
+    name: string;
+  } | null;
+}
+
+export interface DepartmentSelectOption {
+  id: string;
+  code: string;
+  unitId: string;
+  name: string;
 }
 
 export interface Position {
@@ -25,6 +64,15 @@ export interface Position {
   name: string;
   jobFunction: string;
   grade: string;
+  note?: string | null;
   status: string;
 }
 
+export interface PositionSelectOption {
+  id: string;
+  code: string;
+  name: string;
+  jobFunction?: string | null;
+  grade?: string | null;
+  note?: string | null;
+}

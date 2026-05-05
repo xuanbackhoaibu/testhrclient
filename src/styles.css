@@ -6,7 +6,7 @@ body,
 }
 
 body {
-  background: #f5f7fa;
+  background: #f6f8fb;
   font-family:
     Inter,
     -apple-system,
@@ -42,3 +42,46 @@ body {
   width: 100%;
 }
 
+.app-nav-link {
+  width: 100%;
+  border-radius: 8px;
+  color: #334155;
+  font-weight: 500;
+}
+
+.app-nav-link[data-active='true'] {
+  color: #0b5ed7;
+  background: #eaf2ff;
+}
+
+.brand-logo-image {
+  flex: 0 0 auto;
+}
+
+.data-table-shell {
+  overflow: hidden;
+}
+
+.data-table-heading {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.data-table-row-clickable {
+  cursor: pointer;
+}
+
+.data-table-footer {
+  border-top: 1px solid #edf0f5;
+}
+
+.truncate-cell {
+  display: inline-block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
+}

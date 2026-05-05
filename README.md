@@ -1,4 +1,4 @@
-# AGENTS.md
+﻿# AGENTS.md
 
 ## Scope
 
@@ -164,13 +164,36 @@ VITE_USE_MOCKS=true   -> run app without backend services
 VITE_USE_MOCKS=false  -> expect chat-auth-service and hr-api-service
 ```
 
+Local UI development does not require running `hr-api-service` on your machine.
+Set `VITE_USE_MOCKS=false` and point Vite at the server APIs with absolute URLs:
+
+```env
+VITE_API_BASE_URL=https://<server-host-or-domain>/api/v1
+VITE_CHAT_AUTH_BASE_URL=https://<server-host-or-domain>/api/v1/auth
+VITE_CHAT_AUTH_LOGIN_URL=https://<server-host-or-domain>/api/v1/auth/login
+VITE_CHAT_AUTH_LOGOUT_URL=https://<server-host-or-domain>/api/v1/auth/logout
+VITE_CHAT_AUTH_REDIRECT_URI=http://localhost:5173/auth/callback
+```
+
+`VITE_CHAT_AUTH_LOGIN_URL` is a JSON API endpoint. The HR login form calls it
+with `POST`; do not navigate the browser to that URL because `GET
+/api/v1/auth/login` is not a supported auth route.
+
+Use `VITE_API_BASE_URL=/api/v1` for a deployed build that is served behind the
+same reverse proxy as HR API. `/api` is only a temporary backend compatibility
+alias for older bundles and should not be used for new builds.
+
+When using server APIs from local dev, the server-side HR/Auth configuration
+must allow the local browser origin and callback, for example
+`http://localhost:5173` and `http://localhost:5173/auth/callback`.
+
 Rules:
 
 - Do not commit real `.env` files.
 - Do not commit secrets.
 - Document new environment variables in `.env.example`.
 - Keep mock mode local/demo only.
-- Do not rely on mock mode for server-test or production behavior.
+- Do not rely on mock mode for develop or production behavior.
 - Do not hard-code production API URLs in source code.
 - Keep API base URLs centralized in config/http client modules.
 - Do not scatter environment reads across random components.
@@ -307,7 +330,7 @@ Rules:
 - Do not implement product-only behavior that exists only in mocks.
 - Do not hide missing backend integration behind mock success.
 - When backend contract changes, update mocks to match.
-- Do not use mock auth in shared/server-test/production environments.
+- Do not use mock auth in shared/develop/production environments.
 
 Mock mode should support smoke testing, not replace backend contract testing.
 
