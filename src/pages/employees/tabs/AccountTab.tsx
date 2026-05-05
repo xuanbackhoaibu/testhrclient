@@ -9,6 +9,7 @@ import {
   SimpleGrid,
   Stack,
   Text,
+  TextInput,
   Title,
   Tooltip,
 } from '@mantine/core';
@@ -67,6 +68,7 @@ export function AccountTab({ employee }: Props) {
   const queryClient = useQueryClient();
   const { can } = useAuth();
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [provisionedPassword, setProvisionedPassword] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<null | {
     title: string;
     description: string;
@@ -106,7 +108,7 @@ export function AccountTab({ employee }: Props) {
         unitName: employee.unitName ?? undefined,
         departmentName: employee.departmentName ?? undefined,
         positionName: employee.positionName ?? undefined,
-        sendActivationEmail: true,
+        sendActivationEmail: false,
       });
       await api.patch(`/employees/${employee.id}/auth-link`, {
         authUserId: result.authUserId,
@@ -114,9 +116,12 @@ export function AccountTab({ employee }: Props) {
       });
       return result;
     },
-    onSuccess: async () => {
-      notifications.show({ color: 'green', message: 'Tạo tài khoản thành công. Email kích hoạt đã được gửi.' });
+    onSuccess: async (result) => {
       setCreateModalOpen(false);
+      if (result.initialPassword) {
+        setProvisionedPassword(result.initialPassword);
+      }
+      notifications.show({ color: 'green', message: 'Tạo tài khoản thành công.' });
       await invalidate();
     },
     onError: (err: unknown) => {
@@ -211,10 +216,40 @@ export function AccountTab({ employee }: Props) {
   if (!hasAccount) {
     return (
       <Stack gap="md">
-        <Alert color="yellow" title="Chưa có tài khoản đăng nhập">
-          Tạo tài khoản để cấp quyền truy cập vào hệ thống cho nhân sự này.
-        </Alert>
-        {canCreate && (
+        {provisionedPassword ? (
+          <Alert color="green" title="Tài khoản đã được tạo thành công">
+            <Stack gap="xs">
+              <Text size="sm">
+                Mật khẩu ban đầu chỉ hiển thị <strong>một lần duy nhất</strong>. Hãy sao chép và bàn giao cho nhân sự ngay bây giờ.
+              </Text>
+              <Group gap="xs" align="center">
+                <TextInput
+                  value={provisionedPassword}
+                  readOnly
+                  style={{ flex: 1 }}
+                  styles={{ input: { fontFamily: 'monospace', fontWeight: 600 } }}
+                />
+                <CopyButton value={provisionedPassword}>
+                  {({ copied, copy }) => (
+                    <Tooltip label={copied ? 'Đã copy' : 'Copy mật khẩu'}>
+                      <Button variant={copied ? 'filled' : 'light'} color={copied ? 'teal' : 'blue'} onClick={copy} leftSection={copied ? <IconCheck size={16} /> : <IconCopy size={16} />}>
+                        {copied ? 'Đã copy' : 'Copy'}
+                      </Button>
+                    </Tooltip>
+                  )}
+                </CopyButton>
+              </Group>
+              <Text size="xs" c="dimmed">
+                Nhân sự sẽ được yêu cầu đổi mật khẩu khi đăng nhập lần đầu.
+              </Text>
+            </Stack>
+          </Alert>
+        ) : (
+          <Alert color="yellow" title="Chưa có tài khoản đăng nhập">
+            Tạo tài khoản để cấp quyền truy cập vào hệ thống cho nhân sự này.
+          </Alert>
+        )}
+        {canCreate && !provisionedPassword && (
           <>
             <div>
               <Button
@@ -236,14 +271,14 @@ export function AccountTab({ employee }: Props) {
                 <InfoRow label="Mã nhân sự">{employee.employeeCode}</InfoRow>
                 <InfoRow label="Email">
                   {employee.companyEmail ?? employee.personalEmail ?? (
-                    <Text c="red" size="sm">Chưa có email — sẽ không nhận được email kích hoạt</Text>
+                    <Text c="red" size="sm">Chưa có email</Text>
                   )}
                 </InfoRow>
                 <InfoRow label="Đơn vị">{employee.unitName ?? '-'}</InfoRow>
                 <InfoRow label="Phòng ban">{employee.departmentName ?? '-'}</InfoRow>
               </Stack>
               <Text size="sm" c="dimmed" mb="md">
-                Tài khoản sẽ được tạo với trạng thái <strong>Chờ kích hoạt</strong>. Email kích hoạt sẽ được gửi đến địa chỉ email trên.
+                Tài khoản sẽ được tạo ở trạng thái <strong>Hoạt động</strong> với mật khẩu ban đầu do hệ thống sinh tự động. Mật khẩu chỉ hiển thị một lần sau khi tạo.
               </Text>
               <Group justify="flex-end">
                 <Button variant="default" onClick={() => setCreateModalOpen(false)}>Hủy</Button>
@@ -251,7 +286,7 @@ export function AccountTab({ employee }: Props) {
                   loading={provisionMutation.isPending}
                   onClick={() => provisionMutation.mutate()}
                 >
-                  Tạo tài khoản &amp; Gửi email kích hoạt
+                  Tạo tài khoản
                 </Button>
               </Group>
             </Modal>

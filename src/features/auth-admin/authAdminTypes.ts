@@ -52,6 +52,7 @@ export interface ProvisionFromEmployeeResult {
   email: string;
   accountStatus: string;
   accountState: string;
+  initialPassword?: string;
 }
 
 export interface UpdateAccountStatusInput {
