@@ -26,6 +26,7 @@ import {
   updateDepartment,
 } from "../../features/organization/departmentsApi";
 import type { Department } from "../../features/organization/organizationTypes";
+import { ApiError } from "../../shared/api/api.types";
 import { useDepartments } from "../../features/organization/useDepartments";
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { ConfirmActionModal } from "../../shared/components/ConfirmActionModal";
@@ -142,11 +143,15 @@ export function DepartmentsPage() {
       form.reset();
       await queryClient.invalidateQueries({ queryKey: ["departments"] });
     },
-    onError: () => {
+    onError: (error) => {
+      const msg =
+        error instanceof ApiError
+          ? (error.errors[0]?.message ?? error.message)
+          : "Vui lòng kiểm tra dữ liệu và thử lại.";
       notifications.show({
         color: "red",
         title: "Không lưu được phòng ban",
-        message: "Vui lòng kiểm tra dữ liệu và thử lại.",
+        message: msg,
       });
     },
   });

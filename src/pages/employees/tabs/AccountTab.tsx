@@ -1,12 +1,27 @@
-import { Alert, Button, Descriptions, Modal, Popconfirm, Space, Tag, Typography, message } from 'antd';
 import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  MailOutlined,
-  PauseCircleOutlined,
-  PlusOutlined,
-  RollbackOutlined,
-} from '@ant-design/icons';
+  Alert,
+  Badge,
+  Button,
+  Code,
+  CopyButton,
+  Group,
+  Modal,
+  SimpleGrid,
+  Stack,
+  Text,
+  Title,
+  Tooltip,
+} from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import {
+  IconCheck,
+  IconCopy,
+  IconLock,
+  IconLockOpen,
+  IconMail,
+  IconPlus,
+  IconPower,
+} from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
@@ -31,18 +46,32 @@ interface Props {
 
 function accountStatusColor(status: string): string {
   switch (status) {
-    case 'ACTIVE': return 'success';
-    case 'PENDING_ACTIVATION': case 'INACTIVE': return 'warning';
+    case 'ACTIVE': return 'green';
+    case 'PENDING_ACTIVATION': case 'INACTIVE': return 'yellow';
     case 'SUSPENDED': case 'LOCKED': return 'orange';
-    case 'DISABLED': case 'DEACTIVATED': return 'error';
-    default: return 'default';
+    case 'DISABLED': case 'DEACTIVATED': return 'red';
+    default: return 'gray';
   }
+}
+
+function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <Group gap="xs" wrap="nowrap" align="flex-start">
+      <Text size="sm" c="dimmed" w={160} style={{ flexShrink: 0 }}>{label}</Text>
+      <Text size="sm">{children}</Text>
+    </Group>
+  );
 }
 
 export function AccountTab({ employee }: Props) {
   const queryClient = useQueryClient();
   const { can } = useAuth();
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<null | {
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>(null);
 
   const canRead = can('hr.account.read');
   const canCreate = can('hr.account.create');
@@ -86,23 +115,25 @@ export function AccountTab({ employee }: Props) {
       return result;
     },
     onSuccess: async () => {
-      message.success('Tạo tài khoản thành công. Email kích hoạt đã được gửi.');
+      notifications.show({ color: 'green', message: 'Tạo tài khoản thành công. Email kích hoạt đã được gửi.' });
       setCreateModalOpen(false);
       await invalidate();
     },
     onError: (err: unknown) => {
-      message.error((err as { message?: string })?.message ?? 'Tạo tài khoản thất bại.');
+      notifications.show({ color: 'red', message: (err as { message?: string })?.message ?? 'Tạo tài khoản thất bại.' });
     },
   });
 
   const sendActivationMutation = useMutation({
     mutationFn: () => sendActivation(authUser!.authUserId),
     onSuccess: async () => {
-      message.success('Đã gửi email kích hoạt.');
+      notifications.show({ color: 'green', message: 'Đã gửi email kích hoạt.' });
+      setConfirmAction(null);
       await invalidate();
     },
-    onError: (err: unknown) =>
-      message.error((err as { message?: string })?.message ?? 'Gửi email kích hoạt thất bại.'),
+    onError: (err: unknown) => {
+      notifications.show({ color: 'red', message: (err as { message?: string })?.message ?? 'Gửi email kích hoạt thất bại.' });
+    },
   });
 
   const suspendMutation = useMutation({
@@ -113,11 +144,13 @@ export function AccountTab({ employee }: Props) {
         reason: 'HR admin suspended',
       }),
     onSuccess: async () => {
-      message.success('Đã tạm khóa tài khoản.');
+      notifications.show({ color: 'green', message: 'Đã tạm khóa tài khoản.' });
+      setConfirmAction(null);
       await invalidate();
     },
-    onError: (err: unknown) =>
-      message.error((err as { message?: string })?.message ?? 'Tạm khóa tài khoản thất bại.'),
+    onError: (err: unknown) => {
+      notifications.show({ color: 'red', message: (err as { message?: string })?.message ?? 'Tạm khóa tài khoản thất bại.' });
+    },
   });
 
   const activateMutation = useMutation({
@@ -127,11 +160,13 @@ export function AccountTab({ employee }: Props) {
         reason: 'HR admin activated',
       }),
     onSuccess: async () => {
-      message.success('Đã kích hoạt tài khoản.');
+      notifications.show({ color: 'green', message: 'Đã kích hoạt tài khoản.' });
+      setConfirmAction(null);
       await invalidate();
     },
-    onError: (err: unknown) =>
-      message.error((err as { message?: string })?.message ?? 'Kích hoạt tài khoản thất bại.'),
+    onError: (err: unknown) => {
+      notifications.show({ color: 'red', message: (err as { message?: string })?.message ?? 'Kích hoạt tài khoản thất bại.' });
+    },
   });
 
   const disableMutation = useMutation({
@@ -142,76 +177,87 @@ export function AccountTab({ employee }: Props) {
         reason: 'HR admin disabled',
       }),
     onSuccess: async () => {
-      message.success('Đã vô hiệu hóa tài khoản.');
+      notifications.show({ color: 'green', message: 'Đã vô hiệu hóa tài khoản.' });
+      setConfirmAction(null);
       await invalidate();
     },
-    onError: (err: unknown) =>
-      message.error((err as { message?: string })?.message ?? 'Vô hiệu hóa tài khoản thất bại.'),
+    onError: (err: unknown) => {
+      notifications.show({ color: 'red', message: (err as { message?: string })?.message ?? 'Vô hiệu hóa tài khoản thất bại.' });
+    },
   });
 
   const revokeSessionsMutation = useMutation({
     mutationFn: () => revokeSessions(authUser!.authUserId, 'HR admin revoke sessions'),
     onSuccess: async () => {
-      message.success('Đã thu hồi tất cả phiên đăng nhập.');
+      notifications.show({ color: 'green', message: 'Đã thu hồi tất cả phiên đăng nhập.' });
+      setConfirmAction(null);
       await invalidate();
     },
-    onError: (err: unknown) =>
-      message.error((err as { message?: string })?.message ?? 'Thu hồi session thất bại.'),
+    onError: (err: unknown) => {
+      notifications.show({ color: 'red', message: (err as { message?: string })?.message ?? 'Thu hồi session thất bại.' });
+    },
   });
 
   if (!canRead) {
-    return <Alert message="Bạn không có quyền xem thông tin tài khoản nhân sự." type="info" showIcon />;
+    return (
+      <Alert color="blue" title="Không có quyền">
+        Bạn không có quyền xem thông tin tài khoản nhân sự.
+      </Alert>
+    );
   }
 
   const hasAccount = Boolean(employee.authUserId);
 
   if (!hasAccount) {
     return (
-      <div>
-        <Alert
-          message="Nhân sự chưa có tài khoản đăng nhập"
-          description="Tạo tài khoản để cấp quyền truy cập vào hệ thống cho nhân sự này."
-          type="warning"
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
+      <Stack gap="md">
+        <Alert color="yellow" title="Chưa có tài khoản đăng nhập">
+          Tạo tài khoản để cấp quyền truy cập vào hệ thống cho nhân sự này.
+        </Alert>
         {canCreate && (
           <>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => setCreateModalOpen(true)}
-            >
-              Tạo tài khoản
-            </Button>
+            <div>
+              <Button
+                leftSection={<IconPlus size={16} />}
+                onClick={() => setCreateModalOpen(true)}
+              >
+                Tạo tài khoản
+              </Button>
+            </div>
 
             <Modal
               title="Xác nhận tạo tài khoản"
-              open={createModalOpen}
-              onCancel={() => setCreateModalOpen(false)}
-              onOk={() => provisionMutation.mutate()}
-              confirmLoading={provisionMutation.isPending}
-              okText="Tạo tài khoản & Gửi email kích hoạt"
-              cancelText="Hủy"
+              opened={createModalOpen}
+              onClose={() => setCreateModalOpen(false)}
+              size="md"
             >
-              <Descriptions column={1} size="small" style={{ marginBottom: 16 }}>
-                <Descriptions.Item label="Họ tên">{employee.fullName}</Descriptions.Item>
-                <Descriptions.Item label="MNS">{employee.employeeCode}</Descriptions.Item>
-                <Descriptions.Item label="Email">
+              <Stack gap="xs" mb="md">
+                <InfoRow label="Họ tên">{employee.fullName}</InfoRow>
+                <InfoRow label="Mã nhân sự">{employee.employeeCode}</InfoRow>
+                <InfoRow label="Email">
                   {employee.companyEmail ?? employee.personalEmail ?? (
-                    <Typography.Text type="danger">Chưa có email — tài khoản sẽ không nhận được email kích hoạt</Typography.Text>
+                    <Text c="red" size="sm">Chưa có email — sẽ không nhận được email kích hoạt</Text>
                   )}
-                </Descriptions.Item>
-                <Descriptions.Item label="Đơn vị">{employee.unitName ?? '-'}</Descriptions.Item>
-                <Descriptions.Item label="Phòng ban">{employee.departmentName ?? '-'}</Descriptions.Item>
-              </Descriptions>
-              <Typography.Text type="secondary">
+                </InfoRow>
+                <InfoRow label="Đơn vị">{employee.unitName ?? '-'}</InfoRow>
+                <InfoRow label="Phòng ban">{employee.departmentName ?? '-'}</InfoRow>
+              </Stack>
+              <Text size="sm" c="dimmed" mb="md">
                 Tài khoản sẽ được tạo với trạng thái <strong>Chờ kích hoạt</strong>. Email kích hoạt sẽ được gửi đến địa chỉ email trên.
-              </Typography.Text>
+              </Text>
+              <Group justify="flex-end">
+                <Button variant="default" onClick={() => setCreateModalOpen(false)}>Hủy</Button>
+                <Button
+                  loading={provisionMutation.isPending}
+                  onClick={() => provisionMutation.mutate()}
+                >
+                  Tạo tài khoản &amp; Gửi email kích hoạt
+                </Button>
+              </Group>
             </Modal>
           </>
         )}
-      </div>
+      </Stack>
     );
   }
 
@@ -219,20 +265,27 @@ export function AccountTab({ employee }: Props) {
 
   if (error || !authUser) {
     return (
-      <div>
-        <Alert
-          message="Auth User ID"
-          description={<Typography.Text copyable>{employee.authUserId}</Typography.Text>}
-          type="info"
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
+      <Stack gap="md">
+        <Alert color="blue" title="Auth User ID">
+          <Group gap="xs">
+            <Code>{employee.authUserId}</Code>
+            <CopyButton value={employee.authUserId ?? ''}>
+              {({ copied, copy }) => (
+                <Tooltip label={copied ? 'Đã copy' : 'Copy'}>
+                  <Button size="xs" variant="subtle" onClick={copy}>
+                    {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                  </Button>
+                </Tooltip>
+              )}
+            </CopyButton>
+          </Group>
+        </Alert>
         <ErrorState
           title="Không thể tải thông tin tài khoản"
           description="Không thể kết nối đến auth service."
           onRetry={() => void refetch()}
         />
-      </div>
+      </Stack>
     );
   }
 
@@ -251,104 +304,149 @@ export function AccountTab({ employee }: Props) {
     revokeSessionsMutation.isPending;
 
   return (
-    <div>
-      <Descriptions column={{ xs: 1, md: 2, xl: 3 }} bordered style={{ marginBottom: 24 }}>
-        <Descriptions.Item label="Auth User ID">
-          <Typography.Text copyable code>{authUser.authUserId}</Typography.Text>
-        </Descriptions.Item>
-        <Descriptions.Item label="Email đăng nhập">{authUser.email}</Descriptions.Item>
-        <Descriptions.Item label="Trạng thái">
-          <Tag color={accountStatusColor(accountStatus)}>
+    <Stack gap="lg">
+      <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }} spacing="xs">
+        <InfoRow label="Auth User ID">
+          <Group gap={4}>
+            <Code>{authUser.authUserId}</Code>
+            <CopyButton value={authUser.authUserId}>
+              {({ copied, copy }) => (
+                <Tooltip label={copied ? 'Đã copy' : 'Copy'}>
+                  <Button size="xs" variant="subtle" onClick={copy} p={2}>
+                    {copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
+                  </Button>
+                </Tooltip>
+              )}
+            </CopyButton>
+          </Group>
+        </InfoRow>
+        <InfoRow label="Email đăng nhập">{authUser.email}</InfoRow>
+        <InfoRow label="Trạng thái">
+          <Badge color={accountStatusColor(accountStatus)}>
             {ACCOUNT_STATUS_LABELS[accountStatus] ?? accountStatus}
-          </Tag>
-        </Descriptions.Item>
-        <Descriptions.Item label="Permission Version">{authUser.permissionVersion ?? '-'}</Descriptions.Item>
-        <Descriptions.Item label="Token Version">{authUser.tokenVersion ?? '-'}</Descriptions.Item>
-        <Descriptions.Item label="Hoạt động lần cuối">
+          </Badge>
+        </InfoRow>
+        <InfoRow label="Permission Version">{authUser.permissionVersion ?? '-'}</InfoRow>
+        <InfoRow label="Token Version">{authUser.tokenVersion ?? '-'}</InfoRow>
+        <InfoRow label="Hoạt động lần cuối">
           {authUser.lastSeen ? formatDateTime(authUser.lastSeen) : 'Chưa đăng nhập'}
-        </Descriptions.Item>
-      </Descriptions>
+        </InfoRow>
+      </SimpleGrid>
 
-      <Space wrap>
-        {canSendActivation && isPending && (
-          <Popconfirm
-            title="Gửi email kích hoạt?"
-            description="Email kích hoạt sẽ được gửi đến địa chỉ email đã đăng ký."
-            onConfirm={() => sendActivationMutation.mutate()}
-            okText="Gửi"
-            cancelText="Hủy"
-          >
-            <Button icon={<MailOutlined />} loading={sendActivationMutation.isPending} disabled={anyBusy}>
+      <div>
+        <Title order={6} mb="sm">Thao tác tài khoản</Title>
+        <Group wrap="wrap" gap="sm">
+          {canSendActivation && isPending && (
+            <Button
+              leftSection={<IconMail size={16} />}
+              variant="light"
+              loading={sendActivationMutation.isPending}
+              disabled={anyBusy}
+              onClick={() =>
+                setConfirmAction({
+                  title: 'Gửi email kích hoạt?',
+                  description: 'Email kích hoạt sẽ được gửi đến địa chỉ email đã đăng ký.',
+                  onConfirm: () => sendActivationMutation.mutate(),
+                })
+              }
+            >
               Gửi email kích hoạt
             </Button>
-          </Popconfirm>
-        )}
+          )}
 
-        {canActivate && (isSuspended || isDisabled) && (
-          <Popconfirm
-            title="Kích hoạt tài khoản?"
-            onConfirm={() => activateMutation.mutate()}
-            okText="Kích hoạt"
-            cancelText="Hủy"
-          >
-            <Button icon={<CheckCircleOutlined />} loading={activateMutation.isPending} disabled={anyBusy}>
+          {canActivate && (isSuspended || isDisabled) && (
+            <Button
+              leftSection={<IconLockOpen size={16} />}
+              variant="light"
+              color="green"
+              loading={activateMutation.isPending}
+              disabled={anyBusy}
+              onClick={() =>
+                setConfirmAction({
+                  title: 'Kích hoạt tài khoản?',
+                  description: 'Tài khoản sẽ được khôi phục trạng thái hoạt động.',
+                  onConfirm: () => activateMutation.mutate(),
+                })
+              }
+            >
               Kích hoạt tài khoản
             </Button>
-          </Popconfirm>
-        )}
+          )}
 
-        {canSuspend && isActive && (
-          <Popconfirm
-            title="Tạm khóa tài khoản?"
-            description="Tài khoản sẽ bị khóa và tất cả phiên đăng nhập hiện tại sẽ bị thu hồi."
-            onConfirm={() => suspendMutation.mutate()}
-            okText="Tạm khóa"
-            cancelText="Hủy"
-          >
-            <Button icon={<PauseCircleOutlined />} loading={suspendMutation.isPending} disabled={anyBusy}>
+          {canSuspend && isActive && (
+            <Button
+              leftSection={<IconLock size={16} />}
+              variant="light"
+              color="orange"
+              loading={suspendMutation.isPending}
+              disabled={anyBusy}
+              onClick={() =>
+                setConfirmAction({
+                  title: 'Tạm khóa tài khoản?',
+                  description: 'Tài khoản sẽ bị khóa và tất cả phiên đăng nhập hiện tại sẽ bị thu hồi.',
+                  onConfirm: () => suspendMutation.mutate(),
+                })
+              }
+            >
               Tạm khóa
             </Button>
-          </Popconfirm>
-        )}
+          )}
 
-        {canUpdate && !isDisabled && (
-          <Popconfirm
-            title="Vô hiệu hóa tài khoản?"
-            description="Tài khoản sẽ bị vô hiệu hóa vĩnh viễn và không thể đăng nhập."
-            onConfirm={() => disableMutation.mutate()}
-            okText="Vô hiệu hóa"
-            okButtonProps={{ danger: true }}
-            cancelText="Hủy"
-          >
+          {canUpdate && !isDisabled && (
             <Button
-              danger
-              icon={<CloseCircleOutlined />}
+              leftSection={<IconPower size={16} />}
+              variant="light"
+              color="red"
               loading={disableMutation.isPending}
               disabled={anyBusy}
+              onClick={() =>
+                setConfirmAction({
+                  title: 'Vô hiệu hóa tài khoản?',
+                  description: 'Tài khoản sẽ bị vô hiệu hóa vĩnh viễn và không thể đăng nhập.',
+                  onConfirm: () => disableMutation.mutate(),
+                })
+              }
             >
               Vô hiệu hóa
             </Button>
-          </Popconfirm>
-        )}
+          )}
 
-        {canUpdate && (
-          <Popconfirm
-            title="Thu hồi tất cả phiên đăng nhập?"
-            description="Người dùng sẽ bị đăng xuất khỏi tất cả thiết bị."
-            onConfirm={() => revokeSessionsMutation.mutate()}
-            okText="Thu hồi"
-            cancelText="Hủy"
-          >
+          {canUpdate && (
             <Button
-              icon={<RollbackOutlined />}
+              variant="light"
               loading={revokeSessionsMutation.isPending}
               disabled={anyBusy}
+              onClick={() =>
+                setConfirmAction({
+                  title: 'Thu hồi tất cả phiên đăng nhập?',
+                  description: 'Người dùng sẽ bị đăng xuất khỏi tất cả thiết bị.',
+                  onConfirm: () => revokeSessionsMutation.mutate(),
+                })
+              }
             >
               Thu hồi sessions
             </Button>
-          </Popconfirm>
-        )}
-      </Space>
-    </div>
+          )}
+        </Group>
+      </div>
+
+      <Modal
+        title={confirmAction?.title ?? ''}
+        opened={Boolean(confirmAction)}
+        onClose={() => setConfirmAction(null)}
+        size="sm"
+      >
+        <Text size="sm" mb="lg">{confirmAction?.description}</Text>
+        <Group justify="flex-end">
+          <Button variant="default" onClick={() => setConfirmAction(null)}>Hủy</Button>
+          <Button
+            loading={anyBusy}
+            onClick={() => confirmAction?.onConfirm()}
+          >
+            Xác nhận
+          </Button>
+        </Group>
+      </Modal>
+    </Stack>
   );
 }

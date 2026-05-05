@@ -1,4 +1,4 @@
-import { message } from 'antd';
+import { notifications } from '@mantine/notifications';
 import type { AxiosError } from 'axios';
 
 import { ApiError, type ApiErrorResponse } from './api.types';
@@ -36,17 +36,21 @@ async function parseJsonBlob(
 }
 
 const STATUS_MESSAGES: Record<number, string> = {
-  403: 'Ban khong co quyen thuc hien thao tac nay.',
-  404: 'Khong tim thay du lieu yeu cau.',
-  409: 'Du lieu da ton tai hoac xung dot. Vui long kiem tra lai.',
-  429: 'Qua nhieu yeu cau. Vui long thu lai sau.',
-  500: 'Loi he thong. Vui long thu lai hoac lien he quan tri vien.',
-  502: 'May chu khong phan hoi. Vui long thu lai sau.',
-  503: 'Dich vu dang bao tri. Vui long thu lai sau.',
+  403: 'Bạn không có quyền thực hiện thao tác này.',
+  404: 'Không tìm thấy dữ liệu yêu cầu.',
+  409: 'Dữ liệu đã tồn tại hoặc xung đột. Vui lòng kiểm tra lại.',
+  429: 'Quá nhiều yêu cầu. Vui lòng thử lại sau.',
+  500: 'Lỗi hệ thống. Vui lòng thử lại hoặc liên hệ quản trị viên.',
+  502: 'Máy chủ không phản hồi. Vui lòng thử lại sau.',
+  503: 'Dịch vụ đang bảo trì. Vui lòng thử lại sau.',
 };
 
 function appendRequestId(messageText: string, requestId?: string): string {
   return requestId ? `${messageText} (requestId: ${requestId})` : messageText;
+}
+
+function showError(msg: string): void {
+  notifications.show({ color: 'red', message: msg });
 }
 
 export async function handleAxiosResponseError(
@@ -63,7 +67,7 @@ export async function handleAxiosResponseError(
     ? new ApiError(payload)
     : new ApiError({
         statusCode: status ?? 0,
-        message: error.message || 'Khong the ket noi den may chu.',
+        message: error.message || 'Không thể kết nối đến máy chủ.',
         errorCode: status ? `HTTP_${status}` : 'NETWORK_ERROR',
         requestId: error.response?.headers?.['x-request-id'] as
           | string
@@ -98,9 +102,9 @@ export async function handleAxiosResponseError(
   if (apiError.statusCode === 403) {
     const requiredPermissions =
       apiError.requiredPermissions?.length
-        ? ` Required permission: ${apiError.requiredPermissions.join(', ')}.`
+        ? ` Quyền yêu cầu: ${apiError.requiredPermissions.join(', ')}.`
         : '';
-    message.error(
+    showError(
       appendRequestId(
         `${apiError.message || STATUS_MESSAGES[403]}${requiredPermissions}`,
         apiError.requestId,
@@ -119,9 +123,7 @@ export async function handleAxiosResponseError(
       });
     }
 
-    message.error(
-      appendRequestId(apiError.message || STATUS_MESSAGES[404], apiError.requestId),
-    );
+    showError(appendRequestId(apiError.message || STATUS_MESSAGES[404], apiError.requestId));
     return Promise.reject(apiError);
   }
 
@@ -130,20 +132,18 @@ export async function handleAxiosResponseError(
     const messageText = first
       ? `${first.field ? `[${first.field}] ` : ''}${first.message}`
       : apiError.message;
-    message.error(appendRequestId(messageText, apiError.requestId));
+    showError(appendRequestId(messageText, apiError.requestId));
     return Promise.reject(apiError);
   }
 
   if (apiError.statusCode === 409) {
-    message.error(
-      appendRequestId(apiError.message || STATUS_MESSAGES[409], apiError.requestId),
-    );
+    showError(appendRequestId(apiError.message || STATUS_MESSAGES[409], apiError.requestId));
     return Promise.reject(apiError);
   }
 
   const mapped = STATUS_MESSAGES[apiError.statusCode];
   if (mapped) {
-    message.error(appendRequestId(mapped, apiError.requestId));
+    showError(appendRequestId(mapped, apiError.requestId));
     return Promise.reject(apiError);
   }
 

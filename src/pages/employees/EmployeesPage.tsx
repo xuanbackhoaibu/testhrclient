@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { useDebouncedValue } from "@mantine/hooks";
 import {
   Button,
   Drawer,
@@ -156,10 +157,11 @@ export function EmployeesPage() {
   const [suggestedEmployeeCode, setSuggestedEmployeeCode] = useState("");
   const [isLoadingNextCode, setIsLoadingNextCode] = useState(false);
   const [nextCodeError, setNextCodeError] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch] = useDebouncedValue(searchInput, 300);
   const [params, setParams] = useState({
     page: 1,
     pageSize: 10,
-    search: "",
     employmentStatus: undefined as string | undefined,
     unitId: undefined as string | undefined,
     departmentId: undefined as string | undefined,
@@ -198,7 +200,7 @@ export function EmployeesPage() {
     },
   });
 
-  const { data, isLoading, error, refetch } = useEmployees(params);
+  const { data, isLoading, error, refetch } = useEmployees({ ...params, search: debouncedSearch });
   const unitsSelect = useUnitsSelect();
   const filterDepartmentsSelect = useDepartmentsSelect(params.unitId);
   const formDepartmentsSelect = useDepartmentsSelect(
@@ -229,7 +231,7 @@ export function EmployeesPage() {
   }));
 
   const exportMutation = useMutation({
-    mutationFn: () => downloadEmployeesExport(params),
+    mutationFn: () => downloadEmployeesExport({ ...params, search: debouncedSearch }),
     onError: () => {
       notifications.show({
         color: "red",
@@ -587,10 +589,10 @@ export function EmployeesPage() {
           <TextInput
             placeholder="Tìm tên, email, SĐT"
             leftSection={<IconSearch size={17} />}
-            value={params.search}
+            value={searchInput}
             onChange={(event) => {
-              const value = event.currentTarget.value;
-              setParams((current) => ({ ...current, search: value, page: 1 }));
+              setSearchInput(event.currentTarget.value);
+              setParams((current) => ({ ...current, page: 1 }));
             }}
           />
           <Select

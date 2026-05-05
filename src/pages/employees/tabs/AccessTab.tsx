@@ -1,5 +1,19 @@
-import { Alert, Button, Descriptions, List, Modal, Select, Space, Spin, Tag, Typography, message } from 'antd';
-import { ExclamationCircleOutlined, PlusOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import {
+  Alert,
+  Badge,
+  Button,
+  Code,
+  Group,
+  Modal,
+  MultiSelect,
+  ScrollArea,
+  Stack,
+  Text,
+  TextInput,
+  Title,
+} from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { IconShieldCheck, IconShieldPlus } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
@@ -13,6 +27,7 @@ import { useAvailableRoles } from '../../../features/auth-admin/useAvailableRole
 import { useAuth } from '../../../features/auth/useAuth';
 import type { Employee } from '../../../features/employees/employeeTypes';
 import { ErrorState } from '../../../shared/components/ErrorState';
+import { LoadingState } from '../../../shared/components/LoadingState';
 
 interface Props {
   employee: Employee;
@@ -25,6 +40,7 @@ export function AccessTab({ employee }: Props) {
   const [permModalOpen, setPermModalOpen] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
+  const [permInput, setPermInput] = useState('');
 
   const canReadRoles = can('auth.role.read');
   const canAssignRoles = can('hr.account.assign_role');
@@ -52,12 +68,13 @@ export function AccessTab({ employee }: Props) {
     mutationFn: (roles: string[]) =>
       assignRoles(authUserId!, { roles, reason: 'HR admin assigned roles' }),
     onSuccess: async () => {
-      message.success('Đã cập nhật roles.');
+      notifications.show({ color: 'green', message: 'Đã cập nhật roles.' });
       setRoleModalOpen(false);
       await invalidate();
     },
-    onError: (err: unknown) =>
-      message.error((err as { message?: string })?.message ?? 'Cập nhật role thất bại.'),
+    onError: (err: unknown) => {
+      notifications.show({ color: 'red', message: (err as { message?: string })?.message ?? 'Cập nhật role thất bại.' });
+    },
   });
 
   const assignPermsMutation = useMutation({
@@ -67,29 +84,33 @@ export function AccessTab({ employee }: Props) {
         reason: 'HR admin assigned permissions',
       }),
     onSuccess: async () => {
-      message.success('Đã cập nhật permissions.');
+      notifications.show({ color: 'green', message: 'Đã cập nhật permissions.' });
       setPermModalOpen(false);
+      setPermInput('');
       await invalidate();
     },
-    onError: (err: unknown) =>
-      message.error((err as { message?: string })?.message ?? 'Cập nhật permission thất bại.'),
+    onError: (err: unknown) => {
+      notifications.show({ color: 'red', message: (err as { message?: string })?.message ?? 'Cập nhật permission thất bại.' });
+    },
   });
 
   if (!canReadRoles) {
-    return <Alert message="Bạn không có quyền xem thông tin quyền truy cập nhân sự." type="info" showIcon />;
+    return (
+      <Alert color="blue" title="Không có quyền">
+        Bạn không có quyền xem thông tin quyền truy cập nhân sự.
+      </Alert>
+    );
   }
 
   if (!authUserId) {
     return (
-      <Alert
-        message="Nhân sự chưa có tài khoản. Vui lòng tạo tài khoản trước."
-        type="warning"
-        showIcon
-      />
+      <Alert color="yellow" title="Chưa có tài khoản">
+        Nhân sự chưa có tài khoản. Vui lòng tạo tài khoản trước.
+      </Alert>
     );
   }
 
-  if (isLoading) return <Spin style={{ padding: 32, display: 'block' }} />;
+  if (isLoading) return <LoadingState />;
 
   if (error || !effectivePerms) {
     return <ErrorState title="Không thể tải thông tin quyền" onRetry={() => void refetch()} />;
@@ -102,144 +123,176 @@ export function AccessTab({ employee }: Props) {
 
   const openPermModal = () => {
     setSelectedPerms([...(effectivePerms.directPermissions ?? [])]);
+    setPermInput('');
     setPermModalOpen(true);
   };
 
   const hasSensitive = selectedRoles.some((r) => SENSITIVE_ROLES.has(r));
 
+  const addPerm = () => {
+    const key = permInput.trim();
+    if (key && !selectedPerms.includes(key)) {
+      setSelectedPerms((prev) => [...prev, key]);
+      setPermInput('');
+    }
+  };
+
   return (
-    <div>
-      <Descriptions column={2} size="small" style={{ marginBottom: 24 }}>
-        <Descriptions.Item label="Permission Version">
-          {effectivePerms.permissionVersion ?? '-'}
-        </Descriptions.Item>
-        <Descriptions.Item label="Token Version">
-          {effectivePerms.tokenVersion ?? '-'}
-        </Descriptions.Item>
-      </Descriptions>
+    <Stack gap="lg">
+      <Group gap="xs">
+        <Text size="sm" c="dimmed">Permission Version:</Text>
+        <Text size="sm">{effectivePerms.permissionVersion ?? '-'}</Text>
+        <Text size="sm" c="dimmed" ml="md">Token Version:</Text>
+        <Text size="sm">{effectivePerms.tokenVersion ?? '-'}</Text>
+      </Group>
 
-      <Space direction="vertical" style={{ width: '100%' }} size="large">
-        <div>
-          <Space style={{ marginBottom: 8 }}>
-            <Typography.Title level={5} style={{ margin: 0 }}>Roles</Typography.Title>
-            {canAssignRoles && (
-              <Button size="small" icon={<PlusOutlined />} onClick={openRoleModal}>
-                Cập nhật
-              </Button>
-            )}
-          </Space>
-          <Space wrap>
-            {effectivePerms.roles.length === 0 ? (
-              <Typography.Text type="secondary">Chưa có role nào</Typography.Text>
-            ) : (
-              effectivePerms.roles.map((r) => (
-                <Tag
-                  key={r}
-                  color={SENSITIVE_ROLES.has(r) ? 'red' : 'blue'}
-                  icon={SENSITIVE_ROLES.has(r) ? <ExclamationCircleOutlined /> : undefined}
-                >
-                  {r}
-                </Tag>
-              ))
-            )}
-          </Space>
-        </div>
-
-        {canReadPerms && (
-          <>
-            <div>
-              <Space style={{ marginBottom: 8 }}>
-                <Typography.Title level={5} style={{ margin: 0 }}>Quyền trực tiếp</Typography.Title>
-                {canAssignRoles && (
-                  <Button size="small" icon={<PlusOutlined />} onClick={openPermModal}>
-                    Cập nhật
-                  </Button>
-                )}
-              </Space>
-              {effectivePerms.directPermissions.length === 0 ? (
-                <Typography.Text type="secondary">Không có quyền trực tiếp</Typography.Text>
-              ) : (
-                <Space wrap>
-                  {effectivePerms.directPermissions.map((p) => (
-                    <Tag key={p} color="cyan" icon={<SafetyCertificateOutlined />}>{p}</Tag>
-                  ))}
-                </Space>
-              )}
-            </div>
-
-            <div>
-              <Typography.Title level={5}>Effective Permissions</Typography.Title>
-              {effectivePerms.effectivePermissions.length === 0 ? (
-                <Typography.Text type="secondary">Không có quyền hiệu lực nào</Typography.Text>
-              ) : (
-                <List
-                  size="small"
-                  bordered
-                  dataSource={effectivePerms.effectivePermissions.sort()}
-                  renderItem={(perm) => (
-                    <List.Item>
-                      <Typography.Text code>{perm}</Typography.Text>
-                    </List.Item>
-                  )}
-                  style={{ maxHeight: 320, overflowY: 'auto' }}
-                />
-              )}
-            </div>
-          </>
+      <div>
+        <Group gap="sm" mb="xs">
+          <Title order={6}>Roles</Title>
+          {canAssignRoles && (
+            <Button size="xs" variant="light" leftSection={<IconShieldPlus size={14} />} onClick={openRoleModal}>
+              Cập nhật
+            </Button>
+          )}
+        </Group>
+        {effectivePerms.roles.length === 0 ? (
+          <Text size="sm" c="dimmed">Chưa có role nào</Text>
+        ) : (
+          <Group wrap="wrap" gap="xs">
+            {effectivePerms.roles.map((r) => (
+              <Badge
+                key={r}
+                color={SENSITIVE_ROLES.has(r) ? 'red' : 'blue'}
+                variant="light"
+              >
+                {r}
+              </Badge>
+            ))}
+          </Group>
         )}
-      </Space>
+      </div>
+
+      {canReadPerms && (
+        <>
+          <div>
+            <Group gap="sm" mb="xs">
+              <Title order={6}>Quyền trực tiếp</Title>
+              {canAssignRoles && (
+                <Button size="xs" variant="light" leftSection={<IconShieldPlus size={14} />} onClick={openPermModal}>
+                  Cập nhật
+                </Button>
+              )}
+            </Group>
+            {effectivePerms.directPermissions.length === 0 ? (
+              <Text size="sm" c="dimmed">Không có quyền trực tiếp</Text>
+            ) : (
+              <Group wrap="wrap" gap="xs">
+                {effectivePerms.directPermissions.map((p) => (
+                  <Badge key={p} color="cyan" variant="light" leftSection={<IconShieldCheck size={12} />}>
+                    {p}
+                  </Badge>
+                ))}
+              </Group>
+            )}
+          </div>
+
+          <div>
+            <Title order={6} mb="xs">Effective Permissions</Title>
+            {effectivePerms.effectivePermissions.length === 0 ? (
+              <Text size="sm" c="dimmed">Không có quyền hiệu lực nào</Text>
+            ) : (
+              <ScrollArea h={280} type="hover">
+                <Stack gap={4}>
+                  {[...effectivePerms.effectivePermissions].sort().map((perm) => (
+                    <Code key={perm} block={false}>{perm}</Code>
+                  ))}
+                </Stack>
+              </ScrollArea>
+            )}
+          </div>
+        </>
+      )}
 
       <Modal
         title="Cập nhật Roles"
-        open={roleModalOpen}
-        onCancel={() => setRoleModalOpen(false)}
-        onOk={() => assignRolesMutation.mutate(selectedRoles)}
-        confirmLoading={assignRolesMutation.isPending}
-        okText="Lưu"
-        cancelText="Hủy"
+        opened={roleModalOpen}
+        onClose={() => setRoleModalOpen(false)}
+        size="md"
       >
-        {hasSensitive && (
-          <Alert
-            message="Cảnh báo: Role nhạy cảm"
-            description="Bạn đang gán role có quyền cao. Thao tác này chỉ dành cho superadmin."
-            type="warning"
-            showIcon
-            style={{ marginBottom: 12 }}
+        <Stack gap="sm">
+          {hasSensitive && (
+            <Alert color="yellow" title="Cảnh báo: Role nhạy cảm">
+              Bạn đang gán role có quyền cao. Thao tác này chỉ dành cho superadmin.
+            </Alert>
+          )}
+          <MultiSelect
+            label="Chọn roles"
+            data={roleOptions}
+            value={selectedRoles}
+            onChange={setSelectedRoles}
+            searchable
+            clearable
           />
-        )}
-        <Select
-          mode="multiple"
-          style={{ width: '100%' }}
-          placeholder="Chọn roles"
-          value={selectedRoles}
-          onChange={setSelectedRoles}
-          options={roleOptions}
-        />
+          <Group justify="flex-end" mt="sm">
+            <Button variant="default" onClick={() => setRoleModalOpen(false)}>Hủy</Button>
+            <Button
+              loading={assignRolesMutation.isPending}
+              onClick={() => assignRolesMutation.mutate(selectedRoles)}
+            >
+              Lưu
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
 
-      {canAssignRoles && (
-        <Modal
-          title="Cập nhật Permissions trực tiếp"
-          open={permModalOpen}
-          onCancel={() => setPermModalOpen(false)}
-          onOk={() => assignPermsMutation.mutate(selectedPerms)}
-          confirmLoading={assignPermsMutation.isPending}
-          okText="Lưu"
-          cancelText="Hủy"
-        >
-          <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
-            Nhập permission key (ví dụ: hr.employee.read), nhấn Enter để thêm.
-          </Typography.Paragraph>
-          <Select
-            mode="tags"
-            style={{ width: '100%' }}
-            placeholder="Nhập permission key và nhấn Enter"
-            value={selectedPerms}
-            onChange={setSelectedPerms}
-            tokenSeparators={[',']}
-          />
-        </Modal>
-      )}
-    </div>
+      <Modal
+        title="Cập nhật Permissions trực tiếp"
+        opened={permModalOpen}
+        onClose={() => setPermModalOpen(false)}
+        size="md"
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Nhập permission key (ví dụ: hr.employee.read), nhấn Thêm để thêm vào danh sách.
+          </Text>
+          <Group gap="xs">
+            <TextInput
+              style={{ flex: 1 }}
+              placeholder="hr.employee.read"
+              value={permInput}
+              onChange={(e) => setPermInput(e.currentTarget.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addPerm(); } }}
+            />
+            <Button variant="light" onClick={addPerm}>Thêm</Button>
+          </Group>
+          {selectedPerms.length > 0 && (
+            <Group wrap="wrap" gap="xs">
+              {selectedPerms.map((p) => (
+                <Badge
+                  key={p}
+                  color="cyan"
+                  variant="light"
+                  style={{ cursor: 'pointer' }}
+                  rightSection={
+                    <Text span size="xs" onClick={() => setSelectedPerms((prev) => prev.filter((x) => x !== p))}>×</Text>
+                  }
+                >
+                  {p}
+                </Badge>
+              ))}
+            </Group>
+          )}
+          <Group justify="flex-end" mt="sm">
+            <Button variant="default" onClick={() => setPermModalOpen(false)}>Hủy</Button>
+            <Button
+              loading={assignPermsMutation.isPending}
+              onClick={() => assignPermsMutation.mutate(selectedPerms)}
+            >
+              Lưu
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </Stack>
   );
 }
