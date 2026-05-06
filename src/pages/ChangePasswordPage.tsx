@@ -14,18 +14,15 @@ import { notifications } from '@mantine/notifications';
 import { IconAlertCircle, IconCheck, IconLock, IconX } from '@tabler/icons-react';
 import axios from 'axios';
 
-import { getCurrentUser } from '../features/auth/authApi';
 import {
+  clearSession,
   getAccessToken,
-  setAccessToken,
-  setSessionUser,
 } from '../features/auth/authClient';
 import {
   getPasswordPolicyChecks,
   PASSWORD_LENGTH,
   validatePasswordPolicy,
 } from '../features/auth/passwordPolicy';
-import { useAuthStore } from '../features/auth/authStore';
 import { ROUTES } from '../shared/constants/routes';
 
 interface ChangePasswordForm {
@@ -62,7 +59,6 @@ function validateNewPassword(value: string): string | null {
 export function ChangePasswordPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const setSession = useAuthStore((state) => state.setSession);
 
   const form = useForm<ChangePasswordForm>({
     initialValues: {
@@ -71,10 +67,10 @@ export function ChangePasswordPage() {
       confirmPassword: '',
     },
     validate: {
-      currentPassword: (value) => (value ? null : 'Nhap mat khau hien tai.'),
+      currentPassword: (value) => (value ? null : 'Nhập mật khẩu hiện tại.'),
       newPassword: validateNewPassword,
       confirmPassword: (value, values) =>
-        value !== values.newPassword ? 'Xac nhan mat khau khong khop.' : null,
+        value !== values.newPassword ? 'Xác nhận mật khẩu không khớp.' : null,
     },
   });
 
@@ -97,6 +93,7 @@ export function ChangePasswordPage() {
         {
           currentPassword: values.currentPassword,
           newPassword: values.newPassword,
+          confirmPassword: values.confirmPassword,
         },
         {
           headers: {
@@ -108,38 +105,23 @@ export function ChangePasswordPage() {
 
       const data = response.data?.data;
       if (data?.mustChangePassword || data?.nextAction === 'CHANGE_PASSWORD_REQUIRED') {
-        throw new Error('Tai khoan van bi yeu cau doi mat khau sau khi cap nhat.');
+        throw new Error('Tài khoản vẫn bị yêu cầu đổi mật khẩu sau khi cập nhật.');
       }
 
       notifications.show({
         color: 'green',
-        title: 'Doi mat khau thanh cong',
-        message: 'Ban co the tiep tuc su dung he thong.',
+        title: 'Đổi mật khẩu thành công',
+        message: 'Vui lòng đăng nhập lại bằng mật khẩu mới.',
       });
 
-      if (data?.accessToken) {
-        setAccessToken(data.accessToken);
-        setSessionUser(null);
-        setSession({ accessToken: data.accessToken, user: null });
-
-        try {
-          const currentUser = await getCurrentUser();
-          setSessionUser(currentUser);
-        } catch {
-          // The app shell will rehydrate the user after redirect if needed.
-        }
-
-        window.location.assign(ROUTES.dashboard);
-        return;
-      }
-
+      clearSession();
       window.location.assign(ROUTES.login);
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const payload = err.response?.data as { message?: string } | undefined;
-        setError(payload?.message ?? 'Doi mat khau that bai. Vui long thu lai.');
+        setError(payload?.message ?? 'Đổi mật khẩu thất bại. Vui lòng thử lại.');
       } else {
-        setError(err instanceof Error ? err.message : 'Doi mat khau that bai.');
+        setError(err instanceof Error ? err.message : 'Đổi mật khẩu thất bại.');
       }
     } finally {
       setSubmitting(false);
@@ -149,9 +131,9 @@ export function ChangePasswordPage() {
   return (
     <Stack gap="md">
       <Stack gap={4}>
-        <Title order={4}>Doi mat khau bat buoc</Title>
+        <Title order={4}>Đổi mật khẩu bắt buộc</Title>
         <Text c="dimmed" size="sm">
-          Ban dang su dung mat khau tam thoi. Vui long doi mat khau de tiep tuc.
+          Bạn đang sử dụng mật khẩu tạm thời. Vui lòng đổi mật khẩu để tiếp tục.
         </Text>
       </Stack>
 
@@ -164,8 +146,8 @@ export function ChangePasswordPage() {
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
           <PasswordInput
-            label="Mat khau hien tai"
-            placeholder="Mat khau hien tai"
+            label="Mật khẩu hiện tại"
+            placeholder="Mật khẩu hiện tại"
             leftSection={<IconLock size={18} />}
             autoComplete="current-password"
             disabled={submitting}
@@ -173,8 +155,8 @@ export function ChangePasswordPage() {
           />
 
           <PasswordInput
-            label="Mat khau moi"
-            placeholder={`Dung ${PASSWORD_LENGTH} ky tu`}
+            label="Mật khẩu mới"
+            placeholder={`Đúng ${PASSWORD_LENGTH} ký tự`}
             leftSection={<IconLock size={18} />}
             autoComplete="new-password"
             disabled={submitting}
@@ -204,8 +186,8 @@ export function ChangePasswordPage() {
           ) : null}
 
           <PasswordInput
-            label="Xac nhan mat khau moi"
-            placeholder="Nhap lai mat khau moi"
+            label="Xác nhận mật khẩu mới"
+            placeholder="Nhập lại mật khẩu mới"
             leftSection={<IconLock size={18} />}
             autoComplete="new-password"
             disabled={submitting}
@@ -218,7 +200,7 @@ export function ChangePasswordPage() {
             loading={submitting}
             disabled={submitting || (showPolicy && policyChecks.some((check) => !check.pass))}
           >
-            Doi mat khau
+            Đổi mật khẩu
           </Button>
         </Stack>
       </form>
