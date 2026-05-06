@@ -28,6 +28,13 @@ for file in "${COMMON_ENV_FILE}" "${SERVICE_ENV_FILE}" "${COMPOSE_FILE}"; do
   test -f "${file}" || { echo "Missing required file: ${file}" >&2; exit 1; }
 done
 
+case "${COMMON_ENV_FILE} ${SERVICE_ENV_FILE}" in
+  *develop*|*server-test*)
+    echo "Refusing production deploy: runtime env file path points to develop or server-test" >&2
+    exit 1
+    ;;
+esac
+
 if grep -R -n -E 'CHANGE_ME|change-me' "${COMMON_ENV_FILE}" "${SERVICE_ENV_FILE}"; then
   echo "Refusing deploy: env file still contains placeholder values" >&2
   exit 1

@@ -25,15 +25,12 @@ permissions:
   packages: write
 
 concurrency:
-  group: deploy-production-hr-web-client
+  group: production-${{ github.repository }}
   cancel-in-progress: false
 
 env:
   IMAGE_REPOSITORY: ghcr.io/hacom-holding-dx/hr-web-client
   IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag != '' && inputs.image_tag || github.sha }}
-  DEPLOY_DIR: ${{ vars.SERVER_APPS_ROOT != '' && vars.SERVICE_NAME != '' && format('{0}/{1}', vars.SERVER_APPS_ROOT, vars.SERVICE_NAME) || '/opt/hacom/hr-web-client' }}
-  SERVER_RUNTIME_ENV_FILE: ${{ vars.SERVER_RUNTIME_ENV_FILE }}
-  HR_API_HEALTH_URL: ${{ vars.HR_API_HEALTH_URL }}
 
 jobs:
   test-build:
@@ -60,7 +57,8 @@ jobs:
       - name: Skip build for rollback
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag != '' }}
         shell: bash
-        run: echo "Rollback mode: using existing image tag ${IMAGE_TAG}"
+        run: |
+          echo "Rollback mode: using existing image tag ${IMAGE_TAG}"
 
   docker-build-push:
     needs: test-build
@@ -119,52 +117,73 @@ jobs:
     runs-on: ubuntu-24.04
     environment: production
     env:
+      DEPLOY_ENV: ${{ vars.DEPLOY_ENV }}
+      SERVER_APPS_ROOT: ${{ vars.SERVER_APPS_ROOT }}
+      SERVER_RUNTIME_ENV_FILE: ${{ vars.SERVER_RUNTIME_ENV_FILE }}
+      SERVICE_NAME: ${{ vars.SERVICE_NAME }}
+      HR_API_HEALTH_URL: ${{ vars.HR_API_HEALTH_URL }}
       SERVER_HOST: ${{ secrets.SERVER_HOST }}
       SERVER_USER: ${{ secrets.SERVER_USER }}
       SERVER_PORT: ${{ secrets.SERVER_PORT }}
       SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
       SERVER_SSH_KNOWN_HOSTS: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
-      GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME != '' && secrets.GHCR_PULL_USERNAME || github.repository_owner }}
+      GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
       GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
     steps:
+      - name: Debug configuration presence
+        shell: bash
+        run: |
+          set -euo pipefail
+          for var in DEPLOY_ENV SERVER_HOST SERVER_PORT SERVER_USER SERVER_SSH_KEY SERVER_SSH_KNOWN_HOSTS GHCR_PULL_USERNAME GHCR_PULL_TOKEN SERVER_APPS_ROOT SERVER_RUNTIME_ENV_FILE SERVICE_NAME HR_API_HEALTH_URL; do
+            if [ -n "${!var:-}" ]; then
+              echo "${var}=SET"
+            else
+              echo "${var}=MISSING"
+            fi
+          done
+
       - name: Checkout hr-web-client
         uses: actions/checkout@v4
 
       - name: Validate deploy configuration
         shell: bash
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           required=(
+            DEPLOY_ENV SERVER_APPS_ROOT SERVICE_NAME
             SERVER_HOST SERVER_USER SERVER_PORT SERVER_SSH_KEY
-            SERVER_SSH_KNOWN_HOSTS GHCR_PULL_TOKEN DEPLOY_DIR SERVER_RUNTIME_ENV_FILE
+            SERVER_SSH_KNOWN_HOSTS GHCR_PULL_USERNAME GHCR_PULL_TOKEN SERVER_RUNTIME_ENV_FILE
             HR_API_HEALTH_URL
           )
           for name in "${required[@]}"; do
             test -n "${!name:-}" || { echo "Missing required configuration: ${name}" >&2; exit 1; }
           done
+          [ "${DEPLOY_ENV}" = "production" ] || { echo "DEPLOY_ENV must be production" >&2; exit 1; }
           case "${SERVER_PORT}" in
-            ''|*[!0-9]*) echo "SERVER_PORT must be digits only" >&2; exit 1 ;;
+            ''|*[!0-9]*) echo "SERVER_PORT secret must be digits only" >&2; exit 1 ;;
           esac
+          case "${SERVER_RUNTIME_ENV_FILE}" in
+            *develop*|*server-test*) echo "SERVER_RUNTIME_ENV_FILE must not point to develop or server-test for production" >&2; exit 1 ;;
+          esac
+          echo "DEPLOY_DIR=${SERVER_APPS_ROOT}/${SERVICE_NAME}" >> "${GITHUB_ENV}"
           echo "Deploying ${IMAGE_REPOSITORY}:${IMAGE_TAG} to production"
 
-      - name: Install SSH key
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
-
-      - name: Configure known_hosts
+      - name: Set up SSH
         shell: bash
         run: |
-          set -Eeuo pipefail
-          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${SERVER_SSH_KEY}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "${SERVER_SSH_KNOWN_HOSTS}" | tr -d '\r' > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
 
       - name: Sync deploy bundle
         shell: bash
         run: |
           set -Eeuo pipefail
-          ssh_opts="-o BatchMode=yes -o StrictHostKeyChecking=yes -p ${SERVER_PORT}"
+          ssh_opts="-i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p ${SERVER_PORT}"
           ssh ${ssh_opts} "${SERVER_USER}@${SERVER_HOST}" "mkdir -p '${DEPLOY_DIR}/deploy' '${DEPLOY_DIR}/env'"
           rsync -az --delete \
             -e "ssh ${ssh_opts}" \
@@ -175,7 +194,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
             bash -se -- "${DEPLOY_DIR}" "${IMAGE_TAG}" "${GHCR_PULL_USERNAME}" "${SERVER_RUNTIME_ENV_FILE}" "${HR_API_HEALTH_URL}" <<EOF
           set -Eeuo pipefail
           deploy_dir="\$1"
@@ -201,7 +220,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
             bash -se -- "${DEPLOY_DIR}" "${SERVER_RUNTIME_ENV_FILE}" <<'EOF'
           set +e
           deploy_dir="$1"
@@ -224,31 +243,40 @@ jobs:
     runs-on: ubuntu-24.04
     environment: production
     env:
+      SERVER_APPS_ROOT: ${{ vars.SERVER_APPS_ROOT }}
+      SERVER_RUNTIME_ENV_FILE: ${{ vars.SERVER_RUNTIME_ENV_FILE }}
+      SERVICE_NAME: ${{ vars.SERVICE_NAME }}
+      HR_API_HEALTH_URL: ${{ vars.HR_API_HEALTH_URL }}
       SERVER_HOST: ${{ secrets.SERVER_HOST }}
       SERVER_USER: ${{ secrets.SERVER_USER }}
       SERVER_PORT: ${{ secrets.SERVER_PORT }}
       SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
       SERVER_SSH_KNOWN_HOSTS: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
-      SERVER_RUNTIME_ENV_FILE: ${{ vars.SERVER_RUNTIME_ENV_FILE }}
-      HR_API_HEALTH_URL: ${{ vars.HR_API_HEALTH_URL }}
     steps:
-      - name: Install SSH key
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
-
-      - name: Configure known_hosts
+      - name: Resolve deploy directory
         shell: bash
         run: |
-          set -Eeuo pipefail
-          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          set -euo pipefail
+          for var in SERVER_APPS_ROOT SERVICE_NAME SERVER_RUNTIME_ENV_FILE HR_API_HEALTH_URL; do
+            test -n "${!var:-}" || { echo "Missing required configuration: ${var}" >&2; exit 1; }
+          done
+          echo "DEPLOY_DIR=${SERVER_APPS_ROOT}/${SERVICE_NAME}" >> "${GITHUB_ENV}"
+
+      - name: Set up SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${SERVER_SSH_KEY}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "${SERVER_SSH_KNOWN_HOSTS}" | tr -d '\r' > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
 
       - name: Run HR Web production smoke
         shell: bash
         run: |
           set -Eeuo pipefail
           test -n "${HR_API_HEALTH_URL:-}" || { echo "ERROR: HR_API_HEALTH_URL missing" >&2; exit 64; }
-          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
             "cd '${DEPLOY_DIR}' && SERVER_RUNTIME_ENV_FILE='${SERVER_RUNTIME_ENV_FILE}' HR_API_HEALTH_URL='${HR_API_HEALTH_URL}' COMPOSE_FILE='deploy/compose/production.yml' deploy/scripts/smoke-production.sh"
