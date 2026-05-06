@@ -715,19 +715,21 @@ export function AccountsPage() {
             {confirmAction.type === "reset-password" ? (
               <>
                 <Checkbox
-                  label="Tá»± sinh máº­t kháº©u táº¡m"
+                  label="Tự sinh mật khẩu tạm"
                   checked={resetForm.autoGenerate}
                   onChange={(event) =>
                     setResetForm((current) => ({
                       ...current,
                       autoGenerate: event.currentTarget.checked,
-                      password: event.currentTarget.checked ? "" : current.password,
+                      password: event.currentTarget.checked
+                        ? ""
+                        : current.password,
                     }))
                   }
                 />
                 {!resetForm.autoGenerate ? (
                   <PasswordInput
-                    label="Máº­t kháº©u táº¡m thá»§ cĂ´ng"
+                    label="Mật khẩu tạm thủ công"
                     placeholder="Dung 12 ky tu, co chu hoa, chu thuong, chu so, ky tu dac biet"
                     value={resetForm.password}
                     error={manualPasswordError ?? undefined}
@@ -740,7 +742,7 @@ export function AccountsPage() {
                   />
                 ) : null}
                 <Checkbox
-                  label="Báº¯t buá»™c ngÆ°á»i dĂ¹ng Ä‘á»•i máº­t kháº©u á»Ÿ láº§n Ä‘Äƒng nháº­p tá»›i"
+                  label="Bắt buộc người dùng đổi mật khẩu ở lần đăng nhập tới"
                   checked={resetForm.mustChangePassword}
                   onChange={(event) =>
                     setResetForm((current) => ({
@@ -750,13 +752,14 @@ export function AccountsPage() {
                   }
                 />
                 <Checkbox
-                  label="Gá»­i thĂ´ng bĂ¡o/OTP/email cho ngÆ°á»i dĂ¹ng"
+                  label="Gửi thông báo/OTP/email cho người dùng"
                   checked={resetForm.notifyUser}
                   disabled
-                  description="Flow gá»­i thĂ´ng bĂ¡o reset password chá»§ Ä‘á»™ng chÆ°a Ä‘Æ°á»£c há»— trá»£ an toĂ n á»Ÿ backend."
+                  description="Flow gửi thông báo reset password chủ động chưa được hỗ trợ an toàn ở backend."
                 />
                 <Alert color="orange" variant="light">
-                  Máº­t kháº©u táº¡m chá»‰ hiá»ƒn thá»‹ má»™t láº§n trong modal káº¿t quáº£. ÄĂ³ng modal lĂ  máº¥t.
+                  Mật khẩu tạm chỉ hiển thị một lần trong modal kết quả. Đóng
+                  modal là mất.
                 </Alert>
               </>
             ) : null}
@@ -808,7 +811,8 @@ export function AccountsPage() {
           </Text>
           <Button onClick={() => setResetResult(null)}>Đóng</Button>
           <Alert color="orange" variant="light">
-            Máº­t kháº©u chá»‰ hiá»ƒn thá»‹ má»™t láº§n cho {resetResult?.accountEmail ?? "ngÆ°á»i dĂ¹ng"}.
+            Mật khẩu chỉ hiển thị một lần cho{" "}
+            {resetResult?.accountEmail ?? "người dùng"}.
           </Alert>
           {resetResult?.temporaryPassword ? (
             <CopyButton value={resetResult.temporaryPassword}>
@@ -818,15 +822,15 @@ export function AccountsPage() {
                   color={copied ? "teal" : "blue"}
                   onClick={copy}
                 >
-                  {copied ? "ÄĂ£ copy" : "Copy máº­t kháº©u"}
+                  {copied ? "Đã copy" : "Copy mật khẩu"}
                 </Button>
               )}
             </CopyButton>
           ) : null}
           <Text size="sm" c="dimmed">
             {resetResult?.mustChangePassword
-              ? "NgÆ°á»i dĂ¹ng sáº½ pháº£i Ä‘á»•i máº­t kháº©u khi Ä‘Äƒng nháº­p báº±ng máº­t kháº©u nĂ y."
-              : "NgÆ°á»i dĂ¹ng cĂ³ thá»ƒ dĂ¹ng ngay máº­t kháº©u nĂ y Ä‘á»ƒ vĂ o há»‡ thá»‘ng."}
+              ? "Người dùng sẽ phải đổi mật khẩu khi đăng nhập bằng mật khẩu này."
+              : "Người dùng có thể dùng ngay mật khẩu này để vào hệ thống."}
           </Text>
         </Stack>
       </Modal>
