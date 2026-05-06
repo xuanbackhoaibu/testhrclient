@@ -55,8 +55,8 @@ export function useAuth() {
     }
   }
 
-  async function login(input?: DemoRole | LoginCredentials): Promise<void> {
-    await loginClient(input);
+  async function login(input?: DemoRole | LoginCredentials) {
+    return loginClient(input);
   }
 
   function logout(): void {

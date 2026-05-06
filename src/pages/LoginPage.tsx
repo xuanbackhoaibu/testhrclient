@@ -65,7 +65,11 @@ export function LoginPage() {
     setSubmitting(true);
     setLoginError(null);
     try {
-      await login(role);
+      const result = await login(role);
+      if (result.mustChangePassword || result.nextAction === 'CHANGE_PASSWORD_REQUIRED') {
+        navigate(ROUTES.changePassword, { replace: true });
+        return;
+      }
       navigate(ROUTES.dashboard, { replace: true });
     } catch (loginFailure) {
       setLoginError(readLoginError(loginFailure));
@@ -78,11 +82,20 @@ export function LoginPage() {
     setSubmitting(true);
     setLoginError(null);
     try {
-      await login({
+      const result = await login({
         loginIdentifier: values.loginIdentifier,
         password: values.password,
         rememberMe: values.rememberMe,
       });
+
+      if (
+        result.mustChangePassword ||
+        result.nextAction === 'CHANGE_PASSWORD_REQUIRED'
+      ) {
+        navigate(ROUTES.changePassword, { replace: true });
+        return;
+      }
+
       await refreshCurrentUser();
 
       const authState = useAuthStore.getState();

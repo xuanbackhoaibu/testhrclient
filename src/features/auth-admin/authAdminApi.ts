@@ -24,6 +24,7 @@ import type {
   PermissionsGroupedResult,
   ProvisionFromEmployeeInput,
   ProvisionFromEmployeeResult,
+  ResetPasswordInput,
   RoleDefinition,
   RoleDetail,
   RevokeSessionsResult,
@@ -113,8 +114,14 @@ export async function restoreAccount(authUserId: string, reason?: string): Promi
   return authAdminApi.post<LifecycleActionResult>(`${BASE}/users/${authUserId}/restore`, { reason });
 }
 
-export async function resetPassword(authUserId: string, reason?: string): Promise<ResetPasswordResult> {
-  return authAdminApi.post<ResetPasswordResult>(`${BASE}/users/${authUserId}/reset-password`, { reason });
+export async function resetPassword(
+  authUserId: string,
+  input: ResetPasswordInput,
+): Promise<ResetPasswordResult> {
+  return authAdminApi.post<ResetPasswordResult>(
+    `${BASE}/users/${authUserId}/reset-password`,
+    input,
+  );
 }
 
 export async function revokeSessions(

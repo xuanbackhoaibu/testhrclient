@@ -1,14 +1,18 @@
 import { useState } from "react";
 import {
+  Alert,
   ActionIcon,
   Badge,
   Box,
   Button,
+  Checkbox,
+  CopyButton,
   Drawer,
   Group,
   Loader,
   Menu,
   Modal,
+  PasswordInput,
   Select,
   Stack,
   Text,
@@ -34,6 +38,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../../features/auth/useAuth";
+import { HR_PERMISSIONS } from "../../features/auth/permissions";
+import { validatePasswordPolicy } from "../../features/auth/passwordPolicy";
 import { AUTH_ADMIN_PERMISSIONS } from "../../features/auth/permissions";
 import { AccountAuthorizationModal } from "../../features/auth-admin/AccountAuthorizationModal";
 import { listAccountManagementRows } from "../../features/auth-admin/accountAuthorizationService";
@@ -52,6 +58,7 @@ import {
   ACCOUNT_STATE_COLOR,
   ACCOUNT_STATUS_LABELS,
   type AuthAdminUser,
+  extractTemporaryPassword,
 } from "../../features/auth-admin/authAdminTypes";
 import type { AccountManagementRow } from "../../features/auth-admin/accountAuthorizationTypes";
 import {
@@ -111,12 +118,36 @@ function disabledTooltip(disabled: boolean) {
   return disabled ? "Bạn không có quyền thực hiện thao tác này" : "";
 }
 
+interface ResetPasswordFormState {
+  autoGenerate: boolean;
+  password: string;
+  mustChangePassword: boolean;
+  notifyUser: boolean;
+}
+
+interface ResetPasswordRevealState {
+  temporaryPassword: string | null;
+  mustChangePassword: boolean;
+  accountEmail: string;
+}
+
+const DEFAULT_RESET_PASSWORD_FORM: ResetPasswordFormState = {
+  autoGenerate: true,
+  password: "",
+  mustChangePassword: true,
+  notifyUser: false,
+};
+
 export function AccountsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { can, hasAnyPermission } = useAuth();
 
   const canReadAccounts = can(AUTH_ADMIN_PERMISSIONS.USERS_READ);
+  const canResetPassword = hasAnyPermission([
+    HR_PERMISSIONS.ACCOUNT_RESET_PASSWORD,
+    AUTH_ADMIN_PERMISSIONS.USERS_UPDATE,
+  ]);
   const canUpdateAccounts = hasAnyPermission([
     AUTH_ADMIN_PERMISSIONS.USERS_UPDATE,
     AUTH_ADMIN_PERMISSIONS.USERS_REVOKE_SESSIONS,
@@ -141,7 +172,11 @@ export function AccountsPage() {
     color: string;
   } | null>(null);
   const [confirmReason, setConfirmReason] = useState("");
-  const [resetResult, setResetResult] = useState<string | null>(null);
+  const [resetForm, setResetForm] = useState<ResetPasswordFormState>(
+    DEFAULT_RESET_PASSWORD_FORM,
+  );
+  const [resetResult, setResetResult] =
+    useState<ResetPasswordRevealState | null>(null);
   const [selectedRow, setSelectedRow] = useState<AccountManagementRow | null>(
     null,
   );
@@ -153,6 +188,12 @@ export function AccountsPage() {
     useDisclosure(false);
   const [detailOpened, { open: openDetail, close: closeDetail }] =
     useDisclosure(false);
+  const manualPasswordError =
+    !resetForm.autoGenerate && resetForm.password
+      ? validatePasswordPolicy(resetForm.password)
+      : !resetForm.autoGenerate
+        ? "Nhap mat khau tam thoi."
+        : null;
 
   const accountsQuery = useQuery({
     queryKey: ["auth-admin-users", debouncedSearch, status, page],
@@ -226,13 +267,29 @@ export function AccountsPage() {
   });
 
   const resetPasswordMutation = useMutation({
-    mutationFn: ({ userId, reason }: { userId: string; reason: string }) =>
-      resetPassword(userId, reason),
-    onSuccess: async (result) => {
+    mutationFn: ({
+      userId,
+      payload,
+    }: {
+      userId: string;
+      payload: {
+        password?: string;
+        autoGenerate: boolean;
+        mustChangePassword: boolean;
+        notifyUser: boolean;
+        reason?: string;
+      };
+    }) => resetPassword(userId, payload),
+    onSuccess: async (result, variables) => {
       await invalidateList();
       closeConfirm();
       setConfirmReason("");
-      setResetResult(result.tempPassword);
+      setResetForm(DEFAULT_RESET_PASSWORD_FORM);
+      setResetResult({
+        temporaryPassword: extractTemporaryPassword(result),
+        mustChangePassword: result.mustChangePassword,
+        accountEmail: confirmAction?.row.account.email ?? variables.userId,
+      });
     },
     onError: (error: Error) => {
       notifications.show({ color: "red", message: error.message });
@@ -264,6 +321,9 @@ export function AccountsPage() {
   ) => {
     setConfirmAction({ type, row, label, color });
     setConfirmReason("");
+    if (type === "reset-password") {
+      setResetForm(DEFAULT_RESET_PASSWORD_FORM);
+    }
     openConfirm();
   };
 
@@ -273,9 +333,20 @@ export function AccountsPage() {
     }
 
     if (confirmAction.type === "reset-password") {
+      if (manualPasswordError) {
+        notifications.show({ color: "red", message: manualPasswordError });
+        return;
+      }
+
       resetPasswordMutation.mutate({
         userId: confirmAction.row.account.authUserId,
-        reason: confirmReason,
+        payload: {
+          autoGenerate: resetForm.autoGenerate,
+          password: resetForm.autoGenerate ? undefined : resetForm.password,
+          mustChangePassword: resetForm.mustChangePassword,
+          notifyUser: resetForm.notifyUser,
+          reason: confirmReason || undefined,
+        },
       });
       return;
     }
@@ -509,6 +580,7 @@ export function AccountsPage() {
 
                   <Menu.Item
                     leftSection={<IconKey size={14} />}
+                    disabled={!canResetPassword}
                     onClick={() =>
                       handleAction(
                         "reset-password",
@@ -623,6 +695,7 @@ export function AccountsPage() {
         onClose={() => {
           closeConfirm();
           setConfirmReason("");
+          setResetForm(DEFAULT_RESET_PASSWORD_FORM);
         }}
         title={confirmAction?.label ?? "Xác nhân"}
         size="sm"
@@ -639,8 +712,63 @@ export function AccountsPage() {
               value={confirmReason}
               onChange={(event) => setConfirmReason(event.currentTarget.value)}
             />
+            {confirmAction.type === "reset-password" ? (
+              <>
+                <Checkbox
+                  label="Tá»± sinh máº­t kháº©u táº¡m"
+                  checked={resetForm.autoGenerate}
+                  onChange={(event) =>
+                    setResetForm((current) => ({
+                      ...current,
+                      autoGenerate: event.currentTarget.checked,
+                      password: event.currentTarget.checked ? "" : current.password,
+                    }))
+                  }
+                />
+                {!resetForm.autoGenerate ? (
+                  <PasswordInput
+                    label="Máº­t kháº©u táº¡m thá»§ cĂ´ng"
+                    placeholder="Dung 12 ky tu, co chu hoa, chu thuong, chu so, ky tu dac biet"
+                    value={resetForm.password}
+                    error={manualPasswordError ?? undefined}
+                    onChange={(event) =>
+                      setResetForm((current) => ({
+                        ...current,
+                        password: event.currentTarget.value,
+                      }))
+                    }
+                  />
+                ) : null}
+                <Checkbox
+                  label="Báº¯t buá»™c ngÆ°á»i dĂ¹ng Ä‘á»•i máº­t kháº©u á»Ÿ láº§n Ä‘Äƒng nháº­p tá»›i"
+                  checked={resetForm.mustChangePassword}
+                  onChange={(event) =>
+                    setResetForm((current) => ({
+                      ...current,
+                      mustChangePassword: event.currentTarget.checked,
+                    }))
+                  }
+                />
+                <Checkbox
+                  label="Gá»­i thĂ´ng bĂ¡o/OTP/email cho ngÆ°á»i dĂ¹ng"
+                  checked={resetForm.notifyUser}
+                  disabled
+                  description="Flow gá»­i thĂ´ng bĂ¡o reset password chá»§ Ä‘á»™ng chÆ°a Ä‘Æ°á»£c há»— trá»£ an toĂ n á»Ÿ backend."
+                />
+                <Alert color="orange" variant="light">
+                  Máº­t kháº©u táº¡m chá»‰ hiá»ƒn thá»‹ má»™t láº§n trong modal káº¿t quáº£. ÄĂ³ng modal lĂ  máº¥t.
+                </Alert>
+              </>
+            ) : null}
             <Group justify="flex-end">
-              <Button variant="default" onClick={closeConfirm}>
+              <Button
+                variant="default"
+                onClick={() => {
+                  closeConfirm();
+                  setConfirmReason("");
+                  setResetForm(DEFAULT_RESET_PASSWORD_FORM);
+                }}
+              >
                 Hủy
               </Button>
               <Button
@@ -676,9 +804,30 @@ export function AccountsPage() {
             p="md"
             style={{ background: "#f8f9fa", borderRadius: 8 }}
           >
-            {resetResult}
+            {resetResult?.temporaryPassword ?? ""}
           </Text>
           <Button onClick={() => setResetResult(null)}>Đóng</Button>
+          <Alert color="orange" variant="light">
+            Máº­t kháº©u chá»‰ hiá»ƒn thá»‹ má»™t láº§n cho {resetResult?.accountEmail ?? "ngÆ°á»i dĂ¹ng"}.
+          </Alert>
+          {resetResult?.temporaryPassword ? (
+            <CopyButton value={resetResult.temporaryPassword}>
+              {({ copied, copy }) => (
+                <Button
+                  variant={copied ? "filled" : "light"}
+                  color={copied ? "teal" : "blue"}
+                  onClick={copy}
+                >
+                  {copied ? "ÄĂ£ copy" : "Copy máº­t kháº©u"}
+                </Button>
+              )}
+            </CopyButton>
+          ) : null}
+          <Text size="sm" c="dimmed">
+            {resetResult?.mustChangePassword
+              ? "NgÆ°á»i dĂ¹ng sáº½ pháº£i Ä‘á»•i máº­t kháº©u khi Ä‘Äƒng nháº­p báº±ng máº­t kháº©u nĂ y."
+              : "NgÆ°á»i dĂ¹ng cĂ³ thá»ƒ dĂ¹ng ngay máº­t kháº©u nĂ y Ä‘á»ƒ vĂ o há»‡ thá»‘ng."}
+          </Text>
         </Stack>
       </Modal>
 

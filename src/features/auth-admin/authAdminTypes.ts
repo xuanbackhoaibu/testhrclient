@@ -33,6 +33,14 @@ export interface ForceChangePasswordResult {
   mustChangePassword: boolean;
 }
 
+export interface ResetPasswordInput {
+  password?: string;
+  autoGenerate?: boolean;
+  mustChangePassword?: boolean;
+  notifyUser?: boolean;
+  reason?: string;
+}
+
 export interface ProvisionFromEmployeeInput {
   employeeId: string;
   employeeCode: string;
@@ -76,8 +84,24 @@ export interface LifecycleActionResult {
 
 export interface ResetPasswordResult {
   authUserId: string;
-  tempPassword: string;
+  temporaryPassword?: string;
+  tempPassword?: string;
   mustChangePassword: boolean;
+  passwordChangedAt?: string;
+  tokenVersion?: number;
+  notifyUser?: boolean;
+}
+
+interface PasswordRevealPayload {
+  temporaryPassword?: string;
+  tempPassword?: string;
+  initialPassword?: string;
+}
+
+export function extractTemporaryPassword(
+  result: PasswordRevealPayload,
+): string | null {
+  return result.temporaryPassword ?? result.tempPassword ?? result.initialPassword ?? null;
 }
 
 export interface RevokeSessionsResult {

@@ -29,6 +29,11 @@ interface AuthServiceLoginResponse {
   nextAction?: string;
 }
 
+export interface AuthLoginOutcome {
+  mustChangePassword: boolean;
+  nextAction?: string;
+}
+
 export function getAccessToken(): string | null {
   const token = getStoredString(STORAGE_KEYS.accessToken)?.trim();
   if (!token || token === 'undefined' || token === 'null') {
@@ -102,7 +107,9 @@ function readAuthEnv(primary: string, fallback: string): string | undefined {
   return env[primary] || env[fallback];
 }
 
-export async function login(input: DemoRole | LoginCredentials = 'HR'): Promise<void> {
+export async function login(
+  input: DemoRole | LoginCredentials = 'HR',
+): Promise<AuthLoginOutcome> {
   if (isMockMode) {
     const role = typeof input === 'string' ? input : 'HR';
     const token = MOCK_TOKENS[role];
@@ -110,7 +117,10 @@ export async function login(input: DemoRole | LoginCredentials = 'HR'): Promise<
     setStoredString(STORAGE_KEYS.accessToken, token);
     queryClient.clear();
     setSessionUser(user);
-    return;
+    return {
+      mustChangePassword: Boolean(user.mustChangePassword),
+      nextAction: user.mustChangePassword ? 'CHANGE_PASSWORD_REQUIRED' : 'NONE',
+    };
   }
 
   const loginUrl = readAuthEnv(
@@ -152,11 +162,7 @@ export async function login(input: DemoRole | LoginCredentials = 'HR'): Promise<
     setAccessToken(accessToken);
     queryClient.clear();
     setSessionUser(null);
-
-    if (mustChangePassword || nextAction === 'CHANGE_PASSWORD_REQUIRED') {
-      window.location.assign('/change-password');
-      return;
-    }
+    return { mustChangePassword, nextAction };
   } catch (error) {
     throw new Error(readAuthLoginError(error), { cause: error });
   }

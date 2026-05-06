@@ -95,7 +95,9 @@ export async function handleAxiosResponseError(
     apiError.statusCode === 403 &&
     apiError.errorCode === 'CHANGE_PASSWORD_REQUIRED'
   ) {
-    window.location.assign('/change-password');
+    if (window.location.pathname !== '/change-password') {
+      window.location.assign('/change-password');
+    }
     return Promise.reject(apiError);
   }
 

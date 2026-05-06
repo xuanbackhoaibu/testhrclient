@@ -14,7 +14,17 @@ import { notifications } from '@mantine/notifications';
 import { IconAlertCircle, IconCheck, IconLock, IconX } from '@tabler/icons-react';
 import axios from 'axios';
 
-import { getAccessToken, setAccessToken } from '../features/auth/authClient';
+import { getCurrentUser } from '../features/auth/authApi';
+import {
+  getAccessToken,
+  setAccessToken,
+  setSessionUser,
+} from '../features/auth/authClient';
+import {
+  getPasswordPolicyChecks,
+  PASSWORD_LENGTH,
+  validatePasswordPolicy,
+} from '../features/auth/passwordPolicy';
 import { useAuthStore } from '../features/auth/authStore';
 import { ROUTES } from '../shared/constants/routes';
 
@@ -45,32 +55,14 @@ function buildChangePasswordUrl(): string {
   return `${base.replace(/\/+$/, '')}/change-password`;
 }
 
-interface PolicyCheck {
-  label: string;
-  pass: boolean;
-}
-
-function checkPolicy(password: string): PolicyCheck[] {
-  return [
-    { label: 'Ít nhất 12 ký tự', pass: password.length >= 12 },
-    { label: 'Có chữ thường (a-z)', pass: /[a-z]/.test(password) },
-    { label: 'Có chữ hoa (A-Z)', pass: /[A-Z]/.test(password) },
-    { label: 'Có chữ số (0-9)', pass: /\d/.test(password) },
-    { label: 'Có ký tự đặc biệt (!@#$%...)', pass: /[^a-zA-Z0-9]/.test(password) },
-  ];
-}
-
-function validateNewPassword(v: string): string | null {
-  if (!v) return 'Nhập mật khẩu mới.';
-  const checks = checkPolicy(v);
-  if (checks.some((c) => !c.pass)) return 'Mật khẩu chưa đạt yêu cầu.';
-  return null;
+function validateNewPassword(value: string): string | null {
+  return validatePasswordPolicy(value);
 }
 
 export function ChangePasswordPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const setSession = useAuthStore((s) => s.setSession);
+  const setSession = useAuthStore((state) => state.setSession);
 
   const form = useForm<ChangePasswordForm>({
     initialValues: {
@@ -79,19 +71,20 @@ export function ChangePasswordPage() {
       confirmPassword: '',
     },
     validate: {
-      currentPassword: (v) => (v ? null : 'Nhập mật khẩu hiện tại.'),
+      currentPassword: (value) => (value ? null : 'Nhap mat khau hien tai.'),
       newPassword: validateNewPassword,
-      confirmPassword: (v, values) =>
-        v !== values.newPassword ? 'Xác nhận mật khẩu không khớp.' : null,
+      confirmPassword: (value, values) =>
+        value !== values.newPassword ? 'Xac nhan mat khau khong khop.' : null,
     },
   });
 
-  const policyChecks = checkPolicy(form.values.newPassword);
+  const policyChecks = getPasswordPolicyChecks(form.values.newPassword);
   const showPolicy = form.values.newPassword.length > 0;
 
   async function handleSubmit(values: ChangePasswordForm) {
     setSubmitting(true);
     setError(null);
+
     try {
       const url = buildChangePasswordUrl();
       if (!url) {
@@ -114,29 +107,39 @@ export function ChangePasswordPage() {
       );
 
       const data = response.data?.data;
+      if (data?.mustChangePassword || data?.nextAction === 'CHANGE_PASSWORD_REQUIRED') {
+        throw new Error('Tai khoan van bi yeu cau doi mat khau sau khi cap nhat.');
+      }
 
       notifications.show({
         color: 'green',
-        title: 'Đổi mật khẩu thành công',
-        message: 'Bạn có thể tiếp tục sử dụng hệ thống.',
+        title: 'Doi mat khau thanh cong',
+        message: 'Ban co the tiep tuc su dung he thong.',
       });
 
       if (data?.accessToken) {
-        // Server issued new tokens — update session in-place, no re-login needed
         setAccessToken(data.accessToken);
+        setSessionUser(null);
         setSession({ accessToken: data.accessToken, user: null });
-        // Redirect to dashboard; providers.tsx will fetch /me to hydrate user
+
+        try {
+          const currentUser = await getCurrentUser();
+          setSessionUser(currentUser);
+        } catch {
+          // The app shell will rehydrate the user after redirect if needed.
+        }
+
         window.location.assign(ROUTES.dashboard);
-      } else {
-        // Fallback: force re-login
-        window.location.assign(ROUTES.login);
+        return;
       }
+
+      window.location.assign(ROUTES.login);
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const payload = err.response?.data as { message?: string } | undefined;
-        setError(payload?.message ?? 'Đổi mật khẩu thất bại. Vui lòng thử lại.');
+        setError(payload?.message ?? 'Doi mat khau that bai. Vui long thu lai.');
       } else {
-        setError(err instanceof Error ? err.message : 'Đổi mật khẩu thất bại.');
+        setError(err instanceof Error ? err.message : 'Doi mat khau that bai.');
       }
     } finally {
       setSubmitting(false);
@@ -146,9 +149,9 @@ export function ChangePasswordPage() {
   return (
     <Stack gap="md">
       <Stack gap={4}>
-        <Title order={4}>Đổi mật khẩu bắt buộc</Title>
+        <Title order={4}>Doi mat khau bat buoc</Title>
         <Text c="dimmed" size="sm">
-          Bạn đang sử dụng mật khẩu ban đầu. Vui lòng đổi mật khẩu để tiếp tục.
+          Ban dang su dung mat khau tam thoi. Vui long doi mat khau de tiep tuc.
         </Text>
       </Stack>
 
@@ -161,55 +164,61 @@ export function ChangePasswordPage() {
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
           <PasswordInput
-            label="Mật khẩu hiện tại"
-            placeholder="Mật khẩu hiện tại"
+            label="Mat khau hien tai"
+            placeholder="Mat khau hien tai"
             leftSection={<IconLock size={18} />}
             autoComplete="current-password"
             disabled={submitting}
             {...form.getInputProps('currentPassword')}
           />
+
           <PasswordInput
-            label="Mật khẩu mới"
-            placeholder="Ít nhất 12 ký tự"
+            label="Mat khau moi"
+            placeholder={`Dung ${PASSWORD_LENGTH} ky tu`}
             leftSection={<IconLock size={18} />}
             autoComplete="new-password"
             disabled={submitting}
             {...form.getInputProps('newPassword')}
           />
 
-          {showPolicy && (
+          {showPolicy ? (
             <List spacing={4} size="sm">
-              {policyChecks.map((c) => (
+              {policyChecks.map((check) => (
                 <List.Item
-                  key={c.label}
+                  key={check.label}
                   icon={
-                    <ThemeIcon color={c.pass ? 'green' : 'red'} size={16} radius="xl">
-                      {c.pass ? <IconCheck size={10} /> : <IconX size={10} />}
+                    <ThemeIcon
+                      color={check.pass ? 'green' : 'red'}
+                      size={16}
+                      radius="xl"
+                    >
+                      {check.pass ? <IconCheck size={10} /> : <IconX size={10} />}
                     </ThemeIcon>
                   }
-                  c={c.pass ? 'green' : 'red'}
+                  c={check.pass ? 'green' : 'red'}
                 >
-                  {c.label}
+                  {check.label}
                 </List.Item>
               ))}
             </List>
-          )}
+          ) : null}
 
           <PasswordInput
-            label="Xác nhận mật khẩu mới"
-            placeholder="Nhập lại mật khẩu mới"
+            label="Xac nhan mat khau moi"
+            placeholder="Nhap lai mat khau moi"
             leftSection={<IconLock size={18} />}
             autoComplete="new-password"
             disabled={submitting}
             {...form.getInputProps('confirmPassword')}
           />
+
           <Button
             type="submit"
             size="md"
             loading={submitting}
-            disabled={submitting || (showPolicy && policyChecks.some((c) => !c.pass))}
+            disabled={submitting || (showPolicy && policyChecks.some((check) => !check.pass))}
           >
-            Đổi mật khẩu
+            Doi mat khau
           </Button>
         </Stack>
       </form>
