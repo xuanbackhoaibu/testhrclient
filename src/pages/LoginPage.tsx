@@ -56,7 +56,7 @@ export function LoginPage() {
     },
     validate: {
       loginIdentifier: (value) =>
-        value.trim() ? null : "Nhập email hoặc mã nhân sự.",
+        value.trim() ? null : "Nhập email, số điện thoại hoặc mã nhân viên.",
       password: (value) => (value ? null : "Nhập mật khẩu."),
     },
   });
@@ -137,8 +137,8 @@ export function LoginPage() {
         <form onSubmit={form.onSubmit(handleRealLogin)}>
           <Stack gap="md">
             <TextInput
-              label="Tài khoản"
-              placeholder="Email hoặc mã nhân sự"
+              label="Email / Số điện thoại / Mã nhân viên"
+              placeholder="Nhập email, số điện thoại hoặc mã nhân viên"
               leftSection={<IconUser size={18} />}
               autoComplete="username"
               disabled={submitting}
