@@ -113,6 +113,22 @@ function normalizeDataScopes(
   }));
 }
 
+function normalizeNestedRef(
+  value: unknown,
+  extraKeys?: string[],
+): { id: string; code: string; name: string; [k: string]: string | null } | null {
+  if (!isRecord(value)) return null;
+  const id = readString(value.id);
+  const code = readString(value.code);
+  const name = readString(value.name);
+  if (!id || !code || !name) return null;
+  const result: { id: string; code: string; name: string; [k: string]: string | null } = { id, code, name };
+  for (const key of extraKeys ?? []) {
+    result[key] = readString(value[key]) ?? null;
+  }
+  return result;
+}
+
 function normalizeEmployee(value: unknown): AuthUser['employee'] {
   if (!isRecord(value)) {
     return null;
@@ -126,13 +142,28 @@ function normalizeEmployee(value: unknown): AuthUser['employee'] {
     return null;
   }
 
+  const unitRef = normalizeNestedRef(value.unit, ['shortCode', 'codePrefix']);
+
   return {
     id,
     employeeCode,
     fullName,
+    email: readString(value.email) ?? null,
+    companyEmail: readString(value.companyEmail) ?? null,
+    personalEmail: readString(value.personalEmail) ?? null,
+    phone: readString(value.phone) ?? null,
+    citizenIdMasked: readString(value.citizenIdMasked) ?? null,
+    status: readString(value.status) ?? readString(value.employmentStatus) ?? null,
+    employmentStatus: readString(value.employmentStatus) ?? readString(value.status) ?? null,
     unitId: readString(value.unitId) ?? null,
     departmentId: readString(value.departmentId) ?? null,
     positionId: readString(value.positionId) ?? null,
+    businessSector: normalizeNestedRef(value.businessSector),
+    unit: unitRef
+      ? { id: unitRef.id, code: unitRef.code, name: unitRef.name, shortCode: unitRef.shortCode ?? null, codePrefix: unitRef.codePrefix ?? null }
+      : null,
+    department: normalizeNestedRef(value.department),
+    position: normalizeNestedRef(value.position),
   };
 }
 
