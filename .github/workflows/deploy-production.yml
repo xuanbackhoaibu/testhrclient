@@ -283,19 +283,71 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          echo "Remote deploy context:"
+          echo "  DEPLOY_DIR=${DEPLOY_DIR}"
+          echo "  SERVER_RUNTIME_ENV_FILE=${SERVER_RUNTIME_ENV_FILE}"
+          echo "  SERVICE_NAME=${SERVICE_NAME}"
+          echo "  DEPLOY_ENV=${DEPLOY_ENV}"
+          echo "  HR_API_HEALTH_URL=${HR_API_HEALTH_URL}"
+          echo "  IMAGE_TAG=${IMAGE_TAG:0:12}"
           ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
-            bash -se -- "${DEPLOY_DIR}" "${IMAGE_TAG}" "${GHCR_PULL_USERNAME}" "${SERVER_RUNTIME_ENV_FILE}" "${HR_API_HEALTH_URL}" <<EOF
+            bash -se -- \
+            "${DEPLOY_DIR}" \
+            "${IMAGE_TAG}" \
+            "${GHCR_PULL_USERNAME}" \
+            "${GHCR_PULL_TOKEN}" \
+            "${SERVER_RUNTIME_ENV_FILE}" \
+            "${HR_API_HEALTH_URL}" \
+            "${SERVICE_NAME}" \
+            "${DEPLOY_ENV}" <<'EOF'
           set -Eeuo pipefail
-          deploy_dir="\$1"
-          image_tag="\$2"
-          ghcr_username="\$3"
-          runtime_env_file="\$4"
-          hr_api_health_url="\$5"
-          cd "\${deploy_dir}"
-          test -f ./.release.env || { echo "Missing release env file: \${deploy_dir}/.release.env" >&2; exit 1; }
-          test -f "\${runtime_env_file}"
-          test -n "\${hr_api_health_url}" || { echo "ERROR: HR_API_HEALTH_URL missing" >&2; exit 64; }
-          echo "${GHCR_PULL_TOKEN}" | docker login ghcr.io -u "\${ghcr_username}" --password-stdin
+          deploy_dir="$1"
+          image_tag="$2"
+          ghcr_username="$3"
+          ghcr_token="$4"
+          runtime_env_file="$5"
+          hr_api_health_url="$6"
+          service_name="$7"
+          deploy_env="$8"
+
+          cd "${deploy_dir}"
+
+          test -f ./.release.env || {
+            echo "ERROR: Missing release env file: ${deploy_dir}/.release.env" >&2
+            exit 64
+          }
+
+          test -f "${runtime_env_file}" || {
+            echo "ERROR: Missing runtime env file: ${runtime_env_file}" >&2
+            exit 64
+          }
+
+          test -n "${image_tag}" || {
+            echo "ERROR: IMAGE_TAG is missing" >&2
+            exit 64
+          }
+
+          test -n "${hr_api_health_url}" || {
+            echo "ERROR: HR_API_HEALTH_URL is missing" >&2
+            exit 64
+          }
+
+          export IMAGE_TAG="${image_tag}"
+          export SERVER_RUNTIME_ENV_FILE="${runtime_env_file}"
+          export HR_API_HEALTH_URL="${hr_api_health_url}"
+          export SERVICE_NAME="${service_name}"
+          export DEPLOY_ENV="${deploy_env}"
+
+          echo "Remote deploy script context:"
+          echo "  DEPLOY_DIR=${deploy_dir}"
+          echo "  SERVER_RUNTIME_ENV_FILE=${SERVER_RUNTIME_ENV_FILE}"
+          echo "  SERVICE_NAME=${SERVICE_NAME}"
+          echo "  DEPLOY_ENV=${DEPLOY_ENV}"
+          echo "  HR_API_HEALTH_URL=${HR_API_HEALTH_URL}"
+          echo "  IMAGE_TAG=${IMAGE_TAG:0:12}"
+
+          printf '%s' "${ghcr_token}" | docker login ghcr.io -u "${ghcr_username}" --password-stdin
+
           chmod +x deploy/scripts/deploy-production.sh deploy/scripts/smoke-production.sh
           deploy/scripts/deploy-production.sh
           EOF

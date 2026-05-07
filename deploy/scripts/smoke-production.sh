@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+: "${HR_API_HEALTH_URL:?HR_API_HEALTH_URL is required for HR Web production deploy smoke check.}"
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT_DIR}"
 
@@ -38,15 +40,21 @@ compose() {
   docker compose "${compose_args[@]}" "$@"
 }
 
-health_url="${HR_API_HEALTH_URL:-}"
-if [ -z "${health_url}" ]; then
-  echo "ERROR: HR_API_HEALTH_URL is required for smoke test" >&2
-  exit 64
-fi
+echo "Checking HR API health: ${HR_API_HEALTH_URL}"
+for i in $(seq 1 30); do
+  if curl -fsS --max-time 5 "${HR_API_HEALTH_URL}" >/dev/null; then
+    echo "HR API health check passed."
+    break
+  fi
 
-echo "Smoke production hr-web-client: checking HR API at ${health_url}"
-curl -fsS "${health_url}" >/dev/null
-echo "PASS hr-api health"
+  if [ "${i}" = "30" ]; then
+    echo "ERROR: HR API health check failed: ${HR_API_HEALTH_URL}" >&2
+    exit 64
+  fi
+
+  echo "Waiting for HR API health... attempt ${i}/30"
+  sleep 2
+done
 
 compose ps hr-web-client
 
