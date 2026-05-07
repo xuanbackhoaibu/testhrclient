@@ -17,6 +17,7 @@ export interface CurrentUser {
   authPrincipalUserId?: string;
   externalAuthUserId: string;
   email: string;
+  username?: string | null;
   fullName: string;
   accountStatus: string;
   account_status?: string;
@@ -29,6 +30,9 @@ export interface CurrentUser {
     companyEmail: string | null;
     personalEmail: string | null;
     phone: string | null;
+    gender: string | null;
+    dateOfBirth: string | null;
+    dateOfJoining: string | null;
     citizenIdMasked: string | null;
     status: string | null;
     employmentStatus: string | null;
@@ -36,7 +40,7 @@ export interface CurrentUser {
     departmentId: string | null;
     positionId: string | null;
     businessSector: { id: string; code: string; name: string } | null;
-    unit: { id: string; code: string; name: string; shortCode: string | null; codePrefix: string | null } | null;
+    unit: { id: string; code: string; name: string; shortName: string | null; taxCode: string | null } | null;
     department: { id: string; code: string; name: string } | null;
     position: { id: string; code: string; name: string } | null;
   } | null;
@@ -45,6 +49,7 @@ export interface CurrentUser {
   permissionVersion?: number;
   tokenVersion?: number;
   mustChangePassword?: boolean;
+  identityWarnings?: string[];
   scopes?: ScopeClaim[];
   dataScopes: Array<{
     scopeType: string;

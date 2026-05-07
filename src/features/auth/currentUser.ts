@@ -129,6 +129,16 @@ function normalizeNestedRef(
   return result;
 }
 
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => readString(item))
+    .filter((item): item is string => Boolean(item));
+}
+
 function normalizeEmployee(value: unknown): AuthUser['employee'] {
   if (!isRecord(value)) {
     return null;
@@ -142,7 +152,16 @@ function normalizeEmployee(value: unknown): AuthUser['employee'] {
     return null;
   }
 
-  const unitRef = normalizeNestedRef(value.unit, ['shortCode', 'codePrefix']);
+  const unitRef = normalizeNestedRef(value.unit, ['shortName', 'shortCode', 'taxCode']);
+  const normalizedUnit = unitRef
+    ? {
+        id: unitRef.id,
+        code: unitRef.code,
+        name: unitRef.name,
+        shortName: unitRef.shortName ?? unitRef.shortCode ?? null,
+        taxCode: unitRef.taxCode ?? null,
+      }
+    : null;
 
   return {
     id,
@@ -152,6 +171,9 @@ function normalizeEmployee(value: unknown): AuthUser['employee'] {
     companyEmail: readString(value.companyEmail) ?? null,
     personalEmail: readString(value.personalEmail) ?? null,
     phone: readString(value.phone) ?? null,
+    gender: readString(value.gender) ?? null,
+    dateOfBirth: readString(value.dateOfBirth) ?? null,
+    dateOfJoining: readString(value.dateOfJoining) ?? null,
     citizenIdMasked: readString(value.citizenIdMasked) ?? null,
     status: readString(value.status) ?? readString(value.employmentStatus) ?? null,
     employmentStatus: readString(value.employmentStatus) ?? readString(value.status) ?? null,
@@ -159,9 +181,7 @@ function normalizeEmployee(value: unknown): AuthUser['employee'] {
     departmentId: readString(value.departmentId) ?? null,
     positionId: readString(value.positionId) ?? null,
     businessSector: normalizeNestedRef(value.businessSector),
-    unit: unitRef
-      ? { id: unitRef.id, code: unitRef.code, name: unitRef.name, shortCode: unitRef.shortCode ?? null, codePrefix: unitRef.codePrefix ?? null }
-      : null,
+    unit: normalizedUnit,
     department: normalizeNestedRef(value.department),
     position: normalizeNestedRef(value.position),
   };
@@ -213,6 +233,11 @@ export function normalizeCurrentUser(response: unknown): AuthUser {
     authPrincipalUserId: readString(data.authPrincipalUserId),
     externalAuthUserId,
     email: readString(data.email) ?? '',
+    username:
+      readString(data.username) ??
+      readString(data.loginIdentifier) ??
+      readString(data.login_identifier) ??
+      null,
     fullName: readString(data.fullName) ?? '',
     accountStatus:
       readString(data.accountStatus) ??
@@ -227,6 +252,7 @@ export function normalizeCurrentUser(response: unknown): AuthUser {
     permissionVersion: readNumber(data.permissionVersion),
     tokenVersion: readNumber(data.tokenVersion),
     mustChangePassword: readBoolean(data.mustChangePassword),
+    identityWarnings: normalizeStringArray(data.identityWarnings),
     scopes,
     dataScopes: normalizeDataScopes(data.dataScopes, scopes),
   };

@@ -119,22 +119,25 @@ jobs:
     env:
       DEPLOY_ENV: ${{ vars.DEPLOY_ENV }}
       SERVER_APPS_ROOT: ${{ vars.SERVER_APPS_ROOT }}
+      SERVER_INFRA_ENV_FILE: ${{ vars.SERVER_INFRA_ENV_FILE }}
+      SERVER_INFRA_ROOT: ${{ vars.SERVER_INFRA_ROOT }}
       SERVER_RUNTIME_ENV_FILE: ${{ vars.SERVER_RUNTIME_ENV_FILE }}
       SERVICE_NAME: ${{ vars.SERVICE_NAME }}
       HR_API_HEALTH_URL: ${{ vars.HR_API_HEALTH_URL }}
       SERVER_HOST: ${{ secrets.SERVER_HOST }}
       SERVER_USER: ${{ secrets.SERVER_USER }}
       SERVER_PORT: ${{ secrets.SERVER_PORT }}
-      SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
       SERVER_SSH_KNOWN_HOSTS: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
       GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
       GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
     steps:
       - name: Debug configuration presence
         shell: bash
+        env:
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
         run: |
           set -euo pipefail
-          for var in DEPLOY_ENV SERVER_HOST SERVER_PORT SERVER_USER SERVER_SSH_KEY SERVER_SSH_KNOWN_HOSTS GHCR_PULL_USERNAME GHCR_PULL_TOKEN SERVER_APPS_ROOT SERVER_RUNTIME_ENV_FILE SERVICE_NAME HR_API_HEALTH_URL; do
+          for var in DEPLOY_ENV SERVER_HOST SERVER_INFRA_ENV_FILE SERVER_INFRA_ROOT SERVER_PORT SERVER_USER SERVER_SSH_KEY SERVER_SSH_KNOWN_HOSTS GHCR_PULL_USERNAME GHCR_PULL_TOKEN SERVER_APPS_ROOT SERVER_RUNTIME_ENV_FILE SERVICE_NAME HR_API_HEALTH_URL; do
             if [ -n "${!var:-}" ]; then
               echo "${var}=SET"
             else
@@ -147,10 +150,13 @@ jobs:
 
       - name: Validate deploy configuration
         shell: bash
+        env:
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
         run: |
           set -euo pipefail
           required=(
             DEPLOY_ENV SERVER_APPS_ROOT SERVICE_NAME
+            SERVER_INFRA_ENV_FILE SERVER_INFRA_ROOT
             SERVER_HOST SERVER_USER SERVER_PORT SERVER_SSH_KEY
             SERVER_SSH_KNOWN_HOSTS GHCR_PULL_USERNAME GHCR_PULL_TOKEN SERVER_RUNTIME_ENV_FILE
             HR_API_HEALTH_URL
@@ -170,6 +176,8 @@ jobs:
 
       - name: Set up SSH
         shell: bash
+        env:
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
         run: |
           set -euo pipefail
           mkdir -p ~/.ssh
@@ -178,6 +186,36 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "${SERVER_SSH_KNOWN_HOSTS}" | tr -d '\r' > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
+
+      - name: Test SSH connection
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh -i ~/.ssh/deploy_key \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=6 \
+            -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
+            'echo SSH_OK && whoami && hostname && docker --version && docker compose version'
+
+      - name: Verify server infrastructure
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh -i ~/.ssh/deploy_key \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=6 \
+            -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
+            bash -se -- "${SERVER_APPS_ROOT}" "${SERVER_INFRA_ROOT}" "${SERVER_INFRA_ENV_FILE}" <<'ENDSSH'
+          set -Eeuo pipefail
+          test -d "$1" || { echo "Missing apps root: $1" >&2; exit 1; }
+          test -d "$2" || { echo "Missing infra root: $2" >&2; exit 1; }
+          test -f "$3" || { echo "Missing infra env file: $3" >&2; exit 1; }
+          docker network inspect chat-platform >/dev/null || { echo "Docker network chat-platform not found" >&2; exit 1; }
+          ENDSSH
 
       - name: Sync deploy bundle
         shell: bash
@@ -250,7 +288,6 @@ jobs:
       SERVER_HOST: ${{ secrets.SERVER_HOST }}
       SERVER_USER: ${{ secrets.SERVER_USER }}
       SERVER_PORT: ${{ secrets.SERVER_PORT }}
-      SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
       SERVER_SSH_KNOWN_HOSTS: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
     steps:
       - name: Resolve deploy directory
@@ -264,6 +301,8 @@ jobs:
 
       - name: Set up SSH
         shell: bash
+        env:
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
         run: |
           set -euo pipefail
           mkdir -p ~/.ssh

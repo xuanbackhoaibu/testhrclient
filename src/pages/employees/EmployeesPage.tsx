@@ -613,7 +613,14 @@ export function EmployeesPage() {
         ),
       },
     ],
-    [mayEditEmployee, mayProvisionAccounts, navigate, openEditDrawer],
+    [
+      mayEditEmployee,
+      mayProvisionAccounts,
+      navigate,
+      openEditDrawer,
+      setAccountDetailTarget,
+      setProvisionTarget,
+    ],
   );
 
   return (
