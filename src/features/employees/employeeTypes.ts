@@ -46,6 +46,13 @@ export interface EmployeeAccount {
   syncStatus: 'SYNCED' | 'AUTH_UNAVAILABLE' | 'NOT_LINKED' | string;
 }
 
+export interface EmployeeCodePreview {
+  businessSectorId: string;
+  businessSectorCode: string;
+  nextNumber: number | null;
+  employeeCode: string | null;
+}
+
 export type EmployeeAccountRole =
   | 'SUPER_ADMIN'
   | 'ADMIN'

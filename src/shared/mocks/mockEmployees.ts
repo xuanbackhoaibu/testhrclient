@@ -3,7 +3,7 @@ import type { Employee } from '../../features/employees/employeeTypes';
 export const mockEmployees: Employee[] = [
   {
     id: 'emp-01',
-    employeeCode: 'EMP0001',
+    employeeCode: 'HC000001',
     fullName: 'Nguyen Ha Linh',
     companyEmail: 'ha.linh@hacom.local',
     personalEmail: 'ha.linh@gmail.com',
@@ -25,7 +25,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: 'emp-02',
-    employeeCode: 'EMP0002',
+    employeeCode: 'HC000002',
     fullName: 'Tran Minh Quan',
     companyEmail: 'minh.quan@hacom.local',
     phone: '0901000002',
@@ -45,7 +45,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: 'emp-03',
-    employeeCode: 'EMP0003',
+    employeeCode: 'TECH000001',
     fullName: 'Le Thanh Mai',
     companyEmail: 'thanh.mai@hacom.local',
     phone: '0901000003',
@@ -65,7 +65,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: 'emp-04',
-    employeeCode: 'EMP0004',
+    employeeCode: 'HC000003',
     fullName: 'Pham Duc Anh',
     companyEmail: 'duc.anh@hacom.local',
     phone: '0901000004',
@@ -85,7 +85,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: 'emp-05',
-    employeeCode: 'EMP0005',
+    employeeCode: 'HC000004',
     fullName: 'Do Thu Trang',
     companyEmail: 'thu.trang@hacom.local',
     phone: '0901000005',
@@ -105,7 +105,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: 'emp-06',
-    employeeCode: 'EMP0006',
+    employeeCode: 'TECH000002',
     fullName: 'Vu Gia Bao',
     companyEmail: 'gia.bao@hacom.local',
     phone: '0901000006',
@@ -125,7 +125,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: 'emp-07',
-    employeeCode: 'EMP0007',
+    employeeCode: 'SERVICE000001',
     fullName: 'Bui Hong Nhung',
     companyEmail: 'hong.nhung@hacom.local',
     phone: '0901000007',
@@ -145,7 +145,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: 'emp-08',
-    employeeCode: 'EMP0008',
+    employeeCode: 'HC000005',
     fullName: 'Nguyễn Quốc Huy',
     companyEmail: 'quoc.huy@hacom.local',
     phone: '0901000008',
@@ -165,7 +165,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: 'emp-09',
-    employeeCode: 'EMP0009',
+    employeeCode: 'TECH000003',
     fullName: 'Hoang Lam',
     companyEmail: 'hoang.lam@hacom.local',
     phone: '0901000009',
@@ -185,7 +185,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: 'emp-10',
-    employeeCode: 'EMP0010',
+    employeeCode: 'HC000006',
     fullName: 'Dang Thu Ha',
     companyEmail: 'thu.ha@hacom.local',
     phone: '0901000010',

@@ -357,7 +357,7 @@ export function EmployeesPage() {
     setIsLoadingNextCode(true);
     try {
       const result = await getNextEmployeeCode();
-      setSuggestedEmployeeCode(result.code);
+      setSuggestedEmployeeCode(result.code ?? "");
     } catch (error) {
       setNextCodeError(getApiErrorMessage(error));
       notifications.show({
@@ -412,7 +412,15 @@ export function EmployeesPage() {
       form.resetDirty(values);
       setOpen(true);
     },
-    [form, mayEditEmployee, permissions, roles],
+    [
+      form,
+      mayEditEmployee,
+      permissions,
+      roles,
+      setNextCodeError,
+      setOpen,
+      setSuggestedEmployeeCode,
+    ],
   );
 
   function closeEmployeeDrawer() {
@@ -812,6 +820,25 @@ export function EmployeesPage() {
               onChange={(value) => {
                 form.setFieldValue("unitId", value ?? "");
                 form.setFieldValue("departmentId", "");
+                if (editing || !value) {
+                  setSuggestedEmployeeCode("");
+                  setNextCodeError(null);
+                  setIsLoadingNextCode(false);
+                  return;
+                }
+                setIsLoadingNextCode(true);
+                setNextCodeError(null);
+                void getNextEmployeeCode(value)
+                  .then((result) => {
+                    setSuggestedEmployeeCode(result.employeeCode ?? "");
+                  })
+                  .catch((error) => {
+                    setSuggestedEmployeeCode("");
+                    setNextCodeError(getApiErrorMessage(error));
+                  })
+                  .finally(() => {
+                    setIsLoadingNextCode(false);
+                  });
               }}
             />
             <Select

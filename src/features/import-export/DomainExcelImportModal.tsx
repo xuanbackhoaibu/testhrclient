@@ -50,6 +50,11 @@ function renderMessages(value: unknown): string {
   );
 }
 
+function readNormalizedString(row: HrmCoreStagingRow, key: string): string {
+  const value = row.normalizedDataJson?.[key];
+  return typeof value === 'string' && value.trim().length > 0 ? value : '-';
+}
+
 export function DomainExcelImportModal({
   open,
   onOpenChange,
@@ -64,13 +69,15 @@ export function DomainExcelImportModal({
 
   const description =
     module === 'organization-units'
-      ? 'Tải file mẫu, chọn file Excel, xem kết quả validate và import trực tiếp ngay trên màn hiện tại. Cột linh_vuc phải là mã lĩnh vực đã tồn tại trong danh mục Lĩnh vực.'
-      : 'Tải file mẫu, chọn file Excel, xem kết quả validate và import trực tiếp ngay trên màn hiện tại.';
+      ? 'Táº£i file máº«u, chá»n file Excel, xem káº¿t quáº£ validate vĂ  import trá»±c tiáº¿p ngay trĂªn mĂ n hiá»‡n táº¡i. Cá»™t linh_vuc pháº£i lĂ  mĂ£ lÄ©nh vá»±c Ä‘Ă£ tá»“n táº¡i trong danh má»¥c LÄ©nh vá»±c.'
+      : module === 'employees'
+        ? 'Táº£i file máº«u, chá»n file Excel, xem preview mÃ£ nhÃ¢n sá»± sau chuáº©n hÃ³a vÃ  import trá»±c tiáº¿p ngay trĂªn mÃ n hiá»‡n táº¡i.'
+        : 'Táº£i file máº«u, chá»n file Excel, xem káº¿t quáº£ validate vĂ  import trá»±c tiáº¿p ngay trĂªn mĂ n hiá»‡n táº¡i.';
 
   const templateMutation = useMutation({
     mutationFn: () => downloadImportTemplate(module),
     onError: (error) =>
-      showDownloadError(error, 'Tải mẫu Excel thất bại.'),
+      showDownloadError(error, 'Táº£i máº«u Excel tháº¥t báº¡i.'),
   });
 
   const previewMutation = useMutation({
@@ -79,15 +86,15 @@ export function DomainExcelImportModal({
       setBatchId(result.batchId);
       setRows(await listDomainImportRows(result.batchId, module));
       setSummary([
-        { label: 'Tổng dòng', value: result.totalRows },
-        { label: 'Hợp lệ', value: result.validRows },
-        { label: 'Lỗi', value: result.invalidRows },
-        { label: 'Cảnh báo', value: result.warnings },
+        { label: 'Tá»•ng dĂ²ng', value: result.totalRows },
+        { label: 'Há»£p lá»‡', value: result.validRows },
+        { label: 'Lá»—i', value: result.invalidRows },
+        { label: 'Cáº£nh bĂ¡o', value: result.warnings },
       ]);
-      message.success('Đã kiểm tra file import.');
+      message.success('ÄĂ£ kiá»ƒm tra file import.');
     },
     onError: () => {
-      message.error('Kiểm tra file import thất bại.');
+      message.error('Kiá»ƒm tra file import tháº¥t báº¡i.');
     },
   });
 
@@ -97,13 +104,13 @@ export function DomainExcelImportModal({
       return commitDomainImport(module, batchId, true);
     },
     onSuccess: async (result) => {
-      message.success('Import Excel thành công.');
+      message.success('Import Excel thĂ nh cĂ´ng.');
       await onSuccess?.();
       onAfterCommit?.(result);
       handleClose();
     },
     onError: () => {
-      message.error('Import Excel thất bại.');
+      message.error('Import Excel tháº¥t báº¡i.');
     },
   });
 
@@ -113,7 +120,7 @@ export function DomainExcelImportModal({
       return downloadImportErrorReport(batchId);
     },
     onError: (error) =>
-      showDownloadError(error, 'Tải file lỗi thất bại.'),
+      showDownloadError(error, 'Táº£i file lá»—i tháº¥t báº¡i.'),
   });
 
   function handleClose() {
@@ -139,25 +146,42 @@ export function DomainExcelImportModal({
     return { errorRows, warningRows };
   }, [rows]);
 
-  const rowColumns = [
-    { title: 'Dòng', dataIndex: 'rowNumber', width: 80 },
-    { title: 'Trạng thái', dataIndex: 'validationStatus', width: 120 },
-    {
-      title: 'Dữ liệu',
-      render: (_: unknown, row: HrmCoreStagingRow) =>
-        JSON.stringify(row.rawDataJson),
-    },
-    {
-      title: 'Lỗi',
-      render: (_: unknown, row: HrmCoreStagingRow) =>
-        renderMessages(row.validationErrorsJson),
-    },
-    {
-      title: 'Cảnh báo',
-      render: (_: unknown, row: HrmCoreStagingRow) =>
-        renderMessages(row.validationWarningsJson),
-    },
-  ];
+  const rowColumns = useMemo(
+    () => [
+      { title: 'DĂ²ng', dataIndex: 'rowNumber', width: 80 },
+      { title: 'Tráº¡ng thĂ¡i', dataIndex: 'validationStatus', width: 120 },
+      ...(module === 'employees'
+        ? [
+            {
+              title: 'LÄ©nh vá»±c',
+              render: (_: unknown, row: HrmCoreStagingRow) =>
+                readNormalizedString(row, 'businessSectorCode'),
+            },
+            {
+              title: 'MÃ£ nhĂ¢n sá»± chuáº©n hÃ³a',
+              render: (_: unknown, row: HrmCoreStagingRow) =>
+                readNormalizedString(row, 'employeeCodePreview'),
+            },
+          ]
+        : []),
+      {
+        title: 'Dá»¯ liá»‡u',
+        render: (_: unknown, row: HrmCoreStagingRow) =>
+          JSON.stringify(row.rawDataJson),
+      },
+      {
+        title: 'Lá»—i',
+        render: (_: unknown, row: HrmCoreStagingRow) =>
+          renderMessages(row.validationErrorsJson),
+      },
+      {
+        title: 'Cáº£nh bĂ¡o',
+        render: (_: unknown, row: HrmCoreStagingRow) =>
+          renderMessages(row.validationWarningsJson),
+      },
+    ],
+    [module],
+  );
 
   return (
     <ExcelImportModal

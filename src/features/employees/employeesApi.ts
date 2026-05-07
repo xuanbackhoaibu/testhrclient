@@ -8,7 +8,12 @@ import {
 } from '../../shared/debug/hrmDebug';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { mockEmployees } from '../../shared/mocks/mockEmployees';
-import { mockDepartments, mockPositions, mockUnits } from '../../shared/mocks/mockOrganization';
+import {
+  mockBusinessSectors,
+  mockDepartments,
+  mockPositions,
+  mockUnits,
+} from '../../shared/mocks/mockOrganization';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockContracts, mockLeaveRequests, mockAttendanceRecords, mockAuditLogs } from '../../shared/mocks/mockWorkflows';
 import { maskSensitiveValue } from '../../shared/utils/format';
@@ -22,11 +27,12 @@ import type {
   EmployeeAccount,
   EmployeeAccountRole,
   EmployeeAssignment,
+  EmployeeCodePreview,
   EmployeePayload,
 } from './employeeTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
-const employeeCodePattern = /^\d{6}$/;
+const employeeCodePattern = /^([A-Z0-9]{2,10})(\d{6})$/;
 
 type EmployeeApiDebugContext = {
   source: string;
@@ -57,6 +63,64 @@ function findNextMockEmployeeCode() {
   }
 
   throw new Error('Đã sử dụng hết mã nhân sự từ 000001 đến 999999.');
+}
+
+function formatMockEmployeeCode(prefix: string, nextNumber: number) {
+  return `${prefix}${String(nextNumber).padStart(6, '0')}`;
+}
+void findNextMockEmployeeCode;
+
+function getMockUnitSector(unitId?: string | null) {
+  if (!unitId) {
+    return null;
+  }
+
+  const unit = mockUnits.find((item) => item.id === unitId);
+  const sector =
+    unit?.sector ??
+    mockBusinessSectors.find((item) => item.id === unit?.sectorId) ??
+    null;
+
+  if (!unit || !sector?.code) {
+    return null;
+  }
+
+  return {
+    businessSectorId: sector.id,
+    businessSectorCode: sector.code.toUpperCase(),
+  };
+}
+
+function previewMockEmployeeCode(unitId?: string | null): EmployeeCodePreview {
+  const sector = getMockUnitSector(unitId);
+  if (!sector) {
+    return {
+      businessSectorId: '',
+      businessSectorCode: '',
+      nextNumber: null,
+      employeeCode: null,
+    };
+  }
+
+  let maxSuffix = 0;
+  for (const employee of mockEmployees) {
+    const match = employee.employeeCode.match(employeeCodePattern);
+    if (!match) {
+      continue;
+    }
+    const [, prefix, suffix] = match;
+    if (prefix !== sector.businessSectorCode) {
+      continue;
+    }
+    maxSuffix = Math.max(maxSuffix, Number(suffix));
+  }
+
+  const nextNumber = maxSuffix + 1;
+  return {
+    ...sector,
+    nextNumber,
+    employeeCode: formatMockEmployeeCode(sector.businessSectorCode, nextNumber),
+  };
 }
 
 function applyEmployeeFilters(items: Employee[], params: ListQueryParams = {}): Employee[] {
@@ -227,13 +291,19 @@ export async function updateEmployeeAccountRoles(
   return api.patch<EmployeeAccount>(`/employees/${id}/account/roles`, { roles });
 }
 
-export async function getNextEmployeeCode(): Promise<{ code: string }> {
+export async function getNextEmployeeCode(
+  unitId?: string,
+): Promise<EmployeeCodePreview & { code: string | null }> {
   if (isMockMode) {
     await mockDelay();
-    return { code: findNextMockEmployeeCode() };
+    const preview = previewMockEmployeeCode(unitId);
+    return { ...preview, code: preview.employeeCode };
   }
 
-  return api.get<{ code: string }>('/employees/next-code');
+  const preview = await api.get<EmployeeCodePreview>('/employees/next-code', {
+    params: unitId ? { unitId } : undefined,
+  });
+  return { ...preview, code: preview.employeeCode };
 }
 
 export async function createEmployee(payload: EmployeePayload): Promise<Employee> {
@@ -242,9 +312,13 @@ export async function createEmployee(payload: EmployeePayload): Promise<Employee
     const unit = mockUnits.find((item) => item.id === payload.unitId);
     const department = mockDepartments.find((item) => item.id === payload.departmentId);
     const position = mockPositions.find((item) => item.id === payload.positionId);
+    const employeeCodePreview = previewMockEmployeeCode(payload.unitId);
+    if (!employeeCodePreview.employeeCode) {
+      throw new Error('Chua xac dinh duoc linh vuc cua don vi de sinh ma nhan su.');
+    }
     const employee: Employee = {
       id: generateId('emp'),
-      employeeCode: findNextMockEmployeeCode(),
+      employeeCode: employeeCodePreview.employeeCode,
       fullName: payload.fullName,
       companyEmail: payload.companyEmail,
       personalEmail: payload.personalEmail,

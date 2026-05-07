@@ -72,6 +72,22 @@ jobs:
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
         uses: actions/checkout@v4
 
+      - name: Preflight Docker build context
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          pwd
+          ls -la
+          echo "Dockerfiles:"
+          find . -maxdepth 2 -name 'Dockerfile*' -type f | sort
+          echo "Top-level dirs:"
+          find . -maxdepth 2 -type d | sort
+          test -f ./Dockerfile
+          test -f ./package-lock.json
+          test -f ./deploy/nginx/default.conf.template
+          test -f ./deploy/docker/entrypoint.sh
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -109,6 +125,7 @@ jobs:
             --file Dockerfile \
             --target production \
             --platform linux/amd64 \
+            --progress plain \
             --push \
             --build-arg VITE_API_BASE_URL="${VITE_API_BASE_URL}" \
             --build-arg VITE_USE_MOCKS="${VITE_USE_MOCKS}" \

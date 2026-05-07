@@ -81,7 +81,7 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
     onClose();
   }
 
-  const expectedUsername = `u${employee.employeeCode.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}`;
+  const expectedUsername = employee.employeeCode;
 
   return (
     <Modal
