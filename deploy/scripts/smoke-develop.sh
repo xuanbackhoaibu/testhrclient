@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+: "${HR_API_HEALTH_URL:?HR_API_HEALTH_URL is required for deploy smoke check.}"
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT_DIR}"
 
@@ -30,11 +32,6 @@ fi
 export HR_WEB_ENV_FILE="${COMMON_ENV_FILE}"
 export HR_WEB_VERSION="${HR_WEB_VERSION:-smoke}"
 
-if [ -z "${HR_API_HEALTH_URL:-}" ]; then
-  echo "ERROR: HR_API_HEALTH_URL is required for deploy smoke check." >&2
-  echo "Example: HR_API_HEALTH_URL=http://127.0.0.1:<actual_hr_api_port>/api/v1/health" >&2
-  exit 64
-fi
 if [[ "${HR_API_HEALTH_URL}" == *"CHANGE_ME"* || "${HR_API_HEALTH_URL}" == *"change-me"* || "${HR_API_HEALTH_URL}" == *"<actual_hr_api_port>"* ]]; then
   echo "ERROR: HR_API_HEALTH_URL still contains a placeholder value." >&2
   exit 64
@@ -60,18 +57,21 @@ echo "Smoke: ${web_url}"
 curl -fsS "${web_url}" >/dev/null
 curl -fsS "${public_url}" | grep -E '<script|/assets/' >/dev/null
 
-echo "Smoke: checking HR API health: ${HR_API_HEALTH_URL}"
-if ! curl -fsS --connect-timeout 5 --max-time 15 "${HR_API_HEALTH_URL}" >/dev/null; then
-  echo "ERROR: HR API health check failed." >&2
-  echo "Checked URL: ${HR_API_HEALTH_URL}" >&2
-  echo "Hints:" >&2
-  echo "  - Is hr-api-service deployed and running?" >&2
-  echo "  - Is the API listening on the configured host/port?" >&2
-  echo "  - If smoke runs on host, do not use Docker-only service DNS." >&2
-  echo "  - If smoke runs in container, do not use 127.0.0.1 for another container." >&2
-  exit 7
-fi
-echo "Smoke: HR API health reachable"
+echo "Checking HR API health: ${HR_API_HEALTH_URL}"
+for i in $(seq 1 30); do
+  if curl -fsS --max-time 5 "${HR_API_HEALTH_URL}" >/dev/null; then
+    echo "HR API health check passed."
+    break
+  fi
+
+  if [ "${i}" = "30" ]; then
+    echo "ERROR: HR API health check failed: ${HR_API_HEALTH_URL}" >&2
+    exit 64
+  fi
+
+  echo "Waiting for HR API health... attempt ${i}/30"
+  sleep 2
+done
 
 compose ps hr-web-client
 

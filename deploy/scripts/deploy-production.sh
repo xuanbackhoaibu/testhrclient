@@ -46,10 +46,9 @@ COMPOSE_FILE="${COMPOSE_FILE:-deploy/compose/production.yml}"
 SERVICE_NAME="${RUNTIME_SERVICE:-hr-web-client}"
 IMAGE_TAG="${HR_WEB_VERSION:-${IMAGE_TAG:-${1:-${IMAGE_REF##*:}}}}"
 
-if [ -z "${IMAGE_TAG}" ]; then
-  echo "HR_WEB_VERSION, IMAGE_TAG, or first positional image tag is required" >&2
-  exit 1
-fi
+: "${DEPLOY_ENV:?DEPLOY_ENV is required}"
+: "${SERVER_RUNTIME_ENV_FILE:?SERVER_RUNTIME_ENV_FILE is required}"
+: "${IMAGE_TAG:?IMAGE_TAG is required}"
 
 if [ ! -f "${SERVER_RUNTIME_ENV_FILE}" ]; then
   echo "Runtime env file does not exist on server: ${SERVER_RUNTIME_ENV_FILE}" >&2
@@ -88,12 +87,14 @@ if [ -n "${INCOMING_HR_API_HEALTH_URL}" ]; then
   HR_API_HEALTH_URL="${INCOMING_HR_API_HEALTH_URL}"
 fi
 export HR_WEB_ENV_FILE="${SERVICE_ENV_FILE}"
+export IMAGE_TAG
+export SERVER_RUNTIME_ENV_FILE
+export SERVICE_NAME
+export DEPLOY_ENV
 
 : "${CHAT_NETWORK:?CHAT_NETWORK is required in ${COMMON_ENV_FILE}}"
-if [ -z "${HR_API_HEALTH_URL:-}" ]; then
-  echo "ERROR: HR_API_HEALTH_URL is required for HR Web production deploy smoke check." >&2
-  exit 64
-fi
+: "${HR_API_HEALTH_URL:?HR_API_HEALTH_URL is required for HR Web production deploy smoke check.}"
+export HR_API_HEALTH_URL
 docker network inspect "${CHAT_NETWORK}" >/dev/null
 
 compose() {
@@ -112,4 +113,4 @@ compose config --quiet
 compose pull "${SERVICE_NAME}"
 compose up -d --no-deps --wait "${SERVICE_NAME}"
 compose ps "${SERVICE_NAME}"
-HR_API_HEALTH_URL="${HR_API_HEALTH_URL}" "${ROOT_DIR}/deploy/scripts/smoke-production.sh"
+"${ROOT_DIR}/deploy/scripts/smoke-production.sh"
