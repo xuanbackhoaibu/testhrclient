@@ -136,7 +136,6 @@ jobs:
     env:
       DEPLOY_ENV: ${{ vars.DEPLOY_ENV }}
       SERVER_APPS_ROOT: ${{ vars.SERVER_APPS_ROOT }}
-      SERVER_INFRA_ENV_FILE: ${{ vars.SERVER_INFRA_ENV_FILE }}
       SERVER_INFRA_ROOT: ${{ vars.SERVER_INFRA_ROOT }}
       SERVER_RUNTIME_ENV_FILE: ${{ vars.SERVER_RUNTIME_ENV_FILE }}
       SERVICE_NAME: ${{ vars.SERVICE_NAME }}
@@ -154,7 +153,9 @@ jobs:
           SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
         run: |
           set -euo pipefail
-          for var in DEPLOY_ENV SERVER_HOST SERVER_INFRA_ENV_FILE SERVER_INFRA_ROOT SERVER_PORT SERVER_USER SERVER_SSH_KEY SERVER_SSH_KNOWN_HOSTS GHCR_PULL_USERNAME GHCR_PULL_TOKEN SERVER_APPS_ROOT SERVER_RUNTIME_ENV_FILE SERVICE_NAME HR_API_HEALTH_URL; do
+          # App services must use SERVER_RUNTIME_ENV_FILE.
+          # SERVER_INFRA_ENV_FILE is only for infra repository deployments.
+          for var in DEPLOY_ENV SERVER_HOST SERVER_PORT SERVER_USER SERVER_SSH_KEY SERVER_SSH_KNOWN_HOSTS GHCR_PULL_USERNAME GHCR_PULL_TOKEN SERVER_APPS_ROOT SERVER_RUNTIME_ENV_FILE SERVICE_NAME HR_API_HEALTH_URL; do
             if [ -n "${!var:-}" ]; then
               echo "${var}=SET"
             else
@@ -173,21 +174,30 @@ jobs:
           set -euo pipefail
           required=(
             DEPLOY_ENV SERVER_APPS_ROOT SERVICE_NAME
-            SERVER_INFRA_ENV_FILE SERVER_INFRA_ROOT
             SERVER_HOST SERVER_USER SERVER_PORT SERVER_SSH_KEY
             SERVER_SSH_KNOWN_HOSTS GHCR_PULL_USERNAME GHCR_PULL_TOKEN SERVER_RUNTIME_ENV_FILE
             HR_API_HEALTH_URL
           )
           for name in "${required[@]}"; do
-            test -n "${!name:-}" || { echo "Missing required configuration: ${name}" >&2; exit 1; }
+            test -n "${!name:-}" || { echo "Missing required app deploy configuration: ${name}" >&2; exit 1; }
           done
           [ "${DEPLOY_ENV}" = "production" ] || { echo "DEPLOY_ENV must be production" >&2; exit 1; }
           case "${SERVER_PORT}" in
             ''|*[!0-9]*) echo "SERVER_PORT secret must be digits only" >&2; exit 1 ;;
           esac
           case "${SERVER_RUNTIME_ENV_FILE}" in
-            *develop*|*server-test*) echo "SERVER_RUNTIME_ENV_FILE must not point to develop or server-test for production" >&2; exit 1 ;;
+            *develop*|*server-test*) echo "Invalid app deploy configuration: SERVER_RUNTIME_ENV_FILE must not point to develop or server-test for production" >&2; exit 1 ;;
           esac
+          case "${HR_API_HEALTH_URL}" in
+            http://*|https://*) ;;
+            *) echo "Invalid app deploy configuration: HR_API_HEALTH_URL must start with http:// or https://" >&2; exit 1 ;;
+          esac
+          echo "Deploy kind: app"
+          echo "DEPLOY_ENV=${DEPLOY_ENV}"
+          echo "SERVICE_NAME=${SERVICE_NAME}"
+          echo "SERVER_APPS_ROOT=${SERVER_APPS_ROOT}"
+          echo "SERVER_RUNTIME_ENV_FILE=${SERVER_RUNTIME_ENV_FILE}"
+          echo "HEALTHCHECK_URL=${HR_API_HEALTH_URL}"
           echo "DEPLOY_DIR=${SERVER_APPS_ROOT}/${SERVICE_NAME}" >> "${GITHUB_ENV}"
           echo "Deploying ${IMAGE_REPOSITORY}:${IMAGE_TAG} to production"
 
@@ -216,7 +226,7 @@ jobs:
             -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
             'echo SSH_OK && whoami && hostname && docker --version && docker compose version'
 
-      - name: Verify server infrastructure
+      - name: Verify server app paths
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -226,13 +236,33 @@ jobs:
             -o ServerAliveInterval=30 \
             -o ServerAliveCountMax=6 \
             -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
-            bash -se -- "${SERVER_APPS_ROOT}" "${SERVER_INFRA_ROOT}" "${SERVER_INFRA_ENV_FILE}" <<'ENDSSH'
+            bash -se -- "${SERVER_APPS_ROOT}" "${SERVER_RUNTIME_ENV_FILE}" "${SERVER_INFRA_ROOT:-}" <<'ENDSSH'
           set -Eeuo pipefail
           test -d "$1" || { echo "Missing apps root: $1" >&2; exit 1; }
-          test -d "$2" || { echo "Missing infra root: $2" >&2; exit 1; }
-          test -f "$3" || { echo "Missing infra env file: $3" >&2; exit 1; }
+          test -f "$2" || { echo "Runtime env file does not exist on server: $2" >&2; exit 1; }
+          if [ -n "${3:-}" ]; then
+            test -d "$3" || { echo "Configured SERVER_INFRA_ROOT does not exist on server: $3" >&2; exit 1; }
+          fi
           docker network inspect chat-platform >/dev/null || { echo "Docker network chat-platform not found" >&2; exit 1; }
           ENDSSH
+
+      - name: Prepare release env
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cat > .release.env <<EOF
+          DEPLOY_ENV=${DEPLOY_ENV}
+          SERVICE_NAME=${SERVICE_NAME}
+          SERVER_RUNTIME_ENV_FILE=${SERVER_RUNTIME_ENV_FILE}
+          SERVER_APPS_ROOT=${SERVER_APPS_ROOT}
+          IMAGE_REF=${IMAGE_REPOSITORY}:${IMAGE_TAG}
+          RELEASE_SHA=${IMAGE_TAG}
+          COMPOSE_FILE=deploy/compose/production.yml
+          COMPOSE_PROJECT_NAME=hr-prod
+          RUNTIME_SERVICE=hr-web-client
+          HEALTHCHECK_URL=${HR_API_HEALTH_URL}
+          HR_WEB_VERSION=${IMAGE_TAG}
+          EOF
 
       - name: Sync deploy bundle
         shell: bash
@@ -244,6 +274,10 @@ jobs:
             -e "ssh ${ssh_opts}" \
             ./deploy/ \
             "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_DIR}/deploy/"
+          rsync -az \
+            -e "ssh ${ssh_opts}" \
+            ./.release.env \
+            "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_DIR}/.release.env"
 
       - name: Deploy hr-web-client on production server
         shell: bash
@@ -258,14 +292,11 @@ jobs:
           runtime_env_file="\$4"
           hr_api_health_url="\$5"
           cd "\${deploy_dir}"
+          test -f ./.release.env || { echo "Missing release env file: \${deploy_dir}/.release.env" >&2; exit 1; }
           test -f "\${runtime_env_file}"
           test -n "\${hr_api_health_url}" || { echo "ERROR: HR_API_HEALTH_URL missing" >&2; exit 64; }
           echo "${GHCR_PULL_TOKEN}" | docker login ghcr.io -u "\${ghcr_username}" --password-stdin
           chmod +x deploy/scripts/deploy-production.sh deploy/scripts/smoke-production.sh
-          SERVER_RUNTIME_ENV_FILE="\${runtime_env_file}" \
-          HR_WEB_VERSION="\${image_tag}" \
-          HR_API_HEALTH_URL="\${hr_api_health_url}" \
-          COMPOSE_FILE="deploy/compose/production.yml" \
           deploy/scripts/deploy-production.sh
           EOF
 
@@ -312,7 +343,7 @@ jobs:
         run: |
           set -euo pipefail
           for var in SERVER_APPS_ROOT SERVICE_NAME SERVER_RUNTIME_ENV_FILE HR_API_HEALTH_URL; do
-            test -n "${!var:-}" || { echo "Missing required configuration: ${var}" >&2; exit 1; }
+            test -n "${!var:-}" || { echo "Missing required app deploy configuration: ${var}" >&2; exit 1; }
           done
           echo "DEPLOY_DIR=${SERVER_APPS_ROOT}/${SERVICE_NAME}" >> "${GITHUB_ENV}"
 

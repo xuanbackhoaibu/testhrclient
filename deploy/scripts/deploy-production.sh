@@ -4,9 +4,36 @@ set -Eeuo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT_DIR}"
 
+RELEASE_ENV_FILE="${ROOT_DIR}/.release.env"
+if [ ! -f "${RELEASE_ENV_FILE}" ]; then
+  echo "Missing release env file: ${RELEASE_ENV_FILE}" >&2
+  exit 1
+fi
+
+set -a
+source "${RELEASE_ENV_FILE}"
+set +a
+
+required_release_vars=(
+  DEPLOY_ENV
+  SERVICE_NAME
+  SERVER_RUNTIME_ENV_FILE
+  IMAGE_REF
+  COMPOSE_FILE
+  COMPOSE_PROJECT_NAME
+  RUNTIME_SERVICE
+)
+
+for var in "${required_release_vars[@]}"; do
+  if [ -z "${!var:-}" ]; then
+    echo "Missing required app release configuration: ${var}" >&2
+    exit 1
+  fi
+done
+
 PROJECT_NAME="${COMPOSE_PROJECT_NAME:-hr-prod}"
-COMMON_ENV_FILE="${COMMON_ENV_FILE:-${SERVER_RUNTIME_ENV_FILE:-env/.env.hr-web.production}}"
-SERVICE_ENV_FILE="${SERVICE_ENV_FILE:-${SERVER_RUNTIME_ENV_FILE:-env/.env.hr-web.production}}"
+COMMON_ENV_FILE="${COMMON_ENV_FILE:-${SERVER_RUNTIME_ENV_FILE}}"
+SERVICE_ENV_FILE="${SERVICE_ENV_FILE:-${SERVER_RUNTIME_ENV_FILE}}"
 INCOMING_HR_API_HEALTH_URL="${HR_API_HEALTH_URL:-}"
 if [ -z "${VERSIONS_ENV_FILE:-}" ]; then
   if [ -n "${SERVER_RUNTIME_ENV_FILE:-}" ]; then
@@ -16,11 +43,16 @@ if [ -z "${VERSIONS_ENV_FILE:-}" ]; then
   fi
 fi
 COMPOSE_FILE="${COMPOSE_FILE:-deploy/compose/production.yml}"
-SERVICE_NAME="hr-web-client"
-IMAGE_TAG="${HR_WEB_VERSION:-${IMAGE_TAG:-${1:-}}}"
+SERVICE_NAME="${RUNTIME_SERVICE:-hr-web-client}"
+IMAGE_TAG="${HR_WEB_VERSION:-${IMAGE_TAG:-${1:-${IMAGE_REF##*:}}}}"
 
 if [ -z "${IMAGE_TAG}" ]; then
   echo "HR_WEB_VERSION, IMAGE_TAG, or first positional image tag is required" >&2
+  exit 1
+fi
+
+if [ ! -f "${SERVER_RUNTIME_ENV_FILE}" ]; then
+  echo "Runtime env file does not exist on server: ${SERVER_RUNTIME_ENV_FILE}" >&2
   exit 1
 fi
 

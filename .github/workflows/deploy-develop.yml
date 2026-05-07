@@ -178,9 +178,9 @@ jobs:
           for name in "${required[@]}"; do
             if [ -z "${!name:-}" ]; then
               if [ "${name}" = "HR_API_HEALTH_URL" ]; then
-                echo "Missing required configuration: HR_API_HEALTH_URL (set it in Settings -> Environments -> develop -> Variables)" >&2
+                echo "Missing required app deploy configuration: HR_API_HEALTH_URL (set it in Settings -> Environments -> develop -> Variables)" >&2
               else
-                echo "Missing required configuration: ${name}" >&2
+                echo "Missing required app deploy configuration: ${name}" >&2
               fi
               exit 1
             fi
@@ -188,6 +188,12 @@ jobs:
           case "${SERVER_PORT}" in
             ''|*[!0-9]*) echo "SERVER_PORT must be digits only" >&2; exit 1 ;;
           esac
+          echo "Deploy kind: app"
+          echo "DEPLOY_ENV=develop"
+          echo "SERVICE_NAME=${{ vars.SERVICE_NAME }}"
+          echo "SERVER_APPS_ROOT=${{ vars.SERVER_APPS_ROOT }}"
+          echo "SERVER_RUNTIME_ENV_FILE=${SERVER_RUNTIME_ENV_FILE}"
+          echo "HEALTHCHECK_URL=${HR_API_HEALTH_URL}"
           echo "Deploying ${IMAGE_REPOSITORY}:${IMAGE_TAG}"
 
       - name: Install SSH key
@@ -204,6 +210,24 @@ jobs:
           printf '%s\n' "${SERVER_SSH_KNOWN_HOSTS}" | tr -d '\r' > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
+      - name: Prepare release env
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cat > .release.env <<EOF
+          DEPLOY_ENV=develop
+          SERVICE_NAME=${{ vars.SERVICE_NAME }}
+          SERVER_RUNTIME_ENV_FILE=${SERVER_RUNTIME_ENV_FILE}
+          SERVER_APPS_ROOT=${{ vars.SERVER_APPS_ROOT }}
+          IMAGE_REF=${IMAGE_REPOSITORY}:${IMAGE_TAG}
+          RELEASE_SHA=${IMAGE_TAG}
+          COMPOSE_FILE=deploy/compose/develop.yml
+          COMPOSE_PROJECT_NAME=hr-dev
+          RUNTIME_SERVICE=hr-web-client
+          HEALTHCHECK_URL=${HR_API_HEALTH_URL}
+          HR_WEB_VERSION=${IMAGE_TAG}
+          EOF
+
       - name: Sync deploy bundle
         shell: bash
         run: |
@@ -214,6 +238,10 @@ jobs:
             -e "ssh ${ssh_opts}" \
             ./deploy/ \
             "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_DIR}/deploy/"
+          rsync -az \
+            -e "ssh ${ssh_opts}" \
+            ./.release.env \
+            "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_DIR}/.release.env"
 
       - name: Deploy hr-web-client on develop server
         shell: bash
@@ -228,11 +256,12 @@ jobs:
           runtime_env_file="\$4"
           hr_api_health_url="\$5"
           cd "\${deploy_dir}"
+          test -f ./.release.env || { echo "Missing release env file: \${deploy_dir}/.release.env" >&2; exit 1; }
           test -f "\${runtime_env_file}"
           test -n "\${hr_api_health_url}" || { echo "ERROR: HR_API_HEALTH_URL is missing. Set GitHub repo/environment variable HR_API_HEALTH_URL." >&2; exit 64; }
           echo "${GHCR_PULL_TOKEN}" | docker login ghcr.io -u "\${ghcr_username}" --password-stdin
           chmod +x deploy/scripts/deploy-develop.sh deploy/scripts/smoke-develop.sh
-          SERVER_RUNTIME_ENV_FILE="\${runtime_env_file}" HR_WEB_VERSION="\${image_tag}" HR_API_HEALTH_URL="\${hr_api_health_url}" deploy/scripts/deploy-develop.sh
+          deploy/scripts/deploy-develop.sh
           EOF
 
       - name: Show remote logs on failure
