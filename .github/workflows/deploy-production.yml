@@ -1,0 +1,369 @@
+name: deploy-production
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "public/**"
+      - "index.html"
+      - "package.json"
+      - "package-lock.json"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "deploy/**"
+      - ".github/workflows/deploy-production.yml"
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag/SHA to deploy for rollback. Leave empty to build and deploy this commit."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: production-${{ github.repository }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_REPOSITORY: ghcr.io/hacom-holding-dx/hr-web-client
+  IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag != '' && inputs.image_tag || github.sha }}
+
+jobs:
+  test-build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout hr-web-client
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Build HR Web
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Skip build for rollback
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag != '' }}
+        shell: bash
+        run: |
+          echo "Rollback mode: using existing image tag ${IMAGE_TAG}"
+
+  docker-build-push:
+    needs: test-build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout hr-web-client
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
+        uses: actions/checkout@v4
+
+      - name: Preflight Docker build context
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          pwd
+          ls -la
+          echo "Dockerfiles:"
+          find . -maxdepth 2 -name 'Dockerfile*' -type f | sort
+          echo "Top-level dirs:"
+          find . -maxdepth 2 -type d | sort
+          test -f ./Dockerfile
+          test -f ./package-lock.json
+          test -f ./deploy/nginx/default.conf.template
+          test -f ./deploy/docker/entrypoint.sh
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build and push runtime image
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
+        shell: bash
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_HR_API_BASE_URL != '' && vars.VITE_HR_API_BASE_URL || '/api/v1' }}
+          VITE_USE_MOCKS: "false"
+          VITE_AUTH_MODE: ${{ vars.VITE_HR_AUTH_MODE != '' && vars.VITE_HR_AUTH_MODE || 'chat-auth' }}
+          VITE_APP_SYSTEM_CODE: ${{ vars.VITE_APP_SYSTEM_CODE != '' && vars.VITE_APP_SYSTEM_CODE || 'HRM' }}
+          VITE_AUTH_SERVICE_CLIENT_ID: ${{ vars.VITE_AUTH_SERVICE_CLIENT_ID != '' && vars.VITE_AUTH_SERVICE_CLIENT_ID || vars.VITE_CHAT_AUTH_CLIENT_ID != '' && vars.VITE_CHAT_AUTH_CLIENT_ID || 'hr-web-client' }}
+          VITE_AUTH_SERVICE_REDIRECT_URI: ${{ vars.VITE_AUTH_SERVICE_REDIRECT_URI != '' && vars.VITE_AUTH_SERVICE_REDIRECT_URI || vars.VITE_CHAT_AUTH_REDIRECT_URI != '' && vars.VITE_CHAT_AUTH_REDIRECT_URI || '/auth/callback' }}
+          VITE_CHAT_AUTH_CLIENT_ID: ${{ vars.VITE_CHAT_AUTH_CLIENT_ID != '' && vars.VITE_CHAT_AUTH_CLIENT_ID || 'hr-web-client' }}
+          VITE_CHAT_AUTH_REDIRECT_URI: ${{ vars.VITE_CHAT_AUTH_REDIRECT_URI != '' && vars.VITE_CHAT_AUTH_REDIRECT_URI || '/auth/callback' }}
+        run: |
+          set -Eeuo pipefail
+          docker buildx build \
+            --file Dockerfile \
+            --target production \
+            --platform linux/amd64 \
+            --progress plain \
+            --push \
+            --tag "${IMAGE_REPOSITORY}:${GITHUB_SHA}" \
+            --build-arg VITE_API_BASE_URL="${VITE_API_BASE_URL}" \
+            --build-arg VITE_USE_MOCKS="${VITE_USE_MOCKS}" \
+            --build-arg VITE_AUTH_MODE="${VITE_AUTH_MODE}" \
+            --build-arg VITE_APP_SYSTEM_CODE="${VITE_APP_SYSTEM_CODE}" \
+            --build-arg VITE_AUTH_SERVICE_CLIENT_ID="${VITE_AUTH_SERVICE_CLIENT_ID}" \
+            --build-arg VITE_AUTH_SERVICE_REDIRECT_URI="${VITE_AUTH_SERVICE_REDIRECT_URI}" \
+            --build-arg VITE_CHAT_AUTH_CLIENT_ID="${VITE_CHAT_AUTH_CLIENT_ID}" \
+            --build-arg VITE_CHAT_AUTH_REDIRECT_URI="${VITE_CHAT_AUTH_REDIRECT_URI}" \
+            .
+
+      - name: Verify image manifest
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker buildx imagetools inspect "${IMAGE_REPOSITORY}:${IMAGE_TAG}"
+
+  deploy-production:
+    needs: docker-build-push
+    runs-on: ubuntu-24.04
+    environment: production
+    env:
+      DEPLOY_ENV: ${{ vars.DEPLOY_ENV }}
+      SERVER_APPS_ROOT: ${{ vars.SERVER_APPS_ROOT }}
+      SERVER_INFRA_ROOT: ${{ vars.SERVER_INFRA_ROOT }}
+      SERVER_RUNTIME_ENV_FILE: ${{ vars.SERVER_RUNTIME_ENV_FILE }}
+      SERVICE_NAME: ${{ vars.SERVICE_NAME }}
+      HR_API_HEALTH_URL: ${{ vars.HR_API_HEALTH_URL }}
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
+      SERVER_USER: ${{ secrets.SERVER_USER }}
+      SERVER_PORT: ${{ secrets.SERVER_PORT }}
+      SERVER_SSH_KNOWN_HOSTS: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+      GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
+      GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+    steps:
+      - name: Debug configuration presence
+        shell: bash
+        env:
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          # App services must use SERVER_RUNTIME_ENV_FILE.
+          # SERVER_INFRA_ENV_FILE is only for infra repository deployments.
+          for var in DEPLOY_ENV SERVER_HOST SERVER_PORT SERVER_USER SERVER_SSH_KEY SERVER_SSH_KNOWN_HOSTS GHCR_PULL_USERNAME GHCR_PULL_TOKEN SERVER_APPS_ROOT SERVER_RUNTIME_ENV_FILE SERVICE_NAME HR_API_HEALTH_URL; do
+            if [ -n "${!var:-}" ]; then
+              echo "${var}=SET"
+            else
+              echo "${var}=MISSING"
+            fi
+          done
+
+      - name: Checkout hr-web-client
+        uses: actions/checkout@v4
+
+      - name: Validate deploy configuration
+        shell: bash
+        env:
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          required=(
+            DEPLOY_ENV SERVER_APPS_ROOT SERVICE_NAME
+            SERVER_HOST SERVER_USER SERVER_PORT SERVER_SSH_KEY
+            SERVER_SSH_KNOWN_HOSTS GHCR_PULL_USERNAME GHCR_PULL_TOKEN SERVER_RUNTIME_ENV_FILE
+            HR_API_HEALTH_URL
+          )
+          for name in "${required[@]}"; do
+            test -n "${!name:-}" || { echo "Missing required app deploy configuration: ${name}" >&2; exit 1; }
+          done
+          [ "${DEPLOY_ENV}" = "production" ] || { echo "DEPLOY_ENV must be production" >&2; exit 1; }
+          case "${SERVER_PORT}" in
+            ''|*[!0-9]*) echo "SERVER_PORT secret must be digits only" >&2; exit 1 ;;
+          esac
+          case "${SERVER_RUNTIME_ENV_FILE}" in
+            *develop*|*server-test*) echo "Invalid app deploy configuration: SERVER_RUNTIME_ENV_FILE must not point to develop or server-test for production" >&2; exit 1 ;;
+          esac
+          case "${HR_API_HEALTH_URL}" in
+            http://*|https://*) ;;
+            *) echo "Invalid app deploy configuration: HR_API_HEALTH_URL must start with http:// or https://" >&2; exit 1 ;;
+          esac
+          echo "Deploy kind: app"
+          echo "DEPLOY_ENV=${DEPLOY_ENV}"
+          echo "SERVICE_NAME=${SERVICE_NAME}"
+          echo "SERVER_APPS_ROOT=${SERVER_APPS_ROOT}"
+          echo "SERVER_RUNTIME_ENV_FILE=${SERVER_RUNTIME_ENV_FILE}"
+          echo "HEALTHCHECK_URL=${HR_API_HEALTH_URL}"
+          echo "DEPLOY_DIR=${SERVER_APPS_ROOT}/${SERVICE_NAME}" >> "${GITHUB_ENV}"
+          echo "Deploying ${IMAGE_REPOSITORY}:${IMAGE_TAG} to production"
+
+      - name: Set up SSH
+        shell: bash
+        env:
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${SERVER_SSH_KEY}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "${SERVER_SSH_KNOWN_HOSTS}" | tr -d '\r' > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Test SSH connection
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh -i ~/.ssh/deploy_key \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=6 \
+            -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
+            'echo SSH_OK && whoami && hostname && docker --version && docker compose version'
+
+      - name: Verify server app paths
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh -i ~/.ssh/deploy_key \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=6 \
+            -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
+            bash -se -- "${SERVER_APPS_ROOT}" "${SERVER_RUNTIME_ENV_FILE}" "${SERVER_INFRA_ROOT:-}" <<'ENDSSH'
+          set -Eeuo pipefail
+          test -d "$1" || { echo "Missing apps root: $1" >&2; exit 1; }
+          test -f "$2" || { echo "Runtime env file does not exist on server: $2" >&2; exit 1; }
+          if [ -n "${3:-}" ]; then
+            test -d "$3" || { echo "Configured SERVER_INFRA_ROOT does not exist on server: $3" >&2; exit 1; }
+          fi
+          docker network inspect chat-platform >/dev/null || { echo "Docker network chat-platform not found" >&2; exit 1; }
+          ENDSSH
+
+      - name: Prepare release env
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cat > .release.env <<EOF
+          DEPLOY_ENV=${DEPLOY_ENV}
+          SERVICE_NAME=${SERVICE_NAME}
+          SERVER_RUNTIME_ENV_FILE=${SERVER_RUNTIME_ENV_FILE}
+          SERVER_APPS_ROOT=${SERVER_APPS_ROOT}
+          IMAGE_REF=${IMAGE_REPOSITORY}:${IMAGE_TAG}
+          RELEASE_SHA=${IMAGE_TAG}
+          COMPOSE_FILE=deploy/compose/production.yml
+          COMPOSE_PROJECT_NAME=hr-prod
+          RUNTIME_SERVICE=hr-web-client
+          HEALTHCHECK_URL=${HR_API_HEALTH_URL}
+          HR_WEB_VERSION=${IMAGE_TAG}
+          EOF
+
+      - name: Sync deploy bundle
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh_opts="-i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p ${SERVER_PORT}"
+          ssh ${ssh_opts} "${SERVER_USER}@${SERVER_HOST}" "mkdir -p '${DEPLOY_DIR}/deploy' '${DEPLOY_DIR}/env'"
+          rsync -az --delete \
+            -e "ssh ${ssh_opts}" \
+            ./deploy/ \
+            "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_DIR}/deploy/"
+          rsync -az \
+            -e "ssh ${ssh_opts}" \
+            ./.release.env \
+            "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_DIR}/.release.env"
+
+      - name: Deploy hr-web-client on production server
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
+            bash -se -- "${DEPLOY_DIR}" "${IMAGE_TAG}" "${GHCR_PULL_USERNAME}" "${SERVER_RUNTIME_ENV_FILE}" "${HR_API_HEALTH_URL}" <<EOF
+          set -Eeuo pipefail
+          deploy_dir="\$1"
+          image_tag="\$2"
+          ghcr_username="\$3"
+          runtime_env_file="\$4"
+          hr_api_health_url="\$5"
+          cd "\${deploy_dir}"
+          test -f ./.release.env || { echo "Missing release env file: \${deploy_dir}/.release.env" >&2; exit 1; }
+          test -f "\${runtime_env_file}"
+          test -n "\${hr_api_health_url}" || { echo "ERROR: HR_API_HEALTH_URL missing" >&2; exit 64; }
+          echo "${GHCR_PULL_TOKEN}" | docker login ghcr.io -u "\${ghcr_username}" --password-stdin
+          chmod +x deploy/scripts/deploy-production.sh deploy/scripts/smoke-production.sh
+          deploy/scripts/deploy-production.sh
+          EOF
+
+      - name: Show remote logs on failure
+        if: failure()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
+            bash -se -- "${DEPLOY_DIR}" "${SERVER_RUNTIME_ENV_FILE}" <<'EOF'
+          set +e
+          deploy_dir="$1"
+          runtime_env_file="$2"
+          cd "${deploy_dir}" || exit 0
+          versions_env_file="$(dirname "${runtime_env_file}")/.hr-web-client.versions"
+          compose_args=(-p hr-prod --env-file "${runtime_env_file}")
+          if [ -f "${versions_env_file}" ]; then
+            compose_args+=(--env-file "${versions_env_file}")
+          else
+            export HR_WEB_VERSION=log-tail
+          fi
+          export HR_WEB_ENV_FILE="${runtime_env_file}"
+          docker compose "${compose_args[@]}" -f deploy/compose/production.yml ps hr-web-client
+          docker compose "${compose_args[@]}" -f deploy/compose/production.yml logs --tail=200 hr-web-client
+          EOF
+
+  verify:
+    needs: deploy-production
+    runs-on: ubuntu-24.04
+    environment: production
+    env:
+      SERVER_APPS_ROOT: ${{ vars.SERVER_APPS_ROOT }}
+      SERVER_RUNTIME_ENV_FILE: ${{ vars.SERVER_RUNTIME_ENV_FILE }}
+      SERVICE_NAME: ${{ vars.SERVICE_NAME }}
+      HR_API_HEALTH_URL: ${{ vars.HR_API_HEALTH_URL }}
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
+      SERVER_USER: ${{ secrets.SERVER_USER }}
+      SERVER_PORT: ${{ secrets.SERVER_PORT }}
+      SERVER_SSH_KNOWN_HOSTS: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+    steps:
+      - name: Resolve deploy directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          for var in SERVER_APPS_ROOT SERVICE_NAME SERVER_RUNTIME_ENV_FILE HR_API_HEALTH_URL; do
+            test -n "${!var:-}" || { echo "Missing required app deploy configuration: ${var}" >&2; exit 1; }
+          done
+          echo "DEPLOY_DIR=${SERVER_APPS_ROOT}/${SERVICE_NAME}" >> "${GITHUB_ENV}"
+
+      - name: Set up SSH
+        shell: bash
+        env:
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${SERVER_SSH_KEY}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "${SERVER_SSH_KNOWN_HOSTS}" | tr -d '\r' > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Run HR Web production smoke
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -n "${HR_API_HEALTH_URL:-}" || { echo "ERROR: HR_API_HEALTH_URL missing" >&2; exit 64; }
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
+            "cd '${DEPLOY_DIR}' && SERVER_RUNTIME_ENV_FILE='${SERVER_RUNTIME_ENV_FILE}' HR_API_HEALTH_URL='${HR_API_HEALTH_URL}' COMPOSE_FILE='deploy/compose/production.yml' deploy/scripts/smoke-production.sh"

@@ -1,4 +1,4 @@
-import { Flex, Spin, Typography } from 'antd';
+import { Paper, Skeleton, Stack, Text } from '@mantine/core';
 
 interface LoadingStateProps {
   tip?: string;
@@ -7,16 +7,15 @@ interface LoadingStateProps {
 
 export function LoadingState({ tip = 'Đang tải dữ liệu...', compact = false }: LoadingStateProps) {
   return (
-    <Flex
-      align="center"
-      justify="center"
-      vertical
-      gap={12}
-      style={{ minHeight: compact ? 120 : 320, width: '100%' }}
-    >
-      <Spin size="large" />
-      <Typography.Text type="secondary">{tip}</Typography.Text>
-    </Flex>
+    <Paper p="lg" radius="md">
+      <Stack gap="sm">
+        <Text c="dimmed" size="sm">
+          {tip}
+        </Text>
+        <Skeleton height={compact ? 28 : 44} radius="sm" />
+        <Skeleton height={compact ? 28 : 44} radius="sm" />
+        <Skeleton height={compact ? 28 : 44} radius="sm" width="82%" />
+      </Stack>
+    </Paper>
   );
 }
-

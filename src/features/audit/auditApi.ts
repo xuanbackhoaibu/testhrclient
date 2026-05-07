@@ -1,7 +1,8 @@
-import { httpClient } from '../../shared/api/httpClient';
+import { api } from '../../shared/api/httpClient';
+import { normalizePaginatedResponse } from '../../shared/api/response';
 import { paginate, includesIgnoreCase, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockAuditLogs } from '../../shared/mocks/mockWorkflows';
-import type { ListQueryParams, PaginatedResponse } from '../../shared/types/api';
+import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../shared/types/api';
 import type { AuditLog } from './auditTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
@@ -27,7 +28,6 @@ export async function listAuditLogs(params: ListQueryParams = {}): Promise<Pagin
     return paginate(filtered, params);
   }
 
-  const response = await httpClient.get<PaginatedResponse<AuditLog>>('/audit-logs', { params });
-  return response.data;
+  const response = await api.get<PaginatedData<AuditLog>>('/audit-logs', { params });
+  return normalizePaginatedResponse<AuditLog>(response, params);
 }
-

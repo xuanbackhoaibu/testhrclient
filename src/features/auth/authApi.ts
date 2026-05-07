@@ -1,6 +1,7 @@
 import { httpClient } from '../../shared/api/httpClient';
 import { getMockUserByToken } from '../../shared/mocks/mockAuth';
 import { mockDelay } from '../../shared/mocks/mockHelpers';
+import { normalizeCurrentUser } from './currentUser';
 import type { AuthUser } from './types';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
@@ -14,10 +15,9 @@ export async function getCurrentUser(): Promise<AuthUser> {
       throw Object.assign(new Error('Unauthenticated'), { response: { status: 401 } });
     }
 
-    return user;
+    return normalizeCurrentUser(user);
   }
 
-  const response = await httpClient.get<AuthUser>('/auth/me');
-  return response.data;
+  const response = await httpClient.get('/auth/me');
+  return normalizeCurrentUser(response);
 }
-

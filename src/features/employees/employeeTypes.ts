@@ -1,8 +1,8 @@
 export interface EmployeeAssignment {
-  legalEntityId: string;
-  legalEntityName: string;
-  orgUnitId: string;
-  orgUnitName: string;
+  unitId: string;
+  unitName: string;
+  departmentId: string;
+  departmentName: string;
   positionId: string;
   positionName: string;
   jobTitle: string;
@@ -21,24 +21,59 @@ export interface Employee {
   hireDate: string;
   employmentStatus: string;
   citizenIdMasked?: string;
-  currentAssignment: EmployeeAssignment;
+  unitId?: string | null;
+  unitName?: string | null;
+  departmentId?: string | null;
+  departmentName?: string | null;
+  positionId?: string | null;
+  positionName?: string | null;
+  authUserId?: string | null;
+  accountStatus?: string | null;
+  account?: EmployeeAccount | null;
+  currentEmployeeAssignment: EmployeeAssignment | null;
 }
 
+export interface EmployeeAccount {
+  employeeId: string;
+  employeeCode?: string;
+  authUserId: string | null;
+  accountStatus: string;
+  localStatus?: string | null;
+  email?: string | null;
+  loginIdentifier?: string | null;
+  roles: string[];
+  linked: boolean;
+  syncStatus: 'SYNCED' | 'AUTH_UNAVAILABLE' | 'NOT_LINKED' | string;
+}
+
+export interface EmployeeCodePreview {
+  businessSectorId: string;
+  businessSectorCode: string;
+  nextNumber: number | null;
+  employeeCode: string | null;
+}
+
+export type EmployeeAccountRole =
+  | 'SUPER_ADMIN'
+  | 'ADMIN'
+  | 'HR'
+  | 'BAN_LANH_DAO'
+  | 'BAN_LANH_DAO_DON_VI'
+  | 'EMPLOYEE';
+
 export interface EmployeePayload {
-  employeeCode: string;
   fullName: string;
   companyEmail?: string;
   personalEmail?: string;
-  phone?: string;
+  phone: string;
   gender?: string;
   dateOfBirth?: string;
   hireDate: string;
   employmentStatus: string;
   citizenId?: string;
-  legalEntityId?: string;
-  orgUnitId?: string;
-  positionId?: string;
+  unitId: string;
+  departmentId: string;
+  positionId: string;
   jobTitle?: string;
   managerName?: string;
 }
-

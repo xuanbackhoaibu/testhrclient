@@ -1,4 +1,4 @@
-import { httpClient } from '../../shared/api/httpClient';
+import { api } from '../../shared/api/httpClient';
 import { appendAuditLog } from '../../shared/mocks/mockAudit';
 import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { generateId, mockDelay } from '../../shared/mocks/mockHelpers';
@@ -15,8 +15,7 @@ export async function listOffboardingTemplates(params: ListQueryParams = {}): Pr
     return mockOffboardingTemplates;
   }
 
-  const response = await httpClient.get<OffboardingTemplate[]>('/offboarding/templates');
-  return response.data;
+  return api.get<OffboardingTemplate[]>('/offboarding/templates');
 }
 
 export async function listOffboardingInstances(params: ListQueryParams = {}): Promise<OffboardingInstance[]> {
@@ -26,8 +25,7 @@ export async function listOffboardingInstances(params: ListQueryParams = {}): Pr
     return mockOffboardingInstances;
   }
 
-  const response = await httpClient.get<OffboardingInstance[]>('/offboarding/instances');
-  return response.data;
+  return api.get<OffboardingInstance[]>('/offboarding/instances');
 }
 
 export async function createOffboardingInstance(payload: OffboardingInstancePayload): Promise<OffboardingInstance> {
@@ -51,8 +49,7 @@ export async function createOffboardingInstance(payload: OffboardingInstancePayl
     return instance;
   }
 
-  const response = await httpClient.post<OffboardingInstance>('/offboarding/instances', payload);
-  return response.data;
+  return api.post<OffboardingInstance>('/offboarding/instances', payload);
 }
 
 export async function updateOffboardingItem(id: string, payload: { status: string }): Promise<OffboardingInstance> {
@@ -69,8 +66,7 @@ export async function updateOffboardingItem(id: string, payload: { status: strin
     return instance;
   }
 
-  const response = await httpClient.patch<OffboardingInstance>(`/offboarding/items/${id}`, payload);
-  return response.data;
+  return api.patch<OffboardingInstance>(`/offboarding/items/${id}`, payload);
 }
 
 export async function completeOffboardingInstance(id: string): Promise<OffboardingInstance> {
@@ -85,6 +81,5 @@ export async function completeOffboardingInstance(id: string): Promise<Offboardi
     return instance;
   }
 
-  const response = await httpClient.post<OffboardingInstance>(`/offboarding/instances/${id}/complete`);
-  return response.data;
+  return api.post<OffboardingInstance>(`/offboarding/instances/${id}/complete`);
 }
