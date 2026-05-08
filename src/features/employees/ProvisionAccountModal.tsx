@@ -106,7 +106,7 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
           <Stack gap={4}>
             <InfoRow label="Username dự kiến" value={expectedUsername} />
             <Text size="xs" c="dimmed">
-              Mật khẩu ban đầu sẽ được hệ thống sinh tự động (12 ký tự, có chữ hoa, chữ thường, số, ký tự đặc biệt).
+              Mật khẩu ban đầu sẽ được hệ thống sinh tự động và luôn có tối thiểu 8 ký tự.
             </Text>
           </Stack>
 

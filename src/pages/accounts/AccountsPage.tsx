@@ -192,7 +192,7 @@ export function AccountsPage() {
     !resetForm.autoGenerate && resetForm.password
       ? validatePasswordPolicy(resetForm.password)
       : !resetForm.autoGenerate
-        ? "Nhap mat khau tam thoi."
+        ? "Nhập mật khẩu tạm thời."
         : null;
 
   const accountsQuery = useQuery({
@@ -730,7 +730,7 @@ export function AccountsPage() {
                 {!resetForm.autoGenerate ? (
                   <PasswordInput
                     label="Mật khẩu tạm thủ công"
-                    placeholder="Dung 12 ky tu, co chu hoa, chu thuong, chu so, ky tu dac biet"
+                    placeholder="Tối thiểu 8 ký tự"
                     value={resetForm.password}
                     error={manualPasswordError ?? undefined}
                     onChange={(event) =>
