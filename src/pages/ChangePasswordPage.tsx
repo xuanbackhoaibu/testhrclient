@@ -20,7 +20,7 @@ import {
 } from '../features/auth/authClient';
 import {
   getPasswordPolicyChecks,
-  PASSWORD_LENGTH,
+  PASSWORD_MIN_LENGTH,
   validatePasswordPolicy,
 } from '../features/auth/passwordPolicy';
 import { ROUTES } from '../shared/constants/routes';
@@ -156,7 +156,7 @@ export function ChangePasswordPage() {
 
           <PasswordInput
             label="Mật khẩu mới"
-            placeholder={`Đúng ${PASSWORD_LENGTH} ký tự`}
+            placeholder={`Tối thiểu ${PASSWORD_MIN_LENGTH} ký tự`}
             leftSection={<IconLock size={18} />}
             autoComplete="new-password"
             disabled={submitting}
