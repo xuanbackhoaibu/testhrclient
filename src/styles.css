@@ -85,3 +85,52 @@ body {
   vertical-align: bottom;
   white-space: nowrap;
 }
+
+/* ── Mantine DatePicker popup fix ─────────────────────────────────────── */
+
+/* Prevent DatePicker popup from being covered by other elements */
+.mantine-DatePickerInput-popup,
+.mantine-DatePicker-popup {
+  z-index: 200 !important;
+}
+
+/* Ensure calendar icon arrows are normal size inside DatePicker inputs */
+.mantine-DatePickerInput-wrapper,
+.mantine-DatePickerInput-input {
+  width: 100%;
+}
+
+/* Keep calendar arrows at default icon size */
+.mantine-DatePickerInput-calendarIcon,
+.mantine-DatePickerInput-clearButton {
+  color: var(--mantine-color-dimmed);
+}
+
+/* Calendar month navigation arrows: do NOT apply global icon rules */
+.mantine-DatePickerCalendar__headerIcon,
+.mantine-DatePickerCalendar__headerControl {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+/* Fix calendar grid to fit within reasonable bounds */
+.mantine-DatePickerCalendar {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Prevent global svg/icon rules from breaking calendar navigation arrows */
+[data-mantine-color-scheme] .mantine-DatePickerInput-wrapper svg,
+.mantine-DatePickerInput-input svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Ensure month/year selectors in calendar don't overflow */
+.mantine-DatePickerCalendar__monthTab,
+.mantine-DatePickerCalendar__monthLevel {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
