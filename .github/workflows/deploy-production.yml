@@ -182,7 +182,7 @@ jobs:
             ''|*[!0-9]*) echo "SERVER_PORT secret must be digits only" >&2; exit 1 ;;
           esac
           case "${SERVER_RUNTIME_ENV_FILE}" in
-            *develop*|*server-test*) echo "Invalid app deploy configuration: SERVER_RUNTIME_ENV_FILE must not point to develop or server-test for production" >&2; exit 1 ;;
+            *develop*|*server-test*|*DEVELOP*|*SERVER-TEST*|*Develop*|*Server-Test*) echo "Invalid app deploy configuration: SERVER_RUNTIME_ENV_FILE must not point to develop or server-test for production" >&2; exit 1 ;;
           esac
           echo "Deploy kind: app"
           echo "DEPLOY_ENV=${DEPLOY_ENV}"
