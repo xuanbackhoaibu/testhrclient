@@ -139,7 +139,6 @@ jobs:
       SERVER_INFRA_ROOT: ${{ vars.SERVER_INFRA_ROOT }}
       SERVER_RUNTIME_ENV_FILE: ${{ vars.SERVER_RUNTIME_ENV_FILE }}
       SERVICE_NAME: ${{ vars.SERVICE_NAME }}
-      HR_API_HEALTH_URL: ${{ vars.HR_API_HEALTH_URL }}
       SERVER_HOST: ${{ secrets.SERVER_HOST }}
       SERVER_USER: ${{ secrets.SERVER_USER }}
       SERVER_PORT: ${{ secrets.SERVER_PORT }}
@@ -153,9 +152,7 @@ jobs:
           SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
         run: |
           set -euo pipefail
-          # App services must use SERVER_RUNTIME_ENV_FILE.
-          # SERVER_INFRA_ENV_FILE is only for infra repository deployments.
-          for var in DEPLOY_ENV SERVER_HOST SERVER_PORT SERVER_USER SERVER_SSH_KEY SERVER_SSH_KNOWN_HOSTS GHCR_PULL_USERNAME GHCR_PULL_TOKEN SERVER_APPS_ROOT SERVER_RUNTIME_ENV_FILE SERVICE_NAME HR_API_HEALTH_URL; do
+          for var in DEPLOY_ENV SERVER_HOST SERVER_PORT SERVER_USER SERVER_SSH_KEY SERVER_SSH_KNOWN_HOSTS GHCR_PULL_USERNAME GHCR_PULL_TOKEN SERVER_APPS_ROOT SERVER_RUNTIME_ENV_FILE SERVICE_NAME; do
             if [ -n "${!var:-}" ]; then
               echo "${var}=SET"
             else
@@ -176,7 +173,6 @@ jobs:
             DEPLOY_ENV SERVER_APPS_ROOT SERVICE_NAME
             SERVER_HOST SERVER_USER SERVER_PORT SERVER_SSH_KEY
             SERVER_SSH_KNOWN_HOSTS GHCR_PULL_USERNAME GHCR_PULL_TOKEN SERVER_RUNTIME_ENV_FILE
-            HR_API_HEALTH_URL
           )
           for name in "${required[@]}"; do
             test -n "${!name:-}" || { echo "Missing required app deploy configuration: ${name}" >&2; exit 1; }
@@ -188,16 +184,11 @@ jobs:
           case "${SERVER_RUNTIME_ENV_FILE}" in
             *develop*|*server-test*) echo "Invalid app deploy configuration: SERVER_RUNTIME_ENV_FILE must not point to develop or server-test for production" >&2; exit 1 ;;
           esac
-          case "${HR_API_HEALTH_URL}" in
-            http://*|https://*) ;;
-            *) echo "Invalid app deploy configuration: HR_API_HEALTH_URL must start with http:// or https://" >&2; exit 1 ;;
-          esac
           echo "Deploy kind: app"
           echo "DEPLOY_ENV=${DEPLOY_ENV}"
           echo "SERVICE_NAME=${SERVICE_NAME}"
           echo "SERVER_APPS_ROOT=${SERVER_APPS_ROOT}"
           echo "SERVER_RUNTIME_ENV_FILE=${SERVER_RUNTIME_ENV_FILE}"
-          echo "HEALTHCHECK_URL=${HR_API_HEALTH_URL}"
           echo "DEPLOY_DIR=${SERVER_APPS_ROOT}/${SERVICE_NAME}" >> "${GITHUB_ENV}"
           echo "Deploying ${IMAGE_REPOSITORY}:${IMAGE_TAG} to production"
 
@@ -260,7 +251,6 @@ jobs:
           COMPOSE_FILE=deploy/compose/production.yml
           COMPOSE_PROJECT_NAME=hr-prod
           RUNTIME_SERVICE=hr-web-client
-          HEALTHCHECK_URL=${HR_API_HEALTH_URL}
           HR_WEB_VERSION=${IMAGE_TAG}
           EOF
 
@@ -288,7 +278,6 @@ jobs:
           echo "  SERVER_RUNTIME_ENV_FILE=${SERVER_RUNTIME_ENV_FILE}"
           echo "  SERVICE_NAME=${SERVICE_NAME}"
           echo "  DEPLOY_ENV=${DEPLOY_ENV}"
-          echo "  HR_API_HEALTH_URL=${HR_API_HEALTH_URL}"
           echo "  IMAGE_TAG=${IMAGE_TAG:0:12}"
           ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
             bash -se -- \
@@ -297,7 +286,6 @@ jobs:
             "${GHCR_PULL_USERNAME}" \
             "${GHCR_PULL_TOKEN}" \
             "${SERVER_RUNTIME_ENV_FILE}" \
-            "${HR_API_HEALTH_URL}" \
             "${SERVICE_NAME}" \
             "${DEPLOY_ENV}" <<'EOF'
           set -Eeuo pipefail
@@ -306,9 +294,8 @@ jobs:
           ghcr_username="$3"
           ghcr_token="$4"
           runtime_env_file="$5"
-          hr_api_health_url="$6"
-          service_name="$7"
-          deploy_env="$8"
+          service_name="$6"
+          deploy_env="$7"
 
           cd "${deploy_dir}"
 
@@ -327,14 +314,8 @@ jobs:
             exit 64
           }
 
-          test -n "${hr_api_health_url}" || {
-            echo "ERROR: HR_API_HEALTH_URL is missing" >&2
-            exit 64
-          }
-
           export IMAGE_TAG="${image_tag}"
           export SERVER_RUNTIME_ENV_FILE="${runtime_env_file}"
-          export HR_API_HEALTH_URL="${hr_api_health_url}"
           export SERVICE_NAME="${service_name}"
           export DEPLOY_ENV="${deploy_env}"
 
@@ -343,7 +324,6 @@ jobs:
           echo "  SERVER_RUNTIME_ENV_FILE=${SERVER_RUNTIME_ENV_FILE}"
           echo "  SERVICE_NAME=${SERVICE_NAME}"
           echo "  DEPLOY_ENV=${DEPLOY_ENV}"
-          echo "  HR_API_HEALTH_URL=${HR_API_HEALTH_URL}"
           echo "  IMAGE_TAG=${IMAGE_TAG:0:12}"
 
           printf '%s' "${ghcr_token}" | docker login ghcr.io -u "${ghcr_username}" --password-stdin
@@ -384,7 +364,6 @@ jobs:
       SERVER_APPS_ROOT: ${{ vars.SERVER_APPS_ROOT }}
       SERVER_RUNTIME_ENV_FILE: ${{ vars.SERVER_RUNTIME_ENV_FILE }}
       SERVICE_NAME: ${{ vars.SERVICE_NAME }}
-      HR_API_HEALTH_URL: ${{ vars.HR_API_HEALTH_URL }}
       SERVER_HOST: ${{ secrets.SERVER_HOST }}
       SERVER_USER: ${{ secrets.SERVER_USER }}
       SERVER_PORT: ${{ secrets.SERVER_PORT }}
@@ -394,7 +373,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for var in SERVER_APPS_ROOT SERVICE_NAME SERVER_RUNTIME_ENV_FILE HR_API_HEALTH_URL; do
+          for var in SERVER_APPS_ROOT SERVICE_NAME SERVER_RUNTIME_ENV_FILE; do
             test -n "${!var:-}" || { echo "Missing required app deploy configuration: ${var}" >&2; exit 1; }
           done
           echo "DEPLOY_DIR=${SERVER_APPS_ROOT}/${SERVICE_NAME}" >> "${GITHUB_ENV}"
@@ -412,10 +391,9 @@ jobs:
           printf '%s\n' "${SERVER_SSH_KNOWN_HOSTS}" | tr -d '\r' > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
-      - name: Run HR Web production smoke
+      - name: Run HR Web smoke
         shell: bash
         run: |
           set -Eeuo pipefail
-          test -n "${HR_API_HEALTH_URL:-}" || { echo "ERROR: HR_API_HEALTH_URL missing" >&2; exit 64; }
           ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
-            "cd '${DEPLOY_DIR}' && SERVER_RUNTIME_ENV_FILE='${SERVER_RUNTIME_ENV_FILE}' HR_API_HEALTH_URL='${HR_API_HEALTH_URL}' COMPOSE_FILE='deploy/compose/production.yml' deploy/scripts/smoke-production.sh"
+            "cd '${DEPLOY_DIR}' && SERVER_RUNTIME_ENV_FILE='${SERVER_RUNTIME_ENV_FILE}' COMPOSE_FILE='deploy/compose/production.yml' deploy/scripts/smoke-production.sh"
