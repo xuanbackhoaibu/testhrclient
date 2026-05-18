@@ -7,7 +7,7 @@ import {
   IconUsers,
   IconUserX,
 } from '@tabler/icons-react';
-import type { AttendanceSummary } from '../../features/attendance/attendanceTypes';
+import type { AttendanceSummary } from '../../../features/attendance/attendanceTypes';
 
 interface AttendanceSummaryCardsProps {
   summary: AttendanceSummary | undefined;
