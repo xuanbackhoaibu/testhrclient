@@ -91,17 +91,26 @@ export async function handleAxiosResponseError(
     return Promise.reject(apiError);
   }
 
-  if (
-    apiError.statusCode === 403 &&
-    apiError.errorCode === 'CHANGE_PASSWORD_REQUIRED'
-  ) {
-    if (window.location.pathname !== '/change-password') {
-      window.location.assign('/change-password');
-    }
-    return Promise.reject(apiError);
-  }
-
   if (apiError.statusCode === 403) {
+    const errorCode = apiError.errorCode;
+
+    if (errorCode === 'CHANGE_PASSWORD_REQUIRED') {
+      if (window.location.pathname !== '/change-password') {
+        window.location.assign('/change-password');
+      }
+      return Promise.reject(apiError);
+    }
+
+    if (errorCode === 'NO_HRM_ACCESS' || errorCode === 'AUTHENTICATED_BUT_NO_HRM_ACCESS') {
+      showError(
+        appendRequestId(
+          'Tài khoản đã đăng nhập nhưng chưa được cấp quyền truy cập HRM. Vui lòng liên hệ quản trị viên.',
+          apiError.requestId,
+        ),
+      );
+      return Promise.reject(apiError);
+    }
+
     const requiredPermissions =
       apiError.requiredPermissions?.length
         ? ` Quyền yêu cầu: ${apiError.requiredPermissions.join(', ')}.`

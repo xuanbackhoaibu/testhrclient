@@ -57,6 +57,75 @@ export const axiosInstance = axios.create({
   timeout: 15000,
 });
 
+// ─── Refresh token lock ──────────────────────────────────────────────────────
+// Prevents multiple simultaneous 401 refresh attempts (request queuing).
+let refreshPromise: Promise<void> | null = null;
+
+/**
+ * Called when any API call returns 401.
+ * Refreshes the session by re-fetching the current user.
+ * If successful, the original request is retried.
+ * If failed, the session is cleared and the user is redirected to login.
+ */
+async function handle401AndRetry(
+  originalRequest: AxiosRequestConfig,
+): Promise<unknown> {
+  if (!refreshPromise) {
+    refreshPromise = doRefreshSession();
+  }
+
+  try {
+    await refreshPromise;
+    // Refresh succeeded — retry original request with fresh token
+    const newToken = getAccessToken();
+    if (!newToken) {
+      clearSession();
+      window.location.assign('/login');
+      return Promise.reject(new Error('No access token after refresh'));
+    }
+
+    const response = await axiosInstance({
+      ...originalRequest,
+      headers: {
+        ...originalRequest.headers,
+        Authorization: `Bearer ${newToken}`,
+      },
+    });
+    return response;
+  } catch {
+    // Refresh failed — clear session and redirect
+    refreshPromise = null;
+    clearSession();
+    window.location.assign('/login');
+    return Promise.reject(new Error('Session refresh failed'));
+  } finally {
+    refreshPromise = null;
+  }
+}
+
+async function doRefreshSession(): Promise<void> {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('No token to refresh');
+  }
+
+  try {
+    const baseURL = import.meta.env.VITE_HR_API_BASE_URL ?? import.meta.env.VITE_API_BASE_URL;
+    const response = await axios.get(`${baseURL}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 10000,
+    });
+
+    // If the /auth/me call succeeds, the token is still valid.
+    // The caller will retry the original request with the same token.
+    // The 401 was likely a temporary token expiry on the auth-service side.
+    return response;
+  } catch (error) {
+    // If /auth/me also returns 401/403, the token is definitely invalid.
+    throw error;
+  }
+}
+
 axiosInstance.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token) {
@@ -67,11 +136,32 @@ axiosInstance.interceptors.request.use((config) => {
 
 axiosInstance.interceptors.response.use(
   (response) => response,
-  (error) =>
-    handleAxiosResponseError(error, () => {
+  (error) => {
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+
+    // If this request already went through a 401 retry, don't loop
+    if (originalRequest._retry) {
+      return handleAxiosResponseError(error, () => {
+        clearSession();
+        window.location.assign('/login');
+      });
+    }
+
+    // Only intercept 401 for authenticated endpoints (has Authorization header)
+    if (
+      error.response?.status === 401 &&
+      originalRequest.headers?.Authorization &&
+      !originalRequest._retry
+    ) {
+      originalRequest._retry = true;
+      return handle401AndRetry(originalRequest);
+    }
+
+    return handleAxiosResponseError(error, () => {
       clearSession();
       window.location.assign('/login');
-    }),
+    });
+  },
 );
 
 export const api = {
