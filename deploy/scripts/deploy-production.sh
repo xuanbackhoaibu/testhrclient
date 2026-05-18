@@ -34,7 +34,6 @@ done
 PROJECT_NAME="${COMPOSE_PROJECT_NAME:-hr-prod}"
 COMMON_ENV_FILE="${COMMON_ENV_FILE:-${SERVER_RUNTIME_ENV_FILE}}"
 SERVICE_ENV_FILE="${SERVICE_ENV_FILE:-${SERVER_RUNTIME_ENV_FILE}}"
-INCOMING_HR_API_HEALTH_URL="${HR_API_HEALTH_URL:-}"
 if [ -z "${VERSIONS_ENV_FILE:-}" ]; then
   if [ -n "${SERVER_RUNTIME_ENV_FILE:-}" ]; then
     VERSIONS_ENV_FILE="$(dirname "${SERVER_RUNTIME_ENV_FILE}")/.hr-web-client.versions"
@@ -83,9 +82,6 @@ set -a
 . "${COMMON_ENV_FILE}"
 . "${VERSIONS_ENV_FILE}"
 set +a
-if [ -n "${INCOMING_HR_API_HEALTH_URL}" ]; then
-  HR_API_HEALTH_URL="${INCOMING_HR_API_HEALTH_URL}"
-fi
 export HR_WEB_ENV_FILE="${SERVICE_ENV_FILE}"
 export IMAGE_TAG
 export SERVER_RUNTIME_ENV_FILE
@@ -93,8 +89,6 @@ export SERVICE_NAME
 export DEPLOY_ENV
 
 : "${CHAT_NETWORK:?CHAT_NETWORK is required in ${COMMON_ENV_FILE}}"
-: "${HR_API_HEALTH_URL:?HR_API_HEALTH_URL is required for HR Web production deploy smoke check.}"
-export HR_API_HEALTH_URL
 docker network inspect "${CHAT_NETWORK}" >/dev/null
 
 compose() {
