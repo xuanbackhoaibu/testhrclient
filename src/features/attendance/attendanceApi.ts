@@ -5,9 +5,48 @@ import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockAttendanceRecords } from '../../shared/mocks/mockWorkflows';
 import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../shared/types/api';
-import type { AttendancePayload, AttendanceRecord } from './attendanceTypes';
+import type {
+  AttendancePayload,
+  AttendanceRecord,
+  AttendanceDailyRecord,
+  AttendanceDailyRecordsResponse,
+  AttendanceDailyFilterParams,
+  AttendanceSyncStatusResponse,
+  AttendanceSyncRunsResponse,
+  SyncRunsFilterParams,
+  ManualSyncResponse,
+} from './attendanceTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
+
+// ─── BioTime Daily Records ────────────────────────────────────────────────────
+
+export async function listAttendanceDailyRecords(
+  params: AttendanceDailyFilterParams = {},
+): Promise<AttendanceDailyRecordsResponse> {
+  const response = await api.get<PaginatedData<AttendanceDailyRecord>>('/attendance/daily', { params });
+  return normalizePaginatedResponse<AttendanceDailyRecord>(response, params) as AttendanceDailyRecordsResponse;
+}
+
+export async function getAttendanceSyncStatus(): Promise<AttendanceSyncStatusResponse> {
+  return api.get('/attendance/sync/status');
+}
+
+export async function listAttendanceSyncRuns(
+  params: SyncRunsFilterParams = {},
+): Promise<AttendanceSyncRunsResponse> {
+  const response = await api.get<PaginatedData<unknown>>('/attendance/sync/runs', { params });
+  return normalizePaginatedResponse<unknown>(response, params) as AttendanceSyncRunsResponse;
+}
+
+export async function manualAttendanceSync(body: {
+  startDate?: string;
+  endDate?: string;
+}): Promise<ManualSyncResponse> {
+  return api.post('/attendance/sync/manual', body);
+}
+
+// ─── Legacy manual attendance (keep existing) ────────────────────────────────
 
 export async function listAttendanceRecords(params: ListQueryParams = {}): Promise<PaginatedResponse<AttendanceRecord>> {
   if (isMockMode) {
