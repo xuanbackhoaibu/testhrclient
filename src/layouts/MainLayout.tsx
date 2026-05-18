@@ -16,6 +16,7 @@ import {
   IconBriefcase,
   IconBuildingBank,
   IconChevronDown,
+  IconClipboardList,
   IconDashboard,
   IconKey,
   IconLogout,
@@ -45,7 +46,7 @@ const mainItems: NavItem[] = [
   { label: "Điều chuyển", path: ROUTES.movements, icon: IconTransfer },
   // { label: "Hợp đồng", path: ROUTES.contracts, icon: IconBriefcase },
   // { label: "Nghỉ phép", path: ROUTES.leave, icon: IconCalendarCheck },
-  // { label: "Chấm công", path: ROUTES.attendance, icon: IconClipboardList },
+  { label: "Chấm công", path: ROUTES.attendance, icon: IconClipboardList },
   // { label: "Onboarding", path: ROUTES.onboarding, icon: IconFolderOpen },
   // { label: "Offboarding", path: ROUTES.offboarding, icon: IconFileImport },
   // { label: "Audit logs", path: ROUTES.auditLogs, icon: IconFileAnalytics },
@@ -105,6 +106,7 @@ export function MainLayout() {
     if (item.path === ROUTES.employees) return can(HR_PERMISSIONS.EMPLOYEE_READ);
     if (item.path === ROUTES.auditLogs) return can(HR_PERMISSIONS.AUDIT_READ);
     if (item.path === ROUTES.settings) return can(HR_PERMISSIONS.EMPLOYEE_READ);
+    if (item.path === ROUTES.attendance) return can(HR_PERMISSIONS.ATTENDANCE_READ);
     return true;
   });
 

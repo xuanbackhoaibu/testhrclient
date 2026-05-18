@@ -41,6 +41,11 @@ export const HR_PERMISSIONS = {
   EMPLOYEE_IMPORT: 'hr.employee.import',
   EMPLOYEE_EXPORT: 'hr.employee.export',
 
+  // Attendance
+  ATTENDANCE_READ: 'hr.attendance.read',
+  ATTENDANCE_SYNC: 'hr.attendance.sync',
+  ATTENDANCE_SYNC_LOG_READ: 'hr.attendance.sync_log.read',
+
   ACCOUNT_READ: 'hr.account.read',
   ACCOUNT_CREATE: 'hr.account.create',
   ACCOUNT_UPDATE: 'hr.account.update',
@@ -201,6 +206,20 @@ export function canManageMasterData(user: AuthUser | null | undefined) {
 }
 
 export function canViewAuditLogs(user: AuthUser | null | undefined) {
+  return hasAnyRole(user, [HRM_ROLES.SUPER_ADMIN, HRM_ROLES.ADMIN, HRM_ROLES.HR]);
+}
+
+export function canViewAttendance(user: AuthUser | null | undefined) {
+  return hasAnyRole(user, [
+    HRM_ROLES.SUPER_ADMIN,
+    HRM_ROLES.ADMIN,
+    HRM_ROLES.HR,
+    HRM_ROLES.BAN_LANH_DAO,
+    HRM_ROLES.BAN_LANH_DAO_DON_VI,
+  ]);
+}
+
+export function canSyncAttendance(user: AuthUser | null | undefined) {
   return hasAnyRole(user, [HRM_ROLES.SUPER_ADMIN, HRM_ROLES.ADMIN, HRM_ROLES.HR]);
 }
 
