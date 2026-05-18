@@ -17,7 +17,7 @@ import {
 import { useAuth } from '../../features/auth/useAuth';
 import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import { DataTable } from '../../shared/components/DataTable';
-import type { AttendanceDailyFilterParams, AttendanceFilters } from '../../features/attendance/attendanceTypes';
+import type { AttendanceDailyFilterParams } from '../../features/attendance/attendanceTypes';
 import { AttendanceFilterBar } from './components/AttendanceFilterBar';
 import { AttendanceSyncStatusCard } from './components/AttendanceSyncStatusCard';
 import { AttendanceSummaryCards } from './components/AttendanceSummaryCards';
