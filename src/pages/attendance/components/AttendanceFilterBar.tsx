@@ -193,36 +193,64 @@ export function AttendanceFilterBar({
 
         {/* Date pickers */}
         {dateMode === 'single' ? (
-          <DatePickerInput
-            placeholder="Chọn ngày"
-            value={parseDateValue(filters.date)}
-            onChange={handleDateChange}
-            clearable
-            maxDate={new Date()}
-            className={styles.dateInput}
-            size="sm"
-          />
+          <div className={styles.dateFilterWrapper}>
+            <DatePickerInput
+              placeholder="Chọn ngày"
+              value={parseDateValue(filters.date)}
+              onChange={handleDateChange}
+              clearable
+              maxDate={new Date()}
+              className={styles.dateInput}
+              classNames={{ dropdown: 'attendance-date-filter-dropdown' }}
+              popoverProps={{
+                withinPortal: true,
+                position: 'bottom-start',
+                shadow: 'md',
+                radius: 'md',
+                zIndex: 300,
+              }}
+              size="sm"
+            />
+          </div>
         ) : (
-          <Group gap={4} wrap="nowrap" className={styles.rangeInputs}>
-            <DatePickerInput
-              placeholder="Từ"
-              value={parseDateValue(filters.from)}
-              onChange={handleFromChange}
-              clearable
-              maxDate={new Date()}
-              className={styles.dateInput}
-              size="sm"
-            />
-            <DatePickerInput
-              placeholder="Đến"
-              value={parseDateValue(filters.to)}
-              onChange={handleToChange}
-              clearable
-              maxDate={new Date()}
-              className={styles.dateInput}
-              size="sm"
-            />
-          </Group>
+          <div className={styles.dateFilterWrapper}>
+            <Group gap={4} wrap="nowrap" className={styles.rangeInputs}>
+              <DatePickerInput
+                placeholder="Từ"
+                value={parseDateValue(filters.from)}
+                onChange={handleFromChange}
+                clearable
+                maxDate={new Date()}
+                className={styles.dateInput}
+                classNames={{ dropdown: 'attendance-date-filter-dropdown' }}
+                popoverProps={{
+                  withinPortal: true,
+                  position: 'bottom-start',
+                  shadow: 'md',
+                  radius: 'md',
+                  zIndex: 300,
+                }}
+                size="sm"
+              />
+              <DatePickerInput
+                placeholder="Đến"
+                value={parseDateValue(filters.to)}
+                onChange={handleToChange}
+                clearable
+                maxDate={new Date()}
+                className={styles.dateInput}
+                classNames={{ dropdown: 'attendance-date-filter-dropdown' }}
+                popoverProps={{
+                  withinPortal: true,
+                  position: 'bottom-start',
+                  shadow: 'md',
+                  radius: 'md',
+                  zIndex: 300,
+                }}
+                size="sm"
+              />
+            </Group>
+          </div>
         )}
 
         {/* Status filter */}
