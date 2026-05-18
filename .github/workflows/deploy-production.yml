@@ -46,12 +46,14 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Build HR Web
+      - name: Install dependencies, typecheck, lint, build
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
         shell: bash
         run: |
           set -Eeuo pipefail
           npm ci --no-audit --no-fund
+          npm run typecheck
+          npm run lint
           npm run build
 
       - name: Skip build for rollback
