@@ -109,19 +109,11 @@ async function doRefreshSession(): Promise<void> {
     throw new Error('No token to refresh');
   }
 
-  try {
-    const baseURL = import.meta.env.VITE_HR_API_BASE_URL ?? import.meta.env.VITE_API_BASE_URL;
-    await axios.get(`${baseURL}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-      timeout: 10000,
-    });
-    // If /auth/me succeeds, the token is still valid.
-    // The caller will retry the original request with the same token.
-    // The 401 was likely a temporary token expiry on the auth-service side.
-  } catch (error) {
-    // If /auth/me also returns 401/403, the token is definitely invalid.
-    throw error;
-  }
+  const baseURL = import.meta.env.VITE_HR_API_BASE_URL ?? import.meta.env.VITE_API_BASE_URL;
+  await axios.get(`${baseURL}/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+    timeout: 10000,
+  });
 }
 
 axiosInstance.interceptors.request.use((config) => {

@@ -75,14 +75,10 @@ async function doAuthRefresh(): Promise<void> {
     ?? '';
   const url = baseURL.replace(/\/auth\/?$/, '') + '/api/v1/auth/me';
 
-  try {
-    await axios.get(url, {
-      headers: { Authorization: `Bearer ${token}` },
-      timeout: 10000,
-    });
-  } catch (error) {
-    throw error;
-  }
+  await axios.get(url, {
+    headers: { Authorization: `Bearer ${token}` },
+    timeout: 10000,
+  });
 }
 
 authAdminApiClient.interceptors.request.use((config) => {
