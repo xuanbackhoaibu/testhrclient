@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Badge, Button, Card, Group, Select, Stack, Text, TextInput, Title, Alert } from '@mantine/core';
+import { Badge, Button, Card, Group, Select, Stack, Text, TextInput, Alert } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
-import { IconRefresh, IconAlertTriangle, IconClock, IconCheck, IconX } from '@tabler/icons-react';
+import { IconRefresh, IconAlertTriangle, IconClock, IconCheck } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 
 import {
@@ -154,7 +154,7 @@ export function AttendancePage() {
               <DatePickerInput
                 label="Ngày"
                 placeholder="Chọn ngày"
-                value={filters.date ? new Date(filters.date) : null}
+                value={filters.date ?? null}
                 onChange={(val) =>
                   setFilters((f) => ({
                     ...f,
@@ -168,7 +168,7 @@ export function AttendancePage() {
               <DatePickerInput
                 label="Từ ngày"
                 placeholder="Từ ngày"
-                value={filters.from ? new Date(filters.from) : null}
+                value={filters.from ?? null}
                 onChange={(val) =>
                   setFilters((f) => ({
                     ...f,
@@ -182,7 +182,7 @@ export function AttendancePage() {
               <DatePickerInput
                 label="Đến ngày"
                 placeholder="Đến ngày"
-                value={filters.to ? new Date(filters.to) : null}
+                value={filters.to ?? null}
                 onChange={(val) =>
                   setFilters((f) => ({
                     ...f,
