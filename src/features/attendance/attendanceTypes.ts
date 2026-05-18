@@ -120,6 +120,7 @@ export interface ManualSyncResponse {
     mappedCount: number;
     unmappedCount: number;
     errorMessage?: string;
+    departmentIds?: number[];
   };
 }
 

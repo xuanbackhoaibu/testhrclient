@@ -44,7 +44,7 @@ export function useManualAttendanceSync() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (body: { startDate?: string; endDate?: string }) =>
+    mutationFn: (body: { startDate?: string; endDate?: string; refreshDepartments?: boolean }) =>
       manualAttendanceSync(body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['attendance-daily'] });
