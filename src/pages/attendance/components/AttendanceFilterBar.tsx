@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Badge,
   Button,
@@ -47,20 +47,18 @@ const MAPPING_OPTIONS = [
   { value: 'UNMAPPED', label: 'Chưa map' },
 ];
 
-function hasActiveFilters(f: AttendanceFilters): boolean {
-  return Boolean(
-    f.search || f.date || f.from || f.to || f.status || f.mappingStatus,
-  );
-}
-
 const DEFAULT_FILTERS: AttendanceFilters = {
   search: '',
-  date: '',
+  date: dayjs().format('YYYY-MM-DD'),
   from: '',
   to: '',
   status: '',
   mappingStatus: '',
 };
+
+function hasActiveFilters(f: AttendanceFilters): boolean {
+  return Boolean(f.search || f.date || f.from || f.to || f.status || f.mappingStatus);
+}
 
 export function AttendanceFilterBar({
   filters,
@@ -85,35 +83,34 @@ export function AttendanceFilterBar({
   const handleDateModeChange = (mode: DateMode) => {
     setDateMode(mode);
     if (mode === 'single') {
-      onChange({ ...filters, from: '', to: '', date: filters.date || dayjs().format('YYYY-MM-DD') });
+      onChange({
+        ...filters,
+        from: '',
+        to: '',
+        date: filters.date || dayjs().format('YYYY-MM-DD'),
+      });
     } else {
-      onChange({ ...filters, date: '', from: filters.from || dayjs().format('YYYY-MM-DD'), to: filters.to || dayjs().format('YYYY-MM-DD') });
+      onChange({
+        ...filters,
+        date: '',
+        from: filters.from || dayjs().format('YYYY-MM-DD'),
+        to: filters.to || dayjs().format('YYYY-MM-DD'),
+      });
     }
   };
 
-  const handleDateChange = useCallback(
-    (value: Date | null) => {
-      const formatted = value ? dayjs(value).format('YYYY-MM-DD') : '';
-      onChange({ ...filters, date: formatted });
-    },
-    [filters, onChange],
-  );
+  // Mantine v9 DatePickerInput uses string | null, not Date | null
+  const handleDateChange = (value: string | null) => {
+    onChange({ ...filters, date: value ?? '' });
+  };
 
-  const handleFromChange = useCallback(
-    (value: Date | null) => {
-      const formatted = value ? dayjs(value).format('YYYY-MM-DD') : '';
-      onChange({ ...filters, from: formatted });
-    },
-    [filters, onChange],
-  );
+  const handleFromChange = (value: string | null) => {
+    onChange({ ...filters, from: value ?? '' });
+  };
 
-  const handleToChange = useCallback(
-    (value: Date | null) => {
-      const formatted = value ? dayjs(value).format('YYYY-MM-DD') : '';
-      onChange({ ...filters, to: formatted });
-    },
-    [filters, onChange],
-  );
+  const handleToChange = (value: string | null) => {
+    onChange({ ...filters, to: value ?? '' });
+  };
 
   const handleClear = () => {
     setSearchInput('');
@@ -132,7 +129,6 @@ export function AttendanceFilterBar({
 
   return (
     <Stack gap="xs" className={styles.root}>
-      {/* Row 1: Search + Date controls */}
       <Group gap="xs" wrap="nowrap" className={styles.row}>
         {/* Search input */}
         <TextInput
@@ -156,17 +152,19 @@ export function AttendanceFilterBar({
           size="sm"
         />
 
-        {/* Date mode toggle */}
-        <ButtonGroup size="xs" className={styles.dateModeToggle}>
+        {/* Date mode toggle — no size prop on ButtonGroup in Mantine v9 */}
+        <ButtonGroup className={styles.dateModeToggle}>
           <Button
             variant={dateMode === 'single' ? 'filled' : 'default'}
             onClick={() => handleDateModeChange('single')}
+            size="xs"
           >
             Ngày
           </Button>
           <Button
             variant={dateMode === 'range' ? 'filled' : 'default'}
             onClick={() => handleDateModeChange('range')}
+            size="xs"
           >
             Khoảng
           </Button>
@@ -176,7 +174,7 @@ export function AttendanceFilterBar({
         {dateMode === 'single' ? (
           <DatePickerInput
             placeholder="Chọn ngày"
-            value={filters.date ? new Date(filters.date) : null}
+            value={filters.date || null}
             onChange={handleDateChange}
             clearable
             maxDate={new Date()}
@@ -187,7 +185,7 @@ export function AttendanceFilterBar({
           <Group gap={4} wrap="nowrap" className={styles.rangeInputs}>
             <DatePickerInput
               placeholder="Từ"
-              value={filters.from ? new Date(filters.from) : null}
+              value={filters.from || null}
               onChange={handleFromChange}
               clearable
               maxDate={new Date()}
@@ -196,7 +194,7 @@ export function AttendanceFilterBar({
             />
             <DatePickerInput
               placeholder="Đến"
-              value={filters.to ? new Date(filters.to) : null}
+              value={filters.to || null}
               onChange={handleToChange}
               clearable
               maxDate={new Date()}
