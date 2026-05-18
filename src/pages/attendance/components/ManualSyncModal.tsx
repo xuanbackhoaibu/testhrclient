@@ -14,32 +14,29 @@ const MAX_DAYS = 7;
 
 export function ManualSyncModal({ opened, onClose, onSync, isLoading }: ManualSyncModalProps) {
   const today = dayjs();
-  const [startDate, setStartDate] = useState<Date | null>(today.subtract(1, 'day').toDate());
-  const [endDate, setEndDate] = useState<Date | null>(today.toDate());
+  const [startDate, setStartDate] = useState<string | null>(today.subtract(1, 'day').format('YYYY-MM-DD'));
+  const [endDate, setEndDate] = useState<string | null>(today.format('YYYY-MM-DD'));
   const [refreshDepartments, setRefreshDepartments] = useState(true);
 
-  const startStr = startDate ? dayjs(startDate).format('YYYY-MM-DD') : '';
-  const endStr = endDate ? dayjs(endDate).format('YYYY-MM-DD') : '';
-
   const diffDays = startDate && endDate
-    ? dayjs(endDate).diff(dayjs(startDate), 'day') + 1
+    ? dayjs(endDate, 'YYYY-MM-DD').diff(dayjs(startDate, 'YYYY-MM-DD'), 'day') + 1
     : 0;
 
-  const isValid = startDate && endDate && dayjs(endDate).isAfter(dayjs(startDate).subtract(1, 'day')) && diffDays <= MAX_DAYS;
+  const isValid = startDate && endDate && dayjs(endDate, 'YYYY-MM-DD').isAfter(dayjs(startDate, 'YYYY-MM-DD').subtract(1, 'day')) && diffDays <= MAX_DAYS;
 
   const handleSubmit = () => {
-    if (!isValid) return;
+    if (!isValid || !startDate || !endDate) return;
     onSync({
-      startDate: startStr,
-      endDate: endStr,
+      startDate,
+      endDate,
       refreshDepartments,
     });
   };
 
   const handleClose = () => {
     if (!isLoading) {
-      setStartDate(today.subtract(1, 'day').toDate());
-      setEndDate(today.toDate());
+      setStartDate(today.subtract(1, 'day').format('YYYY-MM-DD'));
+      setEndDate(today.format('YYYY-MM-DD'));
       setRefreshDepartments(true);
       onClose();
     }
@@ -68,6 +65,7 @@ export function ManualSyncModal({ opened, onClose, onSync, isLoading }: ManualSy
             maxDate={new Date()}
             clearable
             size="sm"
+            valueFormat="YYYY-MM-DD"
           />
           <DatePickerInput
             label="Đến ngày"
@@ -75,9 +73,10 @@ export function ManualSyncModal({ opened, onClose, onSync, isLoading }: ManualSy
             value={endDate}
             onChange={setEndDate}
             maxDate={new Date()}
-            minDate={startDate ?? undefined}
+            minDate={startDate ? new Date(startDate) : undefined}
             clearable
             size="sm"
+            valueFormat="YYYY-MM-DD"
           />
         </Group>
 
@@ -87,9 +86,9 @@ export function ManualSyncModal({ opened, onClose, onSync, isLoading }: ManualSy
           </Text>
         )}
 
-        {diffDays > 0 && diffDays <= MAX_DAYS && (
+        {diffDays > 0 && diffDays <= MAX_DAYS && startDate && endDate && (
           <Text size="xs" c="dimmed">
-            Khoảng cách: {diffDays} ngày ({startStr} → {endStr})
+            Khoảng cách: {diffDays} ngày ({startDate} → {endDate})
           </Text>
         )}
 

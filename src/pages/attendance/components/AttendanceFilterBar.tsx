@@ -99,17 +99,32 @@ export function AttendanceFilterBar({
     }
   };
 
-  // Mantine v9 DatePickerInput uses string | null, not Date | null
-  const handleDateChange = (value: Date | null) => {
-    onChange({ ...filters, date: value ? dayjs(value).format('YYYY-MM-DD') : '' });
+  // Date handlers - DatePickerInput onChange accepts string | null in Mantine v9
+  const handleDateChange = (value: string | null) => {
+    if (!value) {
+      onChange({ ...filters, date: '' });
+      return;
+    }
+    const parsed = dayjs(value, 'YYYY-MM-DD', true);
+    onChange({ ...filters, date: parsed.isValid() ? value : filters.date });
   };
 
-  const handleFromChange = (value: Date | null) => {
-    onChange({ ...filters, from: value ? dayjs(value).format('YYYY-MM-DD') : '' });
+  const handleFromChange = (value: string | null) => {
+    if (!value) {
+      onChange({ ...filters, from: '' });
+      return;
+    }
+    const parsed = dayjs(value, 'YYYY-MM-DD', true);
+    onChange({ ...filters, from: parsed.isValid() ? value : filters.from });
   };
 
-  const handleToChange = (value: Date | null) => {
-    onChange({ ...filters, to: value ? dayjs(value).format('YYYY-MM-DD') : '' });
+  const handleToChange = (value: string | null) => {
+    if (!value) {
+      onChange({ ...filters, to: '' });
+      return;
+    }
+    const parsed = dayjs(value, 'YYYY-MM-DD', true);
+    onChange({ ...filters, to: parsed.isValid() ? value : filters.to });
   };
 
   const handleClear = () => {
@@ -127,10 +142,10 @@ export function AttendanceFilterBar({
     filters.mappingStatus,
   ].filter(Boolean).length;
 
-  const parseDateValue = (dateStr: string): Date | null => {
+  const parseDateValue = (dateStr: string): string | null => {
     if (!dateStr) return null;
     const parsed = dayjs(dateStr, 'YYYY-MM-DD', true);
-    return parsed.isValid() ? parsed.toDate() : null;
+    return parsed.isValid() ? dateStr : null;
   };
 
   return (

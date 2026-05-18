@@ -1,7 +1,8 @@
 import { Card, Grid, Group, RingProgress, Stack, Text, ThemeIcon } from '@mantine/core';
 import {
+  IconCheck,
   IconClock,
-  IconClockAlert,
+  IconClockHour4,
   IconQuestionMark,
   IconUsers,
   IconUserX,
@@ -47,7 +48,7 @@ function StatCard({ label, value, icon: Icon, color, onClick }: StatCardProps) {
 export function AttendanceSummaryCards({ summary }: AttendanceSummaryCardsProps) {
   if (!summary) {
     return (
-      <Grid gutter="xs">
+      <Grid gap="xs">
         {[1, 2, 3, 4, 5].map((i) => (
           <Grid.Col key={i} span={{ base: 6, sm: 4, md: 2 }}>
             <Card withBorder padding="sm" radius="md">
@@ -66,7 +67,7 @@ export function AttendanceSummaryCards({ summary }: AttendanceSummaryCardsProps)
   const unmappedRate = summary.total > 0 ? (summary.unmapped / summary.total) * 100 : 0;
 
   return (
-    <Grid gutter="xs">
+    <Grid gap="xs">
       <Grid.Col span={{ base: 6, sm: 4, md: 2 }}>
         <StatCard
           label="Tổng bản ghi"
@@ -87,7 +88,7 @@ export function AttendanceSummaryCards({ summary }: AttendanceSummaryCardsProps)
         <StatCard
           label="Đi muộn"
           value={summary.late}
-          icon={IconClockAlert}
+          icon={IconClockHour4}
           color="yellow"
         />
       </Grid.Col>

@@ -6,9 +6,9 @@ import {
   Text,
 } from '@mantine/core';
 import dayjs from 'dayjs';
-import { useAttendanceSyncRuns } from '../../features/attendance/useAttendanceSync';
-import { DataTable } from '../../shared/components/DataTable';
-import { EmptyState } from '../../shared/components/EmptyState';
+import { useAttendanceSyncRuns } from '../../../features/attendance/useAttendanceSync';
+import { DataTable } from '../../../shared/components/DataTable';
+import { EmptyState } from '../../../shared/components/EmptyState';
 
 interface SyncRun {
   id: string;
@@ -75,7 +75,7 @@ export function AttendanceSyncRunsTable() {
           description="Lịch sử đồng bộ sẽ xuất hiện sau khi chạy sync."
         />
       ) : (
-        <DataTable
+        <DataTable<SyncRun>
           data={runs}
           columns={[
             {
@@ -169,7 +169,7 @@ export function AttendanceSyncRunsTable() {
           rowKey={(run) => run.id}
           meta={pagination}
           loading={isLoading}
-          onPageChange={(newPage) => setPage(newPage)}
+          onPageChange={(newPage: number) => setPage(newPage)}
         />
       )}
     </Stack>

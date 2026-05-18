@@ -3,8 +3,9 @@ import { Alert, Badge, Button, Group, Stack, Text, TextInput } from '@mantine/co
 import { notifications } from '@mantine/notifications';
 import { IconCheck, IconRefresh, IconSearch, IconUsers } from '@tabler/icons-react';
 import dayjs from 'dayjs';
-import { useBioTimeDepartments, useSyncBioTimeDepartments } from '../../features/attendance/useAttendanceSync';
-import { DataTable } from '../../shared/components/DataTable';
+import { useBioTimeDepartments, useSyncBioTimeDepartments } from '../../../features/attendance/useAttendanceSync';
+import { DataTable } from '../../../shared/components/DataTable';
+import type { BioTimeDepartment } from '../../../features/attendance/attendanceTypes';
 
 export function BioTimeDepartmentsTable() {
   const [page, setPage] = useState(1);
@@ -92,7 +93,7 @@ export function BioTimeDepartmentsTable() {
         </Button>
       </Group>
 
-      <DataTable
+      <DataTable<BioTimeDepartment>
         data={departments}
         columns={[
           {
@@ -170,7 +171,7 @@ export function BioTimeDepartmentsTable() {
         rowKey={(dept) => dept.id}
         meta={pagination}
         loading={isLoading}
-        onPageChange={(newPage) => setPage(newPage)}
+        onPageChange={(newPage: number) => setPage(newPage)}
       />
     </Stack>
   );
