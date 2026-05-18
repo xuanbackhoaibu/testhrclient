@@ -8,7 +8,7 @@ import {
   IconUsers,
 } from '@tabler/icons-react';
 import dayjs from 'dayjs';
-import type { AttendanceSyncStatus } from '../../features/attendance/attendanceTypes';
+import type { AttendanceSyncStatus } from '../../../features/attendance/attendanceTypes';
 
 interface AttendanceSyncStatusCardProps {
   status: AttendanceSyncStatus | undefined;
@@ -182,7 +182,7 @@ export function AttendanceSyncStatusCard({
       </Card>
 
       {/* Sync job cards */}
-      <Grid gutter="xs">
+      <Grid gap="xs">
         <Grid.Col span={{ base: 12, sm: 4 }}>
           <SyncJobCard
             title="Đồng bộ hôm nay"

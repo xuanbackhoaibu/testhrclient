@@ -17,7 +17,7 @@ import {
 import { useAuth } from '../../features/auth/useAuth';
 import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import { DataTable } from '../../shared/components/DataTable';
-import type { AttendanceDailyFilterParams, AttendanceFilters } from './attendanceTypes';
+import type { AttendanceDailyFilterParams, AttendanceFilters } from '../../features/attendance/attendanceTypes';
 import { AttendanceFilterBar } from './components/AttendanceFilterBar';
 import { AttendanceSyncStatusCard } from './components/AttendanceSyncStatusCard';
 import { AttendanceSummaryCards } from './components/AttendanceSummaryCards';
@@ -204,7 +204,7 @@ export function AttendancePage() {
   };
 
   // Export handler
-  const handleExport = () => {
+  const handleExport = async () => {
     const params = new URLSearchParams();
     if (filters.search) params.set('search', filters.search);
     if (filters.date) params.set('date', filters.date);
@@ -217,13 +217,30 @@ export function AttendancePage() {
     const token = localStorage.getItem('accessToken') ?? '';
     const url = `${baseUrl}/attendance/daily/export?${params.toString()}`;
 
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      notifications.show({
+        title: 'Xuất thất bại',
+        message: 'Không thể tải file xuất',
+        color: 'red',
+      });
+      return;
+    }
+
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.setRequestHeader('Authorization', `Bearer ${token}`);
+    a.href = downloadUrl;
     a.download = `attendance_${dayjs().format('YYYYMMDD_HHmmss')}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    window.URL.revokeObjectURL(downloadUrl);
   };
 
   // Determine empty state reason
