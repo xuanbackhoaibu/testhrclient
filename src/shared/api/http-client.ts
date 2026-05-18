@@ -111,15 +111,13 @@ async function doRefreshSession(): Promise<void> {
 
   try {
     const baseURL = import.meta.env.VITE_HR_API_BASE_URL ?? import.meta.env.VITE_API_BASE_URL;
-    const response = await axios.get(`${baseURL}/auth/me`, {
+    await axios.get(`${baseURL}/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
       timeout: 10000,
     });
-
-    // If the /auth/me call succeeds, the token is still valid.
+    // If /auth/me succeeds, the token is still valid.
     // The caller will retry the original request with the same token.
     // The 401 was likely a temporary token expiry on the auth-service side.
-    return response;
   } catch (error) {
     // If /auth/me also returns 401/403, the token is definitely invalid.
     throw error;
