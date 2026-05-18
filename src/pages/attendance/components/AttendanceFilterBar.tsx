@@ -9,7 +9,7 @@ import {
   TextInput,
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
-import { IconRefresh, IconSearch, IconX } from '@tabler/icons-react';
+import { IconSearch, IconX } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 
 import styles from './AttendanceFilterBar.module.css';
@@ -37,7 +37,7 @@ const STATUS_OPTIONS = [
   { value: 'PRESENT', label: 'Đủ công' },
   { value: 'LATE', label: 'Đi muộn' },
   { value: 'ABSENT', label: 'Vắng' },
-  { value: 'SINGLE_PUNCH', label: '1 lần' },
+  { value: 'SINGLE_PUNCH', label: 'Chấm 1 lần' },
   { value: 'UNKNOWN', label: 'Không xác định' },
 ];
 
@@ -100,16 +100,16 @@ export function AttendanceFilterBar({
   };
 
   // Mantine v9 DatePickerInput uses string | null, not Date | null
-  const handleDateChange = (value: string | null) => {
-    onChange({ ...filters, date: value ?? '' });
+  const handleDateChange = (value: Date | null) => {
+    onChange({ ...filters, date: value ? dayjs(value).format('YYYY-MM-DD') : '' });
   };
 
-  const handleFromChange = (value: string | null) => {
-    onChange({ ...filters, from: value ?? '' });
+  const handleFromChange = (value: Date | null) => {
+    onChange({ ...filters, from: value ? dayjs(value).format('YYYY-MM-DD') : '' });
   };
 
-  const handleToChange = (value: string | null) => {
-    onChange({ ...filters, to: value ?? '' });
+  const handleToChange = (value: Date | null) => {
+    onChange({ ...filters, to: value ? dayjs(value).format('YYYY-MM-DD') : '' });
   };
 
   const handleClear = () => {
@@ -126,6 +126,12 @@ export function AttendanceFilterBar({
     filters.status,
     filters.mappingStatus,
   ].filter(Boolean).length;
+
+  const parseDateValue = (dateStr: string): Date | null => {
+    if (!dateStr) return null;
+    const parsed = dayjs(dateStr, 'YYYY-MM-DD', true);
+    return parsed.isValid() ? parsed.toDate() : null;
+  };
 
   return (
     <Stack gap="xs" className={styles.root}>
@@ -152,7 +158,7 @@ export function AttendanceFilterBar({
           size="sm"
         />
 
-        {/* Date mode toggle — no size prop on ButtonGroup in Mantine v9 */}
+        {/* Date mode toggle */}
         <ButtonGroup className={styles.dateModeToggle}>
           <Button
             variant={dateMode === 'single' ? 'filled' : 'default'}
@@ -174,7 +180,7 @@ export function AttendanceFilterBar({
         {dateMode === 'single' ? (
           <DatePickerInput
             placeholder="Chọn ngày"
-            value={filters.date || null}
+            value={parseDateValue(filters.date)}
             onChange={handleDateChange}
             clearable
             maxDate={new Date()}
@@ -185,7 +191,7 @@ export function AttendanceFilterBar({
           <Group gap={4} wrap="nowrap" className={styles.rangeInputs}>
             <DatePickerInput
               placeholder="Từ"
-              value={filters.from || null}
+              value={parseDateValue(filters.from)}
               onChange={handleFromChange}
               clearable
               maxDate={new Date()}
@@ -194,7 +200,7 @@ export function AttendanceFilterBar({
             />
             <DatePickerInput
               placeholder="Đến"
-              value={filters.to || null}
+              value={parseDateValue(filters.to)}
               onChange={handleToChange}
               clearable
               maxDate={new Date()}
@@ -232,7 +238,7 @@ export function AttendanceFilterBar({
         <Group gap="xs" wrap="nowrap" className={styles.actions}>
           {maySync && (
             <Button
-              leftSection={<IconRefresh size={15} />}
+              leftSection={<IconSearch size={15} />}
               onClick={onSync}
               loading={isSyncing}
               disabled={isSyncing}

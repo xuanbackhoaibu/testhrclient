@@ -44,6 +44,17 @@ export interface AttendanceDailyRecord {
   syncStatus: SyncStatusValue;
 }
 
+export interface AttendanceSummary {
+  total: number;
+  present: number;
+  late: number;
+  absent: number;
+  singlePunch: number;
+  unknown: number;
+  mapped: number;
+  unmapped: number;
+}
+
 export interface AttendanceDailyRecordsResponse {
   data: AttendanceDailyRecord[];
   pagination: {
@@ -54,9 +65,17 @@ export interface AttendanceDailyRecordsResponse {
     hasNextPage: boolean;
     hasPreviousPage: boolean;
   };
+  summary?: AttendanceSummary;
 }
 
 // ─── Sync Status ─────────────────────────────────────────────────────────────
+
+export interface SyncJobLatestRun {
+  status: string | null;
+  totalFetched: number;
+  totalUpserted: number;
+  errorMessage: string | null;
+}
 
 export interface SyncJobStatus {
   isRunning: boolean;
@@ -64,9 +83,13 @@ export interface SyncJobStatus {
   lastError: string | null;
   lastErrorAt: string | null;
   totalSynced: number;
+  latestRun: SyncJobLatestRun | null;
 }
 
 export interface AttendanceSyncStatus {
+  hasAttendanceData: boolean;
+  attendanceTotal: number;
+  departmentTotal: number;
   dailyToday: SyncJobStatus;
   nightly7Days: SyncJobStatus;
   manualSync: SyncJobStatus;
@@ -148,4 +171,37 @@ export interface SyncRunsFilterParams {
   to?: string;
   page?: number;
   pageSize?: number;
+}
+
+// ─── BioTime Departments ───────────────────────────────────────────────────────
+
+export interface BioTimeDepartment {
+  id: string;
+  biotimeDepartmentId: number;
+  name: string;
+  parentId: number | null;
+  level: number;
+  path: string | null;
+  isLeaf: boolean;
+  isActive: boolean;
+  syncedAt: string;
+}
+
+export interface BioTimeDepartmentsResponse {
+  data: BioTimeDepartment[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
+}
+
+export interface BioTimeDepartmentSyncResponse {
+  data: {
+    total: number;
+    upserted: number;
+  };
 }
