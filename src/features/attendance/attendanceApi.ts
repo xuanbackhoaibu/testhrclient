@@ -42,6 +42,7 @@ export async function listAttendanceSyncRuns(
 export async function manualAttendanceSync(body: {
   startDate?: string;
   endDate?: string;
+  refreshDepartments?: boolean;
 }): Promise<ManualSyncResponse> {
   return api.post('/attendance/sync/manual', body);
 }

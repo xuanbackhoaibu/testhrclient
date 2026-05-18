@@ -161,6 +161,7 @@ export function AttendancePage() {
     manualSync.mutate({
       startDate: syncDate,
       endDate: syncDate,
+      refreshDepartments: true, // Always refresh department tree for manual sync
     });
   };
 
