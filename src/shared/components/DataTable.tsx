@@ -10,6 +10,7 @@ export interface DataTableColumn<T> {
   header: ReactNode;
   render: (record: T) => ReactNode;
   width?: number | string;
+  minWidth?: number | string;
   align?: 'left' | 'center' | 'right';
 }
 
@@ -120,6 +121,7 @@ export function DataTable<T>({
                 <Table.Th
                   key={column.key}
                   w={column.width}
+                  miw={column.minWidth}
                   ta={column.align}
                   className="data-table-heading"
                 >
