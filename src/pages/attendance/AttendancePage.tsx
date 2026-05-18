@@ -1,8 +1,14 @@
 import { useState } from 'react';
-import { Alert, Badge, Card, Stack, Text } from '@mantine/core';
-import { IconAlertTriangle, IconCheck, IconClock } from '@tabler/icons-react';
+import { useSearchParams } from 'react-router-dom';
+import { Badge, Card, Drawer, Group, Stack, Text, Tooltip } from '@mantine/core';
+import { useDisclosure, useLocalStorage } from '@mantine/hooks';
+import { notifications } from '@mantine/notifications';
+import { IconCheck } from '@tabler/icons-react';
 import dayjs from 'dayjs';
-
+import { EmptyState } from '../../shared/components/EmptyState';
+import { ErrorState } from '../../shared/components/ErrorState';
+import { PageHeader } from '../../shared/components/PageHeader';
+import { formatDate } from '../../shared/utils/date';
 import {
   useAttendanceDailyRecords,
   useAttendanceSyncStatus,
@@ -11,16 +17,13 @@ import {
 import { useAuth } from '../../features/auth/useAuth';
 import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import { DataTable } from '../../shared/components/DataTable';
-import { EmptyState } from '../../shared/components/EmptyState';
-import { ErrorState } from '../../shared/components/ErrorState';
-import { LoadingState } from '../../shared/components/LoadingState';
-import { PageHeader } from '../../shared/components/PageHeader';
-import { formatDate } from '../../shared/utils/date';
-import {
-  AttendanceFilterBar,
-  type AttendanceFilters,
-} from './components/AttendanceFilterBar';
-import type { AttendanceDailyFilterParams } from '../../features/attendance/attendanceTypes';
+import type { AttendanceDailyFilterParams, AttendanceFilters } from './attendanceTypes';
+import { AttendanceFilterBar } from './components/AttendanceFilterBar';
+import { AttendanceSyncStatusCard } from './components/AttendanceSyncStatusCard';
+import { AttendanceSummaryCards } from './components/AttendanceSummaryCards';
+import { ManualSyncModal } from './components/ManualSyncModal';
+import { AttendanceSyncRunsTable } from './components/AttendanceSyncRunsTable';
+import { BioTimeDepartmentsTable } from './components/BioTimeDepartmentsTable';
 
 const PAGE_SIZE = 50;
 
@@ -36,7 +39,7 @@ const STATUS_LABELS: Record<string, string> = {
   PRESENT: 'Đủ công',
   LATE: 'Đi muộn',
   ABSENT: 'Vắng',
-  SINGLE_PUNCH: '1 lần',
+  SINGLE_PUNCH: 'Chấm 1 lần',
   UNKNOWN: 'Không xác định',
 };
 
@@ -62,7 +65,6 @@ function buildQueryParams(
 
   if (filters.search) params.search = filters.search;
 
-  // Resolve date: if single date set, use it; if range set, use from/to
   if (filters.date) {
     params.date = filters.date;
   } else {
@@ -76,132 +78,288 @@ function buildQueryParams(
   return params;
 }
 
+export interface AttendanceFilters {
+  search: string;
+  date: string;
+  from: string;
+  to: string;
+  status: string;
+  mappingStatus: string;
+}
+
 export function AttendancePage() {
   const { can } = useAuth();
-  const [filters, setFilters] = useState<AttendanceFilters>({
-    search: '',
-    date: dayjs().format('YYYY-MM-DD'),
-    from: '',
-    to: '',
-    status: '',
-    mappingStatus: '',
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Permissions
+  const maySync = can(HR_PERMISSIONS.ATTENDANCE_SYNC);
+  const mayViewSyncLog = can(HR_PERMISSIONS.ATTENDANCE_SYNC_LOG_READ);
+  const mayExport = can(HR_PERMISSIONS.ATTENDANCE_EXPORT);
+
+  // Modal & drawer states
+  const [syncModalOpened, { open: openSyncModal, close: closeSyncModal }] = useDisclosure(false);
+  const [syncHistoryOpened, { open: openSyncHistory, close: closeSyncHistory }] = useDisclosure(false);
+  const [biotimeDeptsOpened, { open: openBiotimeDepts, close: closeBiotimeDepts }] = useDisclosure(false);
+
+  // Read filter state from URL, fallback to localStorage
+  const [savedFilters, setSavedFilters] = useLocalStorage<AttendanceFilters>({
+    key: 'attendance-filters',
+    defaultValue: {
+      search: '',
+      date: dayjs().format('YYYY-MM-DD'),
+      from: '',
+      to: '',
+      status: '',
+      mappingStatus: '',
+    },
   });
-  const [page, setPage] = useState(1);
+
+  // Sync filter state from URL
+  const pageParam = parseInt(searchParams.get('page') ?? '1', 10);
+
+  const [filters, setFilters] = useState<AttendanceFilters>(() => ({
+    search: searchParams.get('search') ?? savedFilters.search,
+    date: searchParams.get('date') ?? savedFilters.date,
+    from: searchParams.get('from') ?? savedFilters.from,
+    to: searchParams.get('to') ?? savedFilters.to,
+    status: searchParams.get('status') ?? savedFilters.status,
+    mappingStatus: searchParams.get('mappingStatus') ?? savedFilters.mappingStatus,
+  }));
+
+  const [page, setPage] = useState(pageParam);
 
   const queryParams = buildQueryParams({ ...filters, page, pageSize: PAGE_SIZE });
-  const { data, isLoading, error, refetch, isFetching } =
-    useAttendanceDailyRecords(queryParams);
-  const { data: syncStatus } = useAttendanceSyncStatus();
+
+  // Queries
+  const { data, isLoading, error, refetch, isFetching } = useAttendanceDailyRecords(queryParams);
+  const { data: syncStatus, isLoading: syncStatusLoading } = useAttendanceSyncStatus();
   const manualSync = useManualAttendanceSync();
-
-  const maySync = can(HR_PERMISSIONS.ATTENDANCE_SYNC);
-
-  const dailyJob = syncStatus?.data?.dailyToday;
-
-  const renderSyncBanner = () => {
-    if (!dailyJob) return null;
-
-    if (dailyJob.isRunning) {
-      return (
-        <Alert
-          color="blue"
-          icon={<IconClock size={15} />}
-          py={6}
-          px="sm"
-        >
-          <Text size="xs">Đang đồng bộ dữ liệu từ ZKTeco BioTime...</Text>
-        </Alert>
-      );
-    }
-
-    if (dailyJob.lastError) {
-      return (
-        <Alert
-          color="red"
-          icon={<IconAlertTriangle size={15} />}
-          py={6}
-          px="sm"
-        >
-          <Text size="xs" lineClamp={1}>{dailyJob.lastError}</Text>
-          {dailyJob.lastErrorAt && (
-            <Text size="xs" c="dimmed" mt={2}>
-              Lúc {dayjs(dailyJob.lastErrorAt).format('HH:mm DD/MM/YYYY')}
-            </Text>
-          )}
-        </Alert>
-      );
-    }
-
-    if (dailyJob.lastSuccessAt) {
-      return (
-        <Alert
-          color="green"
-          icon={<IconCheck size={15} />}
-          py={6}
-          px="sm"
-        >
-          <Text size="xs">
-            Sync lúc {dayjs(dailyJob.lastSuccessAt).format('HH:mm DD/MM/YYYY')}
-            {dailyJob.totalSynced > 0 && ` · ${dailyJob.totalSynced.toLocaleString('vi-VN')} bản ghi`}
-          </Text>
-        </Alert>
-      );
-    }
-
-    return null;
-  };
-
-  const handleFilterChange = (newFilters: AttendanceFilters) => {
-    setFilters(newFilters);
-    setPage(1);
-  };
-
-  const handleSync = () => {
-    const syncDate = filters.date || dayjs().format('YYYY-MM-DD');
-    manualSync.mutate({
-      startDate: syncDate,
-      endDate: syncDate,
-      refreshDepartments: true, // Always refresh department tree for manual sync
-    });
-  };
 
   const records = data?.data ?? [];
   const pagination = data?.pagination;
+  const summary = data?.summary;
 
-  if (isLoading) {
-    return <LoadingState />;
-  }
+  // Handle filter changes - sync to URL and localStorage
+  const handleFilterChange = (newFilters: AttendanceFilters) => {
+    setFilters(newFilters);
+    setSavedFilters(newFilters);
+    setPage(1);
 
-  if (error || !data) {
-    return <ErrorState onRetry={() => void refetch()} />;
-  }
+    // Sync to URL
+    const params = new URLSearchParams();
+    if (newFilters.search) params.set('search', newFilters.search);
+    if (newFilters.date) params.set('date', newFilters.date);
+    if (newFilters.from) params.set('from', newFilters.from);
+    if (newFilters.to) params.set('to', newFilters.to);
+    if (newFilters.status) params.set('status', newFilters.status);
+    if (newFilters.mappingStatus) params.set('mappingStatus', newFilters.mappingStatus);
+    params.set('page', '1');
+    setSearchParams(params, { replace: true });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('page', String(newPage));
+      return params;
+    }, { replace: true });
+  };
+
+  // Sync modal handlers
+  const handleSync = () => {
+    openSyncModal();
+  };
+
+  const handleSyncSubmit = (params: { startDate: string; endDate: string; refreshDepartments: boolean }) => {
+    manualSync.mutate(params, {
+      onSuccess: (result) => {
+        const syncResult = result.data;
+        closeSyncModal();
+        if (syncResult.status === 'SUCCESS') {
+          notifications.show({
+            title: 'Đồng bộ thành công',
+            message: `${syncResult.totalUpserted?.toLocaleString('vi-VN') ?? 0} bản ghi đã được đồng bộ`,
+            color: 'green',
+            icon: <IconCheck size={16} />,
+          });
+        } else {
+          notifications.show({
+            title: 'Đồng bộ thất bại',
+            message: syncResult.errorMessage ?? 'Lỗi không xác định',
+            color: 'red',
+          });
+        }
+        void refetch();
+      },
+      onError: (err) => {
+        closeSyncModal();
+        notifications.show({
+          title: 'Đồng bộ thất bại',
+          message: err instanceof Error ? err.message : 'Lỗi không xác định',
+          color: 'red',
+        });
+      },
+    });
+  };
+
+  // Export handler
+  const handleExport = () => {
+    const params = new URLSearchParams();
+    if (filters.search) params.set('search', filters.search);
+    if (filters.date) params.set('date', filters.date);
+    if (filters.from) params.set('from', filters.from);
+    if (filters.to) params.set('to', filters.to);
+    if (filters.status) params.set('status', filters.status);
+    if (filters.mappingStatus) params.set('mappingStatus', filters.mappingStatus);
+
+    const baseUrl = import.meta.env.VITE_API_URL ?? '';
+    const token = localStorage.getItem('accessToken') ?? '';
+    const url = `${baseUrl}/attendance/daily/export?${params.toString()}`;
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.setRequestHeader('Authorization', `Bearer ${token}`);
+    a.download = `attendance_${dayjs().format('YYYYMMDD_HHmmss')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  // Determine empty state reason
+  const getEmptyStateReason = (): { title: string; description: string; action?: () => void } => {
+    const hasActiveFilters = filters.search || filters.date || filters.from || filters.to || filters.status || filters.mappingStatus;
+
+    if (!syncStatus?.data?.hasAttendanceData) {
+      return {
+        title: 'Chưa có dữ liệu chấm công',
+        description: 'Dữ liệu chấm công sẽ xuất hiện sau khi sync từ ZKTeco BioTime.',
+      };
+    }
+
+    if (syncStatus?.data?.dailyToday?.lastError || syncStatus?.data?.nightly7Days?.lastError) {
+      return {
+        title: 'Đồng bộ gần nhất thất bại',
+        description: 'Không thể lấy dữ liệu chấm công. Hãy kiểm tra cấu hình BioTime.',
+      };
+    }
+
+    if (hasActiveFilters) {
+      return {
+        title: 'Không có dữ liệu phù hợp',
+        description: 'Không có bản ghi nào phù hợp với bộ lọc hiện tại.',
+        action: () => handleFilterChange({
+          search: '',
+          date: dayjs().format('YYYY-MM-DD'),
+          from: '',
+          to: '',
+          status: '',
+          mappingStatus: '',
+        }),
+      };
+    }
+
+    return {
+      title: 'Chưa có dữ liệu chấm công',
+      description: 'Dữ liệu chấm công sẽ xuất hiện sau khi sync từ ZKTeco BioTime.',
+    };
+  };
+
+  const emptyReason = getEmptyStateReason();
+
+  // Warn if unmapped records
+  const showUnmappedWarning = summary && summary.unmapped > 0;
 
   return (
     <>
       <PageHeader
         title="Chấm công"
-        subtitle="Dữ liệu đồng bộ từ ZKTeco BioTime"
+        subtitle="Theo dõi dữ liệu chấm công đồng bộ từ BioTime/ZKTeco"
+        actions={
+          <Group gap="xs">
+            {mayViewSyncLog && (
+              <Text
+                size="sm"
+                c="blue"
+                style={{ cursor: 'pointer' }}
+                onClick={openBiotimeDepts}
+              >
+                Phòng ban BioTime
+              </Text>
+            )}
+            {mayViewSyncLog && (
+              <Text
+                size="sm"
+                c="blue"
+                style={{ cursor: 'pointer' }}
+                onClick={openSyncHistory}
+              >
+                Lịch sử đồng bộ
+              </Text>
+            )}
+            {mayExport && (
+              <Text
+                size="sm"
+                c="blue"
+                style={{ cursor: 'pointer' }}
+                onClick={handleExport}
+              >
+                Xuất CSV
+              </Text>
+            )}
+            {maySync && (
+              <Text
+                size="sm"
+                c="blue"
+                style={{ cursor: 'pointer' }}
+                onClick={handleSync}
+              >
+                Đồng bộ dữ liệu
+              </Text>
+            )}
+          </Group>
+        }
       />
 
       <Stack gap="xs">
-        {renderSyncBanner()}
+        {/* Sync Status Card */}
+        <AttendanceSyncStatusCard
+          status={syncStatus?.data}
+          isLoading={syncStatusLoading}
+          onViewSyncHistory={openSyncHistory}
+          mayViewSyncLog={mayViewSyncLog}
+        />
 
+        {/* Unmapped warning */}
+        {showUnmappedWarning && (
+          <Text size="xs" c="red">
+            Có {summary.unmapped} nhân sự chưa map với HRM. Cần kiểm tra mã nhân viên.
+          </Text>
+        )}
+
+        {/* Summary Cards */}
+        <AttendanceSummaryCards summary={summary} />
+
+        {/* Filter Bar */}
         <AttendanceFilterBar
           filters={filters}
           onChange={handleFilterChange}
+          maySync={maySync}
           onSync={handleSync}
           isSyncing={manualSync.isPending}
-          maySync={maySync}
         />
 
-        {records.length === 0 ? (
+        {/* Data Table or Empty State */}
+        {isLoading ? (
+          <ErrorState title="Đang tải dữ liệu..." />
+        ) : error || !data ? (
+          <ErrorState onRetry={() => void refetch()} />
+        ) : records.length === 0 ? (
           <EmptyState
-            title="Chưa có dữ liệu chấm công"
-            description={
-              filters.date || filters.from || filters.to || filters.search
-                ? 'Không có bản ghi phù hợp với bộ lọc hiện tại.'
-                : 'Dữ liệu chấm công sẽ xuất hiện sau khi sync từ ZKTeco BioTime.'
-            }
+            title={emptyReason.title}
+            description={emptyReason.description}
+            actionLabel={emptyReason.action ? 'Xóa bộ lọc' : undefined}
+            onAction={emptyReason.action}
           />
         ) : (
           <Card withBorder padding={0}>
@@ -245,9 +403,7 @@ export function AttendancePage() {
                     record.firstPunch ? (
                       <Text size="sm">{record.firstPunch.slice(0, 5)}</Text>
                     ) : (
-                      <Text size="sm" c="dimmed">
-                        -
-                      </Text>
+                      <Text size="sm" c="dimmed">—</Text>
                     ),
                 },
                 {
@@ -259,9 +415,7 @@ export function AttendancePage() {
                     record.lastPunch ? (
                       <Text size="sm">{record.lastPunch.slice(0, 5)}</Text>
                     ) : (
-                      <Text size="sm" c="dimmed">
-                        -
-                      </Text>
+                      <Text size="sm" c="dimmed">—</Text>
                     ),
                 },
                 {
@@ -274,20 +428,27 @@ export function AttendancePage() {
                 {
                   key: 'status',
                   header: 'Trạng thái',
-                  width: 100,
+                  width: 110,
                   align: 'center',
                   render: (record) => (
-                    <Badge
-                      color={
-                        STATUS_COLORS[record.status ?? ''] ?? 'gray'
+                    <Tooltip
+                      label={
+                        record.status === 'SINGLE_PUNCH'
+                          ? 'Chỉ chấm công 1 lần - có thể thiếu giờ ra'
+                          : record.status === 'UNKNOWN'
+                          ? 'Không xác định - cần kiểm tra lại'
+                          : undefined
                       }
-                      variant="light"
-                      size="sm"
+                      disabled={record.status !== 'SINGLE_PUNCH' && record.status !== 'UNKNOWN'}
                     >
-                      {STATUS_LABELS[record.status ?? ''] ??
-                        record.status ??
-                        'N/A'}
-                    </Badge>
+                      <Badge
+                        color={STATUS_COLORS[record.status ?? ''] ?? 'gray'}
+                        variant="light"
+                        size="sm"
+                      >
+                        {STATUS_LABELS[record.status ?? ''] ?? record.status ?? 'N/A'}
+                      </Badge>
+                    </Tooltip>
                   ),
                 },
                 {
@@ -296,32 +457,67 @@ export function AttendancePage() {
                   width: 100,
                   align: 'center',
                   render: (record) => (
-                    <Badge
-                      color={
-                        MAPPING_COLORS[record.mappingStatus] ?? 'gray'
+                    <Tooltip
+                      label={
+                        record.mappingStatus === 'UNMAPPED'
+                          ? 'Nhân sự chưa liên kết với HRM - cần kiểm tra mã nhân viên'
+                          : record.mappingStatus === 'AUTO_MAPPED'
+                          ? 'Tự động map theo prefix+mã số'
+                          : undefined
                       }
-                      variant="light"
-                      size="sm"
+                      disabled={record.mappingStatus === 'MAPPED'}
                     >
-                      {MAPPING_LABELS[record.mappingStatus] ??
-                        record.mappingStatus}
-                    </Badge>
+                      <Badge
+                        color={MAPPING_COLORS[record.mappingStatus] ?? 'gray'}
+                        variant="light"
+                        size="sm"
+                      >
+                        {MAPPING_LABELS[record.mappingStatus] ?? record.mappingStatus}
+                      </Badge>
+                    </Tooltip>
                   ),
                 },
               ]}
               rowKey={(record) => record.id}
               meta={pagination ?? undefined}
               loading={isFetching}
-              onPageChange={(newPage, newPageSize) => {
-                setPage(newPage);
-                if (newPageSize !== PAGE_SIZE) {
-                  // PageSize doesn't change in this design
-                }
-              }}
+              onPageChange={handlePageChange}
             />
           </Card>
         )}
       </Stack>
+
+      {/* Manual Sync Modal */}
+      <ManualSyncModal
+        opened={syncModalOpened}
+        onClose={closeSyncModal}
+        onSync={handleSyncSubmit}
+        isLoading={manualSync.isPending}
+      />
+
+      {/* Sync History Drawer */}
+      <Drawer
+        opened={syncHistoryOpened}
+        onClose={closeSyncHistory}
+        title="Lịch sử đồng bộ"
+        position="right"
+        size="lg"
+        padding="md"
+      >
+        <AttendanceSyncRunsTable />
+      </Drawer>
+
+      {/* BioTime Departments Drawer */}
+      <Drawer
+        opened={biotimeDeptsOpened}
+        onClose={closeBiotimeDepts}
+        title="Phòng ban BioTime"
+        position="right"
+        size="lg"
+        padding="md"
+      >
+        <BioTimeDepartmentsTable />
+      </Drawer>
     </>
   );
 }

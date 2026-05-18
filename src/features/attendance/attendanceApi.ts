@@ -15,6 +15,9 @@ import type {
   AttendanceSyncRunsResponse,
   SyncRunsFilterParams,
   ManualSyncResponse,
+  BioTimeDepartment,
+  BioTimeDepartmentsResponse,
+  BioTimeDepartmentSyncResponse,
 } from './attendanceTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
@@ -24,7 +27,7 @@ const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
 export async function listAttendanceDailyRecords(
   params: AttendanceDailyFilterParams = {},
 ): Promise<AttendanceDailyRecordsResponse> {
-  const response = await api.get<PaginatedData<AttendanceDailyRecord>>('/attendance/daily', { params });
+  const response = await api.get<PaginatedData<AttendanceDailyRecord> & { summary?: unknown }>('/attendance/daily', { params });
   return normalizePaginatedResponse<AttendanceDailyRecord>(response, params) as AttendanceDailyRecordsResponse;
 }
 
@@ -45,6 +48,23 @@ export async function manualAttendanceSync(body: {
   refreshDepartments?: boolean;
 }): Promise<ManualSyncResponse> {
   return api.post('/attendance/sync/manual', body);
+}
+
+// ─── BioTime Departments ─────────────────────────────────────────────────────
+
+export async function listBioTimeDepartments(params: {
+  isActive?: boolean;
+  isLeaf?: boolean;
+  keyword?: string;
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<BioTimeDepartmentsResponse> {
+  const response = await api.get<PaginatedData<BioTimeDepartment>>('/attendance/biotime/departments', { params });
+  return normalizePaginatedResponse<BioTimeDepartment>(response, params) as BioTimeDepartmentsResponse;
+}
+
+export async function syncBioTimeDepartments(): Promise<BioTimeDepartmentSyncResponse> {
+  return api.post('/attendance/biotime/departments/sync');
 }
 
 // ─── Legacy manual attendance (keep existing) ────────────────────────────────
