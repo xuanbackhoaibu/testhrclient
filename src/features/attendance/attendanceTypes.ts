@@ -32,6 +32,7 @@ export interface AttendanceDailyRecord {
   employeeId: string | null;
   employeeCode: string | null;
   fullName: string | null;
+  biotimeDepartmentId: number | null;
   deptName: string | null;
   workDate: string;
   firstPunch: string | null;
@@ -125,11 +126,13 @@ export interface ManualSyncResponse {
 // ─── Filter Params ────────────────────────────────────────────────────────────
 
 export interface AttendanceDailyFilterParams {
+  search?: string;
   date?: string;
   from?: string;
   to?: string;
   empCode?: string;
   employeeId?: string;
+  biotimeDepartmentId?: number;
   deptName?: string;
   status?: string;
   mappingStatus?: string;
