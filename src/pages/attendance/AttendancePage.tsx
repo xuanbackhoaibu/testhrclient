@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Badge, Card, Drawer, Group, Stack, Text, Tooltip } from '@mantine/core';
 import { useDisclosure, useLocalStorage } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
@@ -8,6 +8,7 @@ import dayjs from 'dayjs';
 import { EmptyState } from '../../shared/components/EmptyState';
 import { ErrorState } from '../../shared/components/ErrorState';
 import { PageHeader } from '../../shared/components/PageHeader';
+import { ROUTES } from '../../shared/constants/routes';
 import { formatDate } from '../../shared/utils/date';
 import {
   useAttendanceDailyRecords,
@@ -50,12 +51,14 @@ const MAPPING_LABELS: Record<string, string> = {
   MAPPED: 'Đã map',
   AUTO_MAPPED: 'Tự map',
   UNMAPPED: 'Chưa map',
+  CONFLICT: 'Trùng mã',
 };
 
 const MAPPING_COLORS: Record<string, string> = {
   MAPPED: 'green',
   AUTO_MAPPED: 'teal',
-  UNMAPPED: 'red',
+  UNMAPPED: 'orange',
+  CONFLICT: 'red',
 };
 
 export interface AttendanceFilters {
@@ -106,6 +109,7 @@ const DEFAULT_FILTERS: AttendanceFilters = {
 };
 
 export function AttendancePage() {
+  const navigate = useNavigate();
   const { can } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -303,9 +307,6 @@ export function AttendancePage() {
 
   const emptyReason = getEmptyStateReason();
 
-  // Warn if unmapped records
-  const showUnmappedWarning = summary && summary.unmapped > 0;
-
   return (
     <>
       <PageHeader
@@ -366,10 +367,11 @@ export function AttendancePage() {
           mayViewSyncLog={mayViewSyncLog}
         />
 
-        {/* Unmapped warning */}
-        {showUnmappedWarning && (
-          <Text size="xs" c="red">
-            Có {summary.unmapped} nhân sự chưa map với HRM. Cần kiểm tra mã nhân viên.
+        {/* Unmapped/Conflict warning */}
+        {(summary && (summary.unmapped + summary.conflict) > 0) && (
+          <Text size="xs" c="orange">
+            Có {summary.unmapped + summary.conflict} bản ghi chấm công chưa được map với nhân sự HRM.
+            Cần xử lý để dữ liệu hiển thị trên lịch cá nhân.
           </Text>
         )}
 
@@ -382,7 +384,9 @@ export function AttendancePage() {
           onChange={handleFilterChange}
           maySync={maySync}
           onSync={handleSync}
+          onOpenMapping={() => navigate(ROUTES.attendanceMapping)}
           isSyncing={manualSync.isPending}
+          unmappedConflictCount={summary ? summary.unmapped + summary.conflict : 0}
         />
 
         {/* Data Table or Empty State */}
@@ -415,11 +419,25 @@ export function AttendancePage() {
                 },
                 {
                   key: 'empCode',
-                  header: 'Mã NV',
-                  width: 90,
+                  header: 'Mã chấm công',
+                  width: 100,
                   render: (record) => (
                     <Text size="sm" fw={600} className={styles.empCode}>
                       {record.empCode}
+                    </Text>
+                  ),
+                },
+                {
+                  key: 'employeeCode',
+                  header: 'Mã NS HRM',
+                  width: 100,
+                  align: 'center',
+                  render: (record) => (
+                    <Text
+                      size="sm"
+                      c={record.employeeCode ? undefined : 'dimmed'}
+                    >
+                      {record.employeeCode ?? '—'}
                     </Text>
                   ),
                 },

@@ -473,6 +473,15 @@ export async function getEmployeeLeave(id: string): Promise<LeaveRequest[]> {
   return normalizePaginatedResponse<LeaveRequest>(response).items;
 }
 
+export async function updateEmployeeBioTimeCode(
+  employeeId: string,
+  biotimeEmployeeCode: string | null,
+): Promise<Employee> {
+  return api.patch<Employee>(`/employees/${employeeId}/biotime-code`, {
+    biotimeEmployeeCode,
+  });
+}
+
 export async function getEmployeeAttendance(id: string): Promise<AttendanceRecord[]> {
   if (isMockMode) {
     await mockDelay();

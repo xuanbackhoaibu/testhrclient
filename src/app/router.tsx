@@ -5,6 +5,7 @@ import { AUTH_ADMIN_PERMISSIONS, HR_PERMISSIONS } from '../features/auth/permiss
 import { AuthLayout } from '../layouts/AuthLayout';
 import { MainLayout } from '../layouts/MainLayout';
 import { AttendancePage } from '../pages/attendance/AttendancePage';
+import { AttendanceMappingPage } from '../pages/attendance/AttendanceMappingPage';
 import { AuditLogsPage } from '../pages/audit/AuditLogsPage';
 import { AuthCallbackPage } from '../pages/AuthCallbackPage';
 import { ContractsPage } from '../pages/contracts/ContractsPage';
@@ -102,7 +103,22 @@ export const router = createBrowserRouter([
       { path: ROUTES.movements, element: <MovementsPage /> },
       { path: ROUTES.contracts, element: <ContractsPage /> },
       { path: ROUTES.leave, element: <LeavePage /> },
-      { path: ROUTES.attendance, element: <AttendancePage /> },
+      {
+        path: ROUTES.attendance,
+        element: (
+          <ProtectedRoute permissions={[HR_PERMISSIONS.ATTENDANCE_READ]}>
+            <AttendancePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.attendanceMapping,
+        element: (
+          <ProtectedRoute permissions={[HR_PERMISSIONS.ATTENDANCE_READ]}>
+            <AttendanceMappingPage />
+          </ProtectedRoute>
+        ),
+      },
       { path: ROUTES.onboarding, element: <OnboardingPage /> },
       { path: ROUTES.offboarding, element: <OffboardingPage /> },
       {

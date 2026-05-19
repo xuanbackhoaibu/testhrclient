@@ -22,7 +22,7 @@ export interface AttendancePayload {
 
 export type AttendanceStatusBiometric = 'PRESENT' | 'LATE' | 'ABSENT' | 'SINGLE_PUNCH' | 'UNKNOWN';
 
-export type MappingStatus = 'MAPPED' | 'AUTO_MAPPED' | 'UNMAPPED';
+export type MappingStatus = 'MAPPED' | 'AUTO_MAPPED' | 'UNMAPPED' | 'CONFLICT';
 
 export type SyncStatusValue = 'SUCCESS' | 'FAILED';
 
@@ -52,7 +52,60 @@ export interface AttendanceSummary {
   singlePunch: number;
   unknown: number;
   mapped: number;
+  autoMapped: number;
   unmapped: number;
+  conflict: number;
+}
+
+// ─── Mapping Stats ────────────────────────────────────────────────────────────
+
+export interface MappingStats {
+  total: number;
+  mapped: number;
+  autoMapped: number;
+  unmapped: number;
+  conflict: number;
+}
+
+export interface UnmappedAttendanceItem {
+  empCode: string;
+  fullName: string | null;
+  deptName: string | null;
+  recordCount: number;
+  firstWorkDate: string;
+  lastWorkDate: string;
+}
+
+export interface EmployeeSuggestion {
+  employeeId: string;
+  employeeCode: string;
+  fullName: string;
+  departmentName: string | null;
+  biotimeEmployeeCode: string | null;
+  score: number;
+  reasons: string[];
+}
+
+export interface MapAttendancePayload {
+  empCode: string;
+  employeeId: string;
+}
+
+export interface MapAttendanceResult {
+  updatedAttendanceCount: number;
+  employee: {
+    id: string;
+    employeeCode: string;
+    fullName: string;
+  };
+}
+
+export interface RemapResult {
+  totalProcessed: number;
+  mappedCount: number;
+  autoMappedCount: number;
+  unmappedCount: number;
+  conflictCount: number;
 }
 
 export interface AttendanceDailyRecordsResponse {

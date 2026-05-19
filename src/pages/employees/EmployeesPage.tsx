@@ -31,6 +31,7 @@ import {
   getEmployeeById,
   getNextEmployeeCode,
   updateEmployee,
+  updateEmployeeBioTimeCode,
 } from "../../features/employees/employeesApi";
 import type {
   Employee,
@@ -147,6 +148,7 @@ const emptyEmployeeFormValues: EmployeePayload = {
   unitId: "",
   departmentId: "",
   positionId: "",
+  biotimeEmployeeCode: null,
 };
 
 export function EmployeesPage() {
@@ -171,6 +173,7 @@ export function EmployeesPage() {
   const [suggestedEmployeeCode, setSuggestedEmployeeCode] = useState("");
   const [isLoadingNextCode, setIsLoadingNextCode] = useState(false);
   const [nextCodeError, setNextCodeError] = useState<string | null>(null);
+  const [biotimeEmployeeCode, setBiotimeEmployeeCode] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch] = useDebouncedValue(searchInput, 300);
   const [params, setParams] = useState({
@@ -351,6 +354,7 @@ export function EmployeesPage() {
     setEditing(null);
     setSuggestedEmployeeCode("");
     setNextCodeError(null);
+    setBiotimeEmployeeCode("");
     form.setValues(emptyEmployeeFormValues);
     form.resetDirty(emptyEmployeeFormValues);
     setOpen(true);
@@ -388,6 +392,7 @@ export function EmployeesPage() {
       setEditing(detail);
       setSuggestedEmployeeCode("");
       setNextCodeError(null);
+      setBiotimeEmployeeCode(detail.biotimeEmployeeCode ?? "");
       const values: EmployeePayload = {
         fullName: detail.fullName,
         companyEmail: detail.companyEmail ?? "",
@@ -417,6 +422,7 @@ export function EmployeesPage() {
       mayEditEmployee,
       permissions,
       roles,
+      setBiotimeEmployeeCode,
       setNextCodeError,
       setOpen,
       setSuggestedEmployeeCode,
@@ -428,6 +434,7 @@ export function EmployeesPage() {
     setEditing(null);
     setSuggestedEmployeeCode("");
     setNextCodeError(null);
+    setBiotimeEmployeeCode("");
     form.setValues(emptyEmployeeFormValues);
     form.resetDirty(emptyEmployeeFormValues);
   }
@@ -485,7 +492,31 @@ export function EmployeesPage() {
     }
 
     if (editing) {
-      updateMutation.mutate(normalizedValues);
+      updateMutation.mutate(normalizedValues, {
+        onSuccess: async () => {
+          // Also update BioTime code separately
+          const newBioTimeCode = biotimeEmployeeCode.trim() || null;
+          if (newBioTimeCode !== (editing.biotimeEmployeeCode ?? null)) {
+            try {
+              await updateEmployeeBioTimeCode(editing.id, newBioTimeCode);
+              notifications.show({
+                color: "green",
+                title: "Đã cập nhật mã chấm công",
+                message: newBioTimeCode
+                  ? `Mã chấm công BioTime đã được cập nhật thành "${newBioTimeCode}".`
+                  : "Đã xóa mã chấm công BioTime.",
+              });
+            } catch {
+              // BioTime code update failed but main update succeeded
+              notifications.show({
+                color: "yellow",
+                title: "Cập nhật nhân sự thành công nhưng chưa cập nhật được mã chấm công",
+                message: "Vui lòng thử cập nhật mã chấm công lại sau.",
+              });
+            }
+          }
+        },
+      });
       return;
     }
     createMutation.mutate(normalizedValues);
@@ -503,6 +534,17 @@ export function EmployeesPage() {
         header: "Mã NS",
         width: 110,
         render: (record) => record.employeeCode,
+      },
+      {
+        key: "biotimeEmployeeCode",
+        header: "Mã chấm công",
+        width: 100,
+        align: "center",
+        render: (record) => (
+          <Text size="sm" c={record.biotimeEmployeeCode ? "blue" : "dimmed"}>
+            {record.biotimeEmployeeCode ?? "—"}
+          </Text>
+        ),
       },
       {
         key: "fullName",
@@ -765,6 +807,13 @@ export function EmployeesPage() {
               disabled={isLoadingNextCode}
               placeholder={isLoadingNextCode ? "Đang lấy mã..." : "000001"}
               error={!editing ? nextCodeError : null}
+            />
+            <TextInput
+              label="Mã chấm công BioTime/ZKTeco"
+              description="Dùng để map dữ liệu chấm công từ BioTime. Ví dụ: 108, 1500. Không bắt buộc."
+              placeholder="108"
+              value={biotimeEmployeeCode}
+              onChange={(e) => setBiotimeEmployeeCode(e.currentTarget.value)}
             />
             <TextInput
               label="Họ tên"

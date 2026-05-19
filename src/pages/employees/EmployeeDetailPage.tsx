@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import {
   Badge,
+  Button,
   Card,
   Group,
   SimpleGrid,
@@ -7,8 +9,12 @@ import {
   Table,
   Tabs,
   Text,
+  TextInput,
   Title,
 } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
+import { notifications } from '@mantine/notifications';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 
 import type { AttendanceRecord } from '../../features/attendance/attendanceTypes';
@@ -17,6 +23,7 @@ import { useAuth } from '../../features/auth/useAuth';
 import type { Contract } from '../../features/contracts/contractTypes';
 import type { LeaveRequest } from '../../features/leave/leaveTypes';
 import { useEmployeeDetail } from '../../features/employees/useEmployeeDetail';
+import { updateEmployeeBioTimeCode } from '../../features/employees/employeesApi';
 import { LoadingState } from '../../shared/components/LoadingState';
 import { ErrorState } from '../../shared/components/ErrorState';
 import { PageHeader } from '../../shared/components/PageHeader';
@@ -41,6 +48,33 @@ export function EmployeeDetailPage() {
 
   const { data, isLoading, error, refetch } = useEmployeeDetail(employeeId, {
     includeAccount: canReadAccount,
+  });
+
+  const queryClient = useQueryClient();
+  const [bioTimeEditing, { open: openBioTimeEdit, close: closeBioTimeEdit }] =
+    useDisclosure(false);
+  const [bioTimeInput, setBioTimeInput] = useState('');
+
+  const bioTimeMutation = useMutation({
+    mutationFn: (code: string | null) =>
+      updateEmployeeBioTimeCode(employeeId!, code),
+    onSuccess: () => {
+      closeBioTimeEdit();
+      setBioTimeInput('');
+      void queryClient.invalidateQueries({ queryKey: ['employee-detail'] });
+      notifications.show({
+        color: 'green',
+        title: 'Đã cập nhật mã chấm công',
+        message: 'Mã chấm công BioTime đã được cập nhật.',
+      });
+    },
+    onError: (err) => {
+      notifications.show({
+        color: 'red',
+        title: 'Không cập nhật được mã chấm công',
+        message: err instanceof Error ? err.message : 'Lỗi không xác định.',
+      });
+    },
   });
 
   if (isLoading) {
@@ -70,6 +104,56 @@ export function EmployeeDetailPage() {
             <StatusTag status={employee.accountStatus ?? 'NOT_CREATED'} />
           </InfoRow>
           <InfoRow label="Mã nhân sự">{employee.employeeCode}</InfoRow>
+          <InfoRow label="Mã chấm công BioTime">
+            {bioTimeEditing ? (
+              <Group gap="xs" wrap="nowrap">
+                <TextInput
+                  size="xs"
+                  placeholder="108"
+                  value={bioTimeInput}
+                  onChange={(e) => setBioTimeInput(e.currentTarget.value)}
+                  style={{ width: 100 }}
+                />
+                <Button
+                  size="xs"
+                  onClick={() =>
+                    bioTimeMutation.mutate(bioTimeInput.trim() || null)
+                  }
+                  loading={bioTimeMutation.isPending}
+                >
+                  Lưu
+                </Button>
+                <Button
+                  size="xs"
+                  variant="subtle"
+                  onClick={() => {
+                    closeBioTimeEdit();
+                    setBioTimeInput('');
+                  }}
+                >
+                  Hủy
+                </Button>
+              </Group>
+            ) : (
+              <Group gap="xs" wrap="nowrap">
+                <Text size="sm" c={employee.biotimeEmployeeCode ? undefined : 'dimmed'}>
+                  {employee.biotimeEmployeeCode ?? '—'}
+                </Text>
+                {can('hr.employee.update') && (
+                  <Button
+                    size="compact-xs"
+                    variant="subtle"
+                    onClick={() => {
+                      setBioTimeInput(employee.biotimeEmployeeCode ?? '');
+                      openBioTimeEdit();
+                    }}
+                  >
+                    Sửa
+                  </Button>
+                )}
+              </Group>
+            )}
+          </InfoRow>
           <InfoRow label="Đơn vị">{employee.currentEmployeeAssignment?.unitName ?? '-'}</InfoRow>
           <InfoRow label="Phòng ban">{employee.currentEmployeeAssignment?.departmentName ?? '-'}</InfoRow>
           <InfoRow label="Chức vụ">{employee.currentEmployeeAssignment?.positionName ?? '-'}</InfoRow>

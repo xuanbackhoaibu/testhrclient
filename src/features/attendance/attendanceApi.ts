@@ -18,6 +18,12 @@ import type {
   BioTimeDepartment,
   BioTimeDepartmentsResponse,
   BioTimeDepartmentSyncResponse,
+  MappingStats,
+  UnmappedAttendanceItem,
+  EmployeeSuggestion,
+  MapAttendancePayload,
+  MapAttendanceResult,
+  RemapResult,
 } from './attendanceTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
@@ -129,4 +135,44 @@ export async function updateAttendanceRecord(id: string, payload: Partial<Attend
   }
 
   return api.patch<AttendanceRecord>(`/attendance/records/${id}`, payload);
+}
+
+// ─── Attendance Mapping ────────────────────────────────────────────────────────
+
+export async function getAttendanceMappingStats(): Promise<MappingStats> {
+  const response = await api.get<{ data: MappingStats }>('/attendance/mapping/stats');
+  return response.data;
+}
+
+export async function getUnmappedAttendance(params: {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+} = {}): Promise<{
+  items: UnmappedAttendanceItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}> {
+  return api.get('/attendance/mapping/unmapped', { params });
+}
+
+export async function getAttendanceMappingSuggestions(params: {
+  empCode: string;
+  fullName?: string;
+  deptName?: string;
+}): Promise<EmployeeSuggestion[]> {
+  return api.get<EmployeeSuggestion[]>('/attendance/mapping/suggestions', { params });
+}
+
+export async function mapAttendanceEmployee(payload: MapAttendancePayload): Promise<MapAttendanceResult> {
+  return api.post<MapAttendanceResult>('/attendance/mapping/map', payload);
+}
+
+export async function remapAttendance(payload?: {
+  fromDate?: string;
+  toDate?: string;
+  empCodes?: string[];
+}): Promise<RemapResult> {
+  return api.post<RemapResult>('/attendance/mapping/remap', payload ?? {});
 }
