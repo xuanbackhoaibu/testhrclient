@@ -24,6 +24,7 @@
   color: #334155;
   font-size: 13px;
   font-weight: 600;
+  line-height: 1;
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
@@ -36,34 +37,6 @@
 .modeToggle button.active {
   background: #1976d2;
   color: #ffffff;
-}
-
-.nativeInput {
-  height: 36px;
-  min-width: 150px;
-  border: 1px solid #d8dee8;
-  border-radius: 10px;
-  padding: 0 12px;
-  background: #ffffff;
-  color: #111827;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.nativeInput:focus {
-  border-color: #1976d2;
-  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.12);
-}
-
-.nativeInput::-webkit-calendar-picker-indicator {
-  cursor: pointer;
-  opacity: 0.7;
-  transition: opacity 0.15s ease;
-}
-
-.nativeInput::-webkit-calendar-picker-indicator:hover {
-  opacity: 1;
 }
 
 .rangeInputs {
@@ -86,11 +59,6 @@
     flex-wrap: wrap;
   }
 
-  .nativeInput {
-    flex: 1;
-    min-width: 140px;
-  }
-
   .rangeInputs {
     width: 100%;
     flex-wrap: wrap;
@@ -110,17 +78,6 @@
 
   .modeToggle button:hover:not(.active) {
     background: #343a40;
-  }
-
-  .nativeInput {
-    background: #212529;
-    border-color: #495057;
-    color: #e9ecef;
-  }
-
-  .nativeInput:focus {
-    border-color: #4dabf7;
-    box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.2);
   }
 
   .rangeSeparator {
