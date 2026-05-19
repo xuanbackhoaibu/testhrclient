@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Badge,
   Button,
@@ -12,6 +12,7 @@ import { DatePickerInput } from '@mantine/dates';
 import { IconSearch, IconX } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 
+import { useBioTimeDepartments } from '../../../features/attendance/useAttendanceSync';
 import styles from './AttendanceFilterBar.module.css';
 
 export interface AttendanceFilters {
@@ -21,6 +22,7 @@ export interface AttendanceFilters {
   to: string;
   status: string;
   mappingStatus: string;
+  biotimeDepartmentId: number | null;
 }
 
 interface AttendanceFilterBarProps {
@@ -54,10 +56,11 @@ const DEFAULT_FILTERS: AttendanceFilters = {
   to: '',
   status: '',
   mappingStatus: '',
+  biotimeDepartmentId: null,
 };
 
 function hasActiveFilters(f: AttendanceFilters): boolean {
-  return Boolean(f.search || f.date || f.from || f.to || f.status || f.mappingStatus);
+  return Boolean(f.search || f.date || f.from || f.to || f.status || f.mappingStatus || f.biotimeDepartmentId);
 }
 
 export function AttendanceFilterBar({
@@ -69,6 +72,22 @@ export function AttendanceFilterBar({
 }: AttendanceFilterBarProps) {
   const [dateMode, setDateMode] = useState<DateMode>('single');
   const [searchInput, setSearchInput] = useState(filters.search);
+
+  // Fetch departments for filter dropdown
+  const { data: departmentsData } = useBioTimeDepartments({
+    isActive: true,
+    isLeaf: true,
+    pageSize: 500,
+  });
+
+  const departmentOptions = useMemo(() => {
+    const items = departmentsData?.data ?? [];
+    if (items.length === 0) return [];
+    return items.map((dept) => ({
+      value: String(dept.biotimeDepartmentId),
+      label: dept.name,
+    }));
+  }, [departmentsData]);
 
   // Debounce search input 400ms
   useEffect(() => {
@@ -140,6 +159,7 @@ export function AttendanceFilterBar({
     filters.to,
     filters.status,
     filters.mappingStatus,
+    filters.biotimeDepartmentId,
   ].filter(Boolean).length;
 
   const parseDateValue = (dateStr: string): string | null => {
@@ -201,13 +221,15 @@ export function AttendanceFilterBar({
               clearable
               maxDate={new Date()}
               className={styles.dateInput}
-              classNames={{ dropdown: 'attendance-date-filter-dropdown' }}
               popoverProps={{
                 withinPortal: true,
                 position: 'bottom-start',
                 shadow: 'md',
                 radius: 'md',
                 zIndex: 300,
+                classNames: {
+                  dropdown: 'attendance-date-filter-dropdown',
+                },
               }}
               size="sm"
             />
@@ -222,13 +244,15 @@ export function AttendanceFilterBar({
                 clearable
                 maxDate={new Date()}
                 className={styles.dateInput}
-                classNames={{ dropdown: 'attendance-date-filter-dropdown' }}
                 popoverProps={{
                   withinPortal: true,
                   position: 'bottom-start',
                   shadow: 'md',
                   radius: 'md',
                   zIndex: 300,
+                  classNames: {
+                    dropdown: 'attendance-date-filter-dropdown',
+                  },
                 }}
                 size="sm"
               />
@@ -239,13 +263,15 @@ export function AttendanceFilterBar({
                 clearable
                 maxDate={new Date()}
                 className={styles.dateInput}
-                classNames={{ dropdown: 'attendance-date-filter-dropdown' }}
                 popoverProps={{
                   withinPortal: true,
                   position: 'bottom-start',
                   shadow: 'md',
                   radius: 'md',
                   zIndex: 300,
+                  classNames: {
+                    dropdown: 'attendance-date-filter-dropdown',
+                  },
                 }}
                 size="sm"
               />
@@ -275,6 +301,30 @@ export function AttendanceFilterBar({
           size="sm"
           className={styles.selectInput}
           comboboxProps={{ withinPortal: true }}
+        />
+
+        {/* Department filter */}
+        <Select
+          placeholder="Phòng ban"
+          data={departmentOptions}
+          value={filters.biotimeDepartmentId ? String(filters.biotimeDepartmentId) : null}
+          onChange={(val) =>
+            onChange({
+              ...filters,
+              biotimeDepartmentId: val ? Number(val) : null,
+            })
+          }
+          clearable
+          searchable
+          size="sm"
+          className={styles.selectInput}
+          comboboxProps={{ withinPortal: true }}
+          nothingFoundMessage={
+            departmentsData?.data.length === 0
+              ? 'Chưa có phòng ban BioTime'
+              : 'Không tìm thấy phòng ban'
+          }
+          disabled={departmentsData?.data.length === 0 && !departmentsData}
         />
 
         {/* Actions */}
