@@ -19,6 +19,7 @@ import {
   IconClipboardList,
   IconDashboard,
   IconKey,
+  IconLink,
   IconLogout,
   IconSettings,
   IconShield,
@@ -47,6 +48,7 @@ const mainItems: NavItem[] = [
   // { label: "Hợp đồng", path: ROUTES.contracts, icon: IconBriefcase },
   // { label: "Nghỉ phép", path: ROUTES.leave, icon: IconCalendarCheck },
   { label: "Chấm công", path: ROUTES.attendance, icon: IconClipboardList },
+  { label: "Xử lý mapping", path: ROUTES.attendanceMapping, icon: IconLink },
   // { label: "Onboarding", path: ROUTES.onboarding, icon: IconFolderOpen },
   // { label: "Offboarding", path: ROUTES.offboarding, icon: IconFileImport },
   // { label: "Audit logs", path: ROUTES.auditLogs, icon: IconFileAnalytics },
@@ -78,6 +80,7 @@ const routeTitles: Record<string, string> = {
   [ROUTES.contracts]: "Hợp đồng",
   [ROUTES.leave]: "Nghỉ phép",
   [ROUTES.attendance]: "Chấm công",
+  [ROUTES.attendanceMapping]: "Xử lý mapping",
   [ROUTES.onboarding]: "Onboarding",
   [ROUTES.offboarding]: "Offboarding",
   [ROUTES.imports]: "Imports",
@@ -107,6 +110,7 @@ export function MainLayout() {
     if (item.path === ROUTES.auditLogs) return can(HR_PERMISSIONS.AUDIT_READ);
     if (item.path === ROUTES.settings) return can(HR_PERMISSIONS.EMPLOYEE_READ);
     if (item.path === ROUTES.attendance) return can(HR_PERMISSIONS.ATTENDANCE_READ);
+    if (item.path === ROUTES.attendanceMapping) return can(HR_PERMISSIONS.ATTENDANCE_READ);
     return true;
   });
 

@@ -7,6 +7,10 @@ import {
   manualAttendanceSync,
   listBioTimeDepartments,
   syncBioTimeDepartments,
+  getAttendanceMappingStats,
+  getUnmappedAttendance,
+  mapAttendanceEmployee,
+  remapAttendance,
 } from './attendanceApi';
 
 // ─── Query Key Factories ──────────────────────────────────────────────────────
@@ -20,6 +24,9 @@ export const attendanceKeys = {
     ['attendance-sync-runs', params] as const,
   departments: (params?: { isActive?: boolean; isLeaf?: boolean; keyword?: string }) =>
     ['attendance-departments', params] as const,
+  mappingStats: () => ['attendance-mapping-stats'] as const,
+  mappingUnmapped: (page: number, search: string) =>
+    ['attendance-mapping', page, search] as const,
 };
 
 // ─── Daily Records ─────────────────────────────────────────────────────────────
@@ -90,6 +97,59 @@ export function useSyncBioTimeDepartments() {
     mutationFn: () => syncBioTimeDepartments(),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: attendanceKeys.departments() });
+    },
+  });
+}
+
+// ─── Attendance Mapping ───────────────────────────────────────────────────────
+
+export function useAttendanceMappingStats() {
+  return useQuery({
+    queryKey: attendanceKeys.mappingStats(),
+    queryFn: getAttendanceMappingStats,
+    staleTime: 30_000,
+  });
+}
+
+export function useUnmappedAttendance(params: { page: number; search: string }) {
+  return useQuery({
+    queryKey: attendanceKeys.mappingUnmapped(params.page, params.search),
+    queryFn: () =>
+      getUnmappedAttendance({
+        page: params.page,
+        pageSize: 20,
+        search: params.search || undefined,
+      }),
+    staleTime: 30_000,
+  });
+}
+
+export function useMapAttendance() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: { empCode: string; employeeId: string }) =>
+      mapAttendanceEmployee(payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: attendanceKeys.all });
+      void queryClient.invalidateQueries({ queryKey: attendanceKeys.mappingStats() });
+      void queryClient.invalidateQueries({ queryKey: ['attendance-mapping'] });
+      void queryClient.invalidateQueries({ queryKey: ['employees'] });
+      void queryClient.invalidateQueries({ queryKey: ['employee-detail'] });
+    },
+  });
+}
+
+export function useRemapAttendance() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload?: { fromDate?: string; toDate?: string }) =>
+      remapAttendance(payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: attendanceKeys.all });
+      void queryClient.invalidateQueries({ queryKey: attendanceKeys.mappingStats() });
+      void queryClient.invalidateQueries({ queryKey: ['attendance-mapping'] });
     },
   });
 }

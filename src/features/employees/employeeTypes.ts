@@ -31,6 +31,7 @@ export interface Employee {
   accountStatus?: string | null;
   account?: EmployeeAccount | null;
   currentEmployeeAssignment: EmployeeAssignment | null;
+  biotimeEmployeeCode?: string | null;
 }
 
 export interface EmployeeAccount {
@@ -76,4 +77,5 @@ export interface EmployeePayload {
   positionId: string;
   jobTitle?: string;
   managerName?: string;
+  biotimeEmployeeCode?: string | null;
 }

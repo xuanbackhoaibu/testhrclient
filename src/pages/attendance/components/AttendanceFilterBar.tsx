@@ -20,8 +20,10 @@ interface AttendanceFilterBarProps {
   filters: AttendanceFilters;
   onChange: (filters: AttendanceFilters) => void;
   onSync: () => void;
+  onOpenMapping?: () => void;
   isSyncing: boolean;
   maySync: boolean;
+  unmappedConflictCount?: number;
 }
 
 const STATUS_OPTIONS = [
@@ -33,9 +35,11 @@ const STATUS_OPTIONS = [
 ];
 
 const MAPPING_OPTIONS = [
+  { value: '', label: 'Tất cả' },
   { value: 'MAPPED', label: 'Đã map' },
   { value: 'AUTO_MAPPED', label: 'Tự map' },
   { value: 'UNMAPPED', label: 'Chưa map' },
+  { value: 'CONFLICT', label: 'Trùng mã' },
 ];
 
 const DEFAULT_FILTERS: AttendanceFilters = {
@@ -64,8 +68,10 @@ export function AttendanceFilterBar({
   filters,
   onChange,
   onSync,
+  onOpenMapping,
   isSyncing,
   maySync,
+  unmappedConflictCount = 0,
 }: AttendanceFilterBarProps) {
   const [searchInput, setSearchInput] = useState(filters.search);
 
@@ -211,6 +217,17 @@ export function AttendanceFilterBar({
               color="blue"
             >
               Đồng bộ
+            </Button>
+          )}
+
+          {maySync && unmappedConflictCount > 0 && (
+            <Button
+              size="sm"
+              variant="light"
+              color="orange"
+              onClick={onOpenMapping}
+            >
+              Xử lý mapping ({unmappedConflictCount})
             </Button>
           )}
 

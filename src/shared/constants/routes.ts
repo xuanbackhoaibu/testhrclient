@@ -12,6 +12,7 @@ export const ROUTES = {
   contracts: '/contracts',
   leave: '/leave',
   attendance: '/attendance',
+  attendanceMapping: '/attendance/mapping',
   onboarding: '/onboarding',
   offboarding: '/offboarding',
   imports: '/imports',
