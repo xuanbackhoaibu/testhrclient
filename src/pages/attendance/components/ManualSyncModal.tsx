@@ -1,7 +1,8 @@
 import { Button, Checkbox, Group, Modal, Stack, Text } from '@mantine/core';
-import { DatePickerInput } from '@mantine/dates';
 import { useState } from 'react';
 import dayjs from 'dayjs';
+import { AttendanceNativeDateInput } from './AttendanceNativeDateInput';
+import styles from './ManualSyncModal.module.css';
 
 interface ManualSyncModalProps {
   opened: boolean;
@@ -14,15 +15,20 @@ const MAX_DAYS = 7;
 
 export function ManualSyncModal({ opened, onClose, onSync, isLoading }: ManualSyncModalProps) {
   const today = dayjs();
-  const [startDate, setStartDate] = useState<string | null>(today.subtract(1, 'day').format('YYYY-MM-DD'));
-  const [endDate, setEndDate] = useState<string | null>(today.format('YYYY-MM-DD'));
+  const [startDate, setStartDate] = useState<string | undefined>(today.subtract(1, 'day').format('YYYY-MM-DD'));
+  const [endDate, setEndDate] = useState<string | undefined>(today.format('YYYY-MM-DD'));
   const [refreshDepartments, setRefreshDepartments] = useState(true);
 
   const diffDays = startDate && endDate
     ? dayjs(endDate, 'YYYY-MM-DD').diff(dayjs(startDate, 'YYYY-MM-DD'), 'day') + 1
     : 0;
 
-  const isValid = startDate && endDate && dayjs(endDate, 'YYYY-MM-DD').isAfter(dayjs(startDate, 'YYYY-MM-DD').subtract(1, 'day')) && diffDays <= MAX_DAYS;
+  const isValid = Boolean(
+    startDate &&
+    endDate &&
+    dayjs(endDate, 'YYYY-MM-DD').isAfter(dayjs(startDate, 'YYYY-MM-DD').subtract(1, 'day')) &&
+    diffDays <= MAX_DAYS,
+  );
 
   const handleSubmit = () => {
     if (!isValid || !startDate || !endDate) return;
@@ -56,29 +62,32 @@ export function ManualSyncModal({ opened, onClose, onSync, isLoading }: ManualSy
           Tối đa {MAX_DAYS} ngày mỗi lần đồng bộ.
         </Text>
 
-        <Group grow align="flex-start">
-          <DatePickerInput
-            label="Từ ngày"
-            placeholder="Chọn ngày bắt đầu"
-            value={startDate}
-            onChange={setStartDate}
-            maxDate={new Date()}
-            clearable
-            size="sm"
-            valueFormat="YYYY-MM-DD"
-          />
-          <DatePickerInput
-            label="Đến ngày"
-            placeholder="Chọn ngày kết thúc"
-            value={endDate}
-            onChange={setEndDate}
-            maxDate={new Date()}
-            minDate={startDate ? new Date(startDate) : undefined}
-            clearable
-            size="sm"
-            valueFormat="YYYY-MM-DD"
-          />
-        </Group>
+        <div className={styles.dateGrid}>
+          <label className={styles.field}>
+            <span>Từ ngày</span>
+            <AttendanceNativeDateInput
+              value={startDate}
+              onChange={(date) => {
+                setStartDate(date);
+                if (date && endDate && date > endDate) {
+                  setEndDate(date);
+                }
+              }}
+              max={endDate}
+              ariaLabel="Từ ngày đồng bộ"
+            />
+          </label>
+
+          <label className={styles.field}>
+            <span>Đến ngày</span>
+            <AttendanceNativeDateInput
+              value={endDate}
+              onChange={setEndDate}
+              min={startDate}
+              ariaLabel="Đến ngày đồng bộ"
+            />
+          </label>
+        </div>
 
         {diffDays > MAX_DAYS && (
           <Text size="xs" c="red">

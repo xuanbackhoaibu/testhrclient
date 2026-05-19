@@ -1,3 +1,4 @@
+import { AttendanceNativeDateInput } from './AttendanceNativeDateInput';
 import type { AttendanceDateMode, AttendanceDateFilterValue } from './AttendanceDateFilter.types';
 import styles from './AttendanceDateFilter.module.css';
 
@@ -26,9 +27,11 @@ export function AttendanceDateFilter({ value, onChange }: AttendanceDateFilterPr
     });
   };
 
+  const today = new Date().toISOString().split('T')[0];
+
   return (
     <div className={styles.root}>
-      <div className={styles.modeToggle}>
+      <div className={styles.modeToggle} role="tablist" aria-label="Kiểu lọc ngày">
         <button
           type="button"
           className={value.mode === 'date' ? styles.active : ''}
@@ -46,51 +49,47 @@ export function AttendanceDateFilter({ value, onChange }: AttendanceDateFilterPr
       </div>
 
       {value.mode === 'date' ? (
-        <input
-          type="date"
-          className={styles.nativeInput}
-          value={value.date || ''}
-          max={new Date().toISOString().split('T')[0]}
-          onChange={(event) =>
+        <AttendanceNativeDateInput
+          value={value.date}
+          onChange={(date) =>
             onChange({
               mode: 'date',
-              date: event.target.value || undefined,
+              date,
               from: undefined,
               to: undefined,
             })
           }
+          ariaLabel="Chọn ngày chấm công"
         />
       ) : (
         <div className={styles.rangeInputs}>
-          <input
-            type="date"
-            className={styles.nativeInput}
-            value={value.from || ''}
-            max={value.to || undefined}
-            onChange={(event) =>
+          <AttendanceNativeDateInput
+            value={value.from}
+            onChange={(from) =>
               onChange({
                 ...value,
                 mode: 'range',
-                from: event.target.value || undefined,
                 date: undefined,
+                from,
               })
             }
+            max={value.to}
+            ariaLabel="Từ ngày"
           />
           <span className={styles.rangeSeparator}>—</span>
-          <input
-            type="date"
-            className={styles.nativeInput}
-            value={value.to || ''}
-            min={value.from || undefined}
-            max={new Date().toISOString().split('T')[0]}
-            onChange={(event) =>
+          <AttendanceNativeDateInput
+            value={value.to}
+            onChange={(to) =>
               onChange({
                 ...value,
                 mode: 'range',
-                to: event.target.value || undefined,
                 date: undefined,
+                to,
               })
             }
+            min={value.from}
+            max={today}
+            ariaLabel="Đến ngày"
           />
         </div>
       )}
