@@ -74,6 +74,7 @@ function buildQueryParams(
 
   if (filters.status) params.status = filters.status;
   if (filters.mappingStatus) params.mappingStatus = filters.mappingStatus;
+  if (filters.biotimeDepartmentId) params.biotimeDepartmentId = filters.biotimeDepartmentId;
 
   return params;
 }
@@ -85,6 +86,7 @@ export interface AttendanceFilters {
   to: string;
   status: string;
   mappingStatus: string;
+  biotimeDepartmentId: number | null;
 }
 
 export function AttendancePage() {
@@ -111,6 +113,7 @@ export function AttendancePage() {
       to: '',
       status: '',
       mappingStatus: '',
+      biotimeDepartmentId: null,
     },
   });
 
@@ -124,6 +127,7 @@ export function AttendancePage() {
     to: searchParams.get('to') ?? savedFilters.to,
     status: searchParams.get('status') ?? savedFilters.status,
     mappingStatus: searchParams.get('mappingStatus') ?? savedFilters.mappingStatus,
+    biotimeDepartmentId: savedFilters.biotimeDepartmentId ?? null,
   }));
 
   const [page, setPage] = useState(pageParam);
@@ -153,6 +157,7 @@ export function AttendancePage() {
     if (newFilters.to) params.set('to', newFilters.to);
     if (newFilters.status) params.set('status', newFilters.status);
     if (newFilters.mappingStatus) params.set('mappingStatus', newFilters.mappingStatus);
+    if (newFilters.biotimeDepartmentId) params.set('biotimeDepartmentId', String(newFilters.biotimeDepartmentId));
     params.set('page', '1');
     setSearchParams(params, { replace: true });
   };
@@ -245,7 +250,7 @@ export function AttendancePage() {
 
   // Determine empty state reason
   const getEmptyStateReason = (): { title: string; description: string; action?: () => void } => {
-    const hasActiveFilters = filters.search || filters.date || filters.from || filters.to || filters.status || filters.mappingStatus;
+    const hasActiveFilters = filters.search || filters.date || filters.from || filters.to || filters.status || filters.mappingStatus || filters.biotimeDepartmentId;
 
     if (!syncStatus?.data?.hasAttendanceData) {
       return {
@@ -272,6 +277,7 @@ export function AttendancePage() {
           to: '',
           status: '',
           mappingStatus: '',
+          biotimeDepartmentId: null,
         }),
       };
     }
