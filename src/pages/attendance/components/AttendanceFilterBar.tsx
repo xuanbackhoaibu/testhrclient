@@ -1,18 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Badge,
-  Button,
-  ButtonGroup,
-  Group,
-  Select,
-  Stack,
-  TextInput,
-} from '@mantine/core';
-import { DatePickerInput } from '@mantine/dates';
-import { IconSearch, IconX } from '@tabler/icons-react';
-import dayjs from 'dayjs';
-
+import { Badge, Button, Group, Select, Stack, TextInput } from '@mantine/core';
+import { IconRefresh, IconSearch, IconX } from '@tabler/icons-react';
 import { useBioTimeDepartments } from '../../../features/attendance/useAttendanceSync';
+import { AttendanceDateFilter } from './AttendanceDateFilter';
+import type { AttendanceDateFilterValue } from './AttendanceDateFilter.types';
 import styles from './AttendanceFilterBar.module.css';
 
 export interface AttendanceFilters {
@@ -33,25 +24,23 @@ interface AttendanceFilterBarProps {
   maySync: boolean;
 }
 
-type DateMode = 'single' | 'range';
-
 const STATUS_OPTIONS = [
   { value: 'PRESENT', label: 'Đủ công' },
   { value: 'LATE', label: 'Đi muộn' },
   { value: 'ABSENT', label: 'Vắng' },
-  { value: 'SINGLE_PUNCH', label: 'Chấm 1 lần' },
-  { value: 'UNKNOWN', label: 'Không xác định' },
+  { value: 'SINGLE_PUNCH', label: '1 lần' },
+  { value: 'UNKNOWN', label: 'Không rõ' },
 ];
 
 const MAPPING_OPTIONS = [
   { value: 'MAPPED', label: 'Đã map' },
-  { value: 'AUTO_MAPPED', label: 'Tự động' },
+  { value: 'AUTO_MAPPED', label: 'Tự map' },
   { value: 'UNMAPPED', label: 'Chưa map' },
 ];
 
 const DEFAULT_FILTERS: AttendanceFilters = {
   search: '',
-  date: dayjs().format('YYYY-MM-DD'),
+  date: '',
   from: '',
   to: '',
   status: '',
@@ -59,8 +48,16 @@ const DEFAULT_FILTERS: AttendanceFilters = {
   biotimeDepartmentId: null,
 };
 
-function hasActiveFilters(f: AttendanceFilters): boolean {
-  return Boolean(f.search || f.date || f.from || f.to || f.status || f.mappingStatus || f.biotimeDepartmentId);
+function countActiveFilters(f: AttendanceFilters): number {
+  return [
+    f.search,
+    f.date,
+    f.from,
+    f.to,
+    f.status,
+    f.mappingStatus,
+    f.biotimeDepartmentId,
+  ].filter(Boolean).length;
 }
 
 export function AttendanceFilterBar({
@@ -70,8 +67,15 @@ export function AttendanceFilterBar({
   isSyncing,
   maySync,
 }: AttendanceFilterBarProps) {
-  const [dateMode, setDateMode] = useState<DateMode>('single');
   const [searchInput, setSearchInput] = useState(filters.search);
+
+  // Derive date filter value from filters
+  const dateFilterValue: AttendanceDateFilterValue = useMemo(() => {
+    if (filters.from || filters.to) {
+      return { mode: 'range', from: filters.from, to: filters.to };
+    }
+    return { mode: 'date', date: filters.date };
+  }, [filters.date, filters.from, filters.to]);
 
   // Fetch departments for filter dropdown
   const { data: departmentsData } = useBioTimeDepartments({
@@ -89,84 +93,31 @@ export function AttendanceFilterBar({
     }));
   }, [departmentsData]);
 
-  // Debounce search input 400ms
+  // Debounce search input 300ms
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchInput !== filters.search) {
         onChange({ ...filters, search: searchInput });
       }
-    }, 400);
+    }, 300);
     return () => clearTimeout(timer);
   }, [searchInput, filters, onChange]);
 
-  const handleDateModeChange = (mode: DateMode) => {
-    setDateMode(mode);
-    if (mode === 'single') {
-      onChange({
-        ...filters,
-        from: '',
-        to: '',
-        date: filters.date || dayjs().format('YYYY-MM-DD'),
-      });
-    } else {
-      onChange({
-        ...filters,
-        date: '',
-        from: filters.from || dayjs().format('YYYY-MM-DD'),
-        to: filters.to || dayjs().format('YYYY-MM-DD'),
-      });
-    }
-  };
-
-  // Date handlers - DatePickerInput onChange accepts string | null in Mantine v9
-  const handleDateChange = (value: string | null) => {
-    if (!value) {
-      onChange({ ...filters, date: '' });
-      return;
-    }
-    const parsed = dayjs(value, 'YYYY-MM-DD', true);
-    onChange({ ...filters, date: parsed.isValid() ? value : filters.date });
-  };
-
-  const handleFromChange = (value: string | null) => {
-    if (!value) {
-      onChange({ ...filters, from: '' });
-      return;
-    }
-    const parsed = dayjs(value, 'YYYY-MM-DD', true);
-    onChange({ ...filters, from: parsed.isValid() ? value : filters.from });
-  };
-
-  const handleToChange = (value: string | null) => {
-    if (!value) {
-      onChange({ ...filters, to: '' });
-      return;
-    }
-    const parsed = dayjs(value, 'YYYY-MM-DD', true);
-    onChange({ ...filters, to: parsed.isValid() ? value : filters.to });
+  const handleDateFilterChange = (value: AttendanceDateFilterValue) => {
+    onChange({
+      ...filters,
+      date: value.mode === 'date' ? (value.date ?? '') : '',
+      from: value.mode === 'range' ? (value.from ?? '') : '',
+      to: value.mode === 'range' ? (value.to ?? '') : '',
+    });
   };
 
   const handleClear = () => {
     setSearchInput('');
     onChange({ ...DEFAULT_FILTERS });
-    setDateMode('single');
   };
 
-  const activeFiltersCount = [
-    filters.search,
-    filters.date,
-    filters.from,
-    filters.to,
-    filters.status,
-    filters.mappingStatus,
-    filters.biotimeDepartmentId,
-  ].filter(Boolean).length;
-
-  const parseDateValue = (dateStr: string): string | null => {
-    if (!dateStr) return null;
-    const parsed = dayjs(dateStr, 'YYYY-MM-DD', true);
-    return parsed.isValid() ? dateStr : null;
-  };
+  const activeCount = countActiveFilters(filters);
 
   return (
     <Stack gap="xs" className={styles.root}>
@@ -193,91 +144,35 @@ export function AttendanceFilterBar({
           size="sm"
         />
 
-        {/* Date mode toggle */}
-        <ButtonGroup className={styles.dateModeToggle}>
-          <Button
-            variant={dateMode === 'single' ? 'filled' : 'default'}
-            onClick={() => handleDateModeChange('single')}
-            size="xs"
-          >
-            Ngày
-          </Button>
-          <Button
-            variant={dateMode === 'range' ? 'filled' : 'default'}
-            onClick={() => handleDateModeChange('range')}
-            size="xs"
-          >
-            Khoảng
-          </Button>
-        </ButtonGroup>
+        {/* Date filter with native inputs */}
+        <AttendanceDateFilter
+          value={dateFilterValue}
+          onChange={handleDateFilterChange}
+        />
 
-        {/* Date pickers */}
-        {dateMode === 'single' ? (
-          <div className={styles.dateFilterWrapper}>
-            <DatePickerInput
-              placeholder="Chọn ngày"
-              value={parseDateValue(filters.date)}
-              onChange={handleDateChange}
-              clearable
-              maxDate={new Date()}
-              className={styles.dateInput}
-              popoverProps={{
-                withinPortal: true,
-                position: 'bottom-start',
-                shadow: 'md',
-                radius: 'md',
-                zIndex: 300,
-                classNames: {
-                  dropdown: 'attendance-date-filter-dropdown',
-                },
-              }}
-              size="sm"
-            />
-          </div>
-        ) : (
-          <div className={styles.dateFilterWrapper}>
-            <Group gap={4} wrap="nowrap" className={styles.rangeInputs}>
-              <DatePickerInput
-                placeholder="Từ"
-                value={parseDateValue(filters.from)}
-                onChange={handleFromChange}
-                clearable
-                maxDate={new Date()}
-                className={styles.dateInput}
-                popoverProps={{
-                  withinPortal: true,
-                  position: 'bottom-start',
-                  shadow: 'md',
-                  radius: 'md',
-                  zIndex: 300,
-                  classNames: {
-                    dropdown: 'attendance-date-filter-dropdown',
-                  },
-                }}
-                size="sm"
-              />
-              <DatePickerInput
-                placeholder="Đến"
-                value={parseDateValue(filters.to)}
-                onChange={handleToChange}
-                clearable
-                maxDate={new Date()}
-                className={styles.dateInput}
-                popoverProps={{
-                  withinPortal: true,
-                  position: 'bottom-start',
-                  shadow: 'md',
-                  radius: 'md',
-                  zIndex: 300,
-                  classNames: {
-                    dropdown: 'attendance-date-filter-dropdown',
-                  },
-                }}
-                size="sm"
-              />
-            </Group>
-          </div>
-        )}
+        {/* Department filter */}
+        <Select
+          placeholder="Phòng ban"
+          data={departmentOptions}
+          value={filters.biotimeDepartmentId ? String(filters.biotimeDepartmentId) : null}
+          onChange={(val) =>
+            onChange({
+              ...filters,
+              biotimeDepartmentId: val ? Number(val) : null,
+            })
+          }
+          clearable
+          searchable
+          size="sm"
+          className={styles.selectInput}
+          comboboxProps={{ withinPortal: true }}
+          nothingFoundMessage={
+            departmentsData?.data.length === 0
+              ? 'Chưa có phòng ban'
+              : 'Không tìm thấy'
+          }
+          disabled={departmentsData?.data.length === 0 && !departmentsData}
+        />
 
         {/* Status filter */}
         <Select
@@ -303,35 +198,11 @@ export function AttendanceFilterBar({
           comboboxProps={{ withinPortal: true }}
         />
 
-        {/* Department filter */}
-        <Select
-          placeholder="Phòng ban"
-          data={departmentOptions}
-          value={filters.biotimeDepartmentId ? String(filters.biotimeDepartmentId) : null}
-          onChange={(val) =>
-            onChange({
-              ...filters,
-              biotimeDepartmentId: val ? Number(val) : null,
-            })
-          }
-          clearable
-          searchable
-          size="sm"
-          className={styles.selectInput}
-          comboboxProps={{ withinPortal: true }}
-          nothingFoundMessage={
-            departmentsData?.data.length === 0
-              ? 'Chưa có phòng ban BioTime'
-              : 'Không tìm thấy phòng ban'
-          }
-          disabled={departmentsData?.data.length === 0 && !departmentsData}
-        />
-
         {/* Actions */}
         <Group gap="xs" wrap="nowrap" className={styles.actions}>
           {maySync && (
             <Button
-              leftSection={<IconSearch size={15} />}
+              leftSection={<IconRefresh size={15} />}
               onClick={onSync}
               loading={isSyncing}
               disabled={isSyncing}
@@ -343,7 +214,7 @@ export function AttendanceFilterBar({
             </Button>
           )}
 
-          {hasActiveFilters(filters) && (
+          {activeCount > 0 && (
             <Button
               variant="subtle"
               size="sm"
@@ -351,7 +222,7 @@ export function AttendanceFilterBar({
               onClick={handleClear}
               leftSection={
                 <Badge size="xs" circle color="blue">
-                  {activeFiltersCount}
+                  {activeCount}
                 </Badge>
               }
             >

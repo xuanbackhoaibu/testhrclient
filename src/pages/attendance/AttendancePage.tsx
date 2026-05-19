@@ -24,8 +24,18 @@ import { AttendanceSummaryCards } from './components/AttendanceSummaryCards';
 import { ManualSyncModal } from './components/ManualSyncModal';
 import { AttendanceSyncRunsTable } from './components/AttendanceSyncRunsTable';
 import { BioTimeDepartmentsTable } from './components/BioTimeDepartmentsTable';
+import styles from './AttendancePage.module.css';
 
 const PAGE_SIZE = 50;
+
+// Short status labels to avoid badge truncation
+const STATUS_LABELS: Record<string, string> = {
+  PRESENT: 'Đủ công',
+  LATE: 'Đi muộn',
+  ABSENT: 'Vắng',
+  SINGLE_PUNCH: '1 lần',
+  UNKNOWN: 'Không rõ',
+};
 
 const STATUS_COLORS: Record<string, string> = {
   PRESENT: 'green',
@@ -35,12 +45,11 @@ const STATUS_COLORS: Record<string, string> = {
   UNKNOWN: 'gray',
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  PRESENT: 'Đủ công',
-  LATE: 'Đi muộn',
-  ABSENT: 'Vắng',
-  SINGLE_PUNCH: 'Chấm 1 lần',
-  UNKNOWN: 'Không xác định',
+// Short mapping labels
+const MAPPING_LABELS: Record<string, string> = {
+  MAPPED: 'Đã map',
+  AUTO_MAPPED: 'Tự map',
+  UNMAPPED: 'Chưa map',
 };
 
 const MAPPING_COLORS: Record<string, string> = {
@@ -49,11 +58,15 @@ const MAPPING_COLORS: Record<string, string> = {
   UNMAPPED: 'red',
 };
 
-const MAPPING_LABELS: Record<string, string> = {
-  MAPPED: 'Đã map',
-  AUTO_MAPPED: 'Tự động',
-  UNMAPPED: 'Chưa map',
-};
+export interface AttendanceFilters {
+  search: string;
+  date: string;
+  from: string;
+  to: string;
+  status: string;
+  mappingStatus: string;
+  biotimeDepartmentId: number | null;
+}
 
 function buildQueryParams(
   filters: AttendanceFilters & { page: number; pageSize: number },
@@ -65,11 +78,14 @@ function buildQueryParams(
 
   if (filters.search) params.search = filters.search;
 
-  if (filters.date) {
-    params.date = filters.date;
-  } else {
+  // Date mode vs range mode - don't send both
+  if (filters.from || filters.to) {
+    // Range mode
     if (filters.from) params.from = filters.from;
     if (filters.to) params.to = filters.to;
+  } else if (filters.date) {
+    // Single date mode
+    params.date = filters.date;
   }
 
   if (filters.status) params.status = filters.status;
@@ -79,15 +95,15 @@ function buildQueryParams(
   return params;
 }
 
-export interface AttendanceFilters {
-  search: string;
-  date: string;
-  from: string;
-  to: string;
-  status: string;
-  mappingStatus: string;
-  biotimeDepartmentId: number | null;
-}
+const DEFAULT_FILTERS: AttendanceFilters = {
+  search: '',
+  date: dayjs().format('YYYY-MM-DD'),
+  from: '',
+  to: '',
+  status: '',
+  mappingStatus: '',
+  biotimeDepartmentId: null,
+};
 
 export function AttendancePage() {
   const { can } = useAuth();
@@ -106,15 +122,7 @@ export function AttendancePage() {
   // Read filter state from URL, fallback to localStorage
   const [savedFilters, setSavedFilters] = useLocalStorage<AttendanceFilters>({
     key: 'attendance-filters',
-    defaultValue: {
-      search: '',
-      date: dayjs().format('YYYY-MM-DD'),
-      from: '',
-      to: '',
-      status: '',
-      mappingStatus: '',
-      biotimeDepartmentId: null,
-    },
+    defaultValue: DEFAULT_FILTERS,
   });
 
   // Sync filter state from URL
@@ -212,9 +220,12 @@ export function AttendancePage() {
   const handleExport = async () => {
     const params = new URLSearchParams();
     if (filters.search) params.set('search', filters.search);
-    if (filters.date) params.set('date', filters.date);
-    if (filters.from) params.set('from', filters.from);
-    if (filters.to) params.set('to', filters.to);
+    if (filters.from || filters.to) {
+      if (filters.from) params.set('from', filters.from);
+      if (filters.to) params.set('to', filters.to);
+    } else if (filters.date) {
+      params.set('date', filters.date);
+    }
     if (filters.status) params.set('status', filters.status);
     if (filters.mappingStatus) params.set('mappingStatus', filters.mappingStatus);
 
@@ -250,19 +261,26 @@ export function AttendancePage() {
 
   // Determine empty state reason
   const getEmptyStateReason = (): { title: string; description: string; action?: () => void } => {
-    const hasActiveFilters = filters.search || filters.date || filters.from || filters.to || filters.status || filters.mappingStatus || filters.biotimeDepartmentId;
+    const hasActiveFilters =
+      filters.search ||
+      filters.date ||
+      filters.from ||
+      filters.to ||
+      filters.status ||
+      filters.mappingStatus ||
+      filters.biotimeDepartmentId;
 
     if (!syncStatus?.data?.hasAttendanceData) {
       return {
         title: 'Chưa có dữ liệu chấm công',
-        description: 'Dữ liệu chấm công sẽ xuất hiện sau khi sync từ ZKTeco BioTime.',
+        description: 'Hãy đồng bộ dữ liệu từ BioTime để bắt đầu.',
       };
     }
 
     if (syncStatus?.data?.dailyToday?.lastError || syncStatus?.data?.nightly7Days?.lastError) {
       return {
         title: 'Đồng bộ gần nhất thất bại',
-        description: 'Không thể lấy dữ liệu chấm công. Hãy kiểm tra cấu hình BioTime.',
+        description: 'Hãy xem lịch sử đồng bộ để kiểm tra lỗi.',
       };
     }
 
@@ -270,21 +288,16 @@ export function AttendancePage() {
       return {
         title: 'Không có dữ liệu phù hợp',
         description: 'Không có bản ghi nào phù hợp với bộ lọc hiện tại.',
-        action: () => handleFilterChange({
-          search: '',
-          date: dayjs().format('YYYY-MM-DD'),
-          from: '',
-          to: '',
-          status: '',
-          mappingStatus: '',
-          biotimeDepartmentId: null,
-        }),
+        action: () =>
+          handleFilterChange({
+            ...DEFAULT_FILTERS,
+          }),
       };
     }
 
     return {
       title: 'Chưa có dữ liệu chấm công',
-      description: 'Dữ liệu chấm công sẽ xuất hiện sau khi sync từ ZKTeco BioTime.',
+      description: 'Hãy đồng bộ dữ liệu từ BioTime để bắt đầu.',
     };
   };
 
@@ -385,22 +398,27 @@ export function AttendancePage() {
             onAction={emptyReason.action}
           />
         ) : (
-          <Card withBorder padding={0}>
+          <Card withBorder padding={0} className={styles.tableCard}>
             <DataTable
               data={records}
               columns={[
                 {
                   key: 'workDate',
                   header: 'Ngày',
-                  width: 100,
-                  render: (record) => formatDate(record.workDate),
+                  width: 110,
+                  align: 'center',
+                  render: (record) => (
+                    <Text size="sm" className={styles.dateCell}>
+                      {formatDate(record.workDate)}
+                    </Text>
+                  ),
                 },
                 {
                   key: 'empCode',
                   header: 'Mã NV',
-                  width: 110,
+                  width: 90,
                   render: (record) => (
-                    <Text size="sm" fw={500}>
+                    <Text size="sm" fw={600} className={styles.empCode}>
                       {record.empCode}
                     </Text>
                   ),
@@ -408,14 +426,22 @@ export function AttendancePage() {
                 {
                   key: 'fullName',
                   header: 'Họ tên',
-                  minWidth: 150,
-                  render: (record) => record.fullName ?? '-',
+                  minWidth: 180,
+                  render: (record) => (
+                    <Text size="sm" fw={500}>
+                      {record.fullName ?? '-'}
+                    </Text>
+                  ),
                 },
                 {
                   key: 'deptName',
                   header: 'Phòng ban',
-                  minWidth: 140,
-                  render: (record) => record.deptName ?? '-',
+                  minWidth: 160,
+                  render: (record) => (
+                    <Text size="sm" c="dimmed">
+                      {record.deptName ?? '-'}
+                    </Text>
+                  ),
                 },
                 {
                   key: 'firstPunch',
@@ -424,7 +450,9 @@ export function AttendancePage() {
                   align: 'center',
                   render: (record) =>
                     record.firstPunch ? (
-                      <Text size="sm">{record.firstPunch.slice(0, 5)}</Text>
+                      <Text size="sm" className={styles.timeCell}>
+                        {record.firstPunch.slice(0, 5)}
+                      </Text>
                     ) : (
                       <Text size="sm" c="dimmed">—</Text>
                     ),
@@ -436,7 +464,9 @@ export function AttendancePage() {
                   align: 'center',
                   render: (record) =>
                     record.lastPunch ? (
-                      <Text size="sm">{record.lastPunch.slice(0, 5)}</Text>
+                      <Text size="sm" className={styles.timeCell}>
+                        {record.lastPunch.slice(0, 5)}
+                      </Text>
                     ) : (
                       <Text size="sm" c="dimmed">—</Text>
                     ),
@@ -445,21 +475,25 @@ export function AttendancePage() {
                   key: 'totalTime',
                   header: 'Tổng giờ',
                   width: 80,
-                  align: 'center',
-                  render: (record) => record.totalTime ?? '-',
+                  align: 'right',
+                  render: (record) => (
+                    <Text size="sm" className={styles.numericCell}>
+                      {record.totalTime ?? '—'}
+                    </Text>
+                  ),
                 },
                 {
                   key: 'status',
                   header: 'Trạng thái',
-                  width: 110,
+                  width: 100,
                   align: 'center',
                   render: (record) => (
                     <Tooltip
                       label={
                         record.status === 'SINGLE_PUNCH'
-                          ? 'Chỉ chấm công 1 lần - có thể thiếu giờ ra'
+                          ? 'Chỉ chấm 1 lần - có thể thiếu giờ ra'
                           : record.status === 'UNKNOWN'
-                          ? 'Không xác định - cần kiểm tra lại'
+                          ? 'Không rõ - cần kiểm tra lại'
                           : undefined
                       }
                       disabled={record.status !== 'SINGLE_PUNCH' && record.status !== 'UNKNOWN'}
@@ -468,6 +502,7 @@ export function AttendancePage() {
                         color={STATUS_COLORS[record.status ?? ''] ?? 'gray'}
                         variant="light"
                         size="sm"
+                        radius="md"
                       >
                         {STATUS_LABELS[record.status ?? ''] ?? record.status ?? 'N/A'}
                       </Badge>
@@ -483,7 +518,7 @@ export function AttendancePage() {
                     <Tooltip
                       label={
                         record.mappingStatus === 'UNMAPPED'
-                          ? 'Nhân sự chưa liên kết với HRM - cần kiểm tra mã nhân viên'
+                          ? 'Nhân sự chưa liên kết với HRM'
                           : record.mappingStatus === 'AUTO_MAPPED'
                           ? 'Tự động map theo prefix+mã số'
                           : undefined
@@ -494,6 +529,7 @@ export function AttendancePage() {
                         color={MAPPING_COLORS[record.mappingStatus] ?? 'gray'}
                         variant="light"
                         size="sm"
+                        radius="md"
                       >
                         {MAPPING_LABELS[record.mappingStatus] ?? record.mappingStatus}
                       </Badge>
