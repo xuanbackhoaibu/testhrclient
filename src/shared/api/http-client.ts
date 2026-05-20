@@ -1,6 +1,13 @@
 import axios, { type AxiosRequestConfig } from 'axios';
 
-import { clearSession, getAccessToken } from '../../features/auth/authClient';
+import {
+  clearSession,
+  getAccessToken,
+  getRefreshToken,
+  isRememberMe,
+  setAccessToken,
+  setRefreshToken,
+} from '../../features/auth/authClient';
 import { ApiError, type ApiEnvelope } from './api.types';
 import { handleAxiosResponseError } from './errorHandler';
 
@@ -104,16 +111,44 @@ async function handle401AndRetry(
 }
 
 async function doRefreshSession(): Promise<void> {
-  const token = getAccessToken();
-  if (!token) {
-    throw new Error('No token to refresh');
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    throw new Error('No refresh token available');
   }
 
-  const baseURL = import.meta.env.VITE_HR_API_BASE_URL ?? import.meta.env.VITE_API_BASE_URL;
-  await axios.get(`${baseURL}/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-    timeout: 10000,
-  });
+  const authBaseUrl =
+    (import.meta.env.VITE_AUTH_SERVICE_BASE_URL as string | undefined) ||
+    (import.meta.env.VITE_CHAT_AUTH_BASE_URL as string | undefined);
+
+  if (!authBaseUrl) {
+    throw new Error('Auth service base URL not configured');
+  }
+
+  interface RefreshEnvelope {
+    success?: boolean;
+    data?: { accessToken?: string; refreshToken?: string };
+    accessToken?: string;
+    refreshToken?: string;
+  }
+
+  const response = await axios.post<RefreshEnvelope>(
+    `${authBaseUrl}/refresh`,
+    { refreshToken },
+    { timeout: 10000 },
+  );
+
+  const data = response.data?.data ?? response.data;
+  const newAccessToken = data?.accessToken;
+  if (!newAccessToken) {
+    throw new Error('Refresh response missing accessToken');
+  }
+
+  setAccessToken(newAccessToken);
+
+  const newRefreshToken = data?.refreshToken;
+  if (newRefreshToken) {
+    setRefreshToken(newRefreshToken, isRememberMe());
+  }
 }
 
 axiosInstance.interceptors.request.use((config) => {

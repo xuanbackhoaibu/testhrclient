@@ -2,7 +2,15 @@ import axios from 'axios';
 
 import { queryClient } from '../../app/queryClient';
 import { MOCK_AUTH_USERS, MOCK_TOKENS, getMockUserByToken } from '../../shared/mocks/mockAuth';
-import { STORAGE_KEYS, getStoredString, removeStoredString, setStoredString } from '../../shared/utils/storage';
+import {
+  STORAGE_KEYS,
+  getSessionString,
+  getStoredString,
+  removeSessionString,
+  removeStoredString,
+  setSessionString,
+  setStoredString,
+} from '../../shared/utils/storage';
 import { useAuthStore } from './authStore';
 import { CURRENT_USER_QUERY_KEY, normalizeCurrentUser } from './currentUser';
 import type { AuthUser, DemoRole, LoginCredentials } from './types';
@@ -21,10 +29,12 @@ interface AuthServiceLoginResponse {
   error?: string;
   data?: {
     accessToken?: string;
+    refreshToken?: string;
     mustChangePassword?: boolean;
     nextAction?: string;
   };
   accessToken?: string;
+  refreshToken?: string;
   mustChangePassword?: boolean;
   nextAction?: string;
 }
@@ -41,6 +51,30 @@ export function getAccessToken(): string | null {
   }
 
   return token;
+}
+
+export function getRefreshToken(): string | null {
+  const token =
+    getStoredString(STORAGE_KEYS.refreshToken) ??
+    getSessionString(STORAGE_KEYS.refreshToken);
+  if (!token || token === 'undefined' || token === 'null') {
+    return null;
+  }
+  return token;
+}
+
+export function setRefreshToken(token: string, persistent: boolean): void {
+  if (persistent) {
+    setStoredString(STORAGE_KEYS.refreshToken, token);
+    removeSessionString(STORAGE_KEYS.refreshToken);
+  } else {
+    setSessionString(STORAGE_KEYS.refreshToken, token);
+    removeStoredString(STORAGE_KEYS.refreshToken);
+  }
+}
+
+export function isRememberMe(): boolean {
+  return getStoredString(STORAGE_KEYS.rememberMe) === 'true';
 }
 
 export function setAccessToken(token: string): void {
@@ -158,8 +192,16 @@ export async function login(
 
     const mustChangePassword = Boolean(responseData?.mustChangePassword);
     const nextAction = responseData?.nextAction;
+    const persistent = payload.rememberMe === true;
 
     setAccessToken(accessToken);
+
+    const refreshToken = responseData?.refreshToken;
+    if (refreshToken) {
+      setRefreshToken(refreshToken, persistent);
+    }
+    setStoredString(STORAGE_KEYS.rememberMe, String(persistent));
+
     queryClient.clear();
     setSessionUser(null);
     return { mustChangePassword, nextAction };
@@ -192,12 +234,16 @@ export function handleCallback(): string {
 export function clearSession(): void {
   removeStoredString(STORAGE_KEYS.accessToken);
   removeStoredString(STORAGE_KEYS.currentUser);
+  removeStoredString(STORAGE_KEYS.refreshToken);
+  removeStoredString(STORAGE_KEYS.rememberMe);
+  removeSessionString(STORAGE_KEYS.refreshToken);
   queryClient.clear();
   useAuthStore.getState().clearSession();
 }
 
 export async function logout(): Promise<void> {
   const accessToken = getAccessToken();
+  const refreshToken = getRefreshToken();
 
   if (!isMockMode) {
     const logoutUrl = readAuthEnv(
@@ -208,7 +254,7 @@ export async function logout(): Promise<void> {
       await axios
         .post(
           logoutUrl,
-          {},
+          refreshToken ? { refreshToken } : {},
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
