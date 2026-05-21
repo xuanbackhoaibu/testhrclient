@@ -308,17 +308,15 @@ export function EmployeeDetailPage() {
                       <Table.Th>Check in</Table.Th>
                       <Table.Th>Check out</Table.Th>
                       <Table.Th>Nguồn</Table.Th>
-                      <Table.Th>Trạng thái</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
                     {data.attendanceRecords.map((r: AttendanceRecord) => (
                       <Table.Tr key={r.id}>
                         <Table.Td>{formatDate(r.workDate)}</Table.Td>
-                        <Table.Td>{formatDateTime(r.checkIn)}</Table.Td>
-                        <Table.Td>{formatDateTime(r.checkOut)}</Table.Td>
+                        <Table.Td>{formatDateTime(r.checkIn, 'HH:mm')}</Table.Td>
+                        <Table.Td>{formatDateTime(r.checkOut, 'HH:mm')}</Table.Td>
                         <Table.Td>{r.source ?? '-'}</Table.Td>
-                        <Table.Td><StatusTag status={r.status} /></Table.Td>
                       </Table.Tr>
                     ))}
                   </Table.Tbody>
