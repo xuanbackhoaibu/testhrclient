@@ -13,6 +13,7 @@ export const ROUTES = {
   leave: '/leave',
   attendance: '/attendance',
   attendanceMapping: '/attendance/mapping',
+  calendar: '/calendar',
   onboarding: '/onboarding',
   offboarding: '/offboarding',
   imports: '/imports',

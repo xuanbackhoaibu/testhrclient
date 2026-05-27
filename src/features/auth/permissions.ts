@@ -47,6 +47,11 @@ export const HR_PERMISSIONS = {
   ATTENDANCE_SYNC_LOG_READ: 'hr.attendance.sync_log.read',
   ATTENDANCE_EXPORT: 'hr.attendance.export',
 
+  // Calendar
+  CALENDAR_READ: 'hr.calendar.read',
+  CALENDAR_WRITE: 'hr.calendar.write',
+  CALENDAR_VIEW_OTHERS: 'hr.calendar.view_others',
+
   ACCOUNT_READ: 'hr.account.read',
   ACCOUNT_CREATE: 'hr.account.create',
   ACCOUNT_UPDATE: 'hr.account.update',
