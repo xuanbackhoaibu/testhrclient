@@ -1,0 +1,108 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.calendarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--mantine-spacing-md);
+  background-color: var(--mantine-color-white);
+  border-bottom: 1px solid var(--mantine-color-gray-2);
+}
+
+.calendarGrid {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.dayHeaders {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background-color: var(--mantine-color-gray-0);
+  border-bottom: 1px solid var(--mantine-color-gray-2);
+}
+
+.dayHeader {
+  padding: var(--mantine-spacing-sm);
+  text-align: center;
+}
+
+.daysGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  flex: 1;
+}
+
+.dayCell {
+  min-height: 100px;
+  border-right: 1px solid var(--mantine-color-gray-2);
+  border-bottom: 1px solid var(--mantine-color-gray-2);
+  padding: var(--mantine-spacing-xs);
+  background-color: var(--mantine-color-white);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.dayCell:hover {
+  background-color: var(--mantine-color-gray-0);
+}
+
+.otherMonth {
+  background-color: var(--mantine-color-gray-0);
+}
+
+.otherMonth .dayHeader {
+  opacity: 0.5;
+}
+
+.today {
+  background-color: var(--mantine-color-blue-0);
+}
+
+.todayText {
+  font-weight: 700;
+  color: var(--mantine-color-blue-6);
+}
+
+.eventsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.eventItem {
+  cursor: pointer;
+  border-left: 3px solid var(--mantine-color-blue-5);
+  transition: transform 0.1s ease;
+}
+
+.eventItem:hover {
+  transform: scale(1.02);
+}
+
+.eventItem[data-type="MEETING"] {
+  border-left-color: var(--mantine-color-blue-5);
+}
+
+.eventItem[data-type="TASK"] {
+  border-left-color: var(--mantine-color-green-5);
+}
+
+.eventItem[data-type="LEAVE"] {
+  border-left-color: var(--mantine-color-orange-5);
+}
+
+.eventItem[data-type="DEADLINE"] {
+  border-left-color: var(--mantine-color-red-5);
+}
+
+.moreEvents {
+  padding: 2px 4px;
+  cursor: pointer;
+}

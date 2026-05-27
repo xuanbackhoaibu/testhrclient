@@ -1,0 +1,24 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--mantine-spacing-md);
+  background-color: var(--mantine-color-white);
+  border-bottom: 1px solid var(--mantine-color-gray-2);
+  height: 100%;
+}
+
+.backButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: var(--mantine-color-gray-6);
+  transition: all 0.15s ease;
+}
+
+.backButton:hover {
+  background-color: var(--mantine-color-gray-1);
+  color: var(--mantine-color-gray-8);
+}

@@ -8,6 +8,7 @@ import { AttendancePage } from '../pages/attendance/AttendancePage';
 import { AttendanceMappingPage } from '../pages/attendance/AttendanceMappingPage';
 import { AuditLogsPage } from '../pages/audit/AuditLogsPage';
 import { AuthCallbackPage } from '../pages/AuthCallbackPage';
+import { CalendarPage } from '../pages/calendar/CalendarPage';
 import { ContractsPage } from '../pages/contracts/ContractsPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { EmployeeDetailPage } from '../pages/employees/EmployeeDetailPage';
@@ -116,6 +117,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute permissions={[HR_PERMISSIONS.ATTENDANCE_READ]}>
             <AttendanceMappingPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.calendar,
+        element: (
+          <ProtectedRoute permissions={[HR_PERMISSIONS.CALENDAR_READ]}>
+            <CalendarPage />
           </ProtectedRoute>
         ),
       },
