@@ -11,10 +11,13 @@
       "vite/client"
     ],
     "skipLibCheck": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
     "paths": {
       "write-excel-file/browser": [
         "./src/types/write-excel-file-browser.d.ts"
-      ]
+      ],
+      "@hacom/chat-shared-types/*": ["../chat-shared-types/src/*"]
     },
     /* Bundler mode */
     "moduleResolution": "bundler",
