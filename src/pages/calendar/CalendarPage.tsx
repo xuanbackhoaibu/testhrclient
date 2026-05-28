@@ -8,20 +8,21 @@ import { CalendarView } from './components/CalendarView';
 import { EventDetailModal } from './components/EventDetailModal';
 import { CreateEventModal } from './components/CreateEventModal';
 import { useCalendarOwnerEvents, type CalendarEvent } from '../../features/calendar/useCalendarEvents';
-import { useCalendarView, useSelectedOwner } from '../../features/calendar/useCalendarView';
+import { useCalendarView } from '../../features/calendar/useCalendarView';
+import { CalendarOwnerProvider, useCalendarOwner } from '../../features/calendar/CalendarContext';
 import { ApiError } from '../../shared/api/api.types';
 import styles from './CalendarPage.module.css';
 
-export function CalendarPage() {
+function CalendarPageInner() {
   const { year, month } = useCalendarView();
-  const { selectedOwner, isViewingOthers } = useSelectedOwner();
+  const { selectedOwner, isViewingOthers } = useCalendarOwner();
 
   const {
     data: eventsData,
     isLoading,
     error,
     refetch,
-  } = useCalendarOwnerEvents(selectedOwner?.id ?? null, year, month);
+  } = useCalendarOwnerEvents(selectedOwner?.id ?? null, year, month, selectedOwner?.employeeCode);
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -151,5 +152,13 @@ export function CalendarPage() {
         editEvent={editingEvent}
       />
     </AppShell>
+  );
+}
+
+export function CalendarPage() {
+  return (
+    <CalendarOwnerProvider>
+      <CalendarPageInner />
+    </CalendarOwnerProvider>
   );
 }
