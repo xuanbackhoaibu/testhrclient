@@ -1,10 +1,26 @@
-import type { CalendarEvent, CalendarEventsResponse, CalendarPermission, CalendarParticipant } from '@hacom/chat-shared-types/dtos/calendar.dto';
+import type { CalendarEvent, CalendarPaginationMeta, CalendarPermission, CalendarParticipant } from '@hacom/chat-shared-types/dtos/calendar.dto';
 import { CalendarVisibility, CalendarEventType } from '@hacom/chat-shared-types/dtos/calendar.dto';
 import { api } from '../../shared/api/httpClient';
 
 export { CalendarVisibility, CalendarEventType };
 
-export type { CalendarEvent, CalendarEventsResponse, CalendarPermission, CalendarParticipant };
+export type { CalendarEvent, CalendarPaginationMeta, CalendarPermission, CalendarParticipant };
+
+export type CalendarMode = 'HR_LINKED' | 'NO_HR_PROFILE';
+
+/** Extended response: base shared-types contract + optional mode flags from hr-api-service */
+export interface CalendarEventsResponse {
+  data: CalendarEvent[];
+  pagination: CalendarPaginationMeta;
+  mode?: CalendarMode;
+  capabilities?: {
+    canCreatePersonalEvent: boolean;
+    canViewHrEvents: boolean;
+    canViewDepartmentEvents: boolean;
+    canRetryHrLink: boolean;
+  };
+  warnings?: Array<{ code: string; message: string }>;
+}
 
 export interface ListCalendarEventsParams {
   ownerId?: string;
