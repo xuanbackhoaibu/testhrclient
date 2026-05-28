@@ -23,7 +23,10 @@ export interface CalendarEventsResponse {
 }
 
 export interface ListCalendarEventsParams {
+  /** Employee internal ID (HR cuid). Prefer ownerAuthUserId for auth-domain filtering. */
   ownerId?: string;
+  /** Auth user ID (UUID from JWT / externalAuthUserId). Backend resolves to correct HR owner. */
+  ownerAuthUserId?: string;
   from?: string;
   to?: string;
   type?: string;
@@ -36,7 +39,11 @@ export interface ListCalendarEventsParams {
 export const calendarApi = {
   async listEvents(params: ListCalendarEventsParams = {}): Promise<CalendarEventsResponse> {
     const searchParams = new URLSearchParams();
-    if (params.ownerId) searchParams.append('ownerId', params.ownerId);
+    if (params.ownerAuthUserId) {
+      searchParams.append('ownerAuthUserId', params.ownerAuthUserId);
+    } else if (params.ownerId) {
+      searchParams.append('ownerId', params.ownerId);
+    }
     if (params.from) searchParams.append('from', params.from);
     if (params.to) searchParams.append('to', params.to);
     if (params.type) searchParams.append('type', params.type);
