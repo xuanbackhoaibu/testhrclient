@@ -53,6 +53,22 @@ export function CreateEventModal({ opened, onClose, editEvent }: CreateEventModa
   const [isAllDay, setIsAllDay] = useState(editEvent?.isAllDay ?? false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const resetForm = useCallback(() => {
+    setTitle('');
+    setDescription('');
+    setStartAt('');
+    setEndAt('');
+    setVisibility(CalendarVisibility.PRIVATE);
+    setEventType(CalendarEventType.MEETING);
+    setLocation('');
+    setIsAllDay(false);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    resetForm();
+    onClose();
+  }, [resetForm, onClose]);
+
   const handleSubmit = useCallback(async () => {
     if (!title.trim()) {
       notifications.show({
@@ -144,19 +160,8 @@ export function CreateEventModal({ opened, onClose, editEvent }: CreateEventModa
     isEditing,
     editEvent,
     queryClient,
+    handleClose,
   ]);
-
-  const handleClose = useCallback(() => {
-    setTitle('');
-    setDescription('');
-    setStartAt('');
-    setEndAt('');
-    setVisibility(CalendarVisibility.PRIVATE);
-    setEventType(CalendarEventType.MEETING);
-    setLocation('');
-    setIsAllDay(false);
-    onClose();
-  }, [onClose]);
 
   return (
     <Modal

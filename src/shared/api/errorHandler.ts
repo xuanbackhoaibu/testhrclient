@@ -147,6 +147,19 @@ export async function handleAxiosResponseError(
     return Promise.reject(apiError);
   }
 
+  if (
+    apiError.statusCode === 409 &&
+    apiError.errorCode === 'EMPLOYEE_LINK_REQUIRED'
+  ) {
+    showError(
+      appendRequestId(
+        'Tai khoan cua ban chua duoc lien ket voi ho so nhan su. Vui long lien he quan tri vien de duoc cap ho so nhan su truoc khi su dung lich.',
+        apiError.requestId,
+      ),
+    );
+    return Promise.reject(apiError);
+  }
+
   if (apiError.statusCode === 409) {
     showError(appendRequestId(apiError.message || STATUS_MESSAGES[409], apiError.requestId));
     return Promise.reject(apiError);
