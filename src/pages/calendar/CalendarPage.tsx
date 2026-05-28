@@ -56,9 +56,13 @@ export function CalendarPage() {
 
   const events = useMemo(() => eventsData?.data ?? [], [eventsData?.data]);
 
-  const isEmployeeLinkRequired =
-    error instanceof ApiError &&
-    error.errorCode === 'EMPLOYEE_LINK_REQUIRED';
+  // Backend returns mode:'NO_HR_PROFILE' (200) when the auth user has no linked HR employee.
+  // Legacy path: if the old 422 is still received for some reason, catch via errorCode too.
+  const isNoHrProfile =
+    eventsData?.mode === 'NO_HR_PROFILE' ||
+    (error instanceof ApiError && error.errorCode === 'EMPLOYEE_LINK_REQUIRED');
+
+  const hasError = !!error && !isNoHrProfile;
 
   return (
     <AppShell header={{ height: 60 }} padding={0}>
@@ -71,8 +75,8 @@ export function CalendarPage() {
           <CalendarSidebar />
 
           <div className={styles.mainContent}>
-            {/* Action bar */}
-            {!isViewingOthers && (
+            {/* Action bar — hide create button when HR not linked (would fail) */}
+            {!isViewingOthers && !isNoHrProfile && (
               <div className={styles.actionBar}>
                 <Button
                   leftSection={<IconPlus size={16} />}
@@ -85,16 +89,21 @@ export function CalendarPage() {
 
             {isLoading && <LoadingOverlay visible overlayProps={{ blur: 2 }} />}
 
-            {isEmployeeLinkRequired ? (
+            {/* Soft notice — never blocks the calendar grid */}
+            {isNoHrProfile && (
               <Alert
                 icon={<IconAlertCircle size={16} />}
-                title="Chưa có hồ sơ nhân sự"
+                title="Chưa liên kết hồ sơ nhân sự"
                 color="yellow"
                 m="md"
+                mb="xs"
               >
-                Tài khoản của bạn chưa được liên kết với hồ sơ nhân sự. Vui lòng liên hệ quản trị viên để được cấp hồ sơ nhân sự trước khi sử dụng lịch.
+                Tài khoản chưa được liên kết với hồ sơ nhân sự. Lịch phòng ban và công ty sẽ khả dụng sau khi liên kết. Vui lòng liên hệ quản trị viên nếu cần hỗ trợ.
               </Alert>
-            ) : error ? (
+            )}
+
+            {/* Hard error (network, 5xx, etc.) — not shown when it's just no HR profile */}
+            {hasError && (
               <Alert
                 icon={<IconAlertCircle size={16} />}
                 title="Lỗi tải dữ liệu"
@@ -109,18 +118,23 @@ export function CalendarPage() {
                   </Button>
                 </Group>
               </Alert>
-            ) : events.length === 0 && !isLoading ? (
+            )}
+
+            {/* Calendar view is always rendered — empty state when no events */}
+            {!hasError && (events.length === 0 && !isLoading ? (
               <div className={styles.emptyState}>
                 <IconCalendarEvent size={48} className={styles.emptyStateIcon} />
                 <Text size="sm" className={styles.emptyStateText}>
                   {selectedOwner
                     ? `${selectedOwner.fullName} chưa có sự kiện nào trong tháng này.`
-                    : 'Bạn chưa có sự kiện nào trong tháng này. Nhấn "Tạo sự kiện" để thêm mới.'}
+                    : isNoHrProfile
+                      ? 'Chưa có sự kiện nào. Liên kết hồ sơ nhân sự để xem lịch phòng ban.'
+                      : 'Bạn chưa có sự kiện nào trong tháng này. Nhấn "Tạo sự kiện" để thêm mới.'}
                 </Text>
               </div>
             ) : (
               <CalendarView events={events} onEventClick={handleEventClick} />
-            )}
+            ))}
           </div>
         </div>
       </AppShell.Main>
