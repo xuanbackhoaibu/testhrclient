@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components */
+// Context files intentionally export both a Provider component and a consumer hook.
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 import type { SelectedOwner } from './useCalendarView';
 
