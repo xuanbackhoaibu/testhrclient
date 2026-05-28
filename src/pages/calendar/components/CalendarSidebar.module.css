@@ -6,6 +6,68 @@
   border-right: 1px solid var(--mantine-color-gray-2);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+/* Card shown when actively viewing another person's calendar */
+.viewingCard {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  padding: 8px 10px;
+  background: var(--mantine-color-blue-0);
+  border: 1px solid var(--mantine-color-blue-2);
+  border-radius: var(--mantine-radius-md);
+  min-width: 0;
+}
+
+.viewingCardInfo {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.viewingCardLabel {
+  font-size: 10px;
+  color: var(--mantine-color-blue-6);
+  line-height: 1.2;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.viewingCardName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mantine-color-blue-8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.viewingCardSub {
+  font-size: 11px;
+  color: var(--mantine-color-blue-5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.viewingCardClose {
+  flex-shrink: 0;
+  color: var(--mantine-color-blue-4);
+  border-radius: var(--mantine-radius-sm);
+  padding: 2px;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+  line-height: 0;
+}
+
+.viewingCardClose:hover {
+  color: var(--mantine-color-blue-7);
+  background-color: var(--mantine-color-blue-1);
 }
 
 .employeeScroll {
@@ -13,8 +75,32 @@
   min-height: 0;
 }
 
+/* Employee list row — enforce truncation within fixed sidebar width */
 .employeeButton {
   padding: var(--mantine-spacing-xs);
   height: auto;
   justify-content: flex-start;
+  min-width: 0;
+}
+
+.employeeRow {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.employeeName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.employeeSub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  font-size: 11px;
+  color: var(--mantine-color-dimmed);
 }

@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 
@@ -10,19 +10,28 @@ export { calendarApi };
 
 export const calendarKeys = {
   all: ['calendar'] as const,
-  events: (filters?: ListCalendarEventsParams) => ['calendar-events', filters] as const,
+  /**
+   * Events cache key. ownerKey must be stable & unique per owner:
+   *  - 'me'          → current user's own calendar
+   *  - employeeId    → target employee CUID
+   *  - employeeCode  → fallback when only code is known
+   * Different ownerKey values produce isolated cache entries so data never bleeds
+   * between "my calendar" and someone else's calendar.
+   */
+  events: (ownerKey: string, from?: string, to?: string) =>
+    ['calendar-events', ownerKey, from, to] as const,
   event: (id: string) => ['calendar-event', id] as const,
   permissions: (id: string) => ['calendar-permissions', id] as const,
 };
 
 export function useCalendarEvents(params?: ListCalendarEventsParams) {
-  const queryFn = useCallback(async () => {
-    return await calendarApi.listEvents(params);
-  }, [params]);
-
   return useQuery({
-    queryKey: calendarKeys.events(params),
-    queryFn: queryFn,
+    queryKey: calendarKeys.events(
+      params?.ownerId ?? params?.employeeCode ?? 'me',
+      params?.from,
+      params?.to,
+    ),
+    queryFn: () => calendarApi.listEvents(params),
     staleTime: 30_000,
   });
 }
@@ -31,11 +40,7 @@ export function useCalendarEventsForMonth(year: number, month: number, ownerId?:
   const from = useMemo(() => dayjs().year(year).month(month).startOf('month').toISOString(), [year, month]);
   const to = useMemo(() => dayjs().year(year).month(month).endOf('month').toISOString(), [year, month]);
 
-  return useCalendarEvents({
-    ownerId,
-    from,
-    to,
-  });
+  return useCalendarEvents({ ownerId, from, to });
 }
 
 export function useCalendarEvent(id: string | null) {
@@ -56,6 +61,11 @@ export function useCalendarEventPermissions(id: string | null) {
   });
 }
 
+/**
+ * Fetch calendar events for a given owner + month range.
+ * When ownerId/employeeCode is provided the query key differs from 'me' so
+ * React Query never serves the current user's cached data for someone else.
+ */
 export function useCalendarOwnerEvents(
   ownerId: string | null,
   year: number,
@@ -65,14 +75,20 @@ export function useCalendarOwnerEvents(
   const from = useMemo(() => dayjs().year(year).month(month).startOf('month').toISOString(), [year, month]);
   const to = useMemo(() => dayjs().year(year).month(month).endOf('month').toISOString(), [year, month]);
 
-  const isViewingOthers = ownerId !== null;
+  const isViewingOthers = ownerId !== null || !!employeeCode;
+  const ownerKey = ownerId ?? employeeCode ?? 'me';
 
-  return useCalendarEvents({
-    ownerId: ownerId ?? undefined,
-    employeeCode: employeeCode ?? undefined,
-    from,
-    to,
-    includeParticipantEvents: isViewingOthers ? true : undefined,
+  return useQuery({
+    queryKey: calendarKeys.events(ownerKey, from, to),
+    queryFn: () =>
+      calendarApi.listEvents({
+        ownerId: ownerId ?? undefined,
+        employeeCode: employeeCode ?? undefined,
+        from,
+        to,
+        includeParticipantEvents: isViewingOthers ? true : undefined,
+      }),
+    staleTime: 30_000,
   });
 }
 
