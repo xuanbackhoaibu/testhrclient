@@ -19,16 +19,9 @@ import {
 import dayjs from 'dayjs';
 import { useCalendarMutations, useSelectedOwner } from '../../../features/calendar/useCalendarView';
 import { useCalendarEvent, useCalendarEventPermissions } from '../../../features/calendar/useCalendarEvents';
+import type { CalendarEvent, CalendarParticipant, CalendarPermission } from '../../../features/calendar/useCalendarEvents';
 import { useQueryClient } from '@tanstack/react-query';
 import styles from './EventDetailModal.module.css';
-
-interface CalendarPermission {
-  canView: boolean;
-  canEdit: boolean;
-  canDelete: boolean;
-  canViewFullDetails: boolean;
-  reason?: string;
-}
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   MEETING: 'Cuộc họp',
@@ -64,7 +57,7 @@ const RESPONSE_COLORS: Record<string, string> = {
 interface EventDetailModalProps {
   eventId: string | null;
   onClose: () => void;
-  onEdit?: (event: any) => void;
+  onEdit?: (event: CalendarEvent) => void;
 }
 
 export function EventDetailModal({ eventId, onClose, onEdit }: EventDetailModalProps) {
@@ -217,7 +210,7 @@ export function EventDetailModal({ eventId, onClose, onEdit }: EventDetailModalP
               <Divider />
               <Stack gap="xs">
                 <Text size="sm" fw={500}>Người tham gia</Text>
-                {event.participants.map((p: any) => (
+                {event.participants.map((p: CalendarParticipant) => (
                   <Group key={p.id} gap="sm">
                     <Avatar size="sm" radius="xl" color="gray">
                       {p.employee?.fullName?.charAt(0).toUpperCase() ?? '?'}

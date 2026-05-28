@@ -2,9 +2,9 @@ import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 
-import { calendarApi, type ListCalendarEventsParams, type CalendarEvent } from './calendarApi';
+import { calendarApi, type ListCalendarEventsParams, type CalendarEvent, type CalendarParticipant, type CalendarPermission } from './calendarApi';
 
-export type { CalendarEvent, ListCalendarEventsParams };
+export type { CalendarEvent, ListCalendarEventsParams, CalendarParticipant, CalendarPermission };
 
 export { calendarApi };
 
@@ -18,7 +18,7 @@ export const calendarKeys = {
 export function useCalendarEvents(params?: ListCalendarEventsParams) {
   const queryFn = useCallback(async () => {
     return await calendarApi.listEvents(params);
-  }, [params?.ownerId, params?.from, params?.to, params?.type]);
+  }, [params]);
 
   return useQuery({
     queryKey: calendarKeys.events(params),

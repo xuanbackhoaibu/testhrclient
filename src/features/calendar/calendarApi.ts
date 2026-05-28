@@ -1,10 +1,10 @@
-import type { CalendarEvent, CalendarEventsResponse } from '../../../../chat-shared-types/src/dtos/calendar.dto';
+import type { CalendarEvent, CalendarEventsResponse, CalendarPermission, CalendarParticipant } from '../../../../chat-shared-types/src/dtos/calendar.dto';
 import { CalendarVisibility, CalendarEventType } from '../../../../chat-shared-types/src/dtos/calendar.dto';
 import { api } from '../../shared/api/httpClient';
 
 export { CalendarVisibility, CalendarEventType };
 
-export type { CalendarEvent, CalendarEventsResponse };
+export type { CalendarEvent, CalendarEventsResponse, CalendarPermission, CalendarParticipant };
 
 export interface ListCalendarEventsParams {
   ownerId?: string;
@@ -38,8 +38,8 @@ export const calendarApi = {
     return api.get<CalendarEvent>(`/calendar/events/${id}`);
   },
 
-  async getEventPermissions(id: string) {
-    return api.get<unknown>(`/calendar/events/${id}/permissions`);
+  async getEventPermissions(id: string): Promise<CalendarPermission> {
+    return api.get<CalendarPermission>(`/calendar/events/${id}/permissions`);
   },
 
   async createEvent(params: {

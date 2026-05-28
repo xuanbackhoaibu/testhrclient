@@ -9,6 +9,7 @@ import { EventDetailModal } from './components/EventDetailModal';
 import { CreateEventModal } from './components/CreateEventModal';
 import { useCalendarOwnerEvents, type CalendarEvent } from '../../features/calendar/useCalendarEvents';
 import { useCalendarView, useSelectedOwner } from '../../features/calendar/useCalendarView';
+import { ApiError } from '../../shared/api/api.types';
 import styles from './CalendarPage.module.css';
 
 export function CalendarPage() {
@@ -55,6 +56,10 @@ export function CalendarPage() {
 
   const events = useMemo(() => eventsData?.data ?? [], [eventsData?.data]);
 
+  const isEmployeeLinkRequired =
+    error instanceof ApiError &&
+    error.errorCode === 'EMPLOYEE_LINK_REQUIRED';
+
   return (
     <AppShell header={{ height: 60 }} padding={0}>
       <AppShell.Header>
@@ -80,7 +85,16 @@ export function CalendarPage() {
 
             {isLoading && <LoadingOverlay visible overlayProps={{ blur: 2 }} />}
 
-            {error ? (
+            {isEmployeeLinkRequired ? (
+              <Alert
+                icon={<IconAlertCircle size={16} />}
+                title="Chưa có hồ sơ nhân sự"
+                color="yellow"
+                m="md"
+              >
+                Tài khoản của bạn chưa được liên kết với hồ sơ nhân sự. Vui lòng liên hệ quản trị viên để được cấp hồ sơ nhân sự trước khi sử dụng lịch.
+              </Alert>
+            ) : error ? (
               <Alert
                 icon={<IconAlertCircle size={16} />}
                 title="Lỗi tải dữ liệu"
