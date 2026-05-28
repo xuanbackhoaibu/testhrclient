@@ -1,10 +1,10 @@
 import { Badge, Group, Stack, Text, Avatar, UnstyledButton } from '@mantine/core';
 import { IconCalendar, IconEye, IconArrowLeft } from '@tabler/icons-react';
-import { useSelectedOwner } from '../../../features/calendar/useCalendarView';
+import { useCalendarOwner } from '../../../features/calendar/CalendarContext';
 import styles from './CalendarHeader.module.css';
 
 export function CalendarHeader() {
-  const { selectedOwner, isViewingOthers, clearOwner } = useSelectedOwner();
+  const { selectedOwner, isViewingOthers, clearOwner } = useCalendarOwner();
 
   return (
     <div className={styles.header}>

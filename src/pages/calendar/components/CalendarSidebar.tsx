@@ -13,11 +13,12 @@ import {
 import { IconSearch, IconX, IconUser } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useEmployees } from '../../../features/employees/useEmployees';
-import { useSelectedOwner, type SelectedOwner } from '../../../features/calendar/useCalendarView';
+import type { SelectedOwner } from '../../../features/calendar/useCalendarView';
+import { useCalendarOwner } from '../../../features/calendar/CalendarContext';
 import styles from './CalendarSidebar.module.css';
 
 export function CalendarSidebar() {
-  const { selectedOwner, selectOwner, isViewingOthers } = useSelectedOwner();
+  const { selectedOwner, selectOwner, isViewingOthers } = useCalendarOwner();
   const [search, setSearch] = useState('');
 
   const { data: employeesData, isLoading } = useEmployees({

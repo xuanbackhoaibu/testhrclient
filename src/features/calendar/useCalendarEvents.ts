@@ -56,14 +56,23 @@ export function useCalendarEventPermissions(id: string | null) {
   });
 }
 
-export function useCalendarOwnerEvents(ownerId: string | null, year: number, month: number) {
+export function useCalendarOwnerEvents(
+  ownerId: string | null,
+  year: number,
+  month: number,
+  employeeCode?: string,
+) {
   const from = useMemo(() => dayjs().year(year).month(month).startOf('month').toISOString(), [year, month]);
   const to = useMemo(() => dayjs().year(year).month(month).endOf('month').toISOString(), [year, month]);
 
+  const isViewingOthers = ownerId !== null;
+
   return useCalendarEvents({
     ownerId: ownerId ?? undefined,
+    employeeCode: employeeCode ?? undefined,
     from,
     to,
+    includeParticipantEvents: isViewingOthers ? true : undefined,
   });
 }
 
