@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Avatar,
   Button,
@@ -10,8 +10,7 @@ import {
   TextInput,
   ScrollArea,
 } from '@mantine/core';
-import { IconSearch, IconX, IconUser } from '@tabler/icons-react';
-import { useState } from 'react';
+import { IconSearch, IconX, IconCalendar } from '@tabler/icons-react';
 import { useEmployees } from '../../../features/employees/useEmployees';
 import type { SelectedOwner } from '../../../features/calendar/useCalendarView';
 import { useCalendarOwner } from '../../../features/calendar/CalendarContext';
@@ -33,22 +32,58 @@ export function CalendarSidebar() {
     selectOwner(owner);
   };
 
+  const displayName = selectedOwner?.fullName ?? selectedOwner?.employeeCode ?? 'N/A';
+
   return (
     <aside className={styles.sidebar}>
       <Stack gap="sm" h="100%">
-        {/* My Calendar */}
+        {/* My Calendar button — always visible; active only when not viewing others */}
         <Button
-          variant={!isViewingOthers ? 'filled' : 'light'}
+          variant={!isViewingOthers ? 'filled' : 'subtle'}
           color={!isViewingOthers ? 'blue' : 'gray'}
           fullWidth
           justify="flex-start"
-          leftSection={<IconUser size={16} />}
+          leftSection={<IconCalendar size={16} />}
           onClick={() => handleSelectUser(null)}
         >
           Lịch của tôi
         </Button>
 
-        <Divider label="Nhân viên" labelPosition="left" />
+        {/* "Currently viewing" card — shown only when viewing another person */}
+        {isViewingOthers && selectedOwner && (
+          <>
+            <Divider label="Đang xem" labelPosition="left" />
+            <div className={styles.viewingCard}>
+              <Avatar size="sm" radius="xl" color="blue" style={{ flexShrink: 0 }}>
+                {displayName.charAt(0).toUpperCase()}
+              </Avatar>
+              <div className={styles.viewingCardInfo}>
+                <div className={styles.viewingCardLabel}>Lịch đang xem</div>
+                <div className={styles.viewingCardName} title={displayName}>
+                  {displayName}
+                </div>
+                {selectedOwner.employeeCode && (
+                  <div className={styles.viewingCardSub} title={selectedOwner.employeeCode}>
+                    {selectedOwner.employeeCode}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                className={styles.viewingCardClose}
+                title="Về lịch của tôi"
+                onClick={() => handleSelectUser(null)}
+              >
+                <IconX size={14} />
+              </button>
+            </div>
+          </>
+        )}
+
+        <Divider
+          label={isViewingOthers ? 'Chọn người khác' : 'Nhân viên'}
+          labelPosition="left"
+        />
 
         {/* Search */}
         <TextInput
@@ -81,37 +116,46 @@ export function CalendarSidebar() {
                 {search ? 'Không tìm thấy nhân viên' : 'Không có nhân viên'}
               </Text>
             ) : (
-              employees.map((emp) => (
-                <Button
-                  key={emp.id}
-                  variant={selectedOwner?.id === emp.id ? 'filled' : 'subtle'}
-                  color={selectedOwner?.id === emp.id ? 'blue' : 'gray'}
-                  fullWidth
-                  justify="flex-start"
-                  onClick={() =>
-                    handleSelectUser({
-                      id: emp.id,
-                      fullName: emp.fullName,
-                      employeeCode: emp.employeeCode,
-                    })
-                  }
-                  className={styles.employeeButton}
-                >
-                  <Group gap="sm" wrap="nowrap">
-                    <Avatar size="sm" radius="xl" color="blue">
-                      {emp.fullName?.charAt(0).toUpperCase()}
-                    </Avatar>
-                    <Stack gap={0} style={{ overflow: 'hidden' }}>
-                      <Text size="sm" lineClamp={1} fw={selectedOwner?.id === emp.id ? 600 : 400}>
-                        {emp.fullName}
-                      </Text>
-                      <Text size="xs" c="dimmed" lineClamp={1}>
-                        {emp.employeeCode}
-                      </Text>
-                    </Stack>
-                  </Group>
-                </Button>
-              ))
+              employees.map((emp) => {
+                const isSelected = selectedOwner?.id === emp.id;
+                return (
+                  <Button
+                    key={emp.id}
+                    variant={isSelected ? 'filled' : 'subtle'}
+                    color={isSelected ? 'blue' : 'gray'}
+                    fullWidth
+                    justify="flex-start"
+                    onClick={() =>
+                      handleSelectUser({
+                        id: emp.id,
+                        fullName: emp.fullName,
+                        employeeCode: emp.employeeCode,
+                      })
+                    }
+                    className={styles.employeeButton}
+                    leftSection={
+                      <Avatar size="xs" radius="xl" color={isSelected ? 'white' : 'blue'} style={{ flexShrink: 0 }}>
+                        {emp.fullName?.charAt(0).toUpperCase()}
+                      </Avatar>
+                    }
+                  >
+                    <Group gap={0} wrap="nowrap" className={styles.employeeRow}>
+                      <Stack gap={0} style={{ minWidth: 0, flex: 1 }}>
+                        <span
+                          className={styles.employeeName}
+                          title={emp.fullName}
+                          style={{ fontWeight: isSelected ? 600 : 400 }}
+                        >
+                          {emp.fullName}
+                        </span>
+                        <span className={styles.employeeSub} title={emp.employeeCode}>
+                          {emp.employeeCode}
+                        </span>
+                      </Stack>
+                    </Group>
+                  </Button>
+                );
+              })
             )}
           </Stack>
         </ScrollArea>

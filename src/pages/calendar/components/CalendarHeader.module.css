@@ -6,6 +6,26 @@
   background-color: var(--mantine-color-white);
   border-bottom: 1px solid var(--mantine-color-gray-2);
   height: 100%;
+  overflow: hidden;
+}
+
+/* Wraps the name/label block, constrains width so long names don't push other elements */
+.viewingInfo {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Name text: truncates with ellipsis, tooltip via title attribute */
+.viewingName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  font-weight: 600;
 }
 
 .backButton {
@@ -16,6 +36,7 @@
   border-radius: 6px;
   color: var(--mantine-color-gray-6);
   transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 .backButton:hover {
