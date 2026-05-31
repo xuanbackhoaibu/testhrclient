@@ -1,5 +1,13 @@
-import type { CalendarEvent, CalendarPaginationMeta, CalendarPermission, CalendarParticipant } from '@hacom/chat-shared-types/dtos/calendar.dto';
-import { CalendarVisibility, CalendarEventType } from '@hacom/chat-shared-types/dtos/calendar.dto';
+import type {
+  CalendarEvent,
+  CalendarPaginationMeta,
+  CalendarPermission,
+  CalendarParticipant,
+} from '@hacom/chat-shared-types';
+import {
+  CalendarEventType,
+  CalendarVisibility,
+} from '@hacom/chat-shared-types';
 import { api } from '../../shared/api/httpClient';
 
 export { CalendarVisibility, CalendarEventType };
