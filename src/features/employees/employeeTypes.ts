@@ -28,7 +28,12 @@ export interface Employee {
   positionId?: string | null;
   positionName?: string | null;
   authUserId?: string | null;
+  /** True when the employee is linked to any auth account (either mirror). */
+  hasAccount?: boolean;
+  /** Canonical account status: NOT_CREATED | ACTIVE | LOCKED | DEACTIVATED | ... */
   accountStatus?: string | null;
+  /** Pre-translated Vietnamese label for the account status, from the API. */
+  accountDisplayStatus?: string | null;
   account?: EmployeeAccount | null;
   currentEmployeeAssignment: EmployeeAssignment | null;
   biotimeEmployeeCode?: string | null;

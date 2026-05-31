@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useDebouncedValue } from "@mantine/hooks";
 import {
+  Badge,
   Button,
   Drawer,
   Group,
@@ -68,6 +69,52 @@ const employmentStatusOptions = [
 ];
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Canonical account-status vocabulary returned by the HR API. Kept separate
+// from the shared StatusTag (whose ACTIVE label means "Đang làm việc") so the
+// account column never mislabels an active account as an employment status.
+const ACCOUNT_STATUS_COLORS: Record<string, string> = {
+  NOT_CREATED: "gray",
+  ACTIVE: "green",
+  PENDING_ACTIVATION: "yellow",
+  LOCKED: "orange",
+  DISABLED: "red",
+  DEACTIVATED: "red",
+  TOMBSTONED: "dark",
+  UNKNOWN: "gray",
+};
+
+const ACCOUNT_STATUS_FALLBACK_LABELS: Record<string, string> = {
+  NOT_CREATED: "Chưa tạo",
+  ACTIVE: "Đã cấp",
+  PENDING_ACTIVATION: "Chờ kích hoạt",
+  LOCKED: "Bị khóa",
+  DISABLED: "Vô hiệu hóa",
+  DEACTIVATED: "Vô hiệu hóa",
+  TOMBSTONED: "Đã xóa",
+  UNKNOWN: "Không rõ trạng thái",
+};
+
+function employeeHasAccount(record: Employee): boolean {
+  return record.hasAccount ?? Boolean(record.authUserId);
+}
+
+function AccountStatusBadge({ record }: { record: Employee }) {
+  const status = record.accountStatus ?? "NOT_CREATED";
+  const label =
+    record.accountDisplayStatus ??
+    ACCOUNT_STATUS_FALLBACK_LABELS[status] ??
+    status;
+  return (
+    <Badge
+      color={ACCOUNT_STATUS_COLORS[status] ?? "gray"}
+      variant="light"
+      radius="sm"
+    >
+      {label}
+    </Badge>
+  );
+}
 const employeePayloadFields = new Set<keyof EmployeePayload>([
   "fullName",
   "companyEmail",
@@ -574,9 +621,7 @@ export function EmployeesPage() {
         key: "accountStatus",
         header: "TT tài khoản",
         width: 150,
-        render: (record) => (
-          <StatusTag status={record.accountStatus ?? "NOT_CREATED"} />
-        ),
+        render: (record) => <AccountStatusBadge record={record} />,
       },
       {
         key: "department",
@@ -601,7 +646,7 @@ export function EmployeesPage() {
         align: "center",
         render: (record) => {
           if (!mayProvisionAccounts) return null;
-          if (record.authUserId) {
+          if (employeeHasAccount(record)) {
             return (
               <Tooltip label="Xem tài khoản">
                 <Button
