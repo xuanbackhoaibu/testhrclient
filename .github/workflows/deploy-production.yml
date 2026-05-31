@@ -38,6 +38,18 @@ jobs:
     steps:
       - name: Checkout hr-web-client
         uses: actions/checkout@v4
+        with:
+          path: hr-web-client
+
+      # hr-web-client depends on @hacom/chat-shared-types via file:../chat-shared-types,
+      # so the sibling package must be checked out next to it and built first.
+      - name: Checkout chat-shared-types
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.SHARED_TYPES_REPOSITORY || format('{0}/chat-shared-types', github.repository_owner) }}
+          path: chat-shared-types
+          ref: ${{ vars.SHARED_TYPES_REF || 'main' }}
+          token: ${{ secrets.SHARED_TYPES_REPO_TOKEN || github.token }}
 
       - name: Set up Node.js
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
@@ -45,12 +57,20 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: |
+            hr-web-client/package-lock.json
+            chat-shared-types/package-lock.json
 
       - name: Install dependencies, typecheck, lint, build
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
         shell: bash
         run: |
           set -Eeuo pipefail
+          # Build shared types first so @hacom/chat-shared-types resolves dist/
+          # (main/types/exports) for the client's tsc + vite build.
+          ( cd chat-shared-types && npm ci --no-audit --no-fund && npm run build )
+          test -f chat-shared-types/dist/index.d.ts
+          cd hr-web-client
           npm ci --no-audit --no-fund
           npm run typecheck
           npm run lint
@@ -69,6 +89,19 @@ jobs:
       - name: Checkout hr-web-client
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
         uses: actions/checkout@v4
+        with:
+          path: hr-web-client
+
+      # Root build context needs the sibling package present; the Dockerfile
+      # builds chat-shared-types/dist before the client.
+      - name: Checkout chat-shared-types
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.SHARED_TYPES_REPOSITORY || format('{0}/chat-shared-types', github.repository_owner) }}
+          path: chat-shared-types
+          ref: ${{ vars.SHARED_TYPES_REF || 'main' }}
+          token: ${{ secrets.SHARED_TYPES_REPO_TOKEN || github.token }}
 
       - name: Preflight Docker build context
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
@@ -81,10 +114,31 @@ jobs:
           find . -maxdepth 2 -name 'Dockerfile*' -type f | sort
           echo "Top-level dirs:"
           find . -maxdepth 2 -type d | sort
-          test -f ./Dockerfile
-          test -f ./package-lock.json
-          test -f ./deploy/nginx/default.conf.template
-          test -f ./deploy/docker/entrypoint.sh
+          test -d ./hr-web-client
+          test -f ./hr-web-client/Dockerfile
+          test -f ./hr-web-client/package-lock.json
+          test -f ./hr-web-client/deploy/nginx/default.conf.template
+          test -f ./hr-web-client/deploy/docker/entrypoint.sh
+          test -d ./chat-shared-types
+          test -f ./chat-shared-types/package-lock.json
+
+      - name: Prepare workspace .dockerignore for root build context
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cat > .dockerignore <<'EOF'
+          **/node_modules
+          **/.git
+          **/dist
+          **/coverage
+          **/build
+          **/.env
+          **/.env.*
+          **/logs
+          **/tmp
+          EOF
+          cat .dockerignore
 
       - uses: docker/setup-buildx-action@v3
 
@@ -109,7 +163,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           docker buildx build \
-            --file Dockerfile \
+            --file ./hr-web-client/Dockerfile \
             --target production \
             --platform linux/amd64 \
             --progress plain \
