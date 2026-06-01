@@ -1,22 +1,13 @@
 ARG NODE_VERSION=20-alpine
 
-# NOTE: build context MUST be the workspace root (the directory containing both
-# `hr-web-client/` and `chat-shared-types/`), and the build invoked with
-# `--file hr-web-client/Dockerfile`. hr-web-client depends on
-# `@hacom/chat-shared-types` via `file:../chat-shared-types`, so the sibling
-# package must be present in the build context and built before the client.
+# Build context is the hr-web-client directory. The calendar shared types are
+# now defined locally (src/features/calendar/calendarSharedTypes.ts), so there
+# is no longer a sibling `chat-shared-types` package to build first.
 FROM node:${NODE_VERSION} AS deps
-WORKDIR /workspace
-
-COPY chat-shared-types/package*.json ./chat-shared-types/
-WORKDIR /workspace/chat-shared-types
-RUN npm ci
-
-WORKDIR /workspace
-# package*.json matches both package.json AND package-lock.json (if present),
+WORKDIR /app
+# package*.json matches package.json AND package-lock.json (if present),
 # so the build doesn't hard-fail when the lockfile is missing from context.
-COPY hr-web-client/package*.json ./hr-web-client/
-WORKDIR /workspace/hr-web-client
+COPY package*.json ./
 # Use ci (fast, deterministic) when lockfile exists; fall back to install otherwise.
 RUN npm ci 2>/dev/null || npm install --no-audit --no-fund
 
@@ -56,24 +47,15 @@ ENV VITE_CHAT_AUTH_LOGOUT_URL=${VITE_CHAT_AUTH_LOGOUT_URL}
 ENV VITE_CHAT_AUTH_CLIENT_ID=${VITE_CHAT_AUTH_CLIENT_ID}
 ENV VITE_CHAT_AUTH_REDIRECT_URI=${VITE_CHAT_AUTH_REDIRECT_URI}
 
-WORKDIR /workspace
-COPY chat-shared-types ./chat-shared-types
-COPY hr-web-client ./hr-web-client
-
-# Build the shared types first so `@hacom/chat-shared-types` resolves its
-# `dist/` entrypoints (main/types/exports) during the client's tsc + vite build.
-WORKDIR /workspace/chat-shared-types
-RUN npm run build
-RUN test -f /workspace/chat-shared-types/dist/index.d.ts
-
-WORKDIR /workspace/hr-web-client
+WORKDIR /app
+COPY . .
 RUN npm run build
 
 FROM nginx:1.27-alpine AS production
-COPY hr-web-client/deploy/nginx/default.conf.template /etc/nginx/templates/default.conf.template
-COPY hr-web-client/deploy/docker/entrypoint.sh /docker-entrypoint.d/40-inject-env.sh
+COPY deploy/nginx/default.conf.template /etc/nginx/templates/default.conf.template
+COPY deploy/docker/entrypoint.sh /docker-entrypoint.d/40-inject-env.sh
 RUN chmod +x /docker-entrypoint.d/40-inject-env.sh
-COPY --from=build /workspace/hr-web-client/dist /usr/share/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 
