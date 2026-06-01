@@ -45,7 +45,8 @@ export interface ProvisionFromEmployeeInput {
   employeeId: string;
   employeeCode: string;
   fullName: string;
-  email: string;
+  // Optional: HRM accounts log in by employee code. Omit/null when no email.
+  email?: string | null;
   unitCode?: string;
   unitName?: string;
   departmentName?: string;
@@ -57,10 +58,19 @@ export interface ProvisionFromEmployeeResult {
   authUserId: string;
   employeeId: string;
   employeeCode: string;
-  email: string;
+  email: string | null;
+  username?: string;
+  /** The credential the employee logs in with (the employee code). */
+  loginAccount?: string;
   accountStatus: string;
   accountState: string;
-  initialPassword?: string;
+  /** True when this call created a brand-new account (vs. an existing one). */
+  created?: boolean;
+  /** True when an existing account had its email/mapping synced from HRM. */
+  updated?: boolean;
+  status?: 'created' | 'updated' | 'already_exists';
+  mustChangePassword?: boolean;
+  message?: string;
 }
 
 export interface UpdateAccountStatusInput {
@@ -301,7 +311,8 @@ export interface BulkProvisionEmployeeItem {
   employeeId: string;
   employeeCode: string;
   fullName: string;
-  email: string;
+  // Optional: emailless employees are provisioned with a code-login account.
+  email?: string | null;
   unitCode?: string;
   unitName?: string;
   departmentName?: string;
@@ -314,23 +325,35 @@ export interface BulkProvisionFromEmployeesInput {
   skipExisting?: boolean;
 }
 
-export type BulkProvisionItemStatus = 'CREATED' | 'SKIPPED' | 'FAILED' | 'INVALID';
+export type BulkProvisionItemStatus =
+  | 'CREATED'
+  | 'UPDATED'
+  | 'SKIPPED'
+  | 'FAILED'
+  | 'INVALID';
 
 export interface BulkProvisionItemResult {
   employeeId: string;
   employeeCode: string;
   fullName: string;
+  email: string | null;
   accountId: string | null;
   username: string | null;
+  /** The credential the employee logs in with (the employee code). */
+  loginAccount: string | null;
   status: BulkProvisionItemStatus;
-  initialPassword?: string;
+  mustChangePassword?: boolean;
   reason: string | null;
 }
 
 export interface BulkProvisionFromEmployeesResult {
   total: number;
   created: number;
+  /** Accounts that already existed (alias of skipped). */
+  alreadyExists?: number;
   skipped: number;
+  /** Existing accounts whose email/mapping was synced from HRM. */
+  updated?: number;
   failed: number;
   results: BulkProvisionItemResult[];
 }
