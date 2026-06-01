@@ -3,11 +3,11 @@ import type {
   CalendarPaginationMeta,
   CalendarPermission,
   CalendarParticipant,
-} from '@hacom/chat-shared-types';
+} from './calendarSharedTypes';
 import {
   CalendarEventType,
   CalendarVisibility,
-} from '@hacom/chat-shared-types';
+} from './calendarSharedTypes';
 import { api } from '../../shared/api/httpClient';
 
 export { CalendarVisibility, CalendarEventType };
