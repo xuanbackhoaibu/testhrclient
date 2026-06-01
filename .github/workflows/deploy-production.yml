@@ -160,8 +160,15 @@ jobs:
       SERVER_USER: ${{ secrets.SERVER_USER }}
       SERVER_PORT: ${{ secrets.SERVER_PORT }}
       SERVER_SSH_KNOWN_HOSTS: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
-      GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
-      GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+      # GHCR pull credentials used by the production server's `docker login`.
+      # Use the workflow's own GITHUB_TOKEN: it has packages:write on this repo
+      # (the build job pushes the image with it), so it can pull that same image,
+      # which lives in this org/repo — no separate PAT is required. This avoids
+      # the "denied" failure caused by a misconfigured GHCR_PULL_TOKEN secret.
+      # The remote `docker login` only needs to be valid for this deploy run; the
+      # server keeps the pulled image locally and does not re-pull on reboot.
+      GHCR_PULL_USERNAME: ${{ github.actor }}
+      GHCR_PULL_TOKEN: ${{ github.token }}
     steps:
       - name: Debug configuration presence
         shell: bash
@@ -189,8 +196,11 @@ jobs:
           required=(
             DEPLOY_ENV SERVER_APPS_ROOT SERVICE_NAME
             SERVER_HOST SERVER_USER SERVER_PORT SERVER_SSH_KEY
-            SERVER_SSH_KNOWN_HOSTS GHCR_PULL_USERNAME GHCR_PULL_TOKEN SERVER_RUNTIME_ENV_FILE
+            SERVER_SSH_KNOWN_HOSTS SERVER_RUNTIME_ENV_FILE
           )
+          # GHCR_PULL_USERNAME/GHCR_PULL_TOKEN are derived from the workflow's
+          # github.actor/github.token (see job env), so they are not operator-
+          # supplied secrets and are not validated here.
           for name in "${required[@]}"; do
             test -n "${!name:-}" || { echo "Missing required app deploy configuration: ${name}" >&2; exit 1; }
           done
