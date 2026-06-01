@@ -51,7 +51,7 @@
 #         with:
 #           repository: ${{ vars.SHARED_TYPES_REPOSITORY || format('{0}/chat-shared-types', github.repository_owner) }}
 #           path: chat-shared-types
-#           ref: ${{ vars.SHARED_TYPES_REF || 'main' }}
+#           ref: ${{ vars.SHARED_TYPES_REF || 'develop' }}
 #           token: ${{ secrets.SHARED_TYPES_REPO_TOKEN || github.token }}
 
 #       - name: Set up Node.js
@@ -99,7 +99,7 @@
 #         with:
 #           repository: ${{ vars.SHARED_TYPES_REPOSITORY || format('{0}/chat-shared-types', github.repository_owner) }}
 #           path: chat-shared-types
-#           ref: ${{ vars.SHARED_TYPES_REF || 'main' }}
+#           ref: ${{ vars.SHARED_TYPES_REF || 'develop' }}
 #           token: ${{ secrets.SHARED_TYPES_REPO_TOKEN || github.token }}
 
 #       - name: Preflight Docker build context

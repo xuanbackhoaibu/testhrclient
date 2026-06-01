@@ -23,6 +23,11 @@ import type {
   BulkProvisionItemStatus,
 } from '../auth-admin/authAdminTypes';
 import type { Employee } from './employeeTypes';
+import { api } from '../../shared/api/httpClient';
+import {
+  DEFAULT_EMPLOYEE_PASSWORD,
+  FORCE_CHANGE_PASSWORD_NOTICE,
+} from '../../shared/constants/account';
 
 interface Props {
   employees: Employee[];
@@ -34,7 +39,8 @@ interface Props {
 function statusBadge(status: BulkProvisionItemStatus) {
   const map: Record<BulkProvisionItemStatus, { color: string; label: string }> = {
     CREATED: { color: 'green', label: 'Đã tạo' },
-    SKIPPED: { color: 'gray', label: 'Bỏ qua' },
+    UPDATED: { color: 'teal', label: 'Đã đồng bộ' },
+    SKIPPED: { color: 'blue', label: 'Đã có tài khoản' },
     FAILED: { color: 'red', label: 'Thất bại' },
     INVALID: { color: 'orange', label: 'Không hợp lệ' },
   };
@@ -47,12 +53,12 @@ function classifyEmployees(employees: Employee[]) {
   const invalid: Array<{ employee: Employee; reason: string }> = [];
 
   for (const emp of employees) {
+    // Email is NOT required — accounts log in by employee code. Only an existing
+    // account (skip) or a missing employee code make an employee ineligible.
     if (emp.authUserId) {
       invalid.push({ employee: emp, reason: 'Đã có tài khoản' });
-    } else if (!emp.companyEmail && !emp.personalEmail) {
-      invalid.push({ employee: emp, reason: 'Chưa có email' });
     } else if (!emp.employeeCode) {
-      invalid.push({ employee: emp, reason: 'Thiếu mã nhân sự' });
+      invalid.push({ employee: emp, reason: 'Thiếu mã nhân viên' });
     } else {
       valid.push(emp);
     }
@@ -74,7 +80,7 @@ export function BulkProvisionModal({ employees, opened, onClose, onSuccess }: Pr
           employeeId: emp.id,
           employeeCode: emp.employeeCode,
           fullName: emp.fullName,
-          email: (emp.companyEmail ?? emp.personalEmail)!,
+          email: emp.companyEmail ?? emp.personalEmail ?? null,
           unitName: emp.unitName ?? undefined,
           departmentName: emp.departmentName ?? undefined,
           positionName: emp.positionName ?? undefined,
@@ -82,8 +88,27 @@ export function BulkProvisionModal({ employees, opened, onClose, onSuccess }: Pr
         sendOtp,
         skipExisting: true,
       }),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setResult(data);
+      // The bulk endpoint only writes to chat-auth. Sync the auth link back to
+      // HRM for every item that resolved to a real account so the employee list
+      // immediately reflects "đã cấp tài khoản" instead of relying on the next
+      // login backfill. Created accounts are ACTIVE; for already-existing ones
+      // we only backfill the authUserId mapping and leave their status as-is.
+      await Promise.allSettled(
+        data.results
+          .filter(
+            (r) =>
+              r.accountId &&
+              (r.status === 'CREATED' || r.status === 'UPDATED' || r.status === 'SKIPPED'),
+          )
+          .map((r) =>
+            api.patch(`/employees/${r.employeeId}/auth-link`, {
+              authUserId: r.accountId,
+              ...(r.status === 'CREATED' ? { accountStatus: 'ACTIVE' } : {}),
+            }),
+          ),
+      );
       onSuccess();
     },
     onError: (err: unknown) => {
@@ -111,15 +136,27 @@ export function BulkProvisionModal({ employees, opened, onClose, onSuccess }: Pr
         size="xl"
       >
         <Stack gap="md">
+          {result.created > 0 && (
+            <Alert color="green" variant="light" title="Tài khoản mới đã được tạo">
+              {result.created} tài khoản mới được tạo với mật khẩu mặc định{' '}
+              <strong>{DEFAULT_EMPLOYEE_PASSWORD}</strong>. {FORCE_CHANGE_PASSWORD_NOTICE}
+            </Alert>
+          )}
           <Group gap="xl">
             <Stack gap={2} align="center">
               <Text size="xl" fw={700} c="green">{result.created}</Text>
               <Text size="xs" c="dimmed">Đã tạo</Text>
             </Stack>
             <Stack gap={2} align="center">
-              <Text size="xl" fw={700} c="gray">{result.skipped}</Text>
-              <Text size="xs" c="dimmed">Bỏ qua</Text>
+              <Text size="xl" fw={700} c="blue">{result.alreadyExists ?? result.skipped}</Text>
+              <Text size="xs" c="dimmed">Đã có tài khoản</Text>
             </Stack>
+            {(result.updated ?? 0) > 0 && (
+              <Stack gap={2} align="center">
+                <Text size="xl" fw={700} c="teal">{result.updated}</Text>
+                <Text size="xs" c="dimmed">Đã đồng bộ</Text>
+              </Stack>
+            )}
             <Stack gap={2} align="center">
               <Text size="xl" fw={700} c="red">{result.failed}</Text>
               <Text size="xs" c="dimmed">Thất bại</Text>
@@ -142,8 +179,10 @@ export function BulkProvisionModal({ employees, opened, onClose, onSuccess }: Pr
             <Table striped highlightOnHover withTableBorder withColumnBorders>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>Mã NS</Table.Th>
+                  <Table.Th>Mã NV</Table.Th>
                   <Table.Th>Họ tên</Table.Th>
+                  <Table.Th>Email</Table.Th>
+                  <Table.Th>Tài khoản đăng nhập</Table.Th>
                   <Table.Th>Trạng thái</Table.Th>
                   <Table.Th>Ghi chú</Table.Th>
                 </Table.Tr>
@@ -153,9 +192,19 @@ export function BulkProvisionModal({ employees, opened, onClose, onSuccess }: Pr
                   <Table.Tr key={r.employeeId}>
                     <Table.Td>{r.employeeCode}</Table.Td>
                     <Table.Td>{r.fullName}</Table.Td>
+                    <Table.Td>
+                      {r.email ? (
+                        <Text size="xs">{r.email}</Text>
+                      ) : (
+                        <Text size="xs" c="dimmed">Chưa có</Text>
+                      )}
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="xs" ff="monospace">{r.loginAccount ?? r.employeeCode}</Text>
+                    </Table.Td>
                     <Table.Td>{statusBadge(r.status)}</Table.Td>
                     <Table.Td>
-                      <Text size="xs" c={r.reason ? 'red' : 'dimmed'}>
+                      <Text size="xs" c={r.reason && r.status === 'FAILED' ? 'red' : 'dimmed'}>
                         {r.reason ?? (r.status === 'CREATED' ? 'Thành công' : '—')}
                       </Text>
                     </Table.Td>
@@ -165,6 +214,16 @@ export function BulkProvisionModal({ employees, opened, onClose, onSuccess }: Pr
                   <Table.Tr key={emp.id}>
                     <Table.Td>{emp.employeeCode}</Table.Td>
                     <Table.Td>{emp.fullName}</Table.Td>
+                    <Table.Td>
+                      {emp.companyEmail ?? emp.personalEmail ? (
+                        <Text size="xs">{emp.companyEmail ?? emp.personalEmail}</Text>
+                      ) : (
+                        <Text size="xs" c="dimmed">Chưa có</Text>
+                      )}
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="xs" ff="monospace">{emp.employeeCode}</Text>
+                    </Table.Td>
                     <Table.Td><Badge color="orange" variant="light">Bỏ qua (preview)</Badge></Table.Td>
                     <Table.Td><Text size="xs" c="dimmed">{reason}</Text></Table.Td>
                   </Table.Tr>
@@ -237,8 +296,10 @@ export function BulkProvisionModal({ employees, opened, onClose, onSuccess }: Pr
         />
 
         <Alert color="blue" variant="light">
-          Tài khoản sẽ được tạo ở trạng thái <strong>Hoạt động</strong>. Nhân sự đã có tài khoản sẽ được bỏ qua tự động.
-          Mật khẩu ban đầu không hiển thị trong bulk — dùng chức năng Reset mật khẩu nếu cần.
+          Tài khoản đăng nhập là <strong>mã nhân viên</strong>; email không bắt buộc — nhân sự chưa có email vẫn được cấp tài khoản.
+          Tài khoản mới ở trạng thái <strong>Hoạt động</strong> với mật khẩu mặc định{' '}
+          <strong>{DEFAULT_EMPLOYEE_PASSWORD}</strong>. {FORCE_CHANGE_PASSWORD_NOTICE}{' '}
+          Nhân sự đã có tài khoản sẽ được bỏ qua tự động (không tạo trùng, không đặt lại mật khẩu).
         </Alert>
 
         <Divider />
@@ -249,9 +310,10 @@ export function BulkProvisionModal({ employees, opened, onClose, onSuccess }: Pr
             <Table striped withTableBorder withColumnBorders>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>Mã NS</Table.Th>
+                  <Table.Th>Mã NV</Table.Th>
                   <Table.Th>Họ tên</Table.Th>
                   <Table.Th>Email</Table.Th>
+                  <Table.Th>Tài khoản đăng nhập</Table.Th>
                   <Table.Th>Trạng thái</Table.Th>
                 </Table.Tr>
               </Table.Thead>
@@ -260,7 +322,16 @@ export function BulkProvisionModal({ employees, opened, onClose, onSuccess }: Pr
                   <Table.Tr key={emp.id}>
                     <Table.Td>{emp.employeeCode}</Table.Td>
                     <Table.Td>{emp.fullName}</Table.Td>
-                    <Table.Td>{emp.companyEmail ?? emp.personalEmail}</Table.Td>
+                    <Table.Td>
+                      {emp.companyEmail ?? emp.personalEmail ? (
+                        <Text size="xs">{emp.companyEmail ?? emp.personalEmail}</Text>
+                      ) : (
+                        <Text size="xs" c="dimmed">Chưa có</Text>
+                      )}
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="xs" ff="monospace">{emp.employeeCode}</Text>
+                    </Table.Td>
                     <Table.Td><Badge color="green" variant="light">READY</Badge></Table.Td>
                   </Table.Tr>
                 ))}

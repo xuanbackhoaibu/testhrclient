@@ -40,6 +40,10 @@ import { api } from '../../../shared/api/httpClient';
 import { LoadingState } from '../../../shared/components/LoadingState';
 import { ErrorState } from '../../../shared/components/ErrorState';
 import { formatDateTime } from '../../../shared/utils/date';
+import {
+  DEFAULT_EMPLOYEE_PASSWORD,
+  FORCE_CHANGE_PASSWORD_NOTICE,
+} from '../../../shared/constants/account';
 
 interface Props {
   employee: Employee;
@@ -103,7 +107,7 @@ export function AccountTab({ employee }: Props) {
         employeeId: employee.id,
         employeeCode: employee.employeeCode,
         fullName: employee.fullName,
-        email: employee.companyEmail ?? employee.personalEmail ?? '',
+        email: employee.companyEmail ?? employee.personalEmail ?? null,
         unitCode: undefined,
         unitName: employee.unitName ?? undefined,
         departmentName: employee.departmentName ?? undefined,
@@ -118,10 +122,20 @@ export function AccountTab({ employee }: Props) {
     },
     onSuccess: async (result) => {
       setCreateModalOpen(false);
-      if (result.initialPassword) {
-        setProvisionedPassword(result.initialPassword);
+      // Only a freshly created account uses the fixed default password (never
+      // returned by the API). Existing/synced accounts keep their password.
+      if (result.status === 'created') {
+        setProvisionedPassword(DEFAULT_EMPLOYEE_PASSWORD);
       }
-      notifications.show({ color: 'green', message: 'Tạo tài khoản thành công.' });
+      notifications.show({
+        color: 'green',
+        message:
+          result.status === 'created'
+            ? 'Tạo tài khoản thành công.'
+            : result.status === 'updated'
+              ? 'Nhân sự đã có tài khoản — đã đồng bộ email/thông tin.'
+              : 'Nhân sự đã có tài khoản — đã đồng bộ trạng thái.',
+      });
       await invalidate();
     },
     onError: (err: unknown) => {
@@ -220,7 +234,7 @@ export function AccountTab({ employee }: Props) {
           <Alert color="green" title="Tài khoản đã được tạo thành công">
             <Stack gap="xs">
               <Text size="sm">
-                Mật khẩu ban đầu chỉ hiển thị <strong>một lần duy nhất</strong>. Hãy sao chép và bàn giao cho nhân sự ngay bây giờ.
+                Tài khoản được tạo với <strong>mật khẩu mặc định</strong>. Hãy bàn giao cho nhân sự.
               </Text>
               <Group gap="xs" align="center">
                 <TextInput
@@ -240,7 +254,7 @@ export function AccountTab({ employee }: Props) {
                 </CopyButton>
               </Group>
               <Text size="xs" c="dimmed">
-                Nhân sự sẽ được yêu cầu đổi mật khẩu khi đăng nhập lần đầu.
+                {FORCE_CHANGE_PASSWORD_NOTICE}
               </Text>
             </Stack>
           </Alert>
