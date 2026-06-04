@@ -116,6 +116,7 @@ function AccountStatusBadge({ record }: { record: Employee }) {
   );
 }
 const employeePayloadFields = new Set<keyof EmployeePayload>([
+  "employeeCode",
   "fullName",
   "companyEmail",
   "personalEmail",
@@ -159,8 +160,10 @@ function trimOptional(value?: string) {
 }
 
 function normalizeEmployeePayload(values: EmployeePayload): EmployeePayload {
+  const employeeCode = trimOptional(values.employeeCode).toUpperCase();
   return {
     ...values,
+    employeeCode: employeeCode || undefined,
     fullName: values.fullName.trim(),
     companyEmail: trimOptional(values.companyEmail).toLowerCase(),
     personalEmail: trimOptional(values.personalEmail).toLowerCase(),
@@ -183,6 +186,7 @@ function getApiErrorMessage(error: unknown) {
 }
 
 const emptyEmployeeFormValues: EmployeePayload = {
+  employeeCode: "",
   fullName: "",
   companyEmail: "",
   personalEmail: "",
@@ -217,9 +221,9 @@ export function EmployeesPage() {
   const [accountDetailTarget, setAccountDetailTarget] = useState<Employee | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkProvisionOpen, setBulkProvisionOpen] = useState(false);
-  const [suggestedEmployeeCode, setSuggestedEmployeeCode] = useState("");
   const [isLoadingNextCode, setIsLoadingNextCode] = useState(false);
   const [nextCodeError, setNextCodeError] = useState<string | null>(null);
+  const [suggestedCode, setSuggestedCode] = useState("");
   const [biotimeEmployeeCode, setBiotimeEmployeeCode] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch] = useDebouncedValue(searchInput, 300);
@@ -307,14 +311,14 @@ export function EmployeesPage() {
 
   const createMutation = useMutation({
     mutationFn: createEmployee,
-    onSuccess: async () => {
+    onSuccess: async (created) => {
       notifications.show({
         color: "green",
         title: "Đã tạo nhân sự",
-        message: "Mã nhân sự hệ thống được backend tự sinh.",
+        message: `Mã nhân sự: ${created.employeeCode}`,
       });
       setOpen(false);
-      setSuggestedEmployeeCode("");
+
       setNextCodeError(null);
       form.setValues(emptyEmployeeFormValues);
       form.resetDirty(emptyEmployeeFormValues);
@@ -357,7 +361,7 @@ export function EmployeesPage() {
       });
       setOpen(false);
       setEditing(null);
-      setSuggestedEmployeeCode("");
+
       setNextCodeError(null);
       form.setValues(emptyEmployeeFormValues);
       form.resetDirty(emptyEmployeeFormValues);
@@ -399,7 +403,6 @@ export function EmployeesPage() {
     }
 
     setEditing(null);
-    setSuggestedEmployeeCode("");
     setNextCodeError(null);
     setBiotimeEmployeeCode("");
     form.setValues(emptyEmployeeFormValues);
@@ -408,7 +411,9 @@ export function EmployeesPage() {
     setIsLoadingNextCode(true);
     try {
       const result = await getNextEmployeeCode();
-      setSuggestedEmployeeCode(result.code ?? "");
+      const suggested = result.code ?? "";
+      setSuggestedCode(suggested);
+      form.setFieldValue("employeeCode", suggested);
     } catch (error) {
       setNextCodeError(getApiErrorMessage(error));
       notifications.show({
@@ -437,7 +442,7 @@ export function EmployeesPage() {
         source: "EmployeesPage.openEditDrawer",
       });
       setEditing(detail);
-      setSuggestedEmployeeCode("");
+
       setNextCodeError(null);
       setBiotimeEmployeeCode(detail.biotimeEmployeeCode ?? "");
       const values: EmployeePayload = {
@@ -472,15 +477,14 @@ export function EmployeesPage() {
       setBiotimeEmployeeCode,
       setNextCodeError,
       setOpen,
-      setSuggestedEmployeeCode,
     ],
   );
 
   function closeEmployeeDrawer() {
     setOpen(false);
     setEditing(null);
-    setSuggestedEmployeeCode("");
     setNextCodeError(null);
+    setSuggestedCode("");
     setBiotimeEmployeeCode("");
     form.setValues(emptyEmployeeFormValues);
     form.resetDirty(emptyEmployeeFormValues);
@@ -845,14 +849,23 @@ export function EmployeesPage() {
       >
         <form onSubmit={form.onSubmit(submitEmployee)}>
           <Stack gap="sm">
-            <TextInput
-              label="Mã nhân sự"
-              value={editing?.employeeCode ?? suggestedEmployeeCode}
-              readOnly
-              disabled={isLoadingNextCode}
-              placeholder={isLoadingNextCode ? "Đang lấy mã..." : "000001"}
-              error={!editing ? nextCodeError : null}
-            />
+            {editing ? (
+              <TextInput
+                label="Mã nhân sự"
+                value={editing.employeeCode}
+                readOnly
+                disabled
+              />
+            ) : (
+              <TextInput
+                label="Mã nhân sự"
+                description="Hệ thống tự sinh nếu để trống. Nhập để đặt mã thủ công (VD: HN000001)."
+                placeholder={isLoadingNextCode ? "Đang lấy mã gợi ý..." : "HN000001"}
+                disabled={isLoadingNextCode}
+                error={form.errors.employeeCode ?? nextCodeError}
+                {...form.getInputProps("employeeCode")}
+              />
+            )}
             <TextInput
               label="Mã chấm công BioTime/ZKTeco"
               description="Dùng để map dữ liệu chấm công từ BioTime. Ví dụ: 108, 1500. Không bắt buộc."
@@ -915,7 +928,7 @@ export function EmployeesPage() {
                 form.setFieldValue("unitId", value ?? "");
                 form.setFieldValue("departmentId", "");
                 if (editing || !value) {
-                  setSuggestedEmployeeCode("");
+            
                   setNextCodeError(null);
                   setIsLoadingNextCode(false);
                   return;
@@ -924,10 +937,15 @@ export function EmployeesPage() {
                 setNextCodeError(null);
                 void getNextEmployeeCode(value)
                   .then((result) => {
-                    setSuggestedEmployeeCode(result.employeeCode ?? "");
+                    const suggested = result.employeeCode ?? "";
+                    setSuggestedCode(suggested);
+                    const current = form.values.employeeCode?.trim() ?? "";
+                    if (!current || current === suggestedCode) {
+                      form.setFieldValue("employeeCode", suggested);
+                    }
                   })
                   .catch((error) => {
-                    setSuggestedEmployeeCode("");
+              
                     setNextCodeError(getApiErrorMessage(error));
                   })
                   .finally(() => {
