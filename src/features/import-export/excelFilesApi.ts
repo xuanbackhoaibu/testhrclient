@@ -4,6 +4,21 @@ import { listEmployees } from '../employees/employeesApi';
 import type { Employee } from '../employees/employeeTypes';
 import { exportRowsToExcel } from '../../shared/utils/excel';
 
+function formatDate(value?: string | null): string {
+  if (!value) return '';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value;
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+const GENDER_LABELS: Record<string, string> = {
+  MALE: 'Nam',
+  FEMALE: 'Nữ',
+  OTHER: 'Khác',
+};
+
 const EMPLOYMENT_STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'Đang làm việc',
   PROBATION: 'Thử việc',
@@ -104,8 +119,9 @@ export async function downloadEmployeesExport(params: ListQueryParams = {}): Pro
       { header: 'Mã NS', key: 'employeeCode', width: 14, value: (r) => r.employeeCode },
       { header: 'Mã chấm công', key: 'biotimeEmployeeCode', width: 16, value: (r) => r.biotimeEmployeeCode ?? '' },
       { header: 'Họ tên', key: 'fullName', width: 28, value: (r) => r.fullName },
-      { header: 'Email', key: 'email', width: 30, value: (r) => r.companyEmail ?? '' },
-      { header: 'SDT', key: 'phone', width: 16, value: (r) => r.phone ?? '' },
+      { header: 'Email công ty', key: 'companyEmail', width: 34, value: (r) => r.companyEmail ?? '' },
+      { header: 'Email cá nhân', key: 'personalEmail', width: 34, value: (r) => r.personalEmail ?? '' },
+      { header: 'Số điện thoại', key: 'phone', width: 16, value: (r) => r.phone ?? '' },
       {
         header: 'TT nhân sự', key: 'employmentStatus', width: 18,
         value: (r) => EMPLOYMENT_STATUS_LABELS[r.employmentStatus] ?? r.employmentStatus,
@@ -117,8 +133,13 @@ export async function downloadEmployeesExport(params: ListQueryParams = {}): Pro
           return r.accountDisplayStatus ?? ACCOUNT_STATUS_LABELS[status] ?? status;
         },
       },
+      { header: 'Đơn vị', key: 'unit', width: 30, value: (r) => r.currentEmployeeAssignment?.unitName ?? r.unitName ?? '' },
       { header: 'Phòng ban', key: 'department', width: 26, value: (r) => r.currentEmployeeAssignment?.departmentName ?? '' },
       { header: 'Chức danh', key: 'jobTitle', width: 24, value: (r) => r.currentEmployeeAssignment?.jobTitle ?? '' },
+      { header: 'Giới tính', key: 'gender', width: 10, value: (r) => GENDER_LABELS[r.gender ?? ''] ?? r.gender ?? '' },
+      { header: 'Ngày sinh', key: 'dateOfBirth', width: 14, value: (r) => formatDate(r.dateOfBirth) },
+      { header: 'CCCD/CMND', key: 'citizenId', width: 18, value: (r) => r.citizenIdMasked ?? '' },
+      { header: 'Ngày vào làm', key: 'hireDate', width: 14, value: (r) => formatDate(r.hireDate) },
     ],
     rows: allItems,
   });
