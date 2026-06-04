@@ -80,9 +80,8 @@ export async function exportRowsToExcel<T>({
   );
 
   await writeXlsxFile([headerRow, ...dataRows], {
-    fileName,
     sheet: normalizeSheetName(sheetName),
     stickyRowsCount: 1,
     columns: columns.map((column) => ({ width: column.width ?? 18 })),
-  });
+  }).toFile(fileName);
 }
