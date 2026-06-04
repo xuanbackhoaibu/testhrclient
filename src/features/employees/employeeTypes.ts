@@ -68,6 +68,7 @@ export type EmployeeAccountRole =
   | 'EMPLOYEE';
 
 export interface EmployeePayload {
+  employeeCode?: string;
   fullName: string;
   companyEmail?: string;
   personalEmail?: string;
