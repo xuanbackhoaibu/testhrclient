@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import {
   Modal,
   Stack,
@@ -9,18 +10,29 @@ import {
   Divider,
   Loader,
   Alert,
+  Paper,
 } from '@mantine/core';
 import {
   IconCheck,
   IconX as IconDecline,
-  IconMinus,
   IconLock,
+  IconUsers,
 } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 import dayjs from 'dayjs';
-import { useCalendarMutations, useSelectedOwner } from '../../../features/calendar/useCalendarView';
-import { useCalendarEvent, useCalendarEventPermissions } from '../../../features/calendar/useCalendarEvents';
-import type { CalendarEvent, CalendarParticipant, CalendarPermission } from '../../../features/calendar/useCalendarEvents';
 import { useQueryClient } from '@tanstack/react-query';
+
+import { useCalendarMutations } from '../../../features/calendar/useCalendarView';
+import { useCalendarOwner } from '../../../features/calendar/CalendarContext';
+import {
+  useCalendarEvent,
+  useCalendarEventPermissions,
+} from '../../../features/calendar/useCalendarEvents';
+import type {
+  CalendarEvent,
+  CalendarParticipant,
+  CalendarPermission,
+} from '../../../features/calendar/useCalendarEvents';
 import styles from './EventDetailModal.module.css';
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -41,14 +53,14 @@ const VISIBILITY_LABELS: Record<string, string> = {
 };
 
 const RESPONSE_LABELS: Record<string, string> = {
-  PENDING: 'Chờ phản hồi',
-  ACCEPTED: 'Đã chấp nhận',
-  DECLINED: 'Đã từ chối',
+  PENDING: 'Chưa phản hồi',
+  ACCEPTED: 'Tham gia',
+  DECLINED: 'Không tham gia',
   MAYBE: 'Có thể',
 };
 
 const RESPONSE_COLORS: Record<string, string> = {
-  PENDING: 'yellow',
+  PENDING: 'gray',
   ACCEPTED: 'green',
   DECLINED: 'red',
   MAYBE: 'blue',
@@ -61,54 +73,93 @@ interface EventDetailModalProps {
 }
 
 export function EventDetailModal({ eventId, onClose, onEdit }: EventDetailModalProps) {
-  const { selectedOwner } = useSelectedOwner();
+  // Read-only state comes from the shared owner context (NOT a local hook),
+  // so "viewing someone else's calendar" is detected correctly here.
+  const { isViewingOthers } = useCalendarOwner();
   const { updateMyResponse, deleteEvent } = useCalendarMutations();
   const queryClient = useQueryClient();
 
-  const isViewingOthers = selectedOwner !== null;
+  const [responding, setResponding] = useState<
+    null | 'ACCEPTED' | 'DECLINED'
+  >(null);
 
   const { data: event, isLoading: eventLoading, error: eventError } = useCalendarEvent(eventId);
   const { data: permissions, isLoading: permLoading } = useCalendarEventPermissions(eventId);
 
   const isLoading = eventLoading || permLoading;
-
   const typedPermissions = permissions as CalendarPermission | undefined;
 
-  const handleResponse = async (response: 'ACCEPTED' | 'DECLINED' | 'MAYBE') => {
+  const isOwner = !!event?.canEdit;
+  const canRespond = !!event?.isParticipant && !isOwner;
+
+  const summary = useMemo(() => {
+    const ps = event?.participants ?? [];
+    return {
+      total: ps.length,
+      accepted: ps.filter((p) => p.response === 'ACCEPTED').length,
+      declined: ps.filter((p) => p.response === 'DECLINED').length,
+      pending: ps.filter((p) => p.response === 'PENDING').length,
+    };
+  }, [event?.participants]);
+
+  const refetchAll = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['calendar-event', eventId] }),
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] }),
+    ]);
+  };
+
+  const handleResponse = async (response: 'ACCEPTED' | 'DECLINED') => {
     if (!eventId) return;
-    await updateMyResponse(eventId, response);
-    await queryClient.invalidateQueries({ queryKey: ['calendar-event', eventId] });
+    setResponding(response);
+    try {
+      await updateMyResponse(eventId, response);
+      await refetchAll();
+      notifications.show({
+        title: 'Đã cập nhật',
+        message:
+          response === 'ACCEPTED'
+            ? 'Bạn đã xác nhận tham gia'
+            : 'Bạn đã từ chối tham gia',
+        color: response === 'ACCEPTED' ? 'green' : 'orange',
+      });
+    } catch (e) {
+      notifications.show({
+        title: 'Lỗi',
+        message: e instanceof Error ? e.message : 'Không thể cập nhật phản hồi',
+        color: 'red',
+      });
+    } finally {
+      setResponding(null);
+    }
   };
 
   const handleDelete = async () => {
     if (!eventId || !window.confirm('Bạn có chắc muốn xóa sự kiện này?')) return;
-    await deleteEvent(eventId);
-    await queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
-    onClose();
+    try {
+      await deleteEvent(eventId);
+      await refetchAll();
+      notifications.show({ title: 'Đã xóa', message: 'Đã xóa sự kiện', color: 'green' });
+      onClose();
+    } catch (e) {
+      notifications.show({
+        title: 'Lỗi',
+        message: e instanceof Error ? e.message : 'Không thể xóa sự kiện',
+        color: 'red',
+      });
+    }
   };
 
   const handleEdit = () => {
-    if (event && onEdit) {
-      onEdit(event);
-    }
+    if (event && onEdit) onEdit(event);
   };
 
   if (!eventId) return null;
 
-  // Show permission denied state
   if (eventError) {
     return (
-      <Modal
-        opened={!!eventId}
-        onClose={onClose}
-        title="Chi tiết sự kiện"
-        size="lg"
-      >
-        <Alert
-          color="red"
-          icon={<IconLock size={16} />}
-          title="Không có quyền xem"
-        >
+      <Modal opened={!!eventId} onClose={onClose} title="Chi tiết sự kiện" size="lg">
+        <Alert color="red" icon={<IconLock size={16} />} title="Không có quyền xem">
           Bạn không có quyền xem chi tiết sự kiện này.
         </Alert>
         <Group justify="flex-end" mt="md">
@@ -125,6 +176,11 @@ export function EventDetailModal({ eventId, onClose, onEdit }: EventDetailModalP
       title={
         <Group gap="xs">
           <Text fw={600}>{event?.title ?? 'Chi tiết sự kiện'}</Text>
+          {canRespond && (
+            <Badge color="grape" variant="light" size="sm">
+              Được mời
+            </Badge>
+          )}
           {isViewingOthers && (
             <Badge color="orange" variant="light" size="sm">
               Chỉ xem
@@ -140,7 +196,6 @@ export function EventDetailModal({ eventId, onClose, onEdit }: EventDetailModalP
         </div>
       ) : event ? (
         <Stack gap="md">
-          {/* Event Type & Visibility */}
           <Group gap="xs">
             <Badge color="blue" variant="light">
               {EVENT_TYPE_LABELS[event.eventType] ?? event.eventType}
@@ -150,42 +205,36 @@ export function EventDetailModal({ eventId, onClose, onEdit }: EventDetailModalP
             </Badge>
           </Group>
 
-          {/* Owner Info */}
-          {event.owner && (
+          {(event.owner || event.ownerName) && (
             <Group gap="sm">
               <Avatar size="sm" radius="xl" color="blue">
-                {event.owner.fullName?.charAt(0).toUpperCase()}
+                {(event.owner?.fullName ?? event.ownerName ?? '?')
+                  .charAt(0)
+                  .toUpperCase()}
               </Avatar>
               <Text size="sm">
-                Người tạo: <strong>{event.owner.fullName}</strong>
+                Người tổ chức:{' '}
+                <strong>{event.owner?.fullName ?? event.ownerName}</strong>
               </Text>
             </Group>
           )}
 
           <Divider />
 
-          {/* Time Info */}
           <Stack gap="xs">
             <Group justify="space-between">
               <Text size="sm" c="dimmed">Bắt đầu</Text>
-              <Text size="sm">
-                {dayjs(event.startAt).format('dddd, DD/MM/YYYY HH:mm')}
-              </Text>
+              <Text size="sm">{dayjs(event.startAt).format('dddd, DD/MM/YYYY HH:mm')}</Text>
             </Group>
             <Group justify="space-between">
               <Text size="sm" c="dimmed">Kết thúc</Text>
-              <Text size="sm">
-                {dayjs(event.endAt).format('dddd, DD/MM/YYYY HH:mm')}
-              </Text>
+              <Text size="sm">{dayjs(event.endAt).format('dddd, DD/MM/YYYY HH:mm')}</Text>
             </Group>
             {event.isAllDay && (
-              <Badge color="teal" variant="light">
-                Cả ngày
-              </Badge>
+              <Badge color="teal" variant="light">Cả ngày</Badge>
             )}
           </Stack>
 
-          {/* Location */}
           {event.location && (
             <>
               <Divider />
@@ -196,7 +245,6 @@ export function EventDetailModal({ eventId, onClose, onEdit }: EventDetailModalP
             </>
           )}
 
-          {/* Description */}
           {event.description && (
             <>
               <Divider />
@@ -204,96 +252,109 @@ export function EventDetailModal({ eventId, onClose, onEdit }: EventDetailModalP
             </>
           )}
 
-          {/* Participants */}
+          {/* Participant roster */}
           {event.participants?.length > 0 && typedPermissions?.canViewFullDetails && (
             <>
               <Divider />
-              <Stack gap="xs">
-                <Text size="sm" fw={500}>Người tham gia</Text>
-                {event.participants.map((p: CalendarParticipant) => (
-                  <Group key={p.id} gap="sm">
-                    <Avatar size="sm" radius="xl" color="gray">
-                      {p.employee?.fullName?.charAt(0).toUpperCase() ?? '?'}
-                    </Avatar>
-                    <Text size="sm">{p.employee?.fullName ?? 'N/A'}</Text>
-                    <Badge color={RESPONSE_COLORS[p.response]} variant="light" size="xs">
-                      {RESPONSE_LABELS[p.response]}
+              <Group justify="space-between">
+                <Group gap={6}>
+                  <IconUsers size={16} />
+                  <Text size="sm" fw={500}>
+                    Người tham gia ({summary.total})
+                  </Text>
+                </Group>
+                {isOwner && (
+                  <Group gap={6}>
+                    <Badge color="green" variant="light" size="sm">
+                      {summary.accepted} tham gia
+                    </Badge>
+                    <Badge color="red" variant="light" size="sm">
+                      {summary.declined} từ chối
+                    </Badge>
+                    <Badge color="gray" variant="light" size="sm">
+                      {summary.pending} chưa phản hồi
                     </Badge>
                   </Group>
-                ))}
+                )}
+              </Group>
+              <Stack gap="xs">
+                {event.participants.map((p: CalendarParticipant) => {
+                  const name = p.fullName ?? p.employee?.fullName ?? 'N/A';
+                  const sub =
+                    p.departmentName ??
+                    p.employeeCode ??
+                    p.employee?.employeeCode ??
+                    '';
+                  return (
+                    <Group key={p.id} gap="sm" wrap="nowrap">
+                      <Avatar size="sm" radius="xl" color="gray">
+                        {name.charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Stack gap={0} style={{ minWidth: 0, flex: 1 }}>
+                        <Text size="sm" lineClamp={1}>{name}</Text>
+                        {sub && (
+                          <Text size="xs" c="dimmed" lineClamp={1}>{sub}</Text>
+                        )}
+                      </Stack>
+                      <Badge color={RESPONSE_COLORS[p.response]} variant="light" size="sm">
+                        {RESPONSE_LABELS[p.response]}
+                      </Badge>
+                    </Group>
+                  );
+                })}
               </Stack>
             </>
           )}
 
-          {/* Participant Response Actions */}
-          {event.isParticipant && !isViewingOthers && (
+          {/* Participant response area (invitee, not the organizer) */}
+          {canRespond && (
             <>
               <Divider />
-              <Text size="sm" fw={500}>Phản hồi của bạn</Text>
-              <Group gap="xs">
-                <Button
-                  size="xs"
-                  color="green"
-                  leftSection={<IconCheck size={14} />}
-                  onClick={() => handleResponse('ACCEPTED')}
-                >
-                  Chấp nhận
-                </Button>
-                <Button
-                  size="xs"
-                  color="yellow"
-                  variant="light"
-                  leftSection={<IconMinus size={14} />}
-                  onClick={() => handleResponse('MAYBE')}
-                >
-                  Có thể
-                </Button>
-                <Button
-                  size="xs"
-                  color="red"
-                  variant="light"
-                  leftSection={<IconDecline size={14} />}
-                  onClick={() => handleResponse('DECLINED')}
-                >
-                  Từ chối
-                </Button>
-              </Group>
+              <Paper p="sm" radius="md" withBorder>
+                <Text size="sm" fw={500} mb="xs">
+                  Bạn được mời tham gia lịch họp này
+                </Text>
+                <Group gap="xs">
+                  <Button
+                    size="sm"
+                    color="green"
+                    leftSection={<IconCheck size={16} />}
+                    onClick={() => handleResponse('ACCEPTED')}
+                    loading={responding === 'ACCEPTED'}
+                    disabled={responding !== null}
+                  >
+                    Tham gia
+                  </Button>
+                  <Button
+                    size="sm"
+                    color="red"
+                    variant="light"
+                    leftSection={<IconDecline size={16} />}
+                    onClick={() => handleResponse('DECLINED')}
+                    loading={responding === 'DECLINED'}
+                    disabled={responding !== null}
+                  >
+                    Không tham gia
+                  </Button>
+                </Group>
+              </Paper>
             </>
           )}
 
-          {/* Actions */}
-          {!isViewingOthers && typedPermissions?.canEdit && (
+          {/* Owner actions */}
+          {isOwner && (
             <>
               <Divider />
               <Group justify="flex-end" gap="xs">
                 {typedPermissions?.canDelete && (
-                  <Button
-                    color="red"
-                    variant="light"
-                    size="sm"
-                    onClick={handleDelete}
-                  >
+                  <Button color="red" variant="light" size="sm" onClick={handleDelete}>
                     Xóa
                   </Button>
                 )}
-                <Button
-                  variant="filled"
-                  size="sm"
-                  onClick={handleEdit}
-                >
+                <Button variant="filled" size="sm" onClick={handleEdit}>
                   Sửa
                 </Button>
               </Group>
-            </>
-          )}
-
-          {/* Read-only indicator when viewing others */}
-          {isViewingOthers && (
-            <>
-              <Divider />
-              <Alert color="gray" variant="light">
-                Bạn đang xem lịch của người khác và chỉ có quyền xem.
-              </Alert>
             </>
           )}
         </Stack>

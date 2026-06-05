@@ -104,19 +104,28 @@ export function CalendarView({ events, onEventClick }: CalendarViewProps) {
             >
               <div className={styles.dayNumber}>{day.format('D')}</div>
               <div className={styles.eventsContainer}>
-                {dayEvents.slice(0, 3).map((event) => (
-                  <div
-                    key={event.id}
-                    className={styles.eventPill}
-                    style={{
-                      backgroundColor: `var(--mantine-color-${EVENT_COLORS[event.eventType] ?? 'gray'}-1)`,
-                      borderLeftColor: `var(--mantine-color-${EVENT_COLORS[event.eventType] ?? 'gray'}-6)`,
-                    }}
-                    onClick={() => onEventClick?.(event)}
-                  >
-                    {event.title}
-                  </div>
-                ))}
+                {dayEvents.slice(0, 3).map((event) => {
+                  const invited = event.isParticipant && !event.canEdit;
+                  return (
+                    <div
+                      key={event.id}
+                      className={styles.eventPill}
+                      style={{
+                        backgroundColor: `var(--mantine-color-${EVENT_COLORS[event.eventType] ?? 'gray'}-1)`,
+                        borderLeftColor: `var(--mantine-color-${EVENT_COLORS[event.eventType] ?? 'gray'}-6)`,
+                      }}
+                      onClick={() => onEventClick?.(event)}
+                      title={invited ? `${event.title} (Được mời)` : event.title}
+                    >
+                      {invited && (
+                        <span style={{ color: 'var(--mantine-color-grape-6)', marginRight: 4 }}>
+                          ●
+                        </span>
+                      )}
+                      {event.title}
+                    </div>
+                  );
+                })}
                 {dayEvents.length > 3 && (
                   <Text size="xs" c="dimmed" className={styles.moreEvents}>
                     +{dayEvents.length - 3} sự kiện khác

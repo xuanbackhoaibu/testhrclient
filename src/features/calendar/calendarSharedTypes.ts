@@ -46,8 +46,14 @@ export interface CalendarEmployee {
 export interface CalendarParticipant {
   id: string;
   employeeId: string;
+  authUserId?: string | null;
+  employeeCode?: string | null;
+  fullName?: string | null;
+  avatarUrl?: string | null;
+  departmentName?: string | null;
   employee: CalendarEmployee | null;
   response: ParticipantResponse;
+  respondedAt?: string | null;
   createdAt: string;
 }
 
@@ -56,6 +62,9 @@ export interface CalendarEvent {
   title: string;
   description: string | null;
   ownerId: string;
+  ownerAuthUserId?: string | null;
+  ownerEmployeeCode?: string | null;
+  ownerName?: string | null;
   owner: CalendarEmployee | null;
   startAt: string;
   endAt: string;
