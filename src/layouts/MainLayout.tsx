@@ -32,6 +32,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../features/auth/useAuth";
 import { AUTH_ADMIN_PERMISSIONS, HR_PERMISSIONS } from "../features/auth/permissions";
+import { NotificationBell } from "../features/notifications/NotificationBell";
 import { BrandLogo } from "../shared/components/BrandLogo";
 import { ROUTES } from "../shared/constants/routes";
 
@@ -155,6 +156,8 @@ export function MainLayout() {
             </Title>
           </Group>
 
+          <Group gap="sm" wrap="nowrap">
+          <NotificationBell />
           <Menu position="bottom-end" shadow="md" width={230}>
             <Menu.Target>
               <UnstyledButton>
@@ -187,6 +190,7 @@ export function MainLayout() {
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>
+          </Group>
         </Group>
       </AppShell.Header>
 

@@ -30,6 +30,17 @@ export interface CalendarEventsResponse {
   warnings?: Array<{ code: string; message: string }>;
 }
 
+/** Raw shape from the gateway — may use `items` or `data`, `pagination` or `meta`. */
+interface RawCalendarEventsResponse {
+  items?: CalendarEvent[];
+  data?: CalendarEvent[];
+  pagination?: CalendarPaginationMeta;
+  meta?: CalendarPaginationMeta;
+  mode?: CalendarMode;
+  capabilities?: CalendarEventsResponse['capabilities'];
+  warnings?: CalendarEventsResponse['warnings'];
+}
+
 export interface ListCalendarEventsParams {
   /** Employee internal ID (HR cuid). Prefer ownerAuthUserId for auth-domain filtering. */
   ownerId?: string;
@@ -65,7 +76,34 @@ export const calendarApi = {
     if (params.page) searchParams.append('page', String(params.page));
     if (params.pageSize) searchParams.append('pageSize', String(params.pageSize));
 
-    return api.get<CalendarEventsResponse>(`/calendar/events?${searchParams}`);
+    // The API gateway normalizes list payloads to `{ items, pagination }`, while
+    // legacy callers expect `{ data, pagination }`. Accept both so events (and
+    // invited meetings) always render regardless of the envelope shape.
+    const raw = await api.get<RawCalendarEventsResponse>(
+      `/calendar/events?${searchParams}`,
+    );
+    const data = Array.isArray(raw?.items)
+      ? raw.items
+      : Array.isArray(raw?.data)
+        ? raw.data
+        : [];
+    const pagination =
+      raw?.pagination ??
+      raw?.meta ?? {
+        page: params.page ?? 1,
+        pageSize: params.pageSize ?? data.length,
+        totalItems: data.length,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPrevPage: false,
+      };
+    return {
+      data,
+      pagination,
+      mode: raw?.mode,
+      capabilities: raw?.capabilities,
+      warnings: raw?.warnings,
+    };
   },
 
   async getEvent(id: string): Promise<CalendarEvent> {
@@ -85,6 +123,9 @@ export const calendarApi = {
     visibility?: string;
     isAllDay?: boolean;
     location?: string;
+    timezone?: string;
+    /** Employee IDs (cuid) to invite as participants. */
+    participantIds?: string[];
   }): Promise<CalendarEvent> {
     return api.post<CalendarEvent>('/calendar/events', params);
   },
@@ -98,6 +139,9 @@ export const calendarApi = {
     visibility?: string;
     isAllDay?: boolean;
     location?: string;
+    timezone?: string;
+    /** Full desired participant set (employee cuids); server reconciles. */
+    participantIds?: string[];
   }): Promise<CalendarEvent> {
     return api.patch<CalendarEvent>(`/calendar/events/${id}`, params);
   },

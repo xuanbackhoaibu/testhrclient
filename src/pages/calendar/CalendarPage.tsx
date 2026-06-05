@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AppShell, LoadingOverlay, Alert, Button, Group, Text } from '@mantine/core';
 import { IconAlertCircle, IconCalendarEvent, IconPlus } from '@tabler/icons-react';
 
@@ -24,17 +25,31 @@ function CalendarPageInner() {
     refetch,
   } = useCalendarOwnerEvents(selectedOwner?.id ?? null, year, month, selectedOwner?.employeeCode);
 
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [localEventId, setLocalEventId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
 
+  // Detail selection = explicit click OR notification deep-link (?eventId=...).
+  // Derived (no effect) so the URL param opens the modal without cascading renders.
+  const selectedEventId = localEventId ?? searchParams.get('eventId');
+
+  const clearEventIdParam = useCallback(() => {
+    if (searchParams.has('eventId')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('eventId');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   const handleEventClick = useCallback((event: CalendarEvent) => {
-    setSelectedEventId(event.id);
+    setLocalEventId(event.id);
   }, []);
 
   const handleCloseDetail = useCallback(() => {
-    setSelectedEventId(null);
-  }, []);
+    setLocalEventId(null);
+    clearEventIdParam();
+  }, [clearEventIdParam]);
 
   const handleCreateEvent = useCallback(() => {
     setEditingEvent(null);
@@ -147,6 +162,7 @@ function CalendarPageInner() {
       />
 
       <CreateEventModal
+        key={`${isCreateModalOpen ? 'open' : 'closed'}-${editingEvent?.id ?? 'new'}`}
         opened={isCreateModalOpen}
         onClose={handleCloseCreate}
         editEvent={editingEvent}

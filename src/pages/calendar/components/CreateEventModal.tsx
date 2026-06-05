@@ -14,7 +14,11 @@ import {
 import { notifications } from '@mantine/notifications';
 import { IconCalendar } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
+import dayjs from 'dayjs';
+
 import { calendarApi, CalendarVisibility, CalendarEventType, type CalendarEvent } from '../../../features/calendar/calendarApi';
+import { useAuth } from '../../../features/auth/useAuth';
+import { ParticipantPicker, type SelectedParticipant } from './ParticipantPicker';
 
 const VISIBILITY_OPTIONS = [
   { value: CalendarVisibility.PRIVATE, label: 'Riêng tư' },
@@ -33,6 +37,25 @@ const EVENT_TYPE_OPTIONS = [
   { value: CalendarEventType.OTHER, label: 'Khác' },
 ];
 
+const LOCAL_FORMAT = 'YYYY-MM-DDTHH:mm';
+
+/** ISO string → value for <input type="datetime-local"> (local wall-clock). */
+function toLocalInput(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = dayjs(iso);
+  return d.isValid() ? d.format(LOCAL_FORMAT) : '';
+}
+
+function participantsFromEvent(event: CalendarEvent | null | undefined): SelectedParticipant[] {
+  if (!event?.participants?.length) return [];
+  return event.participants.map((p) => ({
+    id: p.employeeId,
+    fullName: p.fullName ?? p.employee?.fullName ?? p.employeeCode ?? p.employeeId,
+    employeeCode: p.employeeCode ?? p.employee?.employeeCode ?? '',
+    departmentName: p.departmentName,
+  }));
+}
+
 interface CreateEventModalProps {
   opened: boolean;
   onClose: () => void;
@@ -41,44 +64,41 @@ interface CreateEventModalProps {
 
 export function CreateEventModal({ opened, onClose, editEvent }: CreateEventModalProps) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const isEditing = !!editEvent;
 
-  const [title, setTitle] = useState(editEvent?.title ?? '');
-  const [description, setDescription] = useState(editEvent?.description ?? '');
-  const [startAt, setStartAt] = useState(editEvent?.startAt ?? '');
-  const [endAt, setEndAt] = useState(editEvent?.endAt ?? '');
-  const [visibility, setVisibility] = useState<string>(editEvent?.visibility ?? CalendarVisibility.PRIVATE);
-  const [eventType, setEventType] = useState<string>(editEvent?.eventType ?? CalendarEventType.MEETING);
-  const [location, setLocation] = useState(editEvent?.location ?? '');
-  const [isAllDay, setIsAllDay] = useState(editEvent?.isAllDay ?? false);
+  // Lazy initializers read editEvent on mount. CalendarPage gives this modal a
+  // `key` that changes per open / edit target, so it remounts with fresh values
+  // (this is what makes "Edit" correctly preload — no state-sync effect needed).
+  const [title, setTitle] = useState(() => editEvent?.title ?? '');
+  const [description, setDescription] = useState(() => editEvent?.description ?? '');
+  const [startAt, setStartAt] = useState(() => toLocalInput(editEvent?.startAt));
+  const [endAt, setEndAt] = useState(() => toLocalInput(editEvent?.endAt));
+  const [visibility, setVisibility] = useState<string>(
+    () => editEvent?.visibility ?? CalendarVisibility.PRIVATE,
+  );
+  const [eventType, setEventType] = useState<string>(
+    () => editEvent?.eventType ?? CalendarEventType.MEETING,
+  );
+  const [location, setLocation] = useState(() => editEvent?.location ?? '');
+  const [isAllDay, setIsAllDay] = useState(() => editEvent?.isAllDay ?? false);
+  const [participants, setParticipants] = useState<SelectedParticipant[]>(() =>
+    participantsFromEvent(editEvent),
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const resetForm = useCallback(() => {
-    setTitle('');
-    setDescription('');
-    setStartAt('');
-    setEndAt('');
-    setVisibility(CalendarVisibility.PRIVATE);
-    setEventType(CalendarEventType.MEETING);
-    setLocation('');
-    setIsAllDay(false);
-  }, []);
-
   const handleClose = useCallback(() => {
-    resetForm();
     onClose();
-  }, [resetForm, onClose]);
+  }, [onClose]);
+
+  const showParticipants =
+    eventType === CalendarEventType.MEETING || participants.length > 0;
 
   const handleSubmit = useCallback(async () => {
     if (!title.trim()) {
-      notifications.show({
-        title: 'Lỗi',
-        message: 'Vui lòng nhập tiêu đề',
-        color: 'red',
-      });
+      notifications.show({ title: 'Lỗi', message: 'Vui lòng nhập tiêu đề', color: 'red' });
       return;
     }
-
     if (!startAt || !endAt) {
       notifications.show({
         title: 'Lỗi',
@@ -88,10 +108,13 @@ export function CreateEventModal({ opened, onClose, editEvent }: CreateEventModa
       return;
     }
 
-    const startDate = new Date(startAt);
-    const endDate = new Date(endAt);
-
-    if (endDate < startDate) {
+    const start = dayjs(startAt);
+    const end = dayjs(endAt);
+    if (!start.isValid() || !end.isValid()) {
+      notifications.show({ title: 'Lỗi', message: 'Thời gian không hợp lệ', color: 'red' });
+      return;
+    }
+    if (end.isBefore(start)) {
       notifications.show({
         title: 'Lỗi',
         message: 'Thời gian kết thúc phải sau thời gian bắt đầu',
@@ -100,39 +123,49 @@ export function CreateEventModal({ opened, onClose, editEvent }: CreateEventModa
       return;
     }
 
-    setIsSubmitting(true);
+    const participantIds =
+      eventType === CalendarEventType.MEETING || participants.length > 0
+        ? participants.map((p) => p.id)
+        : [];
 
+    const timezone =
+      Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Ho_Chi_Minh';
+
+    const payload = {
+      title: title.trim(),
+      description: description.trim() || undefined,
+      // Send absolute instants (UTC ISO) so the server stores the correct
+      // moment regardless of its own timezone.
+      startAt: start.toISOString(),
+      endAt: end.toISOString(),
+      visibility,
+      eventType,
+      location: location.trim() || undefined,
+      isAllDay,
+      timezone,
+      participantIds,
+    };
+
+    setIsSubmitting(true);
     try {
       if (isEditing && editEvent) {
-        await calendarApi.updateEvent(editEvent.id, {
-          title: title.trim(),
-          description: description.trim() || undefined,
-          startAt,
-          endAt,
-          visibility,
-          eventType,
-          location: location.trim() || undefined,
-          isAllDay,
-        });
+        await calendarApi.updateEvent(editEvent.id, payload);
         notifications.show({
           title: 'Thành công',
-          message: 'Đã cập nhật sự kiện',
+          message:
+            participantIds.length > 0
+              ? 'Đã cập nhật lịch họp và đồng bộ người tham gia'
+              : 'Đã cập nhật sự kiện',
           color: 'green',
         });
       } else {
-        await calendarApi.createEvent({
-          title: title.trim(),
-          description: description.trim() || undefined,
-          startAt,
-          endAt,
-          visibility,
-          eventType,
-          location: location.trim() || undefined,
-          isAllDay,
-        });
+        await calendarApi.createEvent(payload);
         notifications.show({
           title: 'Thành công',
-          message: 'Đã tạo sự kiện mới',
+          message:
+            participantIds.length > 0
+              ? 'Đã tạo lịch họp và gửi thông báo cho người tham gia'
+              : 'Đã tạo sự kiện mới',
           color: 'green',
         });
       }
@@ -157,6 +190,7 @@ export function CreateEventModal({ opened, onClose, editEvent }: CreateEventModa
     eventType,
     location,
     isAllDay,
+    participants,
     isEditing,
     editEvent,
     queryClient,
@@ -190,16 +224,15 @@ export function CreateEventModal({ opened, onClose, editEvent }: CreateEventModa
 
         <Group grow>
           <TextInput
+            type="datetime-local"
             label="Bắt đầu"
-            placeholder="2024-01-01T09:00"
             value={startAt}
             onChange={(e) => setStartAt(e.currentTarget.value)}
             required
           />
-
           <TextInput
+            type="datetime-local"
             label="Kết thúc"
-            placeholder="2024-01-01T10:00"
             value={endAt}
             onChange={(e) => setEndAt(e.currentTarget.value)}
             required
@@ -214,7 +247,6 @@ export function CreateEventModal({ opened, onClose, editEvent }: CreateEventModa
             onChange={(val) => setEventType(val ?? CalendarEventType.MEETING)}
             required
           />
-
           <Select
             label="Hiển thị"
             data={VISIBILITY_OPTIONS}
@@ -236,6 +268,17 @@ export function CreateEventModal({ opened, onClose, editEvent }: CreateEventModa
           checked={isAllDay}
           onChange={(e) => setIsAllDay(e.currentTarget.checked)}
         />
+
+        {showParticipants && (
+          <>
+            <Divider label="Lịch họp" labelPosition="left" />
+            <ParticipantPicker
+              value={participants}
+              onChange={setParticipants}
+              excludeEmployeeId={user?.employeeId ?? user?.employee?.id ?? null}
+            />
+          </>
+        )}
 
         <Divider />
 
