@@ -66,6 +66,7 @@ import {
   type DataTableColumn,
 } from "../../shared/components/DataTable";
 import { PageHeader } from "../../shared/components/PageHeader";
+import { sortByCode } from "../../shared/utils/sort";
 
 const STATUS_OPTIONS = [
   { value: "", label: "Tất cả trạng thái" },
@@ -357,6 +358,12 @@ export function AccountsPage() {
       reason: confirmReason,
     });
   };
+
+  // Sắp xếp tài khoản theo Mã nhân viên tăng dần (trong trang hiện tại).
+  const sortedAccounts = sortByCode(
+    accountsQuery.data?.data,
+    (row) => row.account.employeeCode,
+  );
 
   const columns: DataTableColumn<AccountManagementRow>[] = [
     {
@@ -657,7 +664,7 @@ export function AccountsPage() {
       </Group>
 
       <DataTable
-        data={accountsQuery.data?.data ?? []}
+        data={sortedAccounts}
         columns={columns}
         rowKey={(row) => row.account.authUserId}
         meta={

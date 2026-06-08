@@ -1,5 +1,6 @@
 import { api, httpClient, unwrapApiEnvelope } from '../../shared/api/httpClient';
 import { ApiError } from '../../shared/api/api.types';
+import { fetchAllPages } from '../../shared/api/fetchAllPages';
 import { normalizePaginatedResponse } from '../../shared/api/response';
 import {
   debugApiError,
@@ -33,6 +34,28 @@ export async function listPositions(params: ListQueryParams = {}): Promise<Pagin
 
   const response = await api.get<PaginatedData<Position>>('/positions', { params });
   return normalizePaginatedResponse<Position>(response, params);
+}
+
+/**
+ * Lấy TOÀN BỘ vị trí khớp bộ lọc (gộp mọi trang) để sắp xếp theo mã ở client.
+ */
+export async function listAllPositions(
+  params: Omit<ListQueryParams, 'page' | 'pageSize'> = {},
+): Promise<Position[]> {
+  if (isMockMode) {
+    await mockDelay();
+    return mockPositions
+      .filter((item) => (params.status ? item.status === params.status : true))
+      .filter(
+        (item) =>
+          includesIgnoreCase(item.code, params.search) ||
+          includesIgnoreCase(item.name, params.search) ||
+          includesIgnoreCase(item.jobFunction, params.search) ||
+          (!params.search && true),
+      );
+  }
+
+  return fetchAllPages(listPositions, params);
 }
 
 export async function listPositionsSelect(): Promise<PositionSelectOption[]> {
