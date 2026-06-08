@@ -38,7 +38,8 @@ import type {
   Employee,
   EmployeePayload,
 } from "../../features/employees/employeeTypes";
-import { useEmployees } from "../../features/employees/useEmployees";
+import type { PaginationMeta } from "../../shared/types/api";
+import { useAllEmployees } from "../../features/employees/useEmployees";
 import { AccountDetailDrawer } from "../../features/employees/AccountDetailDrawer";
 import { BulkProvisionModal } from "../../features/employees/BulkProvisionModal";
 import { ProvisionAccountModal } from "../../features/employees/ProvisionAccountModal";
@@ -59,6 +60,7 @@ import { usePositionsSelect } from "../../features/organization/usePositions";
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { ApiError } from "../../shared/api/api.types";
 import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
+import { sortByCode } from "../../shared/utils/sort";
 
 const employmentStatusOptions = [
   { value: "ACTIVE", label: "Đang làm việc" },
@@ -245,22 +247,14 @@ export function EmployeesPage() {
       positionId: (value) => (value ? null : "Vui lòng chọn chức vụ."),
       phone: (value) =>
         trimOptional(value) ? null : "Vui lòng nhập số điện thoại.",
-      companyEmail: (value, values) => {
+      companyEmail: (value) => {
         const companyEmail = trimOptional(value);
-        const personalEmail = trimOptional(values.personalEmail);
-        if (!companyEmail && !personalEmail) {
-          return "Vui lòng nhập ít nhất một email.";
-        }
         return companyEmail && !emailPattern.test(companyEmail)
           ? "Email không đúng định dạng."
           : null;
       },
-      personalEmail: (value, values) => {
-        const companyEmail = trimOptional(values.companyEmail);
+      personalEmail: (value) => {
         const personalEmail = trimOptional(value);
-        if (!companyEmail && !personalEmail) {
-          return "Vui lòng nhập ít nhất một email.";
-        }
         return personalEmail && !emailPattern.test(personalEmail)
           ? "Email không đúng định dạng."
           : null;
@@ -268,7 +262,15 @@ export function EmployeesPage() {
     },
   });
 
-  const { data, isLoading, error, refetch } = useEmployees({ ...params, search: debouncedSearch });
+  // Lấy toàn bộ nhân sự theo bộ lọc (gộp mọi trang từ server) để có thể
+  // sắp xếp theo Mã chấm công trên TOÀN danh sách rồi mới phân trang ở client.
+  // Nhờ vậy trang 1 luôn bắt đầu từ mã chấm công nhỏ nhất.
+  const { data: allEmployees, isLoading, error, refetch } = useAllEmployees({
+    employmentStatus: params.employmentStatus,
+    unitId: params.unitId,
+    departmentId: params.departmentId,
+    search: debouncedSearch,
+  });
   const unitsSelect = useUnitsSelect();
   const filterDepartmentsSelect = useDepartmentsSelect(params.unitId);
   const formDepartmentsSelect = useDepartmentsSelect(
@@ -573,9 +575,38 @@ export function EmployeesPage() {
     createMutation.mutate(normalizedValues);
   }
 
+  // Sắp xếp nhân sự theo Mã chấm công (BioTime) tăng dần từ 1 tới lớn nhất.
+  // Nhân sự chưa có mã chấm công sẽ dồn xuống cuối danh sách.
+  const sortedEmployees = useMemo(
+    () => sortByCode(allEmployees, (emp) => emp.biotimeEmployeeCode),
+    [allEmployees],
+  );
+
+  // Phân trang ở client trên danh sách đã sắp xếp.
+  const totalCount = sortedEmployees.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / params.pageSize));
+  const currentPage = Math.min(params.page, totalPages);
+
+  const pagedEmployees = useMemo(() => {
+    const start = (currentPage - 1) * params.pageSize;
+    return sortedEmployees.slice(start, start + params.pageSize);
+  }, [sortedEmployees, currentPage, params.pageSize]);
+
+  const pagedMeta = useMemo<PaginationMeta>(
+    () => ({
+      page: currentPage,
+      pageSize: params.pageSize,
+      total: totalCount,
+      totalPages,
+      hasNextPage: currentPage < totalPages,
+      hasPreviousPage: currentPage > 1,
+    }),
+    [currentPage, params.pageSize, totalCount, totalPages],
+  );
+
   const selectedEmployees = useMemo(
-    () => (data?.items ?? []).filter((emp) => selectedIds.has(emp.id)),
-    [data?.items, selectedIds],
+    () => sortedEmployees.filter((emp) => selectedIds.has(emp.id)),
+    [sortedEmployees, selectedIds],
   );
 
   const columns = useMemo<DataTableColumn<Employee>[]>(
@@ -822,10 +853,10 @@ export function EmployeesPage() {
         </SimpleGrid>
 
         <DataTable
-          data={data?.items ?? []}
+          data={pagedEmployees}
           columns={columns}
           rowKey={(record) => record.id}
-          meta={data?.pagination}
+          meta={pagedMeta}
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}

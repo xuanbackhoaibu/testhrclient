@@ -31,8 +31,10 @@ import {
   updateUnit,
 } from "../../features/organization/unitsApi";
 import type { Unit } from "../../features/organization/organizationTypes";
-import { useUnits } from "../../features/organization/useUnits";
+import { useAllUnits } from "../../features/organization/useUnits";
 import { ApiError } from "../../shared/api/api.types";
+import type { PaginationMeta } from "../../shared/types/api";
+import { sortByCode } from "../../shared/utils/sort";
 import { ConfirmActionModal } from "../../shared/components/ConfirmActionModal";
 import {
   DataTable,
@@ -87,7 +89,12 @@ export function UnitsPage() {
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [codeManuallyEdited, setCodeManuallyEdited] = useState(false);
-  const { data, isLoading, error, refetch } = useUnits(params);
+  // Lấy toàn bộ đơn vị theo bộ lọc, sắp theo mã trên toàn danh sách rồi
+  // phân trang ở client để trang 1 luôn bắt đầu từ mã nhỏ nhất.
+  const { data: allUnits, isLoading, error, refetch } = useAllUnits({
+    search: params.search || undefined,
+    status: params.status,
+  });
   const sectorsQuery = useBusinessSectorsSelect();
   const templateDownload = useHrmCoreTemplateDownload("organization-units");
 
@@ -309,6 +316,27 @@ export function UnitsPage() {
     },
   });
 
+  // Sắp xếp toàn bộ đơn vị theo mã tăng dần rồi phân trang ở client.
+  const sortedUnits = useMemo(() => sortByCode(allUnits), [allUnits]);
+  const totalCount = sortedUnits.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / params.pageSize));
+  const currentPage = Math.min(params.page, totalPages);
+  const pagedUnits = useMemo(() => {
+    const start = (currentPage - 1) * params.pageSize;
+    return sortedUnits.slice(start, start + params.pageSize);
+  }, [sortedUnits, currentPage, params.pageSize]);
+  const pagedMeta = useMemo<PaginationMeta>(
+    () => ({
+      page: currentPage,
+      pageSize: params.pageSize,
+      total: totalCount,
+      totalPages,
+      hasNextPage: currentPage < totalPages,
+      hasPreviousPage: currentPage > 1,
+    }),
+    [currentPage, params.pageSize, totalCount, totalPages],
+  );
+
   const columns = useMemo<DataTableColumn<Unit>[]>(
     () => [
       {
@@ -449,10 +477,10 @@ export function UnitsPage() {
         </SimpleGrid>
 
         <DataTable
-          data={data?.items ?? []}
+          data={pagedUnits}
           columns={columns}
           rowKey={(record) => record.id}
-          meta={data?.pagination}
+          meta={pagedMeta}
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}

@@ -41,6 +41,7 @@ import {
   remapAttendance,
 } from '../../features/attendance/attendanceApi';
 import type { MappingStats, UnmappedAttendanceItem } from '../../features/attendance/attendanceTypes';
+import { sortByCode } from '../../shared/utils/sort';
 
 const PAGE_SIZE = 20;
 
@@ -562,6 +563,10 @@ export function AttendanceMappingPage() {
         search: search || undefined,
       }),
     staleTime: 30_000,
+    select: (result) => ({
+      ...result,
+      items: sortByCode(result.items, (item) => item.empCode),
+    }),
   });
 
   const handleSearchChange = (value: string) => {

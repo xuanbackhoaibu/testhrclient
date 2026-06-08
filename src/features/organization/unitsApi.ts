@@ -1,5 +1,6 @@
 import { api, httpClient, unwrapApiEnvelope } from '../../shared/api/httpClient';
 import { ApiError } from '../../shared/api/api.types';
+import { fetchAllPages } from '../../shared/api/fetchAllPages';
 import { normalizePaginatedResponse } from '../../shared/api/response';
 import {
   debugApiError,
@@ -76,6 +77,28 @@ export async function listUnits(params: ListQueryParams = {}): Promise<Paginated
 
   const response = await api.get<PaginatedData<Unit>>('/units', { params });
   return normalizePaginatedResponse<Unit>(response, params);
+}
+
+/**
+ * Lấy TOÀN BỘ đơn vị khớp bộ lọc (gộp mọi trang) để sắp xếp theo mã ở client.
+ */
+export async function listAllUnits(
+  params: Omit<ListQueryParams, 'page' | 'pageSize'> = {},
+): Promise<Unit[]> {
+  if (isMockMode) {
+    await mockDelay();
+    const filtered = mockUnits
+      .filter(
+        (item) =>
+          includesIgnoreCase(item.code, params.search) ||
+          includesIgnoreCase(item.name, params.search) ||
+          (!params.search && true),
+      )
+      .filter((item) => (params.status ? item.status === params.status : true));
+    return filtered;
+  }
+
+  return fetchAllPages(listUnits, params);
 }
 
 export async function listUnitsSelect(): Promise<UnitSelectOption[]> {

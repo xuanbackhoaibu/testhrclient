@@ -26,7 +26,9 @@ import {
   updatePosition,
 } from "../../features/organization/positionsApi";
 import type { Position } from "../../features/organization/organizationTypes";
-import { usePositions } from "../../features/organization/usePositions";
+import type { PaginationMeta } from "../../shared/types/api";
+import { sortByCode } from "../../shared/utils/sort";
+import { useAllPositions } from "../../features/organization/usePositions";
 import {
   DataTable,
   type DataTableColumn,
@@ -58,7 +60,12 @@ export function PositionsPage() {
     search: "",
     status: undefined as string | undefined,
   });
-  const { data, isLoading, error, refetch } = usePositions(params);
+  // Lấy toàn bộ vị trí theo bộ lọc, sắp theo mã trên toàn danh sách rồi
+  // phân trang ở client để trang 1 luôn bắt đầu từ mã nhỏ nhất.
+  const { data: allPositions, isLoading, error, refetch } = useAllPositions({
+    search: params.search || undefined,
+    status: params.status,
+  });
   const templateDownload = useHrmCoreTemplateDownload("positions");
 
   const exportMutation = useMutation({
@@ -143,6 +150,27 @@ export function PositionsPage() {
       });
     },
   });
+
+  // Sắp xếp toàn bộ vị trí theo mã tăng dần rồi phân trang ở client.
+  const sortedPositions = useMemo(() => sortByCode(allPositions), [allPositions]);
+  const totalCount = sortedPositions.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / params.pageSize));
+  const currentPage = Math.min(params.page, totalPages);
+  const pagedPositions = useMemo(() => {
+    const start = (currentPage - 1) * params.pageSize;
+    return sortedPositions.slice(start, start + params.pageSize);
+  }, [sortedPositions, currentPage, params.pageSize]);
+  const pagedMeta = useMemo<PaginationMeta>(
+    () => ({
+      page: currentPage,
+      pageSize: params.pageSize,
+      total: totalCount,
+      totalPages,
+      hasNextPage: currentPage < totalPages,
+      hasPreviousPage: currentPage > 1,
+    }),
+    [currentPage, params.pageSize, totalCount, totalPages],
+  );
 
   const columns = useMemo<DataTableColumn<Position>[]>(
     () => [
@@ -287,10 +315,10 @@ export function PositionsPage() {
         </SimpleGrid>
 
         <DataTable
-          data={data?.items ?? []}
+          data={pagedPositions}
           columns={columns}
           rowKey={(record) => record.id}
-          meta={data?.pagination}
+          meta={pagedMeta}
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}

@@ -24,7 +24,9 @@ import {
   updateBusinessSector,
 } from "../../features/organization/businessSectorsApi";
 import type { BusinessSector } from "../../features/organization/organizationTypes";
-import { useBusinessSectors } from "../../features/organization/useBusinessSectors";
+import type { PaginationMeta } from "../../shared/types/api";
+import { sortByCode } from "../../shared/utils/sort";
+import { useAllBusinessSectors } from "../../features/organization/useBusinessSectors";
 import { ConfirmActionModal } from "../../shared/components/ConfirmActionModal";
 import {
   DataTable,
@@ -64,7 +66,12 @@ export function BusinessSectorsPage() {
     null,
   );
   const [open, setOpen] = useState(false);
-  const { data, isLoading, error, refetch } = useBusinessSectors(params);
+  // Lấy toàn bộ lĩnh vực theo bộ lọc, sắp theo mã trên toàn danh sách rồi
+  // phân trang ở client để trang 1 luôn bắt đầu từ mã nhỏ nhất.
+  const { data: allSectors, isLoading, error, refetch } = useAllBusinessSectors({
+    search: params.search || undefined,
+    status: params.status,
+  });
 
   const form = useForm<BusinessSectorFormValues>({
     initialValues: {
@@ -165,6 +172,27 @@ export function BusinessSectorsPage() {
       });
     },
   });
+
+  // Sắp xếp toàn bộ lĩnh vực theo mã tăng dần rồi phân trang ở client.
+  const sortedSectors = useMemo(() => sortByCode(allSectors), [allSectors]);
+  const totalCount = sortedSectors.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / params.pageSize));
+  const currentPage = Math.min(params.page, totalPages);
+  const pagedSectors = useMemo(() => {
+    const start = (currentPage - 1) * params.pageSize;
+    return sortedSectors.slice(start, start + params.pageSize);
+  }, [sortedSectors, currentPage, params.pageSize]);
+  const pagedMeta = useMemo<PaginationMeta>(
+    () => ({
+      page: currentPage,
+      pageSize: params.pageSize,
+      total: totalCount,
+      totalPages,
+      hasNextPage: currentPage < totalPages,
+      hasPreviousPage: currentPage > 1,
+    }),
+    [currentPage, params.pageSize, totalCount, totalPages],
+  );
 
   const columns = useMemo<DataTableColumn<BusinessSector>[]>(
     () => [
@@ -315,10 +343,10 @@ export function BusinessSectorsPage() {
         </SimpleGrid>
 
         <DataTable
-          data={data?.items ?? []}
+          data={pagedSectors}
           columns={columns}
           rowKey={(record) => record.id}
-          meta={data?.pagination}
+          meta={pagedMeta}
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}

@@ -5,6 +5,7 @@ import { IconCheck, IconRefresh, IconSearch, IconUsers } from '@tabler/icons-rea
 import dayjs from 'dayjs';
 import { useBioTimeDepartments, useSyncBioTimeDepartments } from '../../../features/attendance/useAttendanceSync';
 import { DataTable } from '../../../shared/components/DataTable';
+import { sortByCode } from '../../../shared/utils/sort';
 import type { BioTimeDepartment } from '../../../features/attendance/attendanceTypes';
 
 export function BioTimeDepartmentsTable() {
@@ -21,7 +22,7 @@ export function BioTimeDepartmentsTable() {
 
   const syncDepts = useSyncBioTimeDepartments();
 
-  const departments = data?.data ?? [];
+  const departments = sortByCode(data?.data, (dept) => dept.biotimeDepartmentId);
   const pagination = data?.pagination;
   const totalCount = pagination?.total ?? 0;
 
