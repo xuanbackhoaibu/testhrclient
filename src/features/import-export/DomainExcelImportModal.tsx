@@ -93,8 +93,11 @@ export function DomainExcelImportModal({
       ]);
       message.success('Đã kiểm tra file import.');
     },
-    onError: () => {
-      message.error('Kiểm tra file import thất bại.');
+    onError: (error) => {
+      message.error(
+        (error as { message?: string })?.message ??
+          'Kiểm tra file import thất bại.',
+      );
     },
   });
 
@@ -109,8 +112,10 @@ export function DomainExcelImportModal({
       onAfterCommit?.(result);
       handleClose();
     },
-    onError: () => {
-      message.error('Import Excel thất bại.');
+    onError: (error) => {
+      message.error(
+        (error as { message?: string })?.message ?? 'Import Excel thất bại.',
+      );
     },
   });
 
