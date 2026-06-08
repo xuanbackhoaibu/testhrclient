@@ -83,6 +83,7 @@ export function PositionsPage() {
     initialValues: {
       code: "",
       name: "",
+      scope: "",
       jobFunction: "",
       grade: "",
       note: "",
@@ -114,6 +115,7 @@ export function PositionsPage() {
       const payload = {
         code: values.code.trim(),
         name: values.name.trim(),
+        scope: values.scope?.trim() || undefined,
         jobFunction: values.jobFunction.trim() || undefined,
         grade: values.grade.trim() || undefined,
         note: values.note?.trim() || undefined,
@@ -125,6 +127,7 @@ export function PositionsPage() {
       return createPosition({
         code: payload.code,
         name: payload.name,
+        scope: payload.scope,
         jobFunction: payload.jobFunction ?? "",
         grade: payload.grade ?? "",
         note: payload.note,
@@ -182,6 +185,11 @@ export function PositionsPage() {
       },
       { key: "name", header: "Tên chức vụ", render: (record) => record.name },
       {
+        key: "scope",
+        header: "Phạm vi",
+        render: (record) => record.scope || "-",
+      },
+      {
         key: "jobFunction",
         header: "Nhóm công việc",
         render: (record) => record.jobFunction || "-",
@@ -225,6 +233,7 @@ export function PositionsPage() {
                   form.setValues({
                     code: record.code,
                     name: record.name,
+                    scope: record.scope ?? "",
                     jobFunction: record.jobFunction ?? "",
                     grade: record.grade ?? "",
                     note: record.note ?? "",
@@ -352,6 +361,7 @@ export function PositionsPage() {
               withAsterisk
               {...form.getInputProps("name")}
             />
+            <TextInput label="Phạm vi" {...form.getInputProps("scope")} />
             <TextInput
               label="Nhóm công việc"
               {...form.getInputProps("jobFunction")}
