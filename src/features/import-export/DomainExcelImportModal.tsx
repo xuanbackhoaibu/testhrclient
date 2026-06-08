@@ -69,15 +69,15 @@ export function DomainExcelImportModal({
 
   const description =
     module === 'organization-units'
-      ? 'Táº£i file máº«u, chá»n file Excel, xem káº¿t quáº£ validate vĂ  import trá»±c tiáº¿p ngay trĂªn mĂ n hiá»‡n táº¡i. Cá»™t linh_vuc pháº£i lĂ  mĂ£ lÄ©nh vá»±c Ä‘Ă£ tá»“n táº¡i trong danh má»¥c LÄ©nh vá»±c.'
+      ? 'Tải file mẫu, chọn file Excel, xem kết quả validate và import trực tiếp ngay trên màn hiện tại. Cột linh_vuc phải là mã lĩnh vực đã tồn tại trong danh mục Lĩnh vực.'
       : module === 'employees'
-        ? 'Táº£i file máº«u, chá»n file Excel, xem preview mÃ£ nhÃ¢n sá»± sau chuáº©n hÃ³a vÃ  import trá»±c tiáº¿p ngay trĂªn mÃ n hiá»‡n táº¡i.'
-        : 'Táº£i file máº«u, chá»n file Excel, xem káº¿t quáº£ validate vĂ  import trá»±c tiáº¿p ngay trĂªn mĂ n hiá»‡n táº¡i.';
+        ? 'Tải file mẫu, chọn file Excel, xem preview mã nhân sự sau chuẩn hóa và import trực tiếp ngay trên màn hiện tại.'
+        : 'Tải file mẫu, chọn file Excel, xem kết quả validate và import trực tiếp ngay trên màn hiện tại.';
 
   const templateMutation = useMutation({
     mutationFn: () => downloadImportTemplate(module),
     onError: (error) =>
-      showDownloadError(error, 'Táº£i máº«u Excel tháº¥t báº¡i.'),
+      showDownloadError(error, 'Tải mẫu Excel thất bại.'),
   });
 
   const previewMutation = useMutation({
@@ -86,15 +86,15 @@ export function DomainExcelImportModal({
       setBatchId(result.batchId);
       setRows(await listDomainImportRows(result.batchId, module));
       setSummary([
-        { label: 'Tá»•ng dĂ²ng', value: result.totalRows },
-        { label: 'Há»£p lá»‡', value: result.validRows },
-        { label: 'Lá»—i', value: result.invalidRows },
-        { label: 'Cáº£nh bĂ¡o', value: result.warnings },
+        { label: 'Tổng dòng', value: result.totalRows },
+        { label: 'Hợp lệ', value: result.validRows },
+        { label: 'Lỗi', value: result.invalidRows },
+        { label: 'Cảnh báo', value: result.warnings },
       ]);
-      message.success('ÄĂ£ kiá»ƒm tra file import.');
+      message.success('Đã kiểm tra file import.');
     },
     onError: () => {
-      message.error('Kiá»ƒm tra file import tháº¥t báº¡i.');
+      message.error('Kiểm tra file import thất bại.');
     },
   });
 
@@ -104,13 +104,13 @@ export function DomainExcelImportModal({
       return commitDomainImport(module, batchId, true);
     },
     onSuccess: async (result) => {
-      message.success('Import Excel thĂ nh cĂ´ng.');
+      message.success('Import Excel thành công.');
       await onSuccess?.();
       onAfterCommit?.(result);
       handleClose();
     },
     onError: () => {
-      message.error('Import Excel tháº¥t báº¡i.');
+      message.error('Import Excel thất bại.');
     },
   });
 
@@ -120,7 +120,7 @@ export function DomainExcelImportModal({
       return downloadImportErrorReport(batchId);
     },
     onError: (error) =>
-      showDownloadError(error, 'Táº£i file lá»—i tháº¥t báº¡i.'),
+      showDownloadError(error, 'Tải file lỗi thất bại.'),
   });
 
   function handleClose() {
@@ -148,34 +148,34 @@ export function DomainExcelImportModal({
 
   const rowColumns = useMemo(
     () => [
-      { title: 'DĂ²ng', dataIndex: 'rowNumber', width: 80 },
-      { title: 'Tráº¡ng thĂ¡i', dataIndex: 'validationStatus', width: 120 },
+      { title: 'Dòng', dataIndex: 'rowNumber', width: 80 },
+      { title: 'Trạng thái', dataIndex: 'validationStatus', width: 120 },
       ...(module === 'employees'
         ? [
             {
-              title: 'LÄ©nh vá»±c',
+              title: 'Lĩnh vực',
               render: (_: unknown, row: HrmCoreStagingRow) =>
                 readNormalizedString(row, 'businessSectorCode'),
             },
             {
-              title: 'MÃ£ nhĂ¢n sá»± chuáº©n hÃ³a',
+              title: 'Mã nhân sự chuẩn hóa',
               render: (_: unknown, row: HrmCoreStagingRow) =>
                 readNormalizedString(row, 'employeeCodePreview'),
             },
           ]
         : []),
       {
-        title: 'Dá»¯ liá»‡u',
+        title: 'Dữ liệu',
         render: (_: unknown, row: HrmCoreStagingRow) =>
           JSON.stringify(row.rawDataJson),
       },
       {
-        title: 'Lá»—i',
+        title: 'Lỗi',
         render: (_: unknown, row: HrmCoreStagingRow) =>
           renderMessages(row.validationErrorsJson),
       },
       {
-        title: 'Cáº£nh bĂ¡o',
+        title: 'Cảnh báo',
         render: (_: unknown, row: HrmCoreStagingRow) =>
           renderMessages(row.validationWarningsJson),
       },
