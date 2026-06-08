@@ -62,6 +62,7 @@ export interface Position {
   id: string;
   code: string;
   name: string;
+  scope?: string | null;
   jobFunction: string;
   grade: string;
   note?: string | null;
