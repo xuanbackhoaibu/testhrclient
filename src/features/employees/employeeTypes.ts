@@ -1,10 +1,13 @@
 export interface EmployeeAssignment {
   unitId: string;
   unitName: string;
+  unitCode?: string | null;
   departmentId: string;
   departmentName: string;
+  departmentCode?: string | null;
   positionId: string;
   positionName: string;
+  positionCode?: string | null;
   jobTitle: string;
   managerName: string;
 }
