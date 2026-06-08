@@ -1,5 +1,6 @@
 import { api, httpClient, unwrapApiEnvelope } from '../../shared/api/httpClient';
 import { ApiError } from '../../shared/api/api.types';
+import { fetchAllPages } from '../../shared/api/fetchAllPages';
 import { normalizePaginatedResponse } from '../../shared/api/response';
 import {
   debugApiError,
@@ -152,6 +153,21 @@ export async function listEmployees(params: ListQueryParams = {}): Promise<Pagin
 
   const response = await api.get<PaginatedData<Employee>>('/employees', { params });
   return normalizePaginatedResponse<Employee>(response, params);
+}
+
+/**
+ * Lấy TOÀN BỘ nhân sự khớp với bộ lọc, gộp tất cả các trang lại.
+ * Dùng cho màn cần sắp xếp/hiển thị trên toàn danh sách (vd: sắp theo Mã chấm công).
+ */
+export async function listAllEmployees(
+  params: Omit<ListQueryParams, 'page' | 'pageSize'> = {},
+): Promise<Employee[]> {
+  if (isMockMode) {
+    await mockDelay();
+    return applyEmployeeFilters(mockEmployees, params);
+  }
+
+  return fetchAllPages(listEmployees, params);
 }
 
 export async function getEmployeeById(

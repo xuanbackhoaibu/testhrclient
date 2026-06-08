@@ -1,5 +1,6 @@
 import { api, httpClient, unwrapApiEnvelope } from '../../shared/api/httpClient';
 import { ApiError } from '../../shared/api/api.types';
+import { fetchAllPages } from '../../shared/api/fetchAllPages';
 import {
   debugApiError,
   debugApiRequest,
@@ -62,6 +63,28 @@ export async function listBusinessSectors(
     { params },
   );
   return normalizePaginatedResponse<BusinessSector>(response, params);
+}
+
+/**
+ * Lấy TOÀN BỘ lĩnh vực khớp bộ lọc (gộp mọi trang) để sắp xếp theo mã ở client.
+ */
+export async function listAllBusinessSectors(
+  params: Omit<ListQueryParams, 'page' | 'pageSize'> = {},
+): Promise<BusinessSector[]> {
+  if (isMockMode) {
+    await mockDelay();
+    return mockBusinessSectors
+      .filter((item) => (params.status ? item.status === params.status : true))
+      .filter(
+        (item) =>
+          includesIgnoreCase(item.code, params.search) ||
+          includesIgnoreCase(item.name, params.search) ||
+          includesIgnoreCase(item.note ?? '', params.search) ||
+          (!params.search && true),
+      );
+  }
+
+  return fetchAllPages(listBusinessSectors, params);
 }
 
 export async function listBusinessSectorsOptions(): Promise<

@@ -27,7 +27,9 @@ import {
 } from "../../features/organization/departmentsApi";
 import type { Department } from "../../features/organization/organizationTypes";
 import { ApiError } from "../../shared/api/api.types";
-import { useDepartments } from "../../features/organization/useDepartments";
+import type { PaginationMeta } from "../../shared/types/api";
+import { sortByCode } from "../../shared/utils/sort";
+import { useAllDepartments } from "../../features/organization/useDepartments";
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { ConfirmActionModal } from "../../shared/components/ConfirmActionModal";
 import {
@@ -72,7 +74,13 @@ export function DepartmentsPage() {
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
-  const { data, isLoading, error, refetch } = useDepartments(params);
+  // Lấy toàn bộ phòng ban theo bộ lọc, sắp theo mã trên toàn danh sách rồi
+  // phân trang ở client để trang 1 luôn bắt đầu từ mã nhỏ nhất.
+  const { data: allDepartments, isLoading, error, refetch } = useAllDepartments({
+    search: params.search || undefined,
+    unitId: params.unitId,
+    status: params.status,
+  });
   const unitsSelect = useUnitsSelect();
   const templateDownload = useHrmCoreTemplateDownload("departments");
 
@@ -199,6 +207,30 @@ export function DepartmentsPage() {
     value: item.id,
     label: `${item.name} (${item.code})`,
   }));
+
+  // Sắp xếp toàn bộ phòng ban theo mã tăng dần rồi phân trang ở client.
+  const sortedDepartments = useMemo(
+    () => sortByCode(allDepartments),
+    [allDepartments],
+  );
+  const totalCount = sortedDepartments.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / params.pageSize));
+  const currentPage = Math.min(params.page, totalPages);
+  const pagedDepartments = useMemo(() => {
+    const start = (currentPage - 1) * params.pageSize;
+    return sortedDepartments.slice(start, start + params.pageSize);
+  }, [sortedDepartments, currentPage, params.pageSize]);
+  const pagedMeta = useMemo<PaginationMeta>(
+    () => ({
+      page: currentPage,
+      pageSize: params.pageSize,
+      total: totalCount,
+      totalPages,
+      hasNextPage: currentPage < totalPages,
+      hasPreviousPage: currentPage > 1,
+    }),
+    [currentPage, params.pageSize, totalCount, totalPages],
+  );
 
   const columns = useMemo<DataTableColumn<Department>[]>(
     () => [
@@ -368,10 +400,10 @@ export function DepartmentsPage() {
         </SimpleGrid>
 
         <DataTable
-          data={data?.items ?? []}
+          data={pagedDepartments}
           columns={columns}
           rowKey={(record) => record.id}
-          meta={data?.pagination}
+          meta={pagedMeta}
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}

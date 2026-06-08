@@ -1,5 +1,6 @@
 import { api, httpClient, unwrapApiEnvelope } from '../../shared/api/httpClient';
 import { ApiError } from '../../shared/api/api.types';
+import { fetchAllPages } from '../../shared/api/fetchAllPages';
 import { normalizePaginatedResponse } from '../../shared/api/response';
 import {
   debugApiError,
@@ -33,6 +34,28 @@ export async function listDepartments(params: ListQueryParams = {}): Promise<Pag
 
   const response = await api.get<PaginatedData<Department>>('/departments', { params });
   return normalizePaginatedResponse<Department>(response, params);
+}
+
+/**
+ * Lấy TOÀN BỘ phòng ban khớp bộ lọc (gộp mọi trang) để sắp xếp theo mã ở client.
+ */
+export async function listAllDepartments(
+  params: Omit<ListQueryParams, 'page' | 'pageSize'> = {},
+): Promise<Department[]> {
+  if (isMockMode) {
+    await mockDelay();
+    return mockDepartments
+      .filter((item) => (params.unitId ? item.unitId === params.unitId : true))
+      .filter((item) => (params.status ? item.status === params.status : true))
+      .filter(
+        (item) =>
+          includesIgnoreCase(item.code, params.search) ||
+          includesIgnoreCase(item.name, params.search) ||
+          (!params.search && true),
+      );
+  }
+
+  return fetchAllPages(listDepartments, params);
 }
 
 export async function listDepartmentsSelect(unitId?: string): Promise<DepartmentSelectOption[]> {
