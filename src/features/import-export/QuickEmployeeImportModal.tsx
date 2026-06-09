@@ -40,6 +40,7 @@ interface ParsedRow {
   unitCode: string;
   unitName: string;
   fullName: string;
+  phone: string;
   departmentCode: string;
   positionCode: string;
   departmentId: string;
@@ -108,13 +109,14 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
     const exampleDeptCode = depts[0]?.code ?? 'DV001_01';
     const examplePosCode = positions[0]?.code ?? 'CV001';
 
-    // Cột: Mã NS | Mã chấm công | Mã đơn vị (*) | Họ tên (*) | Mã phòng ban (*) | Mã chức vụ (*)
+    // Cột: Mã NS | Mã chấm công | Mã đơn vị (*) | Họ tên (*) | Số điện thoại (*) | Mã phòng ban (*) | Mã chức vụ (*)
     const importRows: SheetRows = [
       [
         { value: 'Mã NS', ...headerStyle },
         { value: 'Mã chấm công', ...headerStyle },
         { value: 'Mã đơn vị (*)', ...headerStyle },
         { value: 'Họ tên (*)', ...headerStyle },
+        { value: 'Số điện thoại (*)', ...headerStyle },
         { value: 'Mã phòng ban (*)', ...headerStyle },
         { value: 'Mã chức vụ (*)', ...headerStyle },
       ],
@@ -123,6 +125,7 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
         { value: '108' },
         { value: exampleUnitCode },
         { value: 'Nguyễn Văn A' },
+        { value: '0901234567' },
         { value: exampleDeptCode },
         { value: examplePosCode },
       ],
@@ -166,7 +169,7 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
     ];
 
     await (writeXlsxFile as unknown as MultiSheetFn)([
-      { data: importRows, sheet: 'NhanSu', stickyRowsCount: 1, columns: [{ width: 22 }, { width: 16 }, { width: 18 }, { width: 30 }, { width: 22 }, { width: 22 }] },
+      { data: importRows, sheet: 'NhanSu', stickyRowsCount: 1, columns: [{ width: 22 }, { width: 16 }, { width: 18 }, { width: 30 }, { width: 18 }, { width: 22 }, { width: 22 }] },
       { data: unitRows, sheet: 'Danh sách đơn vị', stickyRowsCount: 1, columns: [{ width: 16 }, { width: 34 }, { width: 30 }] },
       { data: deptRows, sheet: 'Danh sách phòng ban', stickyRowsCount: 1, columns: [{ width: 22 }, { width: 34 }, { width: 30 }] },
       { data: posRows, sheet: 'Danh sách chức vụ', stickyRowsCount: 1, columns: [{ width: 22 }, { width: 34 }] },
@@ -183,7 +186,8 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
     const deptMap = new Map(depts.map((d) => [d.code.toUpperCase(), d]));
     const posMap = new Map(positions.map((p) => [p.code.toUpperCase(), p]));
 
-    // Cột: 0=Mã NS, 1=Mã chấm công, 2=Mã đơn vị, 3=Họ tên, 4=Mã phòng ban, 5=Mã chức vụ
+    const PHONE_RE = /^0[0-9]{9}$/;
+    // Cột: 0=Mã NS, 1=Mã chấm công, 2=Mã đơn vị, 3=Họ tên, 4=Số điện thoại, 5=Mã phòng ban, 6=Mã chức vụ
     return rawRows
       .slice(1) // skip header
       .filter((row) => row.some((cell) => cell !== null && String(cell ?? '').trim() !== ''))
@@ -192,12 +196,15 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
         const biotimeCode = String(row[1] ?? '').trim();
         const unitCode = String(row[2] ?? '').trim().toUpperCase();
         const fullName = String(row[3] ?? '').trim();
-        const deptCode = String(row[4] ?? '').trim().toUpperCase();
-        const posCode = String(row[5] ?? '').trim().toUpperCase();
+        const phone = String(row[4] ?? '').trim().replace(/\s/g, '');
+        const deptCode = String(row[5] ?? '').trim().toUpperCase();
+        const posCode = String(row[6] ?? '').trim().toUpperCase();
 
         const errors: string[] = [];
         if (!unitCode) errors.push('Thiếu mã đơn vị');
         if (!fullName) errors.push('Thiếu họ tên');
+        if (!phone) errors.push('Thiếu số điện thoại');
+        else if (!PHONE_RE.test(phone)) errors.push(`SĐT "${phone}" không đúng định dạng (VD: 0901234567)`);
         if (!deptCode) errors.push('Thiếu mã phòng ban');
         if (!posCode) errors.push('Thiếu mã chức vụ');
         if (employeeCode && !EMPLOYEE_CODE_RE.test(employeeCode)) {
@@ -224,6 +231,7 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
           unitCode,
           unitName: unit?.name ?? unitCode,
           fullName,
+          phone,
           departmentCode: deptCode,
           positionCode: posCode,
           departmentId: dept?.id ?? '',
@@ -290,6 +298,7 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
         const employee = await createEmployee({
           employeeCode: row.employeeCode || undefined,
           fullName: row.fullName,
+          phone: row.phone,
           hireDate: today,
           employmentStatus: 'ACTIVE',
           unitId: row.unitId,
@@ -394,8 +403,9 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
           <>
             <Text size="sm" c="dimmed">
               Các trường bắt buộc: <strong>Mã đơn vị</strong>, <strong>Họ tên</strong>,{' '}
-              <strong>Mã phòng ban</strong>, <strong>Mã chức vụ</strong>. Mã NS và Mã chấm công là
-              tùy chọn. Các thông tin khác (SĐT, ngày sinh, email...) có thể bổ sung sau.
+              <strong>Số điện thoại</strong>, <strong>Mã phòng ban</strong>,{' '}
+              <strong>Mã chức vụ</strong>. Mã NS và Mã chấm công là tùy chọn. Các thông tin khác
+              (ngày sinh, email...) có thể bổ sung sau.
             </Text>
             <Button
               variant="light"
@@ -443,6 +453,7 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
                     <Table.Th>Mã CC</Table.Th>
                     <Table.Th>Đơn vị</Table.Th>
                     <Table.Th>Họ tên</Table.Th>
+                    <Table.Th>SĐT</Table.Th>
                     <Table.Th>Phòng ban</Table.Th>
                     <Table.Th>Chức vụ</Table.Th>
                     <Table.Th>Trạng thái</Table.Th>
@@ -459,6 +470,7 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
                       <Table.Td>{row.biotimeCode || '—'}</Table.Td>
                       <Table.Td>{row.unitName}</Table.Td>
                       <Table.Td>{row.fullName || '—'}</Table.Td>
+                      <Table.Td>{row.phone || '—'}</Table.Td>
                       <Table.Td>{row.departmentName}</Table.Td>
                       <Table.Td>{row.positionName}</Table.Td>
                       <Table.Td>
