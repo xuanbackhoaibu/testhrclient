@@ -18,21 +18,27 @@ import { IconDownload, IconUpload } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 
 import { listAllDepartments } from '../organization/departmentsApi';
+import { listAllUnits } from '../organization/unitsApi';
 import { listPositionsSelect } from '../organization/positionsApi';
-import { createEmployee } from '../employees/employeesApi';
+import { createEmployee, updateEmployeeBioTimeCode } from '../employees/employeesApi';
 import { bulkProvisionFromEmployees } from '../auth-admin/authAdminApi';
 import type { Employee } from '../employees/employeeTypes';
-import type { Department, PositionSelectOption } from '../organization/organizationTypes';
+import type { Department, PositionSelectOption, Unit } from '../organization/organizationTypes';
 
 type StyledCell = { value: string; fontWeight?: 'bold'; backgroundColor?: string; textColor?: string; align?: 'left' | 'center' | 'right' };
 type SheetRows = StyledCell[][];
 type SheetSpec = { data: SheetRows; sheet?: string; stickyRowsCount?: number; columns?: { width?: number }[] };
 type MultiSheetFn = (sheets: SheetSpec[]) => { toFile: (name: string) => Promise<void> };
 
+// Mã NS hợp lệ: 2 chữ hoa + 6 chữ số (VD: HN000001)
+const EMPLOYEE_CODE_RE = /^[A-Z]{2}\d{6}$/;
+
 interface ParsedRow {
   rowNumber: number;
   employeeCode: string;
   biotimeCode: string;
+  unitCode: string;
+  unitName: string;
   fullName: string;
   departmentCode: string;
   positionCode: string;
@@ -67,6 +73,12 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
   const [sendEmail, setSendEmail] = useState(false);
   const [isProvisioning, setIsProvisioning] = useState(false);
 
+  const unitQuery = useQuery({
+    queryKey: ['units', 'all', { status: 'ACTIVE' }],
+    queryFn: () => listAllUnits({ status: 'ACTIVE' }),
+    enabled: open,
+  });
+
   const deptQuery = useQuery({
     queryKey: ['departments', 'all', { status: 'ACTIVE' }],
     queryFn: () => listAllDepartments({ status: 'ACTIVE' }),
@@ -79,24 +91,29 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
     enabled: open,
   });
 
-  const isDataLoading = deptQuery.isLoading || posQuery.isLoading;
+  const isDataLoading = unitQuery.isLoading || deptQuery.isLoading || posQuery.isLoading;
 
   async function downloadTemplate() {
+    const units = unitQuery.data ?? [];
     const depts = deptQuery.data ?? [];
     const positions = posQuery.data ?? [];
     const { default: writeXlsxFile } = await import('write-excel-file/browser');
 
     const headerStyle = { fontWeight: 'bold' as const, backgroundColor: '#2563EB', textColor: '#FFFFFF', align: 'center' as const };
+    const unitHeaderStyle = { fontWeight: 'bold' as const, backgroundColor: '#D97706', textColor: '#FFFFFF', align: 'center' as const };
     const deptHeaderStyle = { fontWeight: 'bold' as const, backgroundColor: '#059669', textColor: '#FFFFFF', align: 'center' as const };
     const posHeaderStyle = { fontWeight: 'bold' as const, backgroundColor: '#7C3AED', textColor: '#FFFFFF', align: 'center' as const };
 
+    const exampleUnitCode = units[0]?.code ?? 'HC';
     const exampleDeptCode = depts[0]?.code ?? 'DV001_01';
     const examplePosCode = positions[0]?.code ?? 'CV001';
 
+    // Cột: Mã NS | Mã chấm công | Mã đơn vị (*) | Họ tên (*) | Mã phòng ban (*) | Mã chức vụ (*)
     const importRows: SheetRows = [
       [
         { value: 'Mã NS', ...headerStyle },
         { value: 'Mã chấm công', ...headerStyle },
+        { value: 'Mã đơn vị (*)', ...headerStyle },
         { value: 'Họ tên (*)', ...headerStyle },
         { value: 'Mã phòng ban (*)', ...headerStyle },
         { value: 'Mã chức vụ (*)', ...headerStyle },
@@ -104,10 +121,24 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
       [
         { value: '(tự sinh nếu trống)' },
         { value: '108' },
+        { value: exampleUnitCode },
         { value: 'Nguyễn Văn A' },
         { value: exampleDeptCode },
         { value: examplePosCode },
       ],
+    ];
+
+    const unitRows: SheetRows = [
+      [
+        { value: 'Mã đơn vị', ...unitHeaderStyle },
+        { value: 'Tên đơn vị', ...unitHeaderStyle },
+        { value: 'Lĩnh vực', ...unitHeaderStyle },
+      ],
+      ...units.map((u) => [
+        { value: u.code },
+        { value: u.name },
+        { value: u.sector?.name ?? u.businessSector?.name ?? '' },
+      ]),
     ];
 
     const deptRows: SheetRows = [
@@ -135,47 +166,69 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
     ];
 
     await (writeXlsxFile as unknown as MultiSheetFn)([
-      { data: importRows, sheet: 'NhanSu', stickyRowsCount: 1, columns: [{ width: 22 }, { width: 16 }, { width: 30 }, { width: 22 }, { width: 22 }] },
+      { data: importRows, sheet: 'NhanSu', stickyRowsCount: 1, columns: [{ width: 22 }, { width: 16 }, { width: 18 }, { width: 30 }, { width: 22 }, { width: 22 }] },
+      { data: unitRows, sheet: 'Danh sách đơn vị', stickyRowsCount: 1, columns: [{ width: 16 }, { width: 34 }, { width: 30 }] },
       { data: deptRows, sheet: 'Danh sách phòng ban', stickyRowsCount: 1, columns: [{ width: 22 }, { width: 34 }, { width: 30 }] },
       { data: posRows, sheet: 'Danh sách chức vụ', stickyRowsCount: 1, columns: [{ width: 22 }, { width: 34 }] },
     ]).toFile('Mau_import_nhanh_nhan_su.xlsx');
   }
 
-  function parseAndValidate(rawRows: unknown[][], depts: Department[], positions: PositionSelectOption[]): ParsedRow[] {
+  function parseAndValidate(
+    rawRows: unknown[][],
+    units: Unit[],
+    depts: Department[],
+    positions: PositionSelectOption[],
+  ): ParsedRow[] {
+    const unitMap = new Map(units.map((u) => [u.code.toUpperCase(), u]));
     const deptMap = new Map(depts.map((d) => [d.code.toUpperCase(), d]));
     const posMap = new Map(positions.map((p) => [p.code.toUpperCase(), p]));
 
+    // Cột: 0=Mã NS, 1=Mã chấm công, 2=Mã đơn vị, 3=Họ tên, 4=Mã phòng ban, 5=Mã chức vụ
     return rawRows
       .slice(1) // skip header
       .filter((row) => row.some((cell) => cell !== null && String(cell ?? '').trim() !== ''))
       .map((row, i): ParsedRow => {
-        const employeeCode = String(row[0] ?? '').trim();
+        const employeeCode = String(row[0] ?? '').trim().toUpperCase();
         const biotimeCode = String(row[1] ?? '').trim();
-        const fullName = String(row[2] ?? '').trim();
-        const deptCode = String(row[3] ?? '').trim().toUpperCase();
-        const posCode = String(row[4] ?? '').trim().toUpperCase();
+        const unitCode = String(row[2] ?? '').trim().toUpperCase();
+        const fullName = String(row[3] ?? '').trim();
+        const deptCode = String(row[4] ?? '').trim().toUpperCase();
+        const posCode = String(row[5] ?? '').trim().toUpperCase();
 
         const errors: string[] = [];
+        if (!unitCode) errors.push('Thiếu mã đơn vị');
         if (!fullName) errors.push('Thiếu họ tên');
         if (!deptCode) errors.push('Thiếu mã phòng ban');
         if (!posCode) errors.push('Thiếu mã chức vụ');
+        if (employeeCode && !EMPLOYEE_CODE_RE.test(employeeCode)) {
+          errors.push(`Mã NS "${employeeCode}" không đúng định dạng (VD: HN000001)`);
+        }
 
+        const unit = unitCode ? unitMap.get(unitCode) : undefined;
         const dept = deptCode ? deptMap.get(deptCode) : undefined;
         const pos = posCode ? posMap.get(posCode) : undefined;
 
+        if (unitCode && !unit) errors.push(`Mã đơn vị "${unitCode}" không tồn tại`);
         if (deptCode && !dept) errors.push(`Mã phòng ban "${deptCode}" không tồn tại`);
         if (posCode && !pos) errors.push(`Mã chức vụ "${posCode}" không tồn tại`);
+
+        // Cross-validate: phòng ban phải thuộc đơn vị đã chỉ định
+        if (unit && dept && dept.unitId !== unit.id) {
+          errors.push(`Phòng ban "${deptCode}" không thuộc đơn vị "${unitCode}"`);
+        }
 
         return {
           rowNumber: i + 2,
           employeeCode,
           biotimeCode,
+          unitCode,
+          unitName: unit?.name ?? unitCode,
           fullName,
           departmentCode: deptCode,
           positionCode: posCode,
           departmentId: dept?.id ?? '',
           positionId: pos?.id ?? '',
-          unitId: dept?.unitId ?? '',
+          unitId: unit?.id ?? '',
           departmentName: dept?.name ?? deptCode,
           positionName: pos?.name ?? posCode,
           errors,
@@ -186,10 +239,9 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
   const [usedSheetName, setUsedSheetName] = useState<string | null>(null);
 
   async function handleFileChange(file: File | null) {
-    if (!file || !deptQuery.data || !posQuery.data) return;
+    if (!file || !unitQuery.data || !deptQuery.data || !posQuery.data) return;
     try {
       const { default: readXlsxFile } = await import('read-excel-file/browser');
-      // v9: trả về tất cả sheet dưới dạng [{ sheet: 'Tên', data: [...] }]
       const allSheets = (await readXlsxFile(file)) as unknown as Array<{ sheet: string; data: unknown[][] }>;
 
       if (!allSheets.length) {
@@ -197,7 +249,6 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
         return;
       }
 
-      // Chuẩn hóa tên để so sánh (bỏ dấu, bỏ khoảng trắng, lowercase)
       function normalize(s: string) {
         return s
           .toLowerCase()
@@ -206,13 +257,13 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
           .replace(/[\s_-]+/g, '');
       }
 
-      const PREFERRED = ['nhansu', 'nhanvien', 'mauimport', 'import', 'nhansu'];
+      const PREFERRED = ['nhansu', 'nhanvien', 'mauimport', 'import'];
       const chosen =
         allSheets.find((s) => PREFERRED.includes(normalize(s.sheet))) ??
         allSheets[0];
 
       setUsedSheetName(chosen.sheet);
-      const parsed = parseAndValidate(chosen.data, deptQuery.data, posQuery.data);
+      const parsed = parseAndValidate(chosen.data, unitQuery.data, deptQuery.data, posQuery.data);
       if (parsed.length === 0) {
         notifications.show({ color: 'yellow', message: `Sheet "${chosen.sheet}" không có dữ liệu.` });
         return;
@@ -245,6 +296,9 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
           departmentId: row.departmentId,
           positionId: row.positionId,
         });
+        if (row.biotimeCode) {
+          await updateEmployeeBioTimeCode(employee.id, row.biotimeCode);
+        }
         importResults.push({ row, employee });
       } catch (err) {
         importResults.push({
@@ -339,9 +393,9 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
         {phase === 'idle' && (
           <>
             <Text size="sm" c="dimmed">
-              Chỉ cần 3 trường bắt buộc: <strong>Họ tên</strong>, <strong>Mã phòng ban</strong>,{' '}
-              <strong>Mã chức vụ</strong>. Mã NS và Mã chấm công là tùy chọn. Các thông tin khác
-              (SĐT, ngày sinh, email...) có thể bổ sung sau.
+              Các trường bắt buộc: <strong>Mã đơn vị</strong>, <strong>Họ tên</strong>,{' '}
+              <strong>Mã phòng ban</strong>, <strong>Mã chức vụ</strong>. Mã NS và Mã chấm công là
+              tùy chọn. Các thông tin khác (SĐT, ngày sinh, email...) có thể bổ sung sau.
             </Text>
             <Button
               variant="light"
@@ -360,7 +414,7 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
               disabled={isDataLoading}
               description={
                 isDataLoading
-                  ? 'Đang tải danh mục phòng ban và chức vụ...'
+                  ? 'Đang tải danh mục đơn vị, phòng ban và chức vụ...'
                   : 'Điền dữ liệu vào file mẫu rồi upload lên đây.'
               }
               leftSection={<IconUpload size={16} />}
@@ -387,6 +441,7 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
                     <Table.Th>Dòng</Table.Th>
                     <Table.Th>Mã NS</Table.Th>
                     <Table.Th>Mã CC</Table.Th>
+                    <Table.Th>Đơn vị</Table.Th>
                     <Table.Th>Họ tên</Table.Th>
                     <Table.Th>Phòng ban</Table.Th>
                     <Table.Th>Chức vụ</Table.Th>
@@ -402,6 +457,7 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
                       <Table.Td>{row.rowNumber}</Table.Td>
                       <Table.Td>{row.employeeCode || '—'}</Table.Td>
                       <Table.Td>{row.biotimeCode || '—'}</Table.Td>
+                      <Table.Td>{row.unitName}</Table.Td>
                       <Table.Td>{row.fullName || '—'}</Table.Td>
                       <Table.Td>{row.departmentName}</Table.Td>
                       <Table.Td>{row.positionName}</Table.Td>
