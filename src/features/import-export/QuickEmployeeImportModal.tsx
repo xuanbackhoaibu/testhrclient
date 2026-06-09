@@ -135,7 +135,7 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
     ];
 
     await (writeXlsxFile as unknown as MultiSheetFn)([
-      { data: importRows, sheet: 'Mẫu import', stickyRowsCount: 1, columns: [{ width: 22 }, { width: 16 }, { width: 30 }, { width: 22 }, { width: 22 }] },
+      { data: importRows, sheet: 'NhanSu', stickyRowsCount: 1, columns: [{ width: 22 }, { width: 16 }, { width: 30 }, { width: 22 }, { width: 22 }] },
       { data: deptRows, sheet: 'Danh sách phòng ban', stickyRowsCount: 1, columns: [{ width: 22 }, { width: 34 }, { width: 30 }] },
       { data: posRows, sheet: 'Danh sách chức vụ', stickyRowsCount: 1, columns: [{ width: 22 }, { width: 34 }] },
     ]).toFile('Mau_import_nhanh_nhan_su.xlsx');
@@ -183,14 +183,38 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
       });
   }
 
+  const [usedSheetName, setUsedSheetName] = useState<string | null>(null);
+
   async function handleFileChange(file: File | null) {
     if (!file || !deptQuery.data || !posQuery.data) return;
     try {
       const { default: readXlsxFile } = await import('read-excel-file/browser');
-      const rawRows = (await readXlsxFile(file)) as unknown as unknown[][];
-      const parsed = parseAndValidate(rawRows, deptQuery.data, posQuery.data);
+      // v9: trả về tất cả sheet dưới dạng [{ sheet: 'Tên', data: [...] }]
+      const allSheets = (await readXlsxFile(file)) as unknown as Array<{ sheet: string; data: unknown[][] }>;
+
+      if (!allSheets.length) {
+        notifications.show({ color: 'yellow', message: 'File Excel không có sheet nào.' });
+        return;
+      }
+
+      // Chuẩn hóa tên để so sánh (bỏ dấu, bỏ khoảng trắng, lowercase)
+      function normalize(s: string) {
+        return s
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .replace(/[\s_-]+/g, '');
+      }
+
+      const PREFERRED = ['nhansu', 'nhanvien', 'mauimport', 'import', 'nhansu'];
+      const chosen =
+        allSheets.find((s) => PREFERRED.includes(normalize(s.sheet))) ??
+        allSheets[0];
+
+      setUsedSheetName(chosen.sheet);
+      const parsed = parseAndValidate(chosen.data, deptQuery.data, posQuery.data);
       if (parsed.length === 0) {
-        notifications.show({ color: 'yellow', message: 'File không có dữ liệu.' });
+        notifications.show({ color: 'yellow', message: `Sheet "${chosen.sheet}" không có dữ liệu.` });
         return;
       }
       setParsedRows(parsed);
@@ -300,6 +324,7 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
     setImportProgress(0);
     setProvisionAccounts(false);
     setSendEmail(false);
+    setUsedSheetName(null);
     onClose();
   }
 
@@ -349,6 +374,9 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
         {phase === 'preview' && (
           <>
             <Group gap="xs">
+              {usedSheetName && (
+                <Badge color="gray" variant="outline">Sheet: {usedSheetName}</Badge>
+              )}
               <Badge color="blue">Tổng: {parsedRows.length} dòng</Badge>
               <Badge color="green">Hợp lệ: {validRows.length}</Badge>
               {invalidRows.length > 0 && <Badge color="red">Lỗi: {invalidRows.length}</Badge>}
@@ -393,7 +421,7 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
             </ScrollArea>
 
             <Group justify="space-between">
-              <Button variant="default" onClick={() => setPhase('idle')}>
+              <Button variant="default" onClick={() => { setPhase('idle'); setUsedSheetName(null); }}>
                 Chọn lại
               </Button>
               <Button
