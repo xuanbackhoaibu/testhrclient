@@ -238,9 +238,7 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
       try {
         const employee = await createEmployee({
           employeeCode: row.employeeCode || undefined,
-          biotimeEmployeeCode: row.biotimeCode || null,
           fullName: row.fullName,
-          phone: '',
           hireDate: today,
           employmentStatus: 'ACTIVE',
           unitId: row.unitId,

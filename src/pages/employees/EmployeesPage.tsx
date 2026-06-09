@@ -202,7 +202,6 @@ const emptyEmployeeFormValues: EmployeePayload = {
   unitId: "",
   departmentId: "",
   positionId: "",
-  biotimeEmployeeCode: null,
 };
 
 export function EmployeesPage() {
