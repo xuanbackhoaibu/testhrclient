@@ -45,6 +45,7 @@ import { BulkProvisionModal } from "../../features/employees/BulkProvisionModal"
 import { ProvisionAccountModal } from "../../features/employees/ProvisionAccountModal";
 import { DomainExcelImportModal } from "../../features/import-export/DomainExcelImportModal";
 import { PostImportAccountModal } from "../../features/import-export/PostImportAccountModal";
+import { QuickEmployeeImportModal } from "../../features/import-export/QuickEmployeeImportModal";
 import { downloadEmployeesExport } from "../../features/import-export/excelFilesApi";
 import { ImportExportToolbar } from "../../features/import-export/ImportExportToolbar";
 import { useHrmCoreTemplateDownload } from "../../features/import-export/useHrmCoreTemplateDownload";
@@ -214,6 +215,7 @@ export function EmployeesPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [quickImportOpen, setQuickImportOpen] = useState(false);
   const [postImport, setPostImport] = useState<{
     batchId: string;
     count: number;
@@ -770,6 +772,16 @@ export function EmployeesPage() {
               isExporting={exportMutation.isPending}
               canImport={mayImportEmployees}
             />
+            {mayImportEmployees && (
+              <Button
+                variant="light"
+                color="teal"
+                leftSection={<IconPlus size={16} />}
+                onClick={() => setQuickImportOpen(true)}
+              >
+                Import nhanh
+              </Button>
+            )}
             {mayProvisionAccounts && selectedIds.size > 0 && (
               <Button
                 leftSection={<IconUsers size={18} />}
@@ -1064,6 +1076,14 @@ export function EmployeesPage() {
             setPostImport({ batchId: result.batchId, count: 0 });
           }
         }}
+      />
+
+      <QuickEmployeeImportModal
+        open={quickImportOpen}
+        onClose={() => setQuickImportOpen(false)}
+        onSuccess={() =>
+          void queryClient.invalidateQueries({ queryKey: ["employees"] })
+        }
       />
 
       {postImport && (
