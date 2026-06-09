@@ -75,7 +75,7 @@ export interface EmployeePayload {
   fullName: string;
   companyEmail?: string;
   personalEmail?: string;
-  phone: string;
+  phone?: string;
   gender?: string;
   dateOfBirth?: string;
   hireDate: string;
@@ -86,5 +86,4 @@ export interface EmployeePayload {
   positionId: string;
   jobTitle?: string;
   managerName?: string;
-  biotimeEmployeeCode?: string | null;
 }
