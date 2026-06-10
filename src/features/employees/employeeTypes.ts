@@ -72,6 +72,7 @@ export type EmployeeAccountRole =
 
 export interface EmployeePayload {
   employeeCode?: string;
+  biotimeEmployeeCode?: string | null;
   fullName: string;
   companyEmail?: string;
   personalEmail?: string;

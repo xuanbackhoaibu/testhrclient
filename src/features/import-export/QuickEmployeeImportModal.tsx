@@ -20,7 +20,7 @@ import { useQuery } from '@tanstack/react-query';
 import { listAllDepartments } from '../organization/departmentsApi';
 import { listAllUnits } from '../organization/unitsApi';
 import { listPositionsSelect } from '../organization/positionsApi';
-import { createEmployee, updateEmployeeBioTimeCode } from '../employees/employeesApi';
+import { createEmployee } from '../employees/employeesApi';
 import { bulkProvisionFromEmployees } from '../auth-admin/authAdminApi';
 import type { Employee } from '../employees/employeeTypes';
 import type { Department, PositionSelectOption, Unit } from '../organization/organizationTypes';
@@ -294,8 +294,11 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
     for (let i = 0; i < validRows.length; i++) {
       const row = validRows[i];
       try {
+        // Truyền mã chấm công ngay khi tạo: nếu không nhập mã NS, backend sẽ
+        // sinh mã nhân sự từ mã chấm công (VD: 1888 + HC => HC001888).
         const employee = await createEmployee({
           employeeCode: row.employeeCode || undefined,
+          biotimeEmployeeCode: row.biotimeCode || undefined,
           fullName: row.fullName,
           phone: row.phone || undefined,
           hireDate: today,
@@ -304,9 +307,6 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
           departmentId: row.departmentId,
           positionId: row.positionId,
         });
-        if (row.biotimeCode) {
-          await updateEmployeeBioTimeCode(employee.id, row.biotimeCode);
-        }
         importResults.push({ row, employee });
       } catch (err) {
         importResults.push({
