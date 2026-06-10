@@ -402,9 +402,9 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
           <>
             <Text size="sm" c="dimmed">
               Các trường bắt buộc: <strong>Mã đơn vị</strong>, <strong>Họ tên</strong>,{' '}
-              <strong>Số điện thoại</strong>, <strong>Mã phòng ban</strong>,{' '}
-              <strong>Mã chức vụ</strong>. Mã NS và Mã chấm công là tùy chọn. Các thông tin khác
-              (ngày sinh, email...) có thể bổ sung sau.
+              <strong>Mã phòng ban</strong>, <strong>Mã chức vụ</strong>. Mã NS, Mã chấm công và
+              Số điện thoại là tùy chọn. Các thông tin khác (ngày sinh, email...) có thể bổ sung
+              sau.
             </Text>
             <Button
               variant="light"
