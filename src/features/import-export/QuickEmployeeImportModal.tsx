@@ -109,14 +109,14 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
     const exampleDeptCode = depts[0]?.code ?? 'DV001_01';
     const examplePosCode = positions[0]?.code ?? 'CV001';
 
-    // Cột: Mã NS | Mã chấm công | Mã đơn vị (*) | Họ tên (*) | Số điện thoại (*) | Mã phòng ban (*) | Mã chức vụ (*)
+    // Cột: Mã NS | Mã chấm công | Mã đơn vị (*) | Họ tên (*) | Số điện thoại | Mã phòng ban (*) | Mã chức vụ (*)
     const importRows: SheetRows = [
       [
         { value: 'Mã NS', ...headerStyle },
         { value: 'Mã chấm công', ...headerStyle },
         { value: 'Mã đơn vị (*)', ...headerStyle },
         { value: 'Họ tên (*)', ...headerStyle },
-        { value: 'Số điện thoại (*)', ...headerStyle },
+        { value: 'Số điện thoại', ...headerStyle },
         { value: 'Mã phòng ban (*)', ...headerStyle },
         { value: 'Mã chức vụ (*)', ...headerStyle },
       ],
@@ -203,8 +203,7 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
         const errors: string[] = [];
         if (!unitCode) errors.push('Thiếu mã đơn vị');
         if (!fullName) errors.push('Thiếu họ tên');
-        if (!phone) errors.push('Thiếu số điện thoại');
-        else if (!PHONE_RE.test(phone)) errors.push(`SĐT "${phone}" không đúng định dạng (VD: 0901234567)`);
+        if (phone && !PHONE_RE.test(phone)) errors.push(`SĐT "${phone}" không đúng định dạng (VD: 0901234567)`);
         if (!deptCode) errors.push('Thiếu mã phòng ban');
         if (!posCode) errors.push('Thiếu mã chức vụ');
         if (employeeCode && !EMPLOYEE_CODE_RE.test(employeeCode)) {
@@ -298,7 +297,7 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
         const employee = await createEmployee({
           employeeCode: row.employeeCode || undefined,
           fullName: row.fullName,
-          phone: row.phone,
+          phone: row.phone || undefined,
           hireDate: today,
           employmentStatus: 'ACTIVE',
           unitId: row.unitId,
