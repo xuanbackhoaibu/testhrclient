@@ -168,9 +168,9 @@ function normalizeEmployeePayload(values: EmployeePayload): EmployeePayload {
     ...values,
     employeeCode: employeeCode || undefined,
     fullName: values.fullName.trim(),
-    companyEmail: trimOptional(values.companyEmail).toLowerCase(),
-    personalEmail: trimOptional(values.personalEmail).toLowerCase(),
-    phone: trimOptional(values.phone),
+    companyEmail: trimOptional(values.companyEmail).toLowerCase() || undefined,
+    personalEmail: trimOptional(values.personalEmail).toLowerCase() || undefined,
+    phone: trimOptional(values.phone) || undefined,
     gender: trimOptional(values.gender),
     dateOfBirth: trimOptional(values.dateOfBirth),
     hireDate: values.hireDate.trim(),
@@ -247,7 +247,9 @@ export function EmployeesPage() {
       departmentId: (value) => (value ? null : "Vui lòng chọn phòng ban."),
       positionId: (value) => (value ? null : "Vui lòng chọn chức vụ."),
       phone: (value) =>
-        trimOptional(value) ? null : "Vui lòng nhập số điện thoại.",
+        trimOptional(value) && !/^0[0-9]{9}$/.test(trimOptional(value))
+          ? "Số điện thoại không đúng định dạng (VD: 0901234567)."
+          : null,
       companyEmail: (value) => {
         const companyEmail = trimOptional(value);
         return companyEmail && !emailPattern.test(companyEmail)
