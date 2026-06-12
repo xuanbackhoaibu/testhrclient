@@ -32,7 +32,7 @@ const STATUS_LABEL_MAP: Record<string, string> = {
   INACTIVE: 'Tạm ngưng',
   PROBATION: 'Thử việc',
   TERMINATED: 'Nghỉ việc',
-  RESIGNED: 'Đã nghỉ',
+  RESIGNED: 'Admin',
   SUSPENDED: 'Tạm dừng',
   LINKED: 'Đã liên kết',
   UNLINKED: 'Chưa liên kết',
