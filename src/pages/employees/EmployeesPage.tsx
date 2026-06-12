@@ -68,7 +68,7 @@ const employmentStatusOptions = [
   { value: "PROBATION", label: "Thử việc" },
   { value: "SUSPENDED", label: "Tạm dừng" },
   { value: "TERMINATED", label: "Nghỉ việc" },
-  { value: "RESIGNED", label: "Đã nghỉ" },
+  { value: "RESIGNED", label: "Admin" },
 ];
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
