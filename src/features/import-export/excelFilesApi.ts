@@ -24,7 +24,7 @@ const EMPLOYMENT_STATUS_LABELS: Record<string, string> = {
   PROBATION: 'Thử việc',
   SUSPENDED: 'Tạm dừng',
   TERMINATED: 'Nghỉ việc',
-  RESIGNED: 'Đã nghỉ',
+  RESIGNED: 'Admin',
 };
 
 const ACCOUNT_STATUS_LABELS: Record<string, string> = {
