@@ -27,4 +27,6 @@ dist-ssr
 .claude/
 # Documentation
 CLAUDE.md
+FEHRM.MD
+BEHRM.MD
 # Logs
