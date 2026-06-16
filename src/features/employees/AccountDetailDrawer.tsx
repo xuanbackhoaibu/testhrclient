@@ -15,6 +15,7 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconCheck, IconCopy } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -34,6 +35,10 @@ import {
 } from '../auth-admin/authAdminTypes';
 import { HR_PERMISSIONS } from '../auth/permissions';
 import { useAuth } from '../auth/useAuth';
+import {
+  DEFAULT_EMPLOYEE_PASSWORD,
+  FORCE_CHANGE_PASSWORD_NOTICE,
+} from '../../shared/constants/account';
 import { formatDateTime } from '../../shared/utils/date';
 import type { Employee } from './employeeTypes';
 
@@ -83,6 +88,7 @@ function InfoRow({
 export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
   const { can } = useAuth();
   const queryClient = useQueryClient();
+  const [confirmResetOpened, confirmReset] = useDisclosure(false);
   const [resetResult, setResetResult] = useState<ResetPasswordResult | null>(null);
 
   const canRead = can(HR_PERMISSIONS.ACCOUNT_READ);
@@ -108,16 +114,19 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
   const resetPasswordMutation = useMutation({
     mutationFn: () =>
       resetPassword(authUser!.authUserId, {
-        autoGenerate: true,
+        autoGenerate: false,
+        password: DEFAULT_EMPLOYEE_PASSWORD,
         mustChangePassword: true,
         notifyUser: false,
+        reason: 'HR admin reset to default password',
       }),
     onSuccess: async (data) => {
+      confirmReset.close();
       setResetResult(data);
       notifications.show({
         color: 'green',
         title: 'Da reset mat khau',
-        message: 'Mat khau tam dang duoc hien thi trong modal ket qua.',
+        message: FORCE_CHANGE_PASSWORD_NOTICE,
       });
       await invalidate();
     },
@@ -211,6 +220,7 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
       <Drawer
         opened={opened}
         onClose={() => {
+          confirmReset.close();
           setResetResult(null);
           onClose();
         }}
@@ -311,7 +321,7 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
                     color="orange"
                     loading={resetPasswordMutation.isPending}
                     disabled={anyBusy}
-                    onClick={() => resetPasswordMutation.mutate()}
+                    onClick={confirmReset.open}
                   >
                     Reset mat khau
                   </Button>
@@ -372,9 +382,46 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
       </Drawer>
 
       <Modal
+        opened={confirmResetOpened}
+        onClose={confirmReset.close}
+        title="Xac nhan reset mat khau"
+        size="sm"
+      >
+        <Stack>
+          <Text size="sm">
+            Ban co chac muon reset mat khau cua tai khoan{' '}
+            <Text span fw={600}>
+              {employee.fullName}
+            </Text>{' '}
+            ve mac dinh?
+          </Text>
+          <Alert color="orange" variant="light">
+            {FORCE_CHANGE_PASSWORD_NOTICE} Mat khau moi se hien thi sau khi reset
+            de ban giao cho nguoi dung.
+          </Alert>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={confirmReset.close}
+              disabled={resetPasswordMutation.isPending}
+            >
+              Huy
+            </Button>
+            <Button
+              color="orange"
+              loading={resetPasswordMutation.isPending}
+              onClick={() => resetPasswordMutation.mutate()}
+            >
+              Reset mat khau
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
         opened={Boolean(resetResult)}
         onClose={() => setResetResult(null)}
-        title="Mat khau tam thoi"
+        title="Mat khau moi"
         size="sm"
       >
         {resetResult ? (
