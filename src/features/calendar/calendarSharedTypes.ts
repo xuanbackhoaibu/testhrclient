@@ -10,6 +10,7 @@
 
 // ── Enums ──────────────────────────────────────────────────────────────────
 export enum CalendarEventType {
+  PERSONAL = 'PERSONAL',
   MEETING = 'MEETING',
   TASK = 'TASK',
   LEAVE = 'LEAVE',

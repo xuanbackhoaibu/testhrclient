@@ -7,6 +7,7 @@ import type { CalendarEvent } from '../../../features/calendar/useCalendarEvents
 import styles from './CalendarView.module.css';
 
 const EVENT_COLORS: Record<string, string> = {
+  PERSONAL: 'grape',
   MEETING: 'blue',
   TASK: 'green',
   DEADLINE: 'red',
