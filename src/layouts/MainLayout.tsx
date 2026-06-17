@@ -65,6 +65,7 @@ const orgItems: NavItem[] = [
 
 const iamItems: NavItem[] = [
   { label: "Tài khoản", path: ROUTES.accounts, icon: IconUserCheck },
+  { label: "Chờ link nhân sự", path: ROUTES.pendingHrLinkAccounts, icon: IconLink },
   { label: "Role", path: ROUTES.roles, icon: IconShield },
   { label: "Nhóm quyền", path: ROUTES.permissionGroups, icon: IconShield },
   { label: "Permission", path: ROUTES.permissions, icon: IconKey },
@@ -88,6 +89,7 @@ const routeTitles: Record<string, string> = {
   [ROUTES.auditLogs]: "Audit logs",
   [ROUTES.settings]: "Cài đặt",
   [ROUTES.accounts]: "Tài khoản",
+  [ROUTES.pendingHrLinkAccounts]: "Tài khoản chờ liên kết nhân sự",
   [ROUTES.roles]: "Role",
   [ROUTES.permissionGroups]: "Nhóm quyền",
   [ROUTES.permissions]: "Permission",
@@ -249,6 +251,7 @@ export function MainLayout() {
                   {iamItems
                     .filter((item) => {
                       if (item.path === ROUTES.accounts) return can(AUTH_ADMIN_PERMISSIONS.USERS_READ);
+                      if (item.path === ROUTES.pendingHrLinkAccounts) return can(AUTH_ADMIN_PERMISSIONS.USERS_READ);
                       if (item.path === ROUTES.roles) return can(AUTH_ADMIN_PERMISSIONS.ROLES_READ);
                       if (item.path === ROUTES.permissions) return can(AUTH_ADMIN_PERMISSIONS.PERMISSIONS_READ);
                       return can(AUTH_ADMIN_PERMISSIONS.PERMISSION_GROUPS_READ);

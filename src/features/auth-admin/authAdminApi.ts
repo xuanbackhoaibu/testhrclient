@@ -12,12 +12,17 @@ import type {
   CreatePermissionGroupInput,
   CreatePermissionInput,
   CreateRoleInput,
+  DisableUserPayload,
   EffectivePermissionsResult,
   ForceChangePasswordResult,
   LifecycleActionResult,
+  LinkEmployeePayload,
+  LinkEmployeeResult,
   ListPermissionsParams,
   ListUsersParams,
   ListUsersResult,
+  PendingHrLinkQuery,
+  PendingHrLinkUsersResult,
   PermissionDefinition,
   PermissionGroupDefinition,
   PermissionGroupDetail,
@@ -32,6 +37,7 @@ import type {
   SendActivationResult,
   UpdateAccountStatusInput,
   UpdateAccountStatusResult,
+  UpdateHrClaimPayload,
   UpdatePermissionGroupInput,
   UpdatePermissionInput,
   UpdateRoleInput,
@@ -76,6 +82,49 @@ export async function listUsers(params?: ListUsersParams): Promise<ListUsersResu
   if (params?.pageSize) query.set('pageSize', String(params.pageSize));
   const qs = query.toString();
   return authAdminApi.get<ListUsersResult>(`${BASE}/users${qs ? `?${qs}` : ''}`);
+}
+
+export async function getPendingHrLinkUsers(
+  params?: PendingHrLinkQuery,
+): Promise<PendingHrLinkUsersResult> {
+  const query = new URLSearchParams();
+  if (params?.search) query.set('search', params.search);
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.pageSize) query.set('pageSize', String(params.pageSize));
+  const qs = query.toString();
+  return authAdminApi.get<PendingHrLinkUsersResult>(
+    `${BASE}/users/pending-hr-link${qs ? `?${qs}` : ''}`,
+  );
+}
+
+export async function updateHrClaim(
+  authUserId: string,
+  payload: UpdateHrClaimPayload,
+): Promise<AuthAdminUser> {
+  return authAdminApi.post<AuthAdminUser>(
+    `${BASE}/users/${authUserId}/update-hr-claim`,
+    payload,
+  );
+}
+
+export async function linkUserToEmployee(
+  authUserId: string,
+  payload: LinkEmployeePayload,
+): Promise<LinkEmployeeResult> {
+  return authAdminApi.post<LinkEmployeeResult>(
+    `${BASE}/users/${authUserId}/link-employee`,
+    payload,
+  );
+}
+
+export async function disablePendingHrLinkUser(
+  authUserId: string,
+  payload?: DisableUserPayload,
+): Promise<LifecycleActionResult> {
+  return authAdminApi.post<LifecycleActionResult>(
+    `${BASE}/users/${authUserId}/disable`,
+    payload,
+  );
 }
 
 // ─── Account lifecycle ────────────────────────────────────────────────────────
