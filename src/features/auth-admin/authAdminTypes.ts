@@ -1,4 +1,9 @@
-export type AuthAccountStatus = 'PENDING_ACTIVATION' | 'ACTIVE' | 'SUSPENDED' | 'DISABLED';
+export type AuthAccountStatus =
+  | 'PENDING_ACTIVATION'
+  | 'PENDING_HR_LINK'
+  | 'ACTIVE'
+  | 'SUSPENDED'
+  | 'DISABLED';
 export type AuthAccountState =
   | 'INACTIVE'
   | 'ACTIVE'
@@ -14,7 +19,10 @@ export interface AuthAdminUser {
   username?: string;
   // chat-auth HR projection ID, not hr-api-service employee.id
   hrEmployeeId?: string | null;
+  externalEmployeeId?: string | null;
   employeeCode?: string | null;
+  claimedEmployeeCode?: string | null;
+  claimedEmail?: string | null;
   displayName?: string | null;
   accountStatus: AuthAccountStatus | string;
   accountState: AuthAccountState;
@@ -290,6 +298,53 @@ export interface ListUsersResult {
   totalPages: number;
 }
 
+export interface PendingHrLinkQuery {
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PendingHrLinkUsersResult extends ListUsersResult {
+  data: AuthAdminUser[];
+}
+
+export interface UpdateHrClaimPayload {
+  claimedEmployeeCode?: string | null;
+  claimedEmail?: string | null;
+  reason?: string;
+}
+
+export interface LinkEmployeePayload {
+  hrEmployeeId?: string;
+  employeeId?: string;
+  employeeCode?: string;
+  claimedEmployeeCode?: string | null;
+  claimedEmail?: string | null;
+  syncEmailFromHr?: boolean;
+  reason?: string;
+}
+
+export interface LinkedHrEmployee {
+  hrEmployeeId: string;
+  employeeId: string;
+  employeeCode: string;
+  email: string | null;
+  fullName: string | null;
+  departmentName?: string | null;
+  orgUnit?: string | null;
+  unitCode?: string | null;
+  title?: string | null;
+  status?: string | null;
+}
+
+export interface LinkEmployeeResult extends AuthAdminUser {
+  linkedEmployee?: LinkedHrEmployee;
+}
+
+export interface DisableUserPayload {
+  reason?: string;
+}
+
 export interface BulkProvisionFromBatchInput {
   batchId: string;
   defaultRoles?: string[];
@@ -365,6 +420,7 @@ export const SENSITIVE_ROLES = new Set(['super_admin', 'security_admin', 'SUPER_
 export const ACCOUNT_STATUS_LABELS: Record<string, string> = {
   NOT_CREATED: 'Chưa tạo tài khoản',
   PENDING_ACTIVATION: 'Chờ kích hoạt',
+  PENDING_HR_LINK: 'Chờ liên kết nhân sự',
   ACTIVE: 'Đang hoạt động',
   SUSPENDED: 'Tạm khóa',
   DISABLED: 'Vô hiệu hóa',
@@ -377,6 +433,7 @@ export const ACCOUNT_STATUS_LABELS: Record<string, string> = {
 export const ACCOUNT_STATE_COLOR: Record<string, string> = {
   ACTIVE: 'green',
   INACTIVE: 'yellow',
+  PENDING_HR_LINK: 'yellow',
   LOCKED: 'orange',
   DISABLED: 'red',
   DEACTIVATED: 'red',

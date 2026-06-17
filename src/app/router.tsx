@@ -20,6 +20,7 @@ import { MovementsPage } from '../pages/movements/MovementsPage';
 import { OffboardingPage } from '../pages/offboarding/OffboardingPage';
 import { OnboardingPage } from '../pages/onboarding/OnboardingPage';
 import { AccountsPage } from '../pages/accounts/AccountsPage';
+import { PendingHrLinkAccountsPage } from '../pages/accounts/PendingHrLinkAccountsPage';
 import { RolesPage } from '../pages/roles/RolesPage';
 import { PermissionsPage } from '../pages/permissions/PermissionsPage';
 import { PermissionGroupsPage } from '../pages/permission-groups/PermissionGroupsPage';
@@ -159,6 +160,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute permissions={[AUTH_ADMIN_PERMISSIONS.USERS_READ]}>
             <AccountsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.pendingHrLinkAccounts,
+        element: (
+          <ProtectedRoute permissions={[AUTH_ADMIN_PERMISSIONS.USERS_READ]}>
+            <PendingHrLinkAccountsPage />
           </ProtectedRoute>
         ),
       },

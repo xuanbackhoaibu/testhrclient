@@ -20,6 +20,7 @@ export const ROUTES = {
   auditLogs: '/audit-logs',
   settings: '/settings',
   accounts: '/accounts',
+  pendingHrLinkAccounts: '/accounts/pending-hr-link',
   roles: '/roles',
   permissions: '/permissions',
   permissionGroups: '/permission-groups',
