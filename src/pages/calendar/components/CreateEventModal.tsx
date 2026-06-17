@@ -20,7 +20,7 @@ import { calendarApi, CalendarVisibility, CalendarEventType, type CalendarEvent 
 import { useAuth } from '../../../features/auth/useAuth';
 import { ParticipantPicker, type SelectedParticipant } from './ParticipantPicker';
 
-const VISIBILITY_OPTIONS = [
+const PERSONAL_VISIBILITY_OPTIONS = [
   { value: CalendarVisibility.PRIVATE, label: 'Riêng tư' },
   { value: CalendarVisibility.BUSY_ONLY, label: 'Chỉ bận' },
   { value: CalendarVisibility.TEAM, label: 'Nhóm' },
@@ -28,7 +28,15 @@ const VISIBILITY_OPTIONS = [
   { value: CalendarVisibility.PUBLIC, label: 'Công khai' },
 ];
 
+const VISIBILITY_OPTIONS = PERSONAL_VISIBILITY_OPTIONS;
+const PERSONAL_ONLY_VISIBILITY_OPTIONS = PERSONAL_VISIBILITY_OPTIONS.filter(
+  (option) =>
+    option.value === CalendarVisibility.PRIVATE ||
+    option.value === CalendarVisibility.PUBLIC,
+);
+
 const EVENT_TYPE_OPTIONS = [
+  { value: CalendarEventType.PERSONAL, label: 'Lịch cá nhân' },
   { value: CalendarEventType.MEETING, label: 'Cuộc họp' },
   { value: CalendarEventType.TASK, label: 'Công việc' },
   { value: CalendarEventType.DEADLINE, label: 'Hạn chót' },
@@ -56,6 +64,17 @@ function participantsFromEvent(event: CalendarEvent | null | undefined): Selecte
   }));
 }
 
+function normalizeVisibility(value: string | null | undefined): CalendarVisibility {
+  const normalized = value?.trim().toUpperCase();
+  return Object.values(CalendarVisibility).includes(normalized as CalendarVisibility)
+    ? (normalized as CalendarVisibility)
+    : CalendarVisibility.PRIVATE;
+}
+
+function isPersonalEventType(value: string): boolean {
+  return value === CalendarEventType.PERSONAL;
+}
+
 interface CreateEventModalProps {
   opened: boolean;
   onClose: () => void;
@@ -74,11 +93,11 @@ export function CreateEventModal({ opened, onClose, editEvent }: CreateEventModa
   const [description, setDescription] = useState(() => editEvent?.description ?? '');
   const [startAt, setStartAt] = useState(() => toLocalInput(editEvent?.startAt));
   const [endAt, setEndAt] = useState(() => toLocalInput(editEvent?.endAt));
-  const [visibility, setVisibility] = useState<string>(
-    () => editEvent?.visibility ?? CalendarVisibility.PRIVATE,
+  const [visibility, setVisibility] = useState<CalendarVisibility>(
+    () => normalizeVisibility(editEvent?.visibility),
   );
-  const [eventType, setEventType] = useState<string>(
-    () => editEvent?.eventType ?? CalendarEventType.MEETING,
+  const [eventType, setEventType] = useState<CalendarEventType>(
+    () => editEvent?.eventType ?? CalendarEventType.PERSONAL,
   );
   const [location, setLocation] = useState(() => editEvent?.location ?? '');
   const [isAllDay, setIsAllDay] = useState(() => editEvent?.isAllDay ?? false);
@@ -92,7 +111,12 @@ export function CreateEventModal({ opened, onClose, editEvent }: CreateEventModa
   }, [onClose]);
 
   const showParticipants =
-    eventType === CalendarEventType.MEETING || participants.length > 0;
+    !isPersonalEventType(eventType) &&
+    (eventType === CalendarEventType.MEETING || participants.length > 0);
+
+  const visibilityOptions = isPersonalEventType(eventType)
+    ? PERSONAL_ONLY_VISIBILITY_OPTIONS
+    : VISIBILITY_OPTIONS;
 
   const handleSubmit = useCallback(async () => {
     if (!title.trim()) {
@@ -124,7 +148,8 @@ export function CreateEventModal({ opened, onClose, editEvent }: CreateEventModa
     }
 
     const participantIds =
-      eventType === CalendarEventType.MEETING || participants.length > 0
+      !isPersonalEventType(eventType) &&
+      (eventType === CalendarEventType.MEETING || participants.length > 0)
         ? participants.map((p) => p.id)
         : [];
 
@@ -244,14 +269,25 @@ export function CreateEventModal({ opened, onClose, editEvent }: CreateEventModa
             label="Loại sự kiện"
             data={EVENT_TYPE_OPTIONS}
             value={eventType}
-            onChange={(val) => setEventType(val ?? CalendarEventType.MEETING)}
+            onChange={(val) => {
+              const nextType =
+                (val as CalendarEventType | null) ?? CalendarEventType.PERSONAL;
+              setEventType(nextType);
+              if (
+                isPersonalEventType(nextType) &&
+                visibility !== CalendarVisibility.PRIVATE &&
+                visibility !== CalendarVisibility.PUBLIC
+              ) {
+                setVisibility(CalendarVisibility.PRIVATE);
+              }
+            }}
             required
           />
           <Select
             label="Hiển thị"
-            data={VISIBILITY_OPTIONS}
+            data={visibilityOptions}
             value={visibility}
-            onChange={(val) => setVisibility(val ?? CalendarVisibility.PRIVATE)}
+            onChange={(val) => setVisibility(normalizeVisibility(val))}
             required
           />
         </Group>

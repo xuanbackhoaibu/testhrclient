@@ -36,6 +36,7 @@ import type {
 import styles from './EventDetailModal.module.css';
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
+  PERSONAL: 'Lịch cá nhân',
   MEETING: 'Cuộc họp',
   TASK: 'Công việc',
   LEAVE: 'Nghỉ phép',

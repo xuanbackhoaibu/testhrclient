@@ -51,7 +51,7 @@ export interface ListCalendarEventsParams {
   from?: string;
   to?: string;
   type?: string;
-  visibility?: string;
+  visibility?: CalendarVisibility;
   includeParticipantEvents?: boolean;
   page?: number;
   pageSize?: number;
@@ -119,8 +119,8 @@ export const calendarApi = {
     description?: string;
     startAt: string;
     endAt: string;
-    eventType?: string;
-    visibility?: string;
+    eventType?: CalendarEventType;
+    visibility?: CalendarVisibility;
     isAllDay?: boolean;
     location?: string;
     timezone?: string;
@@ -135,8 +135,8 @@ export const calendarApi = {
     description?: string;
     startAt?: string;
     endAt?: string;
-    eventType?: string;
-    visibility?: string;
+    eventType?: CalendarEventType;
+    visibility?: CalendarVisibility;
     isAllDay?: boolean;
     location?: string;
     timezone?: string;
