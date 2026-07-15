@@ -129,26 +129,6 @@ function normalizeAuthzError(
   throw error instanceof Error ? error : new Error(`Khong the ${action}.`);
 }
 
-async function getRolesForAccount(accountId: string): Promise<Role[]> {
-  try {
-    const [roleCatalog, effective] = await Promise.all([
-      getRoles({ status: 'active' }),
-      getEffectivePermissions(accountId),
-    ]);
-
-    const catalogByCode = new Map(
-      roleCatalog.map((role) => [role.key ?? role.name, role]),
-    );
-
-    return effective.roles.map((code) => {
-      const definition = catalogByCode.get(code);
-      return toRole(definition ?? { id: code, key: code, name: code });
-    });
-  } catch {
-    return [];
-  }
-}
-
 async function getEmployeesByAuthUserIdMap(
   accounts: AuthAdminUser[],
 ): Promise<Map<string, Employee>> {
@@ -382,19 +362,17 @@ export async function listAccountManagementRows(
   );
   const employeesByAuthUserId = await getEmployeesByAuthUserIdMap(result.data);
 
-  const rows = await Promise.all(
-    result.data.map(async (account) => {
-      const roles = await getRolesForAccount(account.authUserId);
-      const employee = employeesByAuthUserId.get(account.authUserId) ?? null;
-
-      return {
-        account,
-        employee,
-        roles,
-        effectivePermissionsCount: null,
-      } satisfies AccountManagementRow;
-    }),
-  );
+  // Account list rendering must not fan out one role-catalog and one
+  // effective-permissions request per row. Those are target-user details and
+  // are loaded once by useAccountAuthorization only after an operator opens a
+  // particular account drawer/modal.
+  const rows = result.data.map((account) => ({
+    account,
+    employee: employeesByAuthUserId.get(account.authUserId) ?? null,
+    roles: [],
+    rolesLoaded: false,
+    effectivePermissionsCount: null,
+  })) satisfies AccountManagementRow[];
 
   return {
     ...result,

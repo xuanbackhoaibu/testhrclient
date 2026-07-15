@@ -60,5 +60,7 @@ export type AccountManagementRow = {
   account: AuthAdminUser;
   employee: Employee | null;
   roles: Role[];
+  /** Role data is intentionally deferred until an operator opens the account. */
+  rolesLoaded: boolean;
   effectivePermissionsCount: number | null;
 };
