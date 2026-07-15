@@ -419,7 +419,11 @@ export function AccountsPage() {
       header: "Vai trò hiện tại",
       render: (row) => (
         <Group gap={4}>
-          {row.roles.length === 0 ? (
+          {!row.rolesLoaded ? (
+            <Text size="sm" c="dimmed">
+              Xem chi tiết
+            </Text>
+          ) : row.roles.length === 0 ? (
             <Text size="sm" c="dimmed">
               -
             </Text>
