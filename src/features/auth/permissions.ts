@@ -88,25 +88,28 @@ export const AUTH_ADMIN_PERMISSIONS = {
 } as const;
 
 const ROLE_ALIASES: Record<string, HrmRole> = {
-  SUPER_ADMIN: HRM_ROLES.SUPER_ADMIN,
-  SYSTEM_ADMIN: HRM_ROLES.SUPER_ADMIN,
-  super_admin: HRM_ROLES.SUPER_ADMIN,
-  ADMIN: HRM_ROLES.ADMIN,
-  OPERATOR: HRM_ROLES.ADMIN,
+  superadmin: HRM_ROLES.SUPER_ADMIN,
+  systemadmin: HRM_ROLES.SUPER_ADMIN,
+  admin: HRM_ROLES.ADMIN,
   operator: HRM_ROLES.ADMIN,
-  HR: HRM_ROLES.HR,
-  HR_ADMIN: HRM_ROLES.HR,
-  hr_admin: HRM_ROLES.HR,
-  BAN_LANH_DAO: HRM_ROLES.BAN_LANH_DAO,
-  VIEWER: HRM_ROLES.BAN_LANH_DAO,
+  hr: HRM_ROLES.HR,
+  hradmin: HRM_ROLES.HR,
+  banlanhdao: HRM_ROLES.BAN_LANH_DAO,
   viewer: HRM_ROLES.BAN_LANH_DAO,
-  BAN_LANH_DAO_DON_VI: HRM_ROLES.BAN_LANH_DAO_DON_VI,
-  MANAGER: HRM_ROLES.BAN_LANH_DAO_DON_VI,
-  EMPLOYEE: HRM_ROLES.EMPLOYEE,
+  banlanhdaodonvi: HRM_ROLES.BAN_LANH_DAO_DON_VI,
+  manager: HRM_ROLES.BAN_LANH_DAO_DON_VI,
+  employee: HRM_ROLES.EMPLOYEE,
 };
 
+export function normalizeRoleKey(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]/g, '');
+}
+
 export function normalizeRole(role: string): HrmRole | null {
-  return ROLE_ALIASES[role] ?? ROLE_ALIASES[role.toUpperCase()] ?? null;
+  return ROLE_ALIASES[normalizeRoleKey(role)] ?? null;
 }
 
 export function normalizeRoles(roles: string[]): HrmRole[] {
@@ -119,11 +122,8 @@ export function normalizeRoles(roles: string[]): HrmRole[] {
   );
 }
 
-function isSuperAdmin(user: AuthUser | null | undefined): boolean {
-  return (
-    user?.roles?.some((role) => role.trim().toLowerCase() === 'super_admin') ??
-    false
-  );
+export function isSuperadmin(user: AuthUser | null | undefined): boolean {
+  return user?.roles?.some((role) => normalizeRoleKey(role) === 'superadmin') ?? false;
 }
 
 export function hasPermission(
@@ -134,7 +134,7 @@ export function hasPermission(
     return false;
   }
 
-  if (isSuperAdmin(user)) {
+  if (isSuperadmin(user)) {
     return true;
   }
 
@@ -149,7 +149,7 @@ export function hasAnyPermission(
     return false;
   }
 
-  if (isSuperAdmin(user)) {
+  if (isSuperadmin(user)) {
     return true;
   }
 
@@ -164,7 +164,7 @@ export function hasAllPermissions(
     return false;
   }
 
-  if (isSuperAdmin(user)) {
+  if (isSuperadmin(user)) {
     return true;
   }
 
