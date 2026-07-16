@@ -53,6 +53,9 @@ export type AccountAuthorizationDetail = {
   directPermissionGroups: PermissionGroup[];
   directPermissions: Permission[];
   effectivePermissions: EffectivePermission[];
+  roleCatalog: Role[];
+  permissionGroupCatalog: PermissionGroup[];
+  permissionCatalog: Permission[];
   missingEndpoints: MissingAccountAuthorizationEndpoint[];
 };
 

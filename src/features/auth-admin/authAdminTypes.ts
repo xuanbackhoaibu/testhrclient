@@ -144,6 +144,17 @@ export interface AssignPermissionsInput {
   reason?: string;
 }
 
+export interface AssignPermissionGroupsInput {
+  permissionGroupIds: string[];
+  reason?: string;
+}
+
+export interface UserPermissionGroupsResult {
+  authUserId: string;
+  permissionGroups: PermissionGroupDefinition[];
+  permissionVersion?: number;
+}
+
 export interface AssignPermissionsResult {
   authUserId: string;
   permissions: string[];

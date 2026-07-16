@@ -5,7 +5,6 @@ import {
   Box,
   Button,
   Checkbox,
-  Divider,
   Group,
   Loader,
   Modal,
@@ -18,17 +17,12 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "../auth/useAuth";
 import { AUTH_ADMIN_PERMISSIONS } from "../auth/permissions";
 import {
-  getPermissionGroups,
-  getPermissionsGrouped,
-  getRoles,
-} from "./authAdminApi";
-import {
-  getMissingDirectPermissionGroupEndpoints,
+  updateAccountDirectPermissionGroups,
   updateAccountDirectPermissions,
   updateAccountRoles,
 } from "./accountAuthorizationService";
@@ -100,10 +94,14 @@ export function AccountAuthorizationModal({
   const [selectedRoleCodes, setSelectedRoleCodes] = useState<string[]>([]);
   const [selectedDirectPermissionIds, setSelectedDirectPermissionIds] =
     useState<string[]>([]);
+  const [selectedDirectPermissionGroupIds, setSelectedDirectPermissionGroupIds] =
+    useState<string[]>([]);
   const [directPermissionReason, setDirectPermissionReason] = useState("");
+  const [directPermissionGroupReason, setDirectPermissionGroupReason] = useState("");
   const [roleReason, setRoleReason] = useState("");
   const [roleDirty, setRoleDirty] = useState(false);
   const [directPermissionDirty, setDirectPermissionDirty] = useState(false);
+  const [directPermissionGroupDirty, setDirectPermissionGroupDirty] = useState(false);
   const [permissionSearch, setPermissionSearch] = useState("");
   const [effectiveSearch, setEffectiveSearch] = useState("");
   const [permissionSystemFilter, setPermissionSystemFilter] = useState<
@@ -120,49 +118,14 @@ export function AccountAuthorizationModal({
     effectiveSearch.trim().toLowerCase(),
   );
 
-  const { data: roleCatalog = [] } = useQuery({
-    queryKey: ["auth-admin-role-catalog"],
-    queryFn: () => getRoles({ status: "active" }),
-    enabled: opened,
-  });
-
-  const { data: permissionCatalogGrouped } = useQuery({
-    queryKey: ["auth-admin-permission-catalog"],
-    queryFn: () => getPermissionsGrouped(),
-    enabled: opened,
-  });
-
-  const { data: permissionGroupCatalog = [] } = useQuery({
-    queryKey: ["auth-admin-permission-group-catalog"],
-    queryFn: () => getPermissionGroups({ status: "active" }),
-    enabled: opened,
-  });
-
-  const roleOptions = useMemo<Role[]>(
-    () =>
-      roleCatalog.map((role) => ({
-        id: role.id ?? role.key ?? role.name,
-        code: role.key ?? role.name,
-        name: role.name,
-        description: role.description ?? undefined,
-      })),
-    [roleCatalog],
+  const roleOptions = useMemo(() => authzQuery.data?.roleCatalog ?? [], [authzQuery.data?.roleCatalog]);
+  const permissionCatalog = useMemo(
+    () => authzQuery.data?.permissionCatalog ?? [],
+    [authzQuery.data?.permissionCatalog],
   );
-
-  const permissionCatalog = useMemo<Permission[]>(
-    () =>
-      (permissionCatalogGrouped?.systems ?? []).flatMap((systemGroup) =>
-        systemGroup.permissions.map((permission) => ({
-          id: permission.id,
-          code: permission.key,
-          name: permission.name ?? permission.key,
-          system: permission.system ?? permission.domain ?? systemGroup.domain,
-          module: permission.module ?? "general",
-          action: permission.action ?? "read",
-          description: permission.description ?? undefined,
-        })),
-      ),
-    [permissionCatalogGrouped],
+  const permissionGroupCatalog = useMemo(
+    () => authzQuery.data?.permissionGroupCatalog ?? [],
+    [authzQuery.data?.permissionGroupCatalog],
   );
 
   const permissionById = useMemo(
@@ -257,19 +220,19 @@ export function AccountAuthorizationModal({
       authzQuery.data?.directPermissions.map((permission) => permission.id) ??
         [],
     );
+    setSelectedDirectPermissionGroupIds(
+      authzQuery.data?.directPermissionGroups.map((group) => group.id) ?? [],
+    );
     setRoleReason("");
     setDirectPermissionReason("");
+    setDirectPermissionGroupReason("");
     setRoleDirty(false);
     setDirectPermissionDirty(false);
+    setDirectPermissionGroupDirty(false);
   };
 
-  const invalidateAll = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: ["account-authorization", accountId],
-      }),
-      queryClient.invalidateQueries({ queryKey: ["auth-admin-users"] }),
-    ]);
+  const invalidateAccountList = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["auth-admin-users"] });
   };
 
   const handleSelfRefresh = async () => {
@@ -305,7 +268,7 @@ export function AccountAuthorizationModal({
         color: "green",
         message: "Đã cập nhật vai trò cho tài khoản.",
       });
-      await invalidateAll();
+      await invalidateAccountList();
       await authzQuery.refetch();
       await handleSelfRefresh();
       await onUpdated?.();
@@ -332,7 +295,26 @@ export function AccountAuthorizationModal({
         color: "green",
         message: "Đã cập nhật quyền trực tiếp.",
       });
-      await invalidateAll();
+      await invalidateAccountList();
+      await authzQuery.refetch();
+      await handleSelfRefresh();
+      await onUpdated?.();
+    },
+    onError: (error: Error) => {
+      notifications.show({ color: "red", message: error.message });
+    },
+  });
+
+  const updateDirectPermissionGroupsMutation = useMutation({
+    mutationFn: async () =>
+      updateAccountDirectPermissionGroups(
+        accountId!,
+        selectedDirectPermissionGroupIds,
+        directPermissionGroupReason.trim() || undefined,
+      ),
+    onSuccess: async () => {
+      notifications.show({ color: "green", message: "Da cap nhat nhom quyen truc tiep." });
+      await invalidateAccountList();
       await authzQuery.refetch();
       await handleSelfRefresh();
       await onUpdated?.();
@@ -352,6 +334,10 @@ export function AccountAuthorizationModal({
         .map((permission) => permission.id)
         .sort() ?? [],
     [authzQuery.data?.directPermissions],
+  );
+  const originalDirectPermissionGroupIds = useMemo(
+    () => authzQuery.data?.directPermissionGroups.map((group) => group.id).sort() ?? [],
+    [authzQuery.data?.directPermissionGroups],
   );
 
   const displayedRoleCodes = useMemo(
@@ -382,17 +368,27 @@ export function AccountAuthorizationModal({
     () => new Set(displayedDirectPermissionIds),
     [displayedDirectPermissionIds],
   );
+  const displayedDirectPermissionGroupIds = useMemo(
+    () => directPermissionGroupDirty
+      ? selectedDirectPermissionGroupIds
+      : (authzQuery.data?.directPermissionGroups.map((group) => group.id) ?? []),
+    [authzQuery.data?.directPermissionGroups, directPermissionGroupDirty, selectedDirectPermissionGroupIds],
+  );
+  const selectedDirectPermissionGroupIdSet = useMemo(
+    () => new Set(displayedDirectPermissionGroupIds),
+    [displayedDirectPermissionGroupIds],
+  );
 
   const hasRoleChanges =
     [...displayedRoleCodes].sort().join("|") !== originalRoleCodes.join("|");
   const hasDirectPermissionChanges =
     [...displayedDirectPermissionIds].sort().join("|") !==
     originalDirectPermissionIds.join("|");
+  const hasDirectPermissionGroupChanges =
+    [...displayedDirectPermissionGroupIds].sort().join("|") !==
+    originalDirectPermissionGroupIds.join("|");
 
   const disabledTooltip = "Bạn không có quyền thực hiện thao tác này";
-  const missingPermissionGroupEndpoints =
-    getMissingDirectPermissionGroupEndpoints();
-
   const renderEffectivePermission = (entry: EffectivePermission) => (
     <Box
       key={entry.permission.code}
@@ -552,31 +548,9 @@ export function AccountAuthorizationModal({
 
             <Tabs.Panel value="permission-groups" pt="md">
               <Stack gap="sm">
-                <Alert
-                  color="yellow"
-                  title="Tính năng chưa được backend hỗ trợ"
-                >
-                  Chỉ dùng khi tài khoản cần ngoại lệ ngoài vai trò. Hiện tại
-                  backend chưa có endpoint gán/bỏ nhóm quyền trực tiếp theo
-                  account, vì vậy tab này đang ở chế độ chỉ đọc.
+                <Alert color="yellow" title="Cảnh báo">
+                  Nhóm quyền trực tiếp là ngoại lệ; nên ưu tiên gán qua vai trò.
                 </Alert>
-
-                <Text size="sm" fw={500}>
-                  Endpoint đang thiếu
-                </Text>
-                <Stack gap={6}>
-                  {missingPermissionGroupEndpoints.map((item) => (
-                    <Text
-                      key={`${item.method}-${item.endpoint}`}
-                      size="sm"
-                      ff="monospace"
-                    >
-                      {item.method} {item.endpoint}
-                    </Text>
-                  ))}
-                </Stack>
-
-                <Divider />
 
                 <Text size="sm" fw={500}>
                   Danh mục permission group hiện có (
@@ -587,7 +561,7 @@ export function AccountAuthorizationModal({
                     {permissionGroupCatalog.map((group) => {
                       const mappedGroup: PermissionGroup = {
                         id: group.id,
-                        code: group.key,
+                        code: group.code,
                         name: group.name,
                         system: group.system ?? "unknown",
                       };
@@ -595,15 +569,41 @@ export function AccountAuthorizationModal({
                       return (
                         <Checkbox
                           key={mappedGroup.id}
-                          checked={false}
-                          disabled
+                          checked={selectedDirectPermissionGroupIdSet.has(mappedGroup.id)}
+                          disabled={!canAssignDirectPermissions}
+                          onChange={(event) => {
+                            const checked = event.currentTarget.checked;
+                            setDirectPermissionGroupDirty(true);
+                            setSelectedDirectPermissionGroupIds((current) => {
+                              const base = directPermissionGroupDirty
+                                ? current
+                                : displayedDirectPermissionGroupIds;
+                              return checked
+                                ? Array.from(new Set([...base, mappedGroup.id]))
+                                : base.filter((id) => id !== mappedGroup.id);
+                            });
+                          }}
                           label={`${mappedGroup.code} · ${mappedGroup.name}`}
-                          description="Backend chưa hỗ trợ gán trực tiếp theo account"
                         />
                       );
                     })}
                   </Stack>
                 </ScrollArea>
+                <TextInput
+                  label="Lý do thay đổi"
+                  value={directPermissionGroupReason}
+                  onChange={(event) => setDirectPermissionGroupReason(event.currentTarget.value)}
+                  disabled={!canAssignDirectPermissions}
+                />
+                <Group justify="flex-end">
+                  <Button
+                    disabled={!canAssignDirectPermissions || !hasDirectPermissionGroupChanges}
+                    loading={updateDirectPermissionGroupsMutation.isPending}
+                    onClick={() => updateDirectPermissionGroupsMutation.mutate()}
+                  >
+                    Lưu nhóm quyền
+                  </Button>
+                </Group>
               </Stack>
             </Tabs.Panel>
 
