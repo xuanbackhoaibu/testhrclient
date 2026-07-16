@@ -990,9 +990,6 @@ export function AccountsPage() {
         onClose={() => setAuthorizationAccountId(null)}
         onUpdated={async () => {
           await invalidateList();
-          if (selectedRow?.account.authUserId === authorizationAccountId) {
-            await detailAuthorizationQuery.refetch();
-          }
         }}
       />
     </Stack>

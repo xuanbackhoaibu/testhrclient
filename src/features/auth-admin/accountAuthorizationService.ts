@@ -3,11 +3,13 @@ import { getEmployeesByAuthUserIds } from '../employees/employeesApi';
 import type { Employee } from '../employees/employeeTypes';
 import {
   assignPermissions,
+  assignPermissionGroups,
   assignRoles,
   getAuthUser,
   getEffectivePermissions,
   getPermissionGroup,
   getPermissionGroups,
+  getUserPermissionGroups,
   getPermissionsGrouped,
   getRole,
   getRoles,
@@ -25,7 +27,6 @@ import type {
   AccountManagementRow,
   AccountPermissionSource,
   EffectivePermission,
-  MissingAccountAuthorizationEndpoint,
   Permission,
   Role,
 } from './accountAuthorizationTypes';
@@ -46,19 +47,6 @@ type ListAccountRowsResult = {
 };
 
 const AUTH_ADMIN_PUBLIC_BASE = '/api/v1/auth-admin';
-
-const MISSING_DIRECT_PERMISSION_GROUP_ENDPOINTS: MissingAccountAuthorizationEndpoint[] = [
-  {
-    method: 'GET',
-    endpoint: `${AUTH_ADMIN_PUBLIC_BASE}/users/:id/permission-groups`,
-    reason: 'Backend chua co endpoint doc permission group duoc gan truc tiep cho account.',
-  },
-  {
-    method: 'PUT',
-    endpoint: `${AUTH_ADMIN_PUBLIC_BASE}/users/:id/permission-groups`,
-    reason: 'Backend chua co endpoint gan/bo permission group truc tiep cho account.',
-  },
-];
 
 function toPermission(definition: PermissionDefinition): Permission {
   const code = definition.key;
@@ -199,13 +187,33 @@ function resolvePermissionByCode(
 
 async function buildEffectivePermissionsWithSources(
   accountId: string,
-): Promise<Pick<AccountAuthorizationDetail, 'roles' | 'directPermissions' | 'effectivePermissions' | 'missingEndpoints'>> {
-  const [effective, roleCatalog, permissionGroupCatalog, groupedPermissions] = await Promise.all([
+): Promise<
+  Pick<
+    AccountAuthorizationDetail,
+    | 'roles'
+    | 'directPermissionGroups'
+    | 'directPermissions'
+    | 'effectivePermissions'
+    | 'roleCatalog'
+    | 'permissionGroupCatalog'
+    | 'permissionCatalog'
+    | 'missingEndpoints'
+  >
+> {
+  const [effective, directGroupResult, roleCatalog, permissionGroupCatalog, groupedPermissions] = await Promise.all([
     getEffectivePermissions(accountId).catch((error) =>
       normalizeAuthzError(
         error,
         'tai effective permissions',
         `${AUTH_ADMIN_PUBLIC_BASE}/users/${accountId}/effective-permissions`,
+        'Ban khong co quyen phan quyen tai khoan nay.',
+      ),
+    ),
+    getUserPermissionGroups(accountId).catch((error) =>
+      normalizeAuthzError(
+        error,
+        'tai nhom quyen truc tiep',
+        `${AUTH_ADMIN_PUBLIC_BASE}/users/${accountId}/permission-groups`,
         'Ban khong co quyen phan quyen tai khoan nay.',
       ),
     ),
@@ -334,6 +342,27 @@ async function buildEffectivePermissionsWithSources(
     return permission;
   });
 
+  const directPermissionGroups = directGroupResult.permissionGroups.map((group) => ({
+    id: group.id,
+    code: group.key,
+    name: group.name,
+    system: group.system ?? 'unknown',
+  }));
+
+  await Promise.all(
+    directPermissionGroups.map(async (group) => {
+      const detail = await getPermissionGroup(group.id);
+      detail.permissions?.forEach((permission) => {
+        addSource(sourcesByPermissionCode, permission.key, {
+          type: 'DIRECT_PERMISSION_GROUP',
+          id: group.id,
+          code: group.code,
+          name: group.name,
+        });
+      });
+    }),
+  );
+
   const effectivePermissions: EffectivePermission[] = effective.effectivePermissions
     .map((code) => ({
       permission: resolvePermissionByCode(permissionByCode, code),
@@ -343,9 +372,18 @@ async function buildEffectivePermissionsWithSources(
 
   return {
     roles,
+    directPermissionGroups,
     directPermissions,
     effectivePermissions,
-    missingEndpoints: [...MISSING_DIRECT_PERMISSION_GROUP_ENDPOINTS],
+    roleCatalog: roleCatalog.map((role) => toRole(role)),
+    permissionGroupCatalog: permissionGroupCatalog.map((group) => ({
+      id: group.id,
+      code: group.key,
+      name: group.name,
+      system: group.system ?? 'unknown',
+    })),
+    permissionCatalog,
+    missingEndpoints: [],
   };
 }
 
@@ -399,9 +437,12 @@ export async function getAccountAuthorizationDetail(
     accountId,
     account,
     roles: authz.roles,
-    directPermissionGroups: [],
+    directPermissionGroups: authz.directPermissionGroups,
     directPermissions: authz.directPermissions,
     effectivePermissions: authz.effectivePermissions,
+    roleCatalog: authz.roleCatalog,
+    permissionGroupCatalog: authz.permissionGroupCatalog,
+    permissionCatalog: authz.permissionCatalog,
     missingEndpoints: authz.missingEndpoints,
   };
 }
@@ -436,6 +477,17 @@ export async function updateAccountDirectPermissions(
   );
 }
 
-export function getMissingDirectPermissionGroupEndpoints() {
-  return [...MISSING_DIRECT_PERMISSION_GROUP_ENDPOINTS];
+export async function updateAccountDirectPermissionGroups(
+  accountId: string,
+  permissionGroupIds: string[],
+  reason?: string,
+) {
+  return assignPermissionGroups(accountId, { permissionGroupIds, reason }).catch((error) =>
+    normalizeAuthzError(
+      error,
+      'cap nhat nhom quyen truc tiep',
+      `${AUTH_ADMIN_PUBLIC_BASE}/users/${accountId}/permission-groups`,
+      'Ban khong co quyen phan quyen tai khoan nay.',
+    ),
+  );
 }

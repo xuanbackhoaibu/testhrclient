@@ -2,6 +2,7 @@ import { authAdminApi } from '../../api/authAdminApiClient';
 import type {
   AuthAdminUser,
   AssignPermissionsInput,
+  AssignPermissionGroupsInput,
   AssignPermissionsResult,
   AssignRolesInput,
   AssignRolesResult,
@@ -39,6 +40,7 @@ import type {
   UpdateAccountStatusResult,
   UpdateHrClaimPayload,
   UpdatePermissionGroupInput,
+  UserPermissionGroupsResult,
   UpdatePermissionInput,
   UpdateRoleInput,
 } from './authAdminTypes';
@@ -211,6 +213,24 @@ export async function assignPermissions(
   input: AssignPermissionsInput,
 ): Promise<AssignPermissionsResult> {
   return authAdminApi.put<AssignPermissionsResult>(`${BASE}/users/${authUserId}/permissions`, input);
+}
+
+export async function getUserPermissionGroups(
+  authUserId: string,
+): Promise<UserPermissionGroupsResult> {
+  return authAdminApi.get<UserPermissionGroupsResult>(
+    `${BASE}/users/${authUserId}/permission-groups`,
+  );
+}
+
+export async function assignPermissionGroups(
+  authUserId: string,
+  input: AssignPermissionGroupsInput,
+): Promise<UserPermissionGroupsResult> {
+  return authAdminApi.put<UserPermissionGroupsResult>(
+    `${BASE}/users/${authUserId}/permission-groups`,
+    input,
+  );
 }
 
 export async function getEffectivePermissions(
