@@ -165,6 +165,15 @@ export interface EffectivePermissionsResult {
   roles: string[];
   directPermissions: string[];
   effectivePermissions: string[];
+  permissionSources?: Record<
+    string,
+    Array<{
+      sourceType: 'ROLE' | 'PERMISSION_GROUP' | 'DIRECT_PERMISSION' | 'DIRECT_PERMISSION_GROUP';
+      sourceId: string;
+      sourceKey: string;
+      sourceName: string;
+    }>
+  >;
   permissionVersion?: number;
   tokenVersion?: number;
 }

@@ -7,11 +7,9 @@ import {
   assignRoles,
   getAuthUser,
   getEffectivePermissions,
-  getPermissionGroup,
   getPermissionGroups,
   getUserPermissionGroups,
   getPermissionsGrouped,
-  getRole,
   getRoles,
   listUsers,
 } from './authAdminApi';
@@ -20,7 +18,6 @@ import type {
   PermissionDefinition,
   PermissionsGroupedResult,
   RoleDefinition,
-  RoleDetail,
 } from './authAdminTypes';
 import type {
   AccountAuthorizationDetail,
@@ -149,22 +146,6 @@ async function getEmployeesByAuthUserIdMap(
   }
 }
 
-function buildSourceKey(source: AccountPermissionSource) {
-  return `${source.type}:${source.id}:${source.code}`;
-}
-
-function addSource(
-  target: Map<string, Map<string, AccountPermissionSource>>,
-  permissionCode: string,
-  source: AccountPermissionSource,
-) {
-  if (!target.has(permissionCode)) {
-    target.set(permissionCode, new Map());
-  }
-
-  target.get(permissionCode)?.set(buildSourceKey(source), source);
-}
-
 function resolvePermissionByCode(
   permissionByCode: Map<string, Permission>,
   code: string,
@@ -255,89 +236,20 @@ async function buildEffectivePermissionsWithSources(
     return toRole(definition ?? { id: code, key: code, name: code });
   });
 
-  const roleDetails = (
-    await Promise.all(
-      roles.map(async (role) => {
-        try {
-          return role.id ? await getRole(role.id) : null;
-        } catch {
-          return null;
-        }
-      }),
-    )
-  ).filter((role): role is RoleDetail => Boolean(role));
-
-  const uniqueRoleGroupIds = Array.from(
-    new Set(
-      roleDetails.flatMap((role) =>
-        (role.permissionGroups ?? [])
-          .map((group) => group.id)
-          .filter((groupId): groupId is string => Boolean(groupId)),
-      ),
-    ),
+  const sourcesByPermissionCode = new Map<string, AccountPermissionSource[]>(
+    Object.entries(effective.permissionSources ?? {}).map(([permissionCode, sources]) => [
+      permissionCode,
+      sources.map((source) => ({
+        type: source.sourceType,
+        id: source.sourceId,
+        code: source.sourceKey,
+        name: source.sourceName,
+      })),
+    ]),
   );
-
-  const permissionGroupCatalogById = new Map(
-    permissionGroupCatalog.map((group) => [group.id, group]),
-  );
-
-  const roleGroupDetails = new Map(
-    (
-      await Promise.all(
-        uniqueRoleGroupIds.map(async (groupId) => {
-          try {
-            const detail = await getPermissionGroup(groupId);
-            return [groupId, detail] as const;
-          } catch {
-            return null;
-          }
-        }),
-      )
-    ).filter(
-      (entry): entry is readonly [string, Awaited<ReturnType<typeof getPermissionGroup>>] =>
-        Boolean(entry),
-    ),
-  );
-
-  const sourcesByPermissionCode = new Map<string, Map<string, AccountPermissionSource>>();
-
-  roleDetails.forEach((roleDetail) => {
-    const roleSource: AccountPermissionSource = {
-      type: 'ROLE',
-      id: roleDetail.id,
-      code: roleDetail.key,
-      name: roleDetail.name,
-    };
-
-    (roleDetail.permissions ?? []).forEach((permission) => {
-      addSource(sourcesByPermissionCode, permission.key, roleSource);
-    });
-
-    (roleDetail.permissionGroups ?? []).forEach((group) => {
-      const groupDefinition = permissionGroupCatalogById.get(group.id) ?? group;
-      const groupSource: AccountPermissionSource = {
-        type: 'PERMISSION_GROUP',
-        id: groupDefinition.id,
-        code: groupDefinition.key,
-        name: groupDefinition.name,
-      };
-
-      roleGroupDetails.get(group.id)?.permissions?.forEach((permission) => {
-        addSource(sourcesByPermissionCode, permission.key, roleSource);
-        addSource(sourcesByPermissionCode, permission.key, groupSource);
-      });
-    });
-  });
 
   const directPermissions = effective.directPermissions.map((code) => {
     const permission = resolvePermissionByCode(permissionByCode, code);
-
-    addSource(sourcesByPermissionCode, code, {
-      type: 'DIRECT_PERMISSION',
-      id: permission.id,
-      code: permission.code,
-      name: permission.name,
-    });
 
     return permission;
   });
@@ -349,24 +261,10 @@ async function buildEffectivePermissionsWithSources(
     system: group.system ?? 'unknown',
   }));
 
-  await Promise.all(
-    directPermissionGroups.map(async (group) => {
-      const detail = await getPermissionGroup(group.id);
-      detail.permissions?.forEach((permission) => {
-        addSource(sourcesByPermissionCode, permission.key, {
-          type: 'DIRECT_PERMISSION_GROUP',
-          id: group.id,
-          code: group.code,
-          name: group.name,
-        });
-      });
-    }),
-  );
-
   const effectivePermissions: EffectivePermission[] = effective.effectivePermissions
     .map((code) => ({
       permission: resolvePermissionByCode(permissionByCode, code),
-      sources: Array.from(sourcesByPermissionCode.get(code)?.values() ?? []),
+      sources: sourcesByPermissionCode.get(code) ?? [],
     }))
     .sort((left, right) => left.permission.code.localeCompare(right.permission.code));
 

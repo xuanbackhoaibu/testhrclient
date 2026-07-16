@@ -7,5 +7,10 @@ export function useAccountAuthorization(accountId: string | null | undefined, en
     queryKey: ['account-authorization', accountId],
     queryFn: () => getAccountAuthorizationDetail(accountId!),
     enabled: Boolean(accountId) && enabled,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: false,
   });
 }
