@@ -76,7 +76,8 @@ export function UnitsPage() {
   const { can, permissions, roles } = useAuth();
   const canCreateUnit = can(HR_PERMISSIONS.UNIT_CREATE);
   const canEditUnit = can(HR_PERMISSIONS.UNIT_UPDATE);
-  const canImportUnits = can(HR_PERMISSIONS.UNIT_CREATE);
+  const canImportUnits = can(HR_PERMISSIONS.EMPLOYEE_IMPORT);
+  const canExportUnits = can(HR_PERMISSIONS.UNIT_READ);
   const queryClient = useQueryClient();
   const [params, setParams] = useState({
     page: 1,
@@ -433,6 +434,7 @@ export function UnitsPage() {
               isDownloadingTemplate={templateDownload.isDownloadingTemplate}
               isExporting={exportMutation.isPending}
               canImport={canImportUnits}
+              canExport={canExportUnits}
             />
             {canCreateUnit ? (
               <Button

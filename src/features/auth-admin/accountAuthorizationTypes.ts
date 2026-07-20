@@ -24,6 +24,7 @@ export type Role = {
   code: string;
   name: string;
   description?: string;
+  isSensitive?: boolean;
   permissionGroups?: PermissionGroup[];
   permissions?: Permission[];
 };

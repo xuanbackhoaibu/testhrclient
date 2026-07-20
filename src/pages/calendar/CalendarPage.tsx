@@ -11,10 +11,14 @@ import { CreateEventModal } from './components/CreateEventModal';
 import { useCalendarOwnerEvents, type CalendarEvent } from '../../features/calendar/useCalendarEvents';
 import { useCalendarView } from '../../features/calendar/useCalendarView';
 import { CalendarOwnerProvider, useCalendarOwner } from '../../features/calendar/CalendarContext';
+import { HR_PERMISSIONS } from '../../features/auth/permissions';
+import { useAuth } from '../../features/auth/useAuth';
 import { ApiError } from '../../shared/api/api.types';
 import styles from './CalendarPage.module.css';
 
 function CalendarPageInner() {
+  const { can } = useAuth();
+  const canWriteCalendar = can(HR_PERMISSIONS.CALENDAR_WRITE);
   const { year, month } = useCalendarView();
   const { selectedOwner, isViewingOthers } = useCalendarOwner();
 
@@ -92,7 +96,7 @@ function CalendarPageInner() {
 
           <div className={styles.mainContent}>
             {/* Action bar — hide create button when HR not linked (would fail) */}
-            {!isViewingOthers && !isNoHrProfile && (
+            {canWriteCalendar && !isViewingOthers && !isNoHrProfile && (
               <div className={styles.actionBar}>
                 <Button
                   leftSection={<IconPlus size={16} />}
@@ -158,7 +162,7 @@ function CalendarPageInner() {
       <EventDetailModal
         eventId={selectedEventId}
         onClose={handleCloseDetail}
-        onEdit={handleEditEvent}
+        onEdit={canWriteCalendar ? handleEditEvent : undefined}
       />
 
       <CreateEventModal

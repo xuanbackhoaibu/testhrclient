@@ -1,16 +1,5 @@
 import type { AuthUser } from './types';
 
-export const HRM_ROLES = {
-  SUPER_ADMIN: 'SUPER_ADMIN',
-  ADMIN: 'ADMIN',
-  HR: 'HR',
-  BAN_LANH_DAO: 'BAN_LANH_DAO',
-  BAN_LANH_DAO_DON_VI: 'BAN_LANH_DAO_DON_VI',
-  EMPLOYEE: 'EMPLOYEE',
-} as const;
-
-export type HrmRole = (typeof HRM_ROLES)[keyof typeof HRM_ROLES];
-
 export const HR_PERMISSIONS = {
   DASHBOARD_READ: 'hr.dashboard.read',
 
@@ -43,6 +32,7 @@ export const HR_PERMISSIONS = {
 
   // Attendance
   ATTENDANCE_READ: 'hr.attendance.read',
+  ATTENDANCE_UPDATE: 'hr.attendance.update',
   ATTENDANCE_SYNC: 'hr.attendance.sync',
   ATTENDANCE_SYNC_LOG_READ: 'hr.attendance.sync_log.read',
   ATTENDANCE_EXPORT: 'hr.attendance.export',
@@ -84,47 +74,8 @@ export const AUTH_ADMIN_PERMISSIONS = {
   PERMISSIONS_READ: 'auth.role.read',
   PERMISSIONS_ASSIGN: 'auth.user.assign_permission',
   PERMISSION_GROUPS_READ: 'auth.role.read',
-  PERMISSION_GROUPS_ASSIGN: 'auth.permission_group.manage',
+  PERMISSION_GROUPS_ASSIGN: 'auth.user.assign_permission',
 } as const;
-
-const ROLE_ALIASES: Record<string, HrmRole> = {
-  superadmin: HRM_ROLES.SUPER_ADMIN,
-  systemadmin: HRM_ROLES.SUPER_ADMIN,
-  admin: HRM_ROLES.ADMIN,
-  operator: HRM_ROLES.ADMIN,
-  hr: HRM_ROLES.HR,
-  hradmin: HRM_ROLES.HR,
-  banlanhdao: HRM_ROLES.BAN_LANH_DAO,
-  viewer: HRM_ROLES.BAN_LANH_DAO,
-  banlanhdaodonvi: HRM_ROLES.BAN_LANH_DAO_DON_VI,
-  manager: HRM_ROLES.BAN_LANH_DAO_DON_VI,
-  employee: HRM_ROLES.EMPLOYEE,
-};
-
-export function normalizeRoleKey(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_-]/g, '');
-}
-
-export function normalizeRole(role: string): HrmRole | null {
-  return ROLE_ALIASES[normalizeRoleKey(role)] ?? null;
-}
-
-export function normalizeRoles(roles: string[]): HrmRole[] {
-  return Array.from(
-    new Set(
-      roles
-        .map((role) => normalizeRole(role))
-        .filter((role): role is HrmRole => Boolean(role)),
-    ),
-  );
-}
-
-export function isSuperadmin(user: AuthUser | null | undefined): boolean {
-  return user?.roles?.some((role) => normalizeRoleKey(role) === 'superadmin') ?? false;
-}
 
 export function hasPermission(
   user: AuthUser | null | undefined,
@@ -132,10 +83,6 @@ export function hasPermission(
 ): boolean {
   if (!user) {
     return false;
-  }
-
-  if (isSuperadmin(user)) {
-    return true;
   }
 
   return user.permissions?.includes(permission) ?? false;
@@ -149,10 +96,6 @@ export function hasAnyPermission(
     return false;
   }
 
-  if (isSuperadmin(user)) {
-    return true;
-  }
-
   return permissions.some((permission) => user.permissions?.includes(permission));
 }
 
@@ -164,83 +107,5 @@ export function hasAllPermissions(
     return false;
   }
 
-  if (isSuperadmin(user)) {
-    return true;
-  }
-
   return permissions.every((permission) => user.permissions?.includes(permission));
-}
-
-export function hasRole(user: AuthUser | null | undefined, role: string) {
-  const rawRoles = new Set(user?.roles ?? []);
-  if (rawRoles.has(role)) {
-    return true;
-  }
-
-  const normalizedRole = normalizeRole(role);
-  return normalizedRole
-    ? normalizeRoles(user?.roles ?? []).includes(normalizedRole)
-    : false;
-}
-
-export function hasAnyRole(user: AuthUser | null | undefined, roles: string[]) {
-  return roles.some((role) => hasRole(user, role));
-}
-
-export function canViewEmployees(user: AuthUser | null | undefined) {
-  return hasAnyRole(user, [
-    HRM_ROLES.SUPER_ADMIN,
-    HRM_ROLES.ADMIN,
-    HRM_ROLES.HR,
-    HRM_ROLES.BAN_LANH_DAO,
-    HRM_ROLES.BAN_LANH_DAO_DON_VI,
-  ]);
-}
-
-export function canCreateEmployee(user: AuthUser | null | undefined) {
-  return hasAnyRole(user, [HRM_ROLES.SUPER_ADMIN, HRM_ROLES.ADMIN, HRM_ROLES.HR]);
-}
-
-export const canEditEmployee = canCreateEmployee;
-
-export function canManageAccount(user: AuthUser | null | undefined) {
-  return canCreateEmployee(user);
-}
-
-export function canManageMasterData(user: AuthUser | null | undefined) {
-  return canCreateEmployee(user);
-}
-
-export function canViewAuditLogs(user: AuthUser | null | undefined) {
-  return hasAnyRole(user, [HRM_ROLES.SUPER_ADMIN, HRM_ROLES.ADMIN, HRM_ROLES.HR]);
-}
-
-export function canViewAttendance(user: AuthUser | null | undefined) {
-  return hasAnyRole(user, [
-    HRM_ROLES.SUPER_ADMIN,
-    HRM_ROLES.ADMIN,
-    HRM_ROLES.HR,
-    HRM_ROLES.BAN_LANH_DAO,
-    HRM_ROLES.BAN_LANH_DAO_DON_VI,
-  ]);
-}
-
-export function canSyncAttendance(user: AuthUser | null | undefined) {
-  return hasAnyRole(user, [HRM_ROLES.SUPER_ADMIN, HRM_ROLES.ADMIN, HRM_ROLES.HR]);
-}
-
-export function canAssignRole(
-  user: AuthUser | null | undefined,
-  targetRole: HrmRole,
-) {
-  if (hasRole(user, HRM_ROLES.SUPER_ADMIN)) {
-    return true;
-  }
-  if (hasRole(user, HRM_ROLES.ADMIN)) {
-    return targetRole !== HRM_ROLES.SUPER_ADMIN;
-  }
-  if (hasRole(user, HRM_ROLES.HR)) {
-    return targetRole !== HRM_ROLES.SUPER_ADMIN && targetRole !== HRM_ROLES.ADMIN;
-  }
-  return false;
 }

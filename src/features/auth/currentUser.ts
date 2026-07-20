@@ -207,29 +207,37 @@ function extractCurrentUserPayload(response: unknown): unknown {
 export function normalizeCurrentUser(response: unknown): AuthUser {
   const payload = extractCurrentUserPayload(response);
   const data = isRecord(payload) ? payload : {};
-  const scopes = normalizeScopes(data.scopes);
+  const identity = isRecord(data.identity) ? data.identity : null;
+  if (!identity) {
+    throw Object.assign(
+      new Error('Canonical identity is missing from /auth/me response.'),
+      { statusCode: 502, errorCode: 'AUTHORITY_CONTRACT_INVALID' },
+    );
+  }
+
+  const authUserId =
+    readString(identity.authUserId) ??
+    readString(identity.userId) ??
+    readString(identity.sub);
+  const accountStatus = readString(identity.accountStatus);
+  if (!authUserId || !accountStatus) {
+    throw Object.assign(
+      new Error('Canonical identity fields are invalid.'),
+      { statusCode: 502, errorCode: 'AUTHORITY_CONTRACT_INVALID' },
+    );
+  }
+
+  const scopes = normalizeScopes(identity.scopes);
 
   const id = readString(data.id) ?? readString(data.userId) ?? '';
   const userId = readString(data.userId) ?? id;
-  const externalAuthUserId =
-    readString(data.externalAuthUserId) ??
-    readString(data.authUserId) ??
-    readString(data.auth_user_id) ??
-    readString(data.authPrincipalUserId) ??
-    '';
+  const externalAuthUserId = authUserId;
 
   return {
     id,
     userId,
-    authUserId:
-      readString(data.authUserId) ??
-      readString(data.auth_user_id) ??
-      readString(data.authPrincipalUserId) ??
-      readString(data.externalAuthUserId),
-    auth_user_id:
-      readString(data.auth_user_id) ??
-      readString(data.authUserId) ??
-      readString(data.externalAuthUserId),
+    authUserId,
+    auth_user_id: authUserId,
     authPrincipalUserId: readString(data.authPrincipalUserId),
     externalAuthUserId,
     email: readString(data.email) ?? '',
@@ -239,21 +247,19 @@ export function normalizeCurrentUser(response: unknown): AuthUser {
       readString(data.login_identifier) ??
       null,
     fullName: readString(data.fullName) ?? '',
-    accountStatus:
-      readString(data.accountStatus) ??
-      readString(data.account_status) ??
-      'UNKNOWN',
-    account_status:
-      readString(data.account_status) ?? readString(data.accountStatus),
+    accountStatus,
+    account_status: accountStatus,
     employeeId: readString(data.employeeId) ?? null,
     employee: normalizeEmployee(data.employee),
-    roles: toStringArray(data.roles),
-    permissions: toStringArray(data.permissions),
-    permissionVersion: readNumber(data.permissionVersion),
-    tokenVersion: readNumber(data.tokenVersion),
-    mustChangePassword: readBoolean(data.mustChangePassword),
+    roles: toStringArray(identity.roles),
+    permissions: toStringArray(identity.permissions),
+    permissionVersion: readNumber(identity.permissionVersion),
+    tokenVersion: readNumber(identity.tokenVersion),
+    authoritySource: 'chat-auth-runtime',
+    mustChangePassword:
+      readBoolean(identity.mustChangePassword) ?? readBoolean(data.mustChangePassword),
     identityWarnings: normalizeStringArray(data.identityWarnings),
     scopes,
-    dataScopes: normalizeDataScopes(data.dataScopes, scopes),
+    dataScopes: normalizeDataScopes(identity.dataScopes, scopes),
   };
 }

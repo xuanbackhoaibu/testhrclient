@@ -24,6 +24,8 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { useCalendarMutations } from '../../../features/calendar/useCalendarView';
 import { useCalendarOwner } from '../../../features/calendar/CalendarContext';
+import { HR_PERMISSIONS } from '../../../features/auth/permissions';
+import { useAuth } from '../../../features/auth/useAuth';
 import {
   useCalendarEvent,
   useCalendarEventPermissions,
@@ -74,6 +76,8 @@ interface EventDetailModalProps {
 }
 
 export function EventDetailModal({ eventId, onClose, onEdit }: EventDetailModalProps) {
+  const { can } = useAuth();
+  const canWriteCalendar = can(HR_PERMISSIONS.CALENDAR_WRITE);
   // Read-only state comes from the shared owner context (NOT a local hook),
   // so "viewing someone else's calendar" is detected correctly here.
   const { isViewingOthers } = useCalendarOwner();
@@ -347,14 +351,16 @@ export function EventDetailModal({ eventId, onClose, onEdit }: EventDetailModalP
             <>
               <Divider />
               <Group justify="flex-end" gap="xs">
-                {typedPermissions?.canDelete && (
+                {canWriteCalendar && typedPermissions?.canDelete && (
                   <Button color="red" variant="light" size="sm" onClick={handleDelete}>
                     Xóa
                   </Button>
                 )}
-                <Button variant="filled" size="sm" onClick={handleEdit}>
-                  Sửa
-                </Button>
+                {canWriteCalendar && typedPermissions?.canEdit && onEdit ? (
+                  <Button variant="filled" size="sm" onClick={handleEdit}>
+                    Sửa
+                  </Button>
+                ) : null}
               </Group>
             </>
           )}

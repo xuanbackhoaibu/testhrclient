@@ -33,7 +33,7 @@ import {
   extractTemporaryPassword,
   type ResetPasswordResult,
 } from '../auth-admin/authAdminTypes';
-import { HR_PERMISSIONS } from '../auth/permissions';
+import { AUTH_ADMIN_PERMISSIONS } from '../auth/permissions';
 import { useAuth } from '../auth/useAuth';
 import {
   DEFAULT_EMPLOYEE_PASSWORD,
@@ -91,10 +91,11 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
   const [confirmResetOpened, confirmReset] = useDisclosure(false);
   const [resetResult, setResetResult] = useState<ResetPasswordResult | null>(null);
 
-  const canRead = can(HR_PERMISSIONS.ACCOUNT_READ);
-  const canResetPassword = can(HR_PERMISSIONS.ACCOUNT_RESET_PASSWORD);
-  const canLock = can(HR_PERMISSIONS.ACCOUNT_LOCK);
-  const canRestore = can(HR_PERMISSIONS.ACCOUNT_RESTORE);
+  const canRead = can(AUTH_ADMIN_PERMISSIONS.USERS_READ);
+  const canResetPassword = can(AUTH_ADMIN_PERMISSIONS.USERS_UPDATE);
+  const canSendActivation = can(AUTH_ADMIN_PERMISSIONS.USERS_SEND_ACTIVATION);
+  const canUpdateStatus = can(AUTH_ADMIN_PERMISSIONS.USERS_UPDATE);
+  const canRevokeSessions = can(AUTH_ADMIN_PERMISSIONS.USERS_REVOKE_SESSIONS);
 
   const { data: authUser, isLoading, error, refetch } = useQuery({
     queryKey: ['auth-user-by-employee', employee.id],
@@ -327,7 +328,7 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
                   </Button>
                 ) : null}
 
-                {canResetPassword && isPending ? (
+                {canSendActivation && isPending ? (
                   <Button
                     size="sm"
                     variant="light"
@@ -339,7 +340,7 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
                   </Button>
                 ) : null}
 
-                {canLock && isActive ? (
+                {canUpdateStatus && isActive ? (
                   <Button
                     size="sm"
                     variant="light"
@@ -352,7 +353,7 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
                   </Button>
                 ) : null}
 
-                {canRestore && isLocked ? (
+                {canUpdateStatus && isLocked ? (
                   <Button
                     size="sm"
                     variant="light"
@@ -365,16 +366,18 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
                   </Button>
                 ) : null}
 
-                <Button
-                  size="sm"
-                  variant="subtle"
-                  color="gray"
-                  loading={revokeSessionsMutation.isPending}
-                  disabled={anyBusy}
-                  onClick={() => revokeSessionsMutation.mutate()}
-                >
-                  Thu hoi sessions
-                </Button>
+                {canRevokeSessions ? (
+                  <Button
+                    size="sm"
+                    variant="subtle"
+                    color="gray"
+                    loading={revokeSessionsMutation.isPending}
+                    disabled={anyBusy}
+                    onClick={() => revokeSessionsMutation.mutate()}
+                  >
+                    Thu hoi sessions
+                  </Button>
+                ) : null}
               </Group>
             </Stack>
           </Stack>

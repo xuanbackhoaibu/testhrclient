@@ -45,7 +45,9 @@ const DOMAIN_LABEL: Record<string, string> = {
 export function PermissionsPage() {
   const { can } = useAuth();
   const queryClient = useQueryClient();
-  const canManage = can('auth.permission.create');
+  const canCreate = can('auth.permission.create');
+  const canUpdate = can('auth.permission.update');
+  const canDeprecate = can('auth.permission.deprecate');
 
   const [search, setSearch] = useState('');
   const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);
@@ -126,7 +128,7 @@ export function PermissionsPage() {
           <Title order={3}>Permission</Title>
           <Text size="sm" c="dimmed">Tổng: {total} quyền</Text>
         </Stack>
-        {canManage && (
+        {canCreate && (
           <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>
             Tạo permission
           </Button>
@@ -171,7 +173,7 @@ export function PermissionsPage() {
                         </Group>
                         {perm.description && <Text size="xs" c="dimmed">{perm.description}</Text>}
                       </Stack>
-                      {canManage && (
+                      {(canUpdate || canDeprecate) && (
                         <Tooltip label="Sửa permission">
                           <ActionIcon variant="subtle" size="sm" onClick={() => handleEdit(perm)}>
                             <IconEdit size={14} />
@@ -278,7 +280,7 @@ export function PermissionsPage() {
               }}
             />
             <Group justify="space-between" mt="xs">
-              {editPerm.status !== 'disabled' && (
+              {canDeprecate && editPerm.status !== 'disabled' && (
                 <Button
                   color="red"
                   variant="light"
@@ -291,12 +293,14 @@ export function PermissionsPage() {
               )}
               <Group ml="auto">
                 <Button variant="default" onClick={closeEdit}>Hủy</Button>
-                <Button
-                  loading={updateMutation.isPending}
-                  onClick={() => updateMutation.mutate({ id: editPerm.id, data: editForm })}
-                >
-                  Lưu
-                </Button>
+                {canUpdate && (
+                  <Button
+                    loading={updateMutation.isPending}
+                    onClick={() => updateMutation.mutate({ id: editPerm.id, data: editForm })}
+                  >
+                    Lưu
+                  </Button>
+                )}
               </Group>
             </Group>
           </Stack>

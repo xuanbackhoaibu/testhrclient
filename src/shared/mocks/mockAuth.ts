@@ -11,6 +11,7 @@ export const MOCK_TOKENS: Record<DemoRole, string> = {
 
 export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
   SUPER_ADMIN: {
+    authoritySource: 'chat-auth-runtime',
     id: 'usr-super-admin',
     userId: 'usr-super-admin',
     externalAuthUserId: 'auth-1000',
@@ -33,6 +34,7 @@ export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
     dataScopes: [{ scopeType: 'GLOBAL', unitId: null, departmentId: null }],
   },
   ADMIN: {
+    authoritySource: 'chat-auth-runtime',
     id: 'usr-admin',
     userId: 'usr-admin',
     externalAuthUserId: 'auth-1001-admin',
@@ -64,6 +66,7 @@ export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
     dataScopes: [{ scopeType: 'GLOBAL', unitId: null, departmentId: null }],
   },
   HR: {
+    authoritySource: 'chat-auth-runtime',
     id: 'usr-hr-admin',
     userId: 'usr-hr-admin',
     externalAuthUserId: 'auth-1001',
@@ -95,6 +98,7 @@ export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
     dataScopes: [{ scopeType: 'GLOBAL', unitId: null, departmentId: null }],
   },
   BAN_LANH_DAO: {
+    authoritySource: 'chat-auth-runtime',
     id: 'usr-leadership',
     userId: 'usr-leadership',
     externalAuthUserId: 'auth-1002-leader',
@@ -117,6 +121,7 @@ export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
     dataScopes: [{ scopeType: 'GLOBAL', unitId: null, departmentId: null }],
   },
   BAN_LANH_DAO_DON_VI: {
+    authoritySource: 'chat-auth-runtime',
     id: 'usr-manager',
     userId: 'usr-manager',
     externalAuthUserId: 'auth-1002',
@@ -142,6 +147,7 @@ export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
     ],
   },
   EMPLOYEE: {
+    authoritySource: 'chat-auth-runtime',
     id: 'usr-employee',
     userId: 'usr-employee',
     externalAuthUserId: 'auth-1003',

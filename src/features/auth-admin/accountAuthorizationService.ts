@@ -76,6 +76,7 @@ function toRole(
     code: definition.key ?? definition.name,
     name: definition.name,
     description: definition.description ?? undefined,
+    isSensitive: definition.isSensitive === true,
     permissions,
     permissionGroups,
   };

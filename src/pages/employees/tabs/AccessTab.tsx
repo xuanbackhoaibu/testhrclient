@@ -9,7 +9,6 @@ import {
   ScrollArea,
   Stack,
   Text,
-  TextInput,
   Title,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -21,9 +20,10 @@ import {
   assignPermissions,
   assignRoles,
   getEffectivePermissions,
+  getPermissionsGrouped,
 } from '../../../features/auth-admin/authAdminApi';
-import { SENSITIVE_ROLES } from '../../../features/auth-admin/authAdminTypes';
 import { useAvailableRoles } from '../../../features/auth-admin/useAvailableRoles';
+import { AUTH_ADMIN_PERMISSIONS } from '../../../features/auth/permissions';
 import { useAuth } from '../../../features/auth/useAuth';
 import type { Employee } from '../../../features/employees/employeeTypes';
 import { ErrorState } from '../../../shared/components/ErrorState';
@@ -35,17 +35,17 @@ interface Props {
 
 export function AccessTab({ employee }: Props) {
   const queryClient = useQueryClient();
-  const { can } = useAuth();
+  const { can, user, refreshCurrentUser } = useAuth();
   const [roleModalOpen, setRoleModalOpen] = useState(false);
   const [permModalOpen, setPermModalOpen] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
-  const [permInput, setPermInput] = useState('');
 
   const canReadRoles = can('auth.role.read');
-  const canAssignRoles = can('hr.account.assign_role');
+  const canAssignRoles = can(AUTH_ADMIN_PERMISSIONS.ROLES_ASSIGN);
+  const canAssignPerms = can(AUTH_ADMIN_PERMISSIONS.PERMISSIONS_ASSIGN);
   const canReadPerms = can('auth.role.read');
-  const { asSelectOptions: roleOptions } = useAvailableRoles();
+  const { roles: roleCatalog, asSelectOptions: roleOptions } = useAvailableRoles();
 
   const authUserId = employee.authUserId;
 
@@ -59,9 +59,26 @@ export function AccessTab({ employee }: Props) {
     queryFn: () => getEffectivePermissions(authUserId!),
     enabled: canReadRoles && Boolean(authUserId),
   });
+  const permissionCatalogQuery = useQuery({
+    queryKey: ['auth-admin-permissions-grouped'],
+    queryFn: () => getPermissionsGrouped(),
+    enabled: canReadPerms && canAssignPerms,
+  });
+  const permissionOptions = (permissionCatalogQuery.data?.systems ?? []).flatMap(
+    (group) => group.permissions
+      .filter((permission) => permission.status !== 'disabled' && permission.status !== 'inactive')
+      .map((permission) => ({
+        value: permission.key,
+        label: permission.name ? `${permission.key} — ${permission.name}` : permission.key,
+        disabled: permission.isSensitive === true,
+      })),
+  );
 
   const invalidate = async () => {
     await queryClient.invalidateQueries({ queryKey: ['effective-permissions', authUserId] });
+    if (user?.authUserId === authUserId) {
+      await refreshCurrentUser();
+    }
   };
 
   const assignRolesMutation = useMutation({
@@ -86,7 +103,6 @@ export function AccessTab({ employee }: Props) {
     onSuccess: async () => {
       notifications.show({ color: 'green', message: 'Đã cập nhật permissions.' });
       setPermModalOpen(false);
-      setPermInput('');
       await invalidate();
     },
     onError: (err: unknown) => {
@@ -123,19 +139,17 @@ export function AccessTab({ employee }: Props) {
 
   const openPermModal = () => {
     setSelectedPerms([...(effectivePerms.directPermissions ?? [])]);
-    setPermInput('');
     setPermModalOpen(true);
   };
 
-  const hasSensitive = selectedRoles.some((r) => SENSITIVE_ROLES.has(r));
-
-  const addPerm = () => {
-    const key = permInput.trim();
-    if (key && !selectedPerms.includes(key)) {
-      setSelectedPerms((prev) => [...prev, key]);
-      setPermInput('');
-    }
-  };
+  const sensitiveRoleKeys = new Set(
+    roleCatalog
+      .filter((role) => role.isSensitive === true)
+      .map((role) => role.key ?? role.name),
+  );
+  const hasSensitive = selectedRoles.some((role) => sensitiveRoleKeys.has(role));
+  const hasRoleDiff = [...selectedRoles].sort().join('|') !== [...effectivePerms.roles].sort().join('|');
+  const hasPermissionDiff = [...selectedPerms].sort().join('|') !== [...effectivePerms.directPermissions].sort().join('|');
 
   return (
     <Stack gap="lg">
@@ -162,7 +176,7 @@ export function AccessTab({ employee }: Props) {
             {effectivePerms.roles.map((r) => (
               <Badge
                 key={r}
-                color={SENSITIVE_ROLES.has(r) ? 'red' : 'blue'}
+                color={sensitiveRoleKeys.has(r) ? 'red' : 'blue'}
                 variant="light"
               >
                 {r}
@@ -177,7 +191,7 @@ export function AccessTab({ employee }: Props) {
           <div>
             <Group gap="sm" mb="xs">
               <Title order={6}>Quyền trực tiếp</Title>
-              {canAssignRoles && (
+              {canAssignPerms && (
                 <Button size="xs" variant="light" leftSection={<IconShieldPlus size={14} />} onClick={openPermModal}>
                   Cập nhật
                 </Button>
@@ -222,7 +236,7 @@ export function AccessTab({ employee }: Props) {
         <Stack gap="sm">
           {hasSensitive && (
             <Alert color="yellow" title="Cảnh báo: Role nhạy cảm">
-              Bạn đang gán role có quyền cao. Thao tác này chỉ dành cho superadmin.
+              Role này được Auth đánh dấu nhạy cảm. Backend sẽ kiểm tra quyền gán của actor.
             </Alert>
           )}
           <MultiSelect
@@ -237,6 +251,7 @@ export function AccessTab({ employee }: Props) {
             <Button variant="default" onClick={() => setRoleModalOpen(false)}>Hủy</Button>
             <Button
               loading={assignRolesMutation.isPending}
+              disabled={!hasRoleDiff || hasSensitive}
               onClick={() => assignRolesMutation.mutate(selectedRoles)}
             >
               Lưu
@@ -252,40 +267,20 @@ export function AccessTab({ employee }: Props) {
         size="md"
       >
         <Stack gap="sm">
-          <Text size="sm" c="dimmed">
-            Nhập permission key (ví dụ: hr.employee.read), nhấn Thêm để thêm vào danh sách.
-          </Text>
-          <Group gap="xs">
-            <TextInput
-              style={{ flex: 1 }}
-              placeholder="hr.employee.read"
-              value={permInput}
-              onChange={(e) => setPermInput(e.currentTarget.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addPerm(); } }}
-            />
-            <Button variant="light" onClick={addPerm}>Thêm</Button>
-          </Group>
-          {selectedPerms.length > 0 && (
-            <Group wrap="wrap" gap="xs">
-              {selectedPerms.map((p) => (
-                <Badge
-                  key={p}
-                  color="cyan"
-                  variant="light"
-                  style={{ cursor: 'pointer' }}
-                  rightSection={
-                    <Text span size="xs" onClick={() => setSelectedPerms((prev) => prev.filter((x) => x !== p))}>×</Text>
-                  }
-                >
-                  {p}
-                </Badge>
-              ))}
-            </Group>
-          )}
+          <MultiSelect
+            label="Quyền trực tiếp"
+            description="Danh mục và sensitive metadata lấy trực tiếp từ Auth. Permission inherited không được sửa tại đây."
+            data={permissionOptions}
+            value={selectedPerms}
+            onChange={setSelectedPerms}
+            searchable
+            clearable
+          />
           <Group justify="flex-end" mt="sm">
             <Button variant="default" onClick={() => setPermModalOpen(false)}>Hủy</Button>
             <Button
               loading={assignPermsMutation.isPending}
+              disabled={!hasPermissionDiff}
               onClick={() => assignPermsMutation.mutate(selectedPerms)}
             >
               Lưu

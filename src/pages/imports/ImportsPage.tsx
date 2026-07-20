@@ -3,6 +3,8 @@ import { Button, Card, Checkbox, Space, Statistic, Steps, Table, Tabs, Upload, m
 import { DownloadOutlined, UploadOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { HR_PERMISSIONS } from '../../features/auth/permissions';
+import { useAuth } from '../../features/auth/useAuth';
 import {
   commitDomainImport,
   getImportBatch,
@@ -65,12 +67,18 @@ function renderMessages(value: unknown): string {
 
 export function ImportsPage() {
   const queryClient = useQueryClient();
+  const { can } = useAuth();
+  const canImport = can(HR_PERMISSIONS.EMPLOYEE_IMPORT);
+  const canExport = can(HR_PERMISSIONS.EMPLOYEE_READ);
   const [activeDomain, setActiveDomain] = useState<ExcelDomainKey>('organization-units');
   const [preview, setPreview] = useState<DomainImportPreview | null>(null);
   const [rows, setRows] = useState<HrmCoreStagingRow[]>([]);
   const [allowWarnings, setAllowWarnings] = useState(false);
   const [selected, setSelected] = useState<ImportBatch | null>(null);
-  const { data, isLoading, error, refetch } = useImportBatches({ page: 1, pageSize: 20 });
+  const { data, isLoading, error, refetch } = useImportBatches(
+    { page: 1, pageSize: 20 },
+    canImport,
+  );
 
   const activeConfig = domainConfigs.find((item) => item.key === activeDomain) ?? domainConfigs[0];
 
@@ -136,11 +144,11 @@ export function ImportsPage() {
     return 4;
   }, [preview]);
 
-  if (isLoading) {
+  if (canImport && isLoading) {
     return <LoadingState />;
   }
 
-  if (error || !data) {
+  if (canImport && (error || !data)) {
     return <ErrorState onRetry={() => void refetch()} />;
   }
 
@@ -174,15 +182,15 @@ export function ImportsPage() {
             children: (
               <Card className="page-card" title={`Import ${config.title}`}>
                 <Space wrap>
-                  <Button
+                  {canImport ? <Button
                     icon={<DownloadOutlined />}
                     loading={templateMutation.isPending}
                     disabled={templateMutation.isPending}
                     onClick={() => void templateMutation.mutateAsync(config.key)}
                   >
                     Tải mẫu {config.title}
-                  </Button>
-                  <Upload
+                  </Button> : null}
+                  {canImport ? <Upload
                     accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     showUploadList={false}
                     beforeUpload={(file) => {
@@ -197,36 +205,36 @@ export function ImportsPage() {
                     <Button icon={<UploadOutlined />} loading={previewMutation.isPending}>
                       Kiểm tra dữ liệu
                     </Button>
-                  </Upload>
-                  <Checkbox checked={allowWarnings} disabled={!hasWarnings} onChange={(event) => setAllowWarnings(event.target.checked)}>
+                  </Upload> : null}
+                  {canImport ? <Checkbox checked={allowWarnings} disabled={!hasWarnings} onChange={(event) => setAllowWarnings(event.target.checked)}>
                     Chấp nhận cảnh báo
-                  </Checkbox>
-                  <Button type="primary" disabled={commitDisabled} loading={commitMutation.isPending} onClick={() => commitMutation.mutate()}>
+                  </Checkbox> : null}
+                  {canImport ? <Button type="primary" disabled={commitDisabled} loading={commitMutation.isPending} onClick={() => commitMutation.mutate()}>
                     Import
-                  </Button>
-                  <Button
+                  </Button> : null}
+                  {canImport ? <Button
                     icon={<DownloadOutlined />}
                     disabled={!preview}
                     loading={errorFileMutation.isPending}
                     onClick={() => void errorFileMutation.mutateAsync()}
                   >
                     Tải file lỗi
-                  </Button>
-                  <Button
+                  </Button> : null}
+                  {canExport ? <Button
                     icon={<DownloadOutlined />}
                     loading={exportMutation.isPending}
                     disabled={exportMutation.isPending}
                     onClick={() => void exportMutation.mutateAsync(config.key)}
                   >
                     Export {config.title}
-                  </Button>
+                  </Button> : null}
                 </Space>
               </Card>
             ),
           }))}
         />
 
-        {preview ? (
+        {canImport && preview ? (
           <Card className="page-card" title={`Preview ${activeConfig.title}`}>
             <Space direction="vertical" size={16} style={{ width: '100%' }}>
               <Space wrap>
@@ -253,10 +261,10 @@ export function ImportsPage() {
           </Card>
         ) : null}
 
-        <Card className="page-card" title="Lịch sử batch">
+        {canImport ? <Card className="page-card" title="Lịch sử batch">
           <Table
             rowKey="id"
-            dataSource={data.items}
+            dataSource={data?.items ?? []}
             pagination={false}
             columns={[
               { title: 'Batch code', dataIndex: 'batchCode' },
@@ -282,9 +290,9 @@ export function ImportsPage() {
               },
             ]}
           />
-        </Card>
+        </Card> : null}
 
-        {selected ? (
+        {canImport && selected ? (
           <Card className="page-card" title="Chi tiết batch">
             <p>Batch code: {selected.batchCode}</p>
             <p>File: {selected.fileName}</p>

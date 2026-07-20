@@ -9,7 +9,7 @@ export type ScopeClaim = {
   departmentIds?: string[];
 };
 
-export interface CurrentUser {
+export interface CurrentIdentity {
   id: string;
   userId: string;
   authUserId?: string;
@@ -48,6 +48,7 @@ export interface CurrentUser {
   permissions: string[];
   permissionVersion?: number;
   tokenVersion?: number;
+  authoritySource: 'chat-auth-runtime';
   mustChangePassword?: boolean;
   identityWarnings?: string[];
   scopes?: ScopeClaim[];
@@ -58,7 +59,8 @@ export interface CurrentUser {
   }>;
 }
 
-export type AuthUser = CurrentUser;
+export type CurrentUser = CurrentIdentity;
+export type AuthUser = CurrentIdentity;
 
 export type DemoRole =
   | 'SUPER_ADMIN'

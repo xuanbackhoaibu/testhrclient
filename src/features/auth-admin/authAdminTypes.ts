@@ -435,8 +435,6 @@ export interface BulkProvisionFromEmployeesResult {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-export const SENSITIVE_ROLES = new Set(['super_admin', 'security_admin', 'SUPER_ADMIN', 'IAM_ADMIN', 'iam_admin']);
-
 export const ACCOUNT_STATUS_LABELS: Record<string, string> = {
   NOT_CREATED: 'Chưa tạo tài khoản',
   PENDING_ACTIVATION: 'Chờ kích hoạt',

@@ -58,7 +58,8 @@ export function DepartmentsPage() {
   const { can, permissions, roles } = useAuth();
   const canCreateDepartment = can(HR_PERMISSIONS.DEPARTMENT_CREATE);
   const canEditDepartment = can(HR_PERMISSIONS.DEPARTMENT_UPDATE);
-  const canImportDepartments = can(HR_PERMISSIONS.DEPARTMENT_CREATE);
+  const canImportDepartments = can(HR_PERMISSIONS.EMPLOYEE_IMPORT);
+  const canExportDepartments = can(HR_PERMISSIONS.DEPARTMENT_READ);
   const queryClient = useQueryClient();
   const [params, setParams] = useState({
     page: 1,
@@ -329,6 +330,7 @@ export function DepartmentsPage() {
               isDownloadingTemplate={templateDownload.isDownloadingTemplate}
               isExporting={exportMutation.isPending}
               canImport={canImportDepartments}
+              canExport={canExportDepartments}
             />
             {canCreateDepartment ? (
               <Button

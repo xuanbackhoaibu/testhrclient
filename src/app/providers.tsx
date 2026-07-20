@@ -1,11 +1,11 @@
 import type { PropsWithChildren } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MantineProvider, createTheme } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 
 import { queryClient } from './queryClient';
 import { getCurrentUser } from '../features/auth/authApi';
-import { clearSession, getAccessToken, getStoredUser, setSessionUser } from '../features/auth/authClient';
+import { clearSession, getAccessToken, setSessionUser } from '../features/auth/authClient';
 import { useAuthStore } from '../features/auth/authStore';
 import { QueryClientProvider } from '@tanstack/react-query';
 
@@ -44,6 +44,7 @@ const theme = createTheme({
 
 function AuthBootstrap({ children }: PropsWithChildren) {
   const [ready, setReady] = useState(false);
+  const lastAuthorityRefreshAt = useRef(0);
 
   useEffect(() => {
     async function bootstrap() {
@@ -54,33 +55,24 @@ function AuthBootstrap({ children }: PropsWithChildren) {
         return;
       }
 
-      const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
-      const storedUser = getStoredUser();
       useAuthStore.getState().setSession({
         accessToken: token,
-        user: isMockMode ? storedUser : null,
+        user: null,
       });
-
-      if (isMockMode && storedUser) {
-        setSessionUser(storedUser);
-        useAuthStore.getState().setLoading(false);
-        setReady(true);
-        return;
-      }
 
       try {
         const user = await getCurrentUser();
         setSessionUser(user);
+        lastAuthorityRefreshAt.current = Date.now();
         useAuthStore.getState().setError(null);
       } catch (error: unknown) {
         const status = readHttpStatus(error);
-        if (status === 401 || status === 403) {
+        if (status === 401) {
           clearSession();
-          if (status === 403) {
-            useAuthStore.getState().setError('Tài khoản đã xác thực nhưng chưa được cấp quyền HRM.');
-          }
+        } else if (status === 403) {
+          useAuthStore.getState().setError('Tài khoản đã xác thực nhưng không được phép truy cập HRM.');
         } else {
-          useAuthStore.getState().setError('Không tải được thông tin người dùng HRM.');
+          useAuthStore.getState().setError('Không thể xác minh quyền hiện tại. Vui lòng thử lại.');
         }
       }
 
@@ -89,6 +81,37 @@ function AuthBootstrap({ children }: PropsWithChildren) {
     }
 
     void bootstrap();
+
+    async function refreshAuthorityOnForeground() {
+      if (
+        document.visibilityState !== 'visible' ||
+        !getAccessToken() ||
+        Date.now() - lastAuthorityRefreshAt.current < 60_000
+      ) {
+        return;
+      }
+
+      try {
+        const user = await getCurrentUser();
+        setSessionUser(user);
+        lastAuthorityRefreshAt.current = Date.now();
+        useAuthStore.getState().setError(null);
+      } catch (error: unknown) {
+        if (readHttpStatus(error) === 401) {
+          clearSession();
+          return;
+        }
+        setSessionUser(null);
+        useAuthStore.getState().setError(
+          'Không thể xác minh quyền hiện tại. Dữ liệu quyền cũ đã bị loại bỏ.',
+        );
+      }
+    }
+
+    document.addEventListener('visibilitychange', refreshAuthorityOnForeground);
+    return () => {
+      document.removeEventListener('visibilitychange', refreshAuthorityOnForeground);
+    };
   }, []);
 
   if (!ready) {

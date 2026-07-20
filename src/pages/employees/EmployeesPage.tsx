@@ -25,7 +25,7 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
-import { HR_PERMISSIONS } from "../../features/auth/permissions";
+import { AUTH_ADMIN_PERMISSIONS, HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
 import {
   createEmployee,
@@ -209,7 +209,9 @@ export function EmployeesPage() {
   const mayCreateEmployee = can(HR_PERMISSIONS.EMPLOYEE_CREATE);
   const mayEditEmployee = can(HR_PERMISSIONS.EMPLOYEE_UPDATE);
   const mayImportEmployees = can(HR_PERMISSIONS.EMPLOYEE_IMPORT);
-  const mayProvisionAccounts = can(HR_PERMISSIONS.ACCOUNT_CREATE);
+  const mayExportEmployees = can(HR_PERMISSIONS.EMPLOYEE_READ);
+  const mayReadAccounts = can(AUTH_ADMIN_PERMISSIONS.USERS_READ);
+  const mayProvisionAccounts = can(AUTH_ADMIN_PERMISSIONS.USERS_PROVISION);
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -681,8 +683,8 @@ export function EmployeesPage() {
         width: 140,
         align: "center",
         render: (record) => {
-          if (!mayProvisionAccounts) return null;
           if (employeeHasAccount(record)) {
+            if (!mayReadAccounts) return null;
             return (
               <Tooltip label="Xem tài khoản">
                 <Button
@@ -699,6 +701,7 @@ export function EmployeesPage() {
               </Tooltip>
             );
           }
+          if (!mayProvisionAccounts) return null;
           return (
             <Tooltip label="Cấp tài khoản đăng nhập">
               <Button
@@ -746,6 +749,7 @@ export function EmployeesPage() {
     ],
     [
       mayEditEmployee,
+      mayReadAccounts,
       mayProvisionAccounts,
       navigate,
       openEditDrawer,
@@ -770,6 +774,7 @@ export function EmployeesPage() {
               isDownloadingTemplate={templateDownload.isDownloadingTemplate}
               isExporting={exportMutation.isPending}
               canImport={mayImportEmployees}
+              canExport={mayExportEmployees}
             />
             {mayProvisionAccounts && selectedIds.size > 0 && (
               <Button

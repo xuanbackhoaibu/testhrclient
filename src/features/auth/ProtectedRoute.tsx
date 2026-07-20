@@ -1,23 +1,23 @@
 import type { ReactNode } from 'react';
-import { Result } from 'antd';
+import { Button, Result } from 'antd';
 import { Navigate, useLocation } from 'react-router-dom';
 
 import { ROUTES } from '../../shared/constants/routes';
 import { LoadingState } from '../../shared/components/LoadingState';
-import { hasAnyRole, type HrmRole } from './permissions';
 import { useAuth } from './useAuth';
+import { getRoutePolicy } from './routePolicies';
 
 export function ProtectedRoute({
   children,
-  roles,
   permissions,
+  route,
 }: {
   children: ReactNode;
-  roles?: HrmRole[];
   permissions?: string[];
+  route?: string;
 }) {
   const location = useLocation();
-  const { isAuthenticated, isLoading, user, canAll } = useAuth();
+  const { isAuthenticated, isLoading, user, error, canAny, canAll, refreshCurrentUser } = useAuth();
 
   if (isLoading) {
     return <LoadingState tip="Đang kiểm tra phiên đăng nhập..." />;
@@ -29,21 +29,48 @@ export function ProtectedRoute({
     );
   }
 
-  if (user?.mustChangePassword === true && location.pathname !== ROUTES.changePassword) {
-    return <Navigate to={ROUTES.changePassword} replace />;
-  }
-
-  if (roles?.length && !hasAnyRole(user, roles)) {
+  if (!user) {
     return (
       <Result
-        status="403"
-        title="403"
-        subTitle="Bạn không có quyền truy cập chức năng này."
+        status="error"
+        title="503 - Không thể xác minh quyền"
+        subTitle={error ?? 'Dịch vụ authority hiện không khả dụng.'}
+        extra={<Button onClick={() => void refreshCurrentUser()}>Thử lại</Button>}
       />
     );
   }
 
-  if (permissions?.length && !canAll(permissions)) {
+  if (user.accountStatus !== 'ACTIVE') {
+    return (
+      <Result
+        status="403"
+        title="Tài khoản không hoạt động"
+        subTitle="Trạng thái tài khoản hiện tại không cho phép truy cập HRM."
+      />
+    );
+  }
+
+  if (user?.mustChangePassword === true && location.pathname !== ROUTES.changePassword) {
+    return <Navigate to={ROUTES.changePassword} replace />;
+  }
+
+  const routePolicy = route ? getRoutePolicy(route) : null;
+  if (routePolicy?.kind === 'unavailable') {
+    return (
+      <Result status="403" title="Chức năng chưa được cấp policy" subTitle={routePolicy.reason} />
+    );
+  }
+  const requiredPermissions =
+    routePolicy?.kind === 'permission' ? [...routePolicy.permissions] : permissions;
+
+  const routeAllowed =
+    requiredPermissions?.length
+      ? routePolicy?.kind === 'permission' && routePolicy.match === 'any'
+        ? canAny(requiredPermissions)
+        : canAll(requiredPermissions)
+      : true;
+
+  if (!routeAllowed) {
     return (
       <Result
         status="403"
