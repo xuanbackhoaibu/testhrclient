@@ -1,0 +1,7 @@
+# This Dockerfile is built with the workspace root as context. Keep only the
+# two sibling repositories required by the file: dependency graph.
+**
+!chat-shared-types/
+!chat-shared-types/**
+!hr-web-client/
+!hr-web-client/**
