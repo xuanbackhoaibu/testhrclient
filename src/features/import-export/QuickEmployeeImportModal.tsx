@@ -30,8 +30,9 @@ type SheetRows = StyledCell[][];
 type SheetSpec = { data: SheetRows; sheet?: string; stickyRowsCount?: number; columns?: { width?: number }[] };
 type MultiSheetFn = (sheets: SheetSpec[]) => { toFile: (name: string) => Promise<void> };
 
-// Mã NS hợp lệ: 2 chữ hoa + 6 chữ số (VD: HN000001)
-const EMPLOYEE_CODE_RE = /^[A-Z]{2}\d{6}$/;
+// Mã NS hợp lệ: prefix lĩnh vực (2-10 ký tự A-Z/0-9) + 6 chữ số (VD: HN000001, IPR000064).
+// Phải khớp regex DTO backend: /^[A-Z0-9]{2,10}\d{6}$/.
+const EMPLOYEE_CODE_RE = /^[A-Z0-9]{2,10}\d{6}$/;
 
 interface ParsedRow {
   rowNumber: number;
@@ -207,7 +208,7 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
         if (!deptCode) errors.push('Thiếu mã phòng ban');
         if (!posCode) errors.push('Thiếu mã chức vụ');
         if (employeeCode && !EMPLOYEE_CODE_RE.test(employeeCode)) {
-          errors.push(`Mã NS "${employeeCode}" không đúng định dạng (VD: HN000001)`);
+          errors.push(`Mã NS "${employeeCode}" không đúng định dạng: prefix lĩnh vực + 6 chữ số (VD: HN000001, IPR000064)`);
         }
 
         const unit = unitCode ? unitMap.get(unitCode) : undefined;
