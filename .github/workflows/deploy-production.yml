@@ -37,26 +37,38 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout hr-web-client
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: hr-web-client
+
+      - name: Validate shared repository access
+        shell: bash
+        env:
+          SHARED_TYPES_REPOSITORY: ${{ vars.SHARED_TYPES_REPOSITORY || 'hacom-holding-dx/chat-shared-types' }}
+          SHARED_TYPES_REPO_TOKEN: ${{ secrets.SHARED_TYPES_REPO_TOKEN }}
+        run: |
+          set -Eeuo pipefail
+          test -n "${SHARED_TYPES_REPO_TOKEN}" || {
+            echo "Missing SHARED_TYPES_REPO_TOKEN. Configure Contents: Read on ${SHARED_TYPES_REPOSITORY}." >&2
+            exit 1
+          }
 
       # The auth-admin feature imports @hacom/chat-shared-types through the
       # committed file:../chat-shared-types dependency. Keep this checkout
       # pinned: floating a branch would make the production build non-repeatable.
       - name: Checkout pinned chat-shared-types
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
-          repository: ${{ vars.SHARED_TYPES_REPOSITORY || format('{0}/chat-shared-types', github.repository_owner) }}
+          repository: ${{ vars.SHARED_TYPES_REPOSITORY || 'hacom-holding-dx/chat-shared-types' }}
           ref: 18ad496b74104027140547b923671893d251b549
           path: chat-shared-types
-          token: ${{ secrets.SHARED_TYPES_REPO_TOKEN || github.token }}
+          token: ${{ secrets.SHARED_TYPES_REPO_TOKEN }}
 
       - name: Set up Node.js
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: |
             hr-web-client/package-lock.json
@@ -102,18 +114,31 @@ jobs:
     steps:
       - name: Checkout hr-web-client
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: hr-web-client
 
+      - name: Validate shared repository access
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
+        shell: bash
+        env:
+          SHARED_TYPES_REPOSITORY: ${{ vars.SHARED_TYPES_REPOSITORY || 'hacom-holding-dx/chat-shared-types' }}
+          SHARED_TYPES_REPO_TOKEN: ${{ secrets.SHARED_TYPES_REPO_TOKEN }}
+        run: |
+          set -Eeuo pipefail
+          test -n "${SHARED_TYPES_REPO_TOKEN}" || {
+            echo "Missing SHARED_TYPES_REPO_TOKEN. Configure Contents: Read on ${SHARED_TYPES_REPOSITORY}." >&2
+            exit 1
+          }
+
       - name: Checkout pinned chat-shared-types
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
-          repository: ${{ vars.SHARED_TYPES_REPOSITORY || format('{0}/chat-shared-types', github.repository_owner) }}
+          repository: ${{ vars.SHARED_TYPES_REPOSITORY || 'hacom-holding-dx/chat-shared-types' }}
           ref: 18ad496b74104027140547b923671893d251b549
           path: chat-shared-types
-          token: ${{ secrets.SHARED_TYPES_REPO_TOKEN || github.token }}
+          token: ${{ secrets.SHARED_TYPES_REPO_TOKEN }}
 
       - name: Preflight Docker build context
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
@@ -238,7 +263,7 @@ jobs:
           done
 
       - name: Checkout hr-web-client
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Validate deploy configuration
         shell: bash
