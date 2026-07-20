@@ -22,7 +22,15 @@ import {
   getEffectivePermissions,
   getPermissionsGrouped,
 } from '../../../features/auth-admin/authAdminApi';
+import {
+  assertDirectlyAssignablePermissions,
+  isDirectlyAssignablePermission,
+  isWorkReportManagedPermission,
+  normalizePermissionCatalogItem,
+  WORK_REPORT_MANAGED_ASSIGNMENT_MESSAGE,
+} from '../../../features/auth-admin/permissionAssignmentPolicy';
 import { useAvailableRoles } from '../../../features/auth-admin/useAvailableRoles';
+import { WorkReportAuthorizationCard } from '../../../features/work-report-authorizations/WorkReportAuthorizationCard';
 import { AUTH_ADMIN_PERMISSIONS } from '../../../features/auth/permissions';
 import { useAuth } from '../../../features/auth/useAuth';
 import type { Employee } from '../../../features/employees/employeeTypes';
@@ -44,7 +52,11 @@ export function AccessTab({ employee }: Props) {
   const canReadRoles = can('auth.role.read');
   const canAssignRoles = can(AUTH_ADMIN_PERMISSIONS.ROLES_ASSIGN);
   const canAssignPerms = can(AUTH_ADMIN_PERMISSIONS.PERMISSIONS_ASSIGN);
+  const canAssignSensitivePerms = can(AUTH_ADMIN_PERMISSIONS.ASSIGN_SENSITIVE_PERMISSION);
   const canReadPerms = can('auth.role.read');
+  const canReadWorkReportAuthorization = can('admin.work_report_authorization.read');
+  const canManageWorkReportAuthorization = can('admin.work_report_authorization.manage');
+  const canAuditWorkReportAuthorization = can('admin.work_report_authorization.audit');
   const { roles: roleCatalog, asSelectOptions: roleOptions } = useAvailableRoles();
 
   const authUserId = employee.authUserId;
@@ -73,6 +85,18 @@ export function AccessTab({ employee }: Props) {
         disabled: permission.isSensitive === true,
       })),
   );
+  const permissionCatalog = (permissionCatalogQuery.data?.systems ?? []).flatMap((group) =>
+    group.permissions.map(normalizePermissionCatalogItem),
+  );
+  const directPermissionOptions = permissionOptions
+    .filter((option) => {
+      const permission = permissionCatalog.find((item) => item.code === option.value);
+      return permission ? isDirectlyAssignablePermission(permission) : false;
+    })
+    .map((option) => {
+      const permission = permissionCatalog.find((item) => item.code === option.value)!;
+      return { ...option, disabled: permission.isSensitive && !canAssignSensitivePerms };
+    });
 
   const invalidate = async () => {
     await queryClient.invalidateQueries({ queryKey: ['effective-permissions', authUserId] });
@@ -95,11 +119,13 @@ export function AccessTab({ employee }: Props) {
   });
 
   const assignPermsMutation = useMutation({
-    mutationFn: (perms: string[]) =>
-      assignPermissions(authUserId!, {
-        permissions: perms,
+    mutationFn: (perms: string[]) => {
+      const validated = assertDirectlyAssignablePermissions(perms, permissionCatalog);
+      return assignPermissions(authUserId!, {
+        permissions: validated.map((permission) => permission.code),
         reason: 'HR admin assigned permissions',
-      }),
+      });
+    },
     onSuccess: async () => {
       notifications.show({ color: 'green', message: 'Đã cập nhật permissions.' });
       setPermModalOpen(false);
@@ -150,6 +176,9 @@ export function AccessTab({ employee }: Props) {
   const hasSensitive = selectedRoles.some((role) => sensitiveRoleKeys.has(role));
   const hasRoleDiff = [...selectedRoles].sort().join('|') !== [...effectivePerms.roles].sort().join('|');
   const hasPermissionDiff = [...selectedPerms].sort().join('|') !== [...effectivePerms.directPermissions].sort().join('|');
+  const workReportPermissions = effectivePerms.effectivePermissionDetails.filter(
+    (detail) => detail.permissionKey.startsWith('work_report.'),
+  );
 
   return (
     <Stack gap="lg">
@@ -209,6 +238,40 @@ export function AccessTab({ employee }: Props) {
               </Group>
             )}
           </div>
+
+          {workReportPermissions.length > 0 ? (
+            <Alert color="grape" title="Work Report authorization">
+              <Stack gap="xs">
+                {workReportPermissions.map((detail) => {
+                  const catalogPermission = permissionCatalog.find((item) => item.code === detail.permissionKey);
+                  const managedByHrm = catalogPermission ? isWorkReportManagedPermission(catalogPermission) : true;
+                  return (
+                    <div key={detail.permissionKey}>
+                      <Group gap="xs">
+                        <Code>{detail.permissionKey}</Code>
+                        <Badge color="grape" variant="light">HRM-managed</Badge>
+                        <Badge color="gray" variant="light">Specialized projection</Badge>
+                        <Badge color={detail.effective ? 'green' : 'gray'} variant="light">
+                          {detail.effective ? 'Effective' : 'Inactive'}
+                        </Badge>
+                      </Group>
+                      <Text size="xs" c="dimmed" mt={4}>
+                        {managedByHrm ? WORK_REPORT_MANAGED_ASSIGNMENT_MESSAGE : 'This permission is read-only in account authorization.'}
+                      </Text>
+                    </div>
+                  );
+                })}
+              </Stack>
+            </Alert>
+          ) : null}
+
+          <WorkReportAuthorizationCard
+            employee={employee}
+            authUserId={authUserId}
+            canRead={canReadWorkReportAuthorization}
+            canManage={canManageWorkReportAuthorization}
+            canAudit={canAuditWorkReportAuthorization}
+          />
 
           <div>
             <Title order={6} mb="xs">Effective Permissions</Title>
@@ -270,7 +333,7 @@ export function AccessTab({ employee }: Props) {
           <MultiSelect
             label="Quyền trực tiếp"
             description="Danh mục và sensitive metadata lấy trực tiếp từ Auth. Permission inherited không được sửa tại đây."
-            data={permissionOptions}
+            data={directPermissionOptions}
             value={selectedPerms}
             onChange={setSelectedPerms}
             searchable

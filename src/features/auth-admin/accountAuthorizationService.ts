@@ -26,6 +26,8 @@ import type {
   Permission,
   Role,
 } from './accountAuthorizationTypes';
+import { assertDirectlyAssignablePermissions } from './permissionAssignmentPolicy';
+import { normalizePermissionCatalogItem } from './permissionAssignmentPolicy';
 
 type ListAccountRowsParams = {
   search?: string;
@@ -45,20 +47,7 @@ type ListAccountRowsResult = {
 const AUTH_ADMIN_PUBLIC_BASE = '/api/v1/auth-admin';
 
 function toPermission(definition: PermissionDefinition): Permission {
-  const code = definition.key;
-  const [systemPart = 'unknown', modulePart = 'general', actionPart = 'read'] = code.split('.');
-
-  return {
-    id: definition.id,
-    code,
-    name: definition.name ?? code,
-    system: definition.system ?? definition.domain ?? systemPart,
-    module: definition.module ?? modulePart,
-    action: definition.action ?? actionPart,
-    description: definition.description ?? undefined,
-    isSensitive: definition.isSensitive === true,
-    assignable: definition.assignable !== false,
-  };
+  return normalizePermissionCatalogItem(definition);
 }
 
 function toRole(
@@ -167,6 +156,7 @@ function resolvePermissionByCode(
     module,
     action,
     isSensitive: false,
+    active: false,
     assignable: false,
   };
 }
@@ -369,7 +359,12 @@ export async function updateAccountDirectPermissions(
   accountId: string,
   overrides: Array<{ permissionKey: string; effect: 'ALLOW' | 'DENY'; reason?: string }>,
   reason: string,
+  catalog: Permission[],
 ) {
+  assertDirectlyAssignablePermissions(
+    overrides.map((override) => override.permissionKey),
+    catalog,
+  );
   return assignPermissionOverrides(accountId, { overrides, reason }).catch((error) =>
     normalizeAuthzError(
       error,
