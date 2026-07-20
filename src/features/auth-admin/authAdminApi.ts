@@ -2,6 +2,7 @@ import { authAdminApi } from '../../api/authAdminApiClient';
 import type {
   AuthAdminUser,
   AssignPermissionsInput,
+  AssignPermissionOverridesInput,
   AssignPermissionGroupsInput,
   AssignPermissionsResult,
   AssignRolesInput,
@@ -213,6 +214,16 @@ export async function assignPermissions(
   input: AssignPermissionsInput,
 ): Promise<AssignPermissionsResult> {
   return authAdminApi.put<AssignPermissionsResult>(`${BASE}/users/${authUserId}/permissions`, input);
+}
+
+export async function assignPermissionOverrides(
+  authUserId: string,
+  input: AssignPermissionOverridesInput,
+): Promise<AssignPermissionsResult> {
+  return authAdminApi.put<AssignPermissionsResult>(
+    `${BASE}/users/${authUserId}/permission-overrides`,
+    input,
+  );
 }
 
 export async function getUserPermissionGroups(

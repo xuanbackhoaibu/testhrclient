@@ -14,9 +14,12 @@ import { LoadingState } from '../../shared/components/LoadingState';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
 import { formatDate } from '../../shared/utils/date';
+import { useAuth } from '../../features/auth/useAuth';
+import { HR_PERMISSIONS } from '../../features/auth/permissions';
 
 export function LeavePage() {
   const queryClient = useQueryClient();
+  const { can } = useAuth();
   const [form] = Form.useForm<LeaveRequestPayload>();
   const [open, setOpen] = useState(false);
   const [params, setParams] = useState({ page: 1, pageSize: 10, employeeId: undefined as string | undefined, leaveType: undefined as string | undefined, status: undefined as string | undefined });
@@ -60,7 +63,7 @@ export function LeavePage() {
 
   return (
     <>
-      <PageHeader title="Leave" subtitle="Leave workflow demo với validation ngày nghỉ." actions={<Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Create</Button>} />
+      <PageHeader title="Leave" subtitle="Leave workflow" actions={can(HR_PERMISSIONS.LEAVE_CREATE) ? <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Create</Button> : undefined} />
       <Card className="page-card">
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
           <Row gutter={12}>
@@ -95,10 +98,10 @@ export function LeavePage() {
                 title: 'Actions',
                 render: (_, record) => (
                   <Space wrap>
-                    {record.status === 'DRAFT' ? <Button onClick={() => statusMutation.mutate({ id: record.id, action: 'submit' })}>Submit</Button> : null}
-                    {record.status === 'SUBMITTED' ? <Button onClick={() => statusMutation.mutate({ id: record.id, action: 'approve' })}>Approve</Button> : null}
-                    {record.status === 'SUBMITTED' ? <Button danger onClick={() => statusMutation.mutate({ id: record.id, action: 'reject' })}>Reject</Button> : null}
-                    {['DRAFT', 'SUBMITTED'].includes(record.status) ? <Button onClick={() => statusMutation.mutate({ id: record.id, action: 'cancel' })}>Cancel</Button> : null}
+                    {record.status === 'DRAFT' && can(HR_PERMISSIONS.LEAVE_SUBMIT) ? <Button onClick={() => statusMutation.mutate({ id: record.id, action: 'submit' })}>Submit</Button> : null}
+                    {record.status === 'SUBMITTED' && can(HR_PERMISSIONS.LEAVE_APPROVE) ? <Button onClick={() => statusMutation.mutate({ id: record.id, action: 'approve' })}>Approve</Button> : null}
+                    {record.status === 'SUBMITTED' && can(HR_PERMISSIONS.LEAVE_REJECT) ? <Button danger onClick={() => statusMutation.mutate({ id: record.id, action: 'reject' })}>Reject</Button> : null}
+                    {['DRAFT', 'SUBMITTED'].includes(record.status) && can(HR_PERMISSIONS.LEAVE_CANCEL) ? <Button onClick={() => statusMutation.mutate({ id: record.id, action: 'cancel' })}>Cancel</Button> : null}
                   </Space>
                 ),
               },

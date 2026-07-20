@@ -209,7 +209,7 @@ export function EmployeesPage() {
   const mayCreateEmployee = can(HR_PERMISSIONS.EMPLOYEE_CREATE);
   const mayEditEmployee = can(HR_PERMISSIONS.EMPLOYEE_UPDATE);
   const mayImportEmployees = can(HR_PERMISSIONS.EMPLOYEE_IMPORT);
-  const mayExportEmployees = can(HR_PERMISSIONS.EMPLOYEE_READ);
+  const mayExportEmployees = can(HR_PERMISSIONS.EMPLOYEE_EXPORT);
   const mayReadAccounts = can(AUTH_ADMIN_PERMISSIONS.USERS_READ);
   const mayProvisionAccounts = can(AUTH_ADMIN_PERMISSIONS.USERS_PROVISION);
   const queryClient = useQueryClient();

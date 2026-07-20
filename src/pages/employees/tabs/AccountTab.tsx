@@ -34,7 +34,7 @@ import {
   updateAccountStatus,
 } from '../../../features/auth-admin/authAdminApi';
 import { ACCOUNT_STATUS_LABELS } from '../../../features/auth-admin/authAdminTypes';
-import { AUTH_ADMIN_PERMISSIONS, HR_PERMISSIONS } from '../../../features/auth/permissions';
+import { AUTH_ADMIN_PERMISSIONS } from '../../../features/auth/permissions';
 import { useAuth } from '../../../features/auth/useAuth';
 import type { Employee } from '../../../features/employees/employeeTypes';
 import { api } from '../../../shared/api/httpClient';
@@ -81,8 +81,7 @@ export function AccountTab({ employee }: Props) {
   }>(null);
 
   const canRead = can(AUTH_ADMIN_PERMISSIONS.USERS_READ);
-  const canCreate =
-    can(AUTH_ADMIN_PERMISSIONS.USERS_PROVISION) && can(HR_PERMISSIONS.ACCOUNT_UPDATE);
+  const canCreate = can(AUTH_ADMIN_PERMISSIONS.USERS_PROVISION);
   const canSendActivation = can(AUTH_ADMIN_PERMISSIONS.USERS_SEND_ACTIVATION);
   const canUpdateStatus = can(AUTH_ADMIN_PERMISSIONS.USERS_UPDATE);
   const canRevokeSessions = can(AUTH_ADMIN_PERMISSIONS.USERS_REVOKE_SESSIONS);

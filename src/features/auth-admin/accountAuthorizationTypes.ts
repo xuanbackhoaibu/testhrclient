@@ -1,5 +1,10 @@
 import type { AuthAdminUser } from './authAdminTypes';
 import type { Employee } from '../employees/employeeTypes';
+import type {
+  EffectivePermissionDeny,
+  EffectivePermissionGrantSource,
+  UserPermissionOverride,
+} from '@hacom/chat-shared-types/auth';
 
 export type Permission = {
   id: string;
@@ -9,6 +14,8 @@ export type Permission = {
   module: string;
   action: string;
   description?: string;
+  isSensitive: boolean;
+  assignable: boolean;
 };
 
 export type PermissionGroup = {
@@ -17,6 +24,7 @@ export type PermissionGroup = {
   name: string;
   system: string;
   permissions?: Permission[];
+  isSensitive: boolean;
 };
 
 export type Role = {
@@ -30,7 +38,7 @@ export type Role = {
 };
 
 export type AccountPermissionSource = {
-  type: 'ROLE' | 'PERMISSION_GROUP' | 'DIRECT_PERMISSION' | 'DIRECT_PERMISSION_GROUP';
+  type: EffectivePermissionGrantSource;
   id: string;
   code: string;
   name: string;
@@ -39,6 +47,8 @@ export type AccountPermissionSource = {
 export type EffectivePermission = {
   permission: Permission;
   sources: AccountPermissionSource[];
+  denies: EffectivePermissionDeny[];
+  effective: boolean;
 };
 
 export type MissingAccountAuthorizationEndpoint = {
@@ -53,6 +63,7 @@ export type AccountAuthorizationDetail = {
   roles: Role[];
   directPermissionGroups: PermissionGroup[];
   directPermissions: Permission[];
+  directOverrides: UserPermissionOverride[];
   effectivePermissions: EffectivePermission[];
   roleCatalog: Role[];
   permissionGroupCatalog: PermissionGroup[];

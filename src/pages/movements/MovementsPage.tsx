@@ -35,9 +35,12 @@ import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { MOVEMENT_TYPE_OPTIONS } from "../../shared/constants/statuses";
 import { formatDate } from "../../shared/utils/date";
+import { useAuth } from "../../features/auth/useAuth";
+import { HR_PERMISSIONS } from "../../features/auth/permissions";
 
 export function MovementsPage() {
   const queryClient = useQueryClient();
+  const { can } = useAuth();
   const [form] = Form.useForm<MovementPayload>();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Movement | null>(null);
@@ -97,7 +100,7 @@ export function MovementsPage() {
       <PageHeader
         title="Điều chuyển"
         subtitle="Quy trình điều chuyển với các trạng thái gửi duyệt, duyệt, từ chối và hủy."
-        actions={
+        actions={can(HR_PERMISSIONS.MOVEMENT_CREATE) ? (
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -105,7 +108,7 @@ export function MovementsPage() {
           >
             Tạo mới
           </Button>
-        }
+        ) : undefined}
       />
       <Card className="page-card">
         <Space direction="vertical" size={16} style={{ width: "100%" }}>
@@ -186,7 +189,7 @@ export function MovementsPage() {
                     <Button onClick={() => setSelected(record)}>
                       Chi tiết
                     </Button>
-                    {record.status === "DRAFT" ? (
+                    {record.status === "DRAFT" && can(HR_PERMISSIONS.MOVEMENT_SUBMIT) ? (
                       <Button
                         onClick={() =>
                           statusMutation.mutate({
@@ -198,7 +201,7 @@ export function MovementsPage() {
                         Gửi duyệt
                       </Button>
                     ) : null}
-                    {record.status === "SUBMITTED" ? (
+                    {record.status === "SUBMITTED" && can(HR_PERMISSIONS.MOVEMENT_APPROVE) ? (
                       <Button
                         onClick={() =>
                           statusMutation.mutate({
@@ -210,7 +213,7 @@ export function MovementsPage() {
                         Duyệt
                       </Button>
                     ) : null}
-                    {record.status === "SUBMITTED" ? (
+                    {record.status === "SUBMITTED" && can(HR_PERMISSIONS.MOVEMENT_REJECT) ? (
                       <Button
                         danger
                         onClick={() =>
@@ -223,7 +226,7 @@ export function MovementsPage() {
                         Từ chối
                       </Button>
                     ) : null}
-                    {["DRAFT", "SUBMITTED"].includes(record.status) ? (
+                    {["DRAFT", "SUBMITTED"].includes(record.status) && can(HR_PERMISSIONS.MOVEMENT_CANCEL) ? (
                       <Button
                         onClick={() =>
                           statusMutation.mutate({

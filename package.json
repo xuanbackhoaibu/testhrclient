@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@hacom/chat-shared-types": "file:../chat-shared-types",
     "@ant-design/icons": "^6.1.1",
     "@mantine/core": "^9.2.1",
     "@mantine/dates": "^9.2.1",
