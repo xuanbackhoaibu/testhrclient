@@ -49,7 +49,8 @@ export function PositionsPage() {
   const { can, permissions, roles } = useAuth();
   const canCreatePosition = can(HR_PERMISSIONS.POSITION_CREATE);
   const canEditPosition = can(HR_PERMISSIONS.POSITION_UPDATE);
-  const canImportPositions = can(HR_PERMISSIONS.POSITION_CREATE);
+  const canImportPositions = can(HR_PERMISSIONS.EMPLOYEE_IMPORT);
+  const canExportPositions = can(HR_PERMISSIONS.POSITION_READ);
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<Position | null>(null);
   const [open, setOpen] = useState(false);
@@ -266,6 +267,7 @@ export function PositionsPage() {
               isDownloadingTemplate={templateDownload.isDownloadingTemplate}
               isExporting={exportMutation.isPending}
               canImport={canImportPositions}
+              canExport={canExportPositions}
             />
             {canCreatePosition ? (
               <Button

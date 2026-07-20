@@ -598,7 +598,7 @@ export function AttendanceMappingPage() {
             >
               Quay lại
             </Button>
-            {can(HR_PERMISSIONS.ATTENDANCE_SYNC) && (
+            {can(HR_PERMISSIONS.ATTENDANCE_UPDATE) && (
               <Button
                 variant="light"
                 color="teal"

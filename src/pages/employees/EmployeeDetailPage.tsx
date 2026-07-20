@@ -44,7 +44,7 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 export function EmployeeDetailPage() {
   const { id: employeeId } = useParams();
   const { can } = useAuth();
-  const canReadAccount = can('hr.account.read');
+  const canReadAccount = can('auth.user.read');
 
   const { data, isLoading, error, refetch } = useEmployeeDetail(employeeId, {
     includeAccount: canReadAccount,

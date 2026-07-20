@@ -34,6 +34,7 @@ import {
   updateAccountStatus,
 } from '../../../features/auth-admin/authAdminApi';
 import { ACCOUNT_STATUS_LABELS } from '../../../features/auth-admin/authAdminTypes';
+import { AUTH_ADMIN_PERMISSIONS, HR_PERMISSIONS } from '../../../features/auth/permissions';
 import { useAuth } from '../../../features/auth/useAuth';
 import type { Employee } from '../../../features/employees/employeeTypes';
 import { api } from '../../../shared/api/httpClient';
@@ -79,12 +80,12 @@ export function AccountTab({ employee }: Props) {
     onConfirm: () => void;
   }>(null);
 
-  const canRead = can('hr.account.read');
-  const canCreate = can('hr.account.create');
-  const canSendActivation = can('hr.account.reset_password');
-  const canActivate = can('hr.account.restore');
-  const canSuspend = can('hr.account.lock');
-  const canUpdate = can('hr.account.update');
+  const canRead = can(AUTH_ADMIN_PERMISSIONS.USERS_READ);
+  const canCreate =
+    can(AUTH_ADMIN_PERMISSIONS.USERS_PROVISION) && can(HR_PERMISSIONS.ACCOUNT_UPDATE);
+  const canSendActivation = can(AUTH_ADMIN_PERMISSIONS.USERS_SEND_ACTIVATION);
+  const canUpdateStatus = can(AUTH_ADMIN_PERMISSIONS.USERS_UPDATE);
+  const canRevokeSessions = can(AUTH_ADMIN_PERMISSIONS.USERS_REVOKE_SESSIONS);
 
   const { data: authUser, isLoading, error, refetch } = useQuery({
     queryKey: ['auth-user-by-employee', employee.id],
@@ -403,7 +404,7 @@ export function AccountTab({ employee }: Props) {
             </Button>
           )}
 
-          {canActivate && (isSuspended || isDisabled) && (
+          {canUpdateStatus && (isSuspended || isDisabled) && (
             <Button
               leftSection={<IconLockOpen size={16} />}
               variant="light"
@@ -422,7 +423,7 @@ export function AccountTab({ employee }: Props) {
             </Button>
           )}
 
-          {canSuspend && isActive && (
+          {canUpdateStatus && isActive && (
             <Button
               leftSection={<IconLock size={16} />}
               variant="light"
@@ -441,7 +442,7 @@ export function AccountTab({ employee }: Props) {
             </Button>
           )}
 
-          {canUpdate && !isDisabled && (
+          {canUpdateStatus && !isDisabled && (
             <Button
               leftSection={<IconPower size={16} />}
               variant="light"
@@ -460,7 +461,7 @@ export function AccountTab({ employee }: Props) {
             </Button>
           )}
 
-          {canUpdate && (
+          {canRevokeSessions && (
             <Button
               variant="light"
               loading={revokeSessionsMutation.isPending}

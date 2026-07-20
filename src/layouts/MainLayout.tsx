@@ -31,7 +31,7 @@ import {
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../features/auth/useAuth";
-import { AUTH_ADMIN_PERMISSIONS, HR_PERMISSIONS } from "../features/auth/permissions";
+import { canAccessRoute } from "../features/auth/routePolicies";
 import { NotificationBell } from "../features/notifications/NotificationBell";
 import { BrandLogo } from "../shared/components/BrandLogo";
 import { ROUTES } from "../shared/constants/routes";
@@ -106,28 +106,14 @@ export function MainLayout() {
   const [opened, { toggle, close }] = useDisclosure();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, can, hasAnyPermission } = useAuth();
+  const { user, logout } = useAuth();
 
-  const visibleMainItems = mainItems.filter((item) => {
-    if (item.path === ROUTES.employees) return can(HR_PERMISSIONS.EMPLOYEE_READ);
-    if (item.path === ROUTES.auditLogs) return can(HR_PERMISSIONS.AUDIT_READ);
-    if (item.path === ROUTES.settings) return can(HR_PERMISSIONS.EMPLOYEE_READ);
-    if (item.path === ROUTES.attendance) return can(HR_PERMISSIONS.ATTENDANCE_READ);
-    if (item.path === ROUTES.attendanceMapping) return can(HR_PERMISSIONS.ATTENDANCE_READ);
-    return true;
-  });
+  const visibleMainItems = mainItems.filter((item) => canAccessRoute(user, item.path));
+  const visibleOrgItems = orgItems.filter((item) => canAccessRoute(user, item.path));
+  const visibleIamItems = iamItems.filter((item) => canAccessRoute(user, item.path));
 
-  const showOrganizationMenu = hasAnyPermission([
-    HR_PERMISSIONS.UNIT_READ,
-    HR_PERMISSIONS.DEPARTMENT_READ,
-    HR_PERMISSIONS.POSITION_READ,
-    HR_PERMISSIONS.BUSINESS_SECTOR_READ,
-  ]);
-  const showIamMenu =
-    can(AUTH_ADMIN_PERMISSIONS.USERS_READ) ||
-    can(AUTH_ADMIN_PERMISSIONS.ROLES_READ) ||
-    can(AUTH_ADMIN_PERMISSIONS.PERMISSIONS_READ) ||
-    can(AUTH_ADMIN_PERMISSIONS.PERMISSION_GROUPS_READ);
+  const showOrganizationMenu = visibleOrgItems.length > 0;
+  const showIamMenu = visibleIamItems.length > 0;
   const selectedPath = location.pathname.startsWith("/employees/")
     ? ROUTES.employees
     : location.pathname;
@@ -225,7 +211,7 @@ export function MainLayout() {
                   defaultOpened
                   className="app-nav-link"
                 >
-                  {orgItems.map((item) => {
+                  {visibleOrgItems.map((item) => {
                     const Icon = item.icon;
                     return (
                       <NavLink
@@ -245,17 +231,10 @@ export function MainLayout() {
                 <NavLink
                   label="Phân quyền"
                   leftSection={<IconShield size={18} />}
-                  defaultOpened={iamItems.some((item) => isActive(location.pathname, item.path))}
+                  defaultOpened={visibleIamItems.some((item) => isActive(location.pathname, item.path))}
                   className="app-nav-link"
                 >
-                  {iamItems
-                    .filter((item) => {
-                      if (item.path === ROUTES.accounts) return can(AUTH_ADMIN_PERMISSIONS.USERS_READ);
-                      if (item.path === ROUTES.pendingHrLinkAccounts) return can(AUTH_ADMIN_PERMISSIONS.USERS_READ);
-                      if (item.path === ROUTES.roles) return can(AUTH_ADMIN_PERMISSIONS.ROLES_READ);
-                      if (item.path === ROUTES.permissions) return can(AUTH_ADMIN_PERMISSIONS.PERMISSIONS_READ);
-                      return can(AUTH_ADMIN_PERMISSIONS.PERMISSION_GROUPS_READ);
-                    })
+                  {visibleIamItems
                     .map((item) => {
                       const Icon = item.icon;
                       return (

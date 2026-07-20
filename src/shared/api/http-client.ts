@@ -3,11 +3,11 @@ import axios, { type AxiosRequestConfig } from 'axios';
 import {
   clearSession,
   getAccessToken,
-  getRefreshToken,
-  isRememberMe,
-  setAccessToken,
-  setRefreshToken,
+  refreshCurrentAuthority,
+  refreshSessionAuthority,
+  setSessionUser,
 } from '../../features/auth/authClient';
+import { useAuthStore } from '../../features/auth/authStore';
 import { ApiError, type ApiEnvelope } from './api.types';
 import { handleAxiosResponseError } from './errorHandler';
 
@@ -99,9 +99,18 @@ async function handle401AndRetry(
       },
     });
     return response;
-  } catch {
+  } catch (error) {
     // Refresh failed — clear session and redirect
     refreshPromise = null;
+    if ((error as { authorityRefreshFailed?: boolean })?.authorityRefreshFailed) {
+      setSessionUser(null);
+      return Promise.reject(error);
+    }
+    if (axios.isAxiosError(error) && error.response?.status === 403) {
+      setSessionUser(null);
+      useAuthStore.getState().setError('Tài khoản đã xác thực nhưng không còn quyền truy cập HRM.');
+      return Promise.reject(error);
+    }
     clearSession();
     window.location.assign('/login');
     return Promise.reject(new Error('Session refresh failed'));
@@ -111,44 +120,7 @@ async function handle401AndRetry(
 }
 
 async function doRefreshSession(): Promise<void> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) {
-    throw new Error('No refresh token available');
-  }
-
-  const authBaseUrl =
-    (import.meta.env.VITE_AUTH_SERVICE_BASE_URL as string | undefined) ||
-    (import.meta.env.VITE_CHAT_AUTH_BASE_URL as string | undefined);
-
-  if (!authBaseUrl) {
-    throw new Error('Auth service base URL not configured');
-  }
-
-  interface RefreshEnvelope {
-    success?: boolean;
-    data?: { accessToken?: string; refreshToken?: string };
-    accessToken?: string;
-    refreshToken?: string;
-  }
-
-  const response = await axios.post<RefreshEnvelope>(
-    `${authBaseUrl}/refresh`,
-    { refreshToken },
-    { timeout: 10000 },
-  );
-
-  const data = response.data?.data ?? response.data;
-  const newAccessToken = data?.accessToken;
-  if (!newAccessToken) {
-    throw new Error('Refresh response missing accessToken');
-  }
-
-  setAccessToken(newAccessToken);
-
-  const newRefreshToken = data?.refreshToken;
-  if (newRefreshToken) {
-    setRefreshToken(newRefreshToken, isRememberMe());
-  }
+  await refreshSessionAuthority();
 }
 
 axiosInstance.interceptors.request.use((config) => {
@@ -180,6 +152,23 @@ axiosInstance.interceptors.response.use(
     ) {
       originalRequest._retry = true;
       return handle401AndRetry(originalRequest);
+    }
+
+    if (error.response?.status === 403) {
+      // A denied request can indicate that authority changed after this page
+      // rendered. Refresh once for subsequent UI decisions; never retry the
+      // denied mutation automatically.
+      void refreshCurrentAuthority().catch(() => undefined);
+    }
+
+    const responseCode = error.response?.data?.errorCode ?? error.response?.data?.code;
+    if (
+      error.response?.status === 503 &&
+      typeof responseCode === 'string' &&
+      responseCode.includes('AUTH')
+    ) {
+      setSessionUser(null);
+      useAuthStore.getState().setError('Dịch vụ authority tạm thời không khả dụng.');
     }
 
     return handleAxiosResponseError(error, () => {

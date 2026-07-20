@@ -1,5 +1,12 @@
 import axios, { type AxiosRequestConfig } from 'axios';
-import { clearSession, getAccessToken } from '../features/auth/authClient';
+import {
+  clearSession,
+  getAccessToken,
+  refreshCurrentAuthority,
+  refreshSessionAuthority,
+  setSessionUser,
+} from '../features/auth/authClient';
+import { useAuthStore } from '../features/auth/authStore';
 import { unwrapApiEnvelope } from '../shared/api/httpClient';
 import { handleAxiosResponseError } from '../shared/api/errorHandler';
 
@@ -55,8 +62,17 @@ async function handleAuthService401AndRetry(
         Authorization: `Bearer ${newToken}`,
       },
     });
-  } catch {
+  } catch (error) {
     authRefreshPromise = null;
+    if ((error as { authorityRefreshFailed?: boolean })?.authorityRefreshFailed) {
+      setSessionUser(null);
+      return Promise.reject(error);
+    }
+    if (axios.isAxiosError(error) && error.response?.status === 403) {
+      setSessionUser(null);
+      useAuthStore.getState().setError('Tài khoản đã xác thực nhưng không còn quyền truy cập HRM.');
+      return Promise.reject(error);
+    }
     clearSession();
     window.location.assign('/login');
     return Promise.reject(new Error('Auth service refresh failed'));
@@ -66,19 +82,7 @@ async function handleAuthService401AndRetry(
 }
 
 async function doAuthRefresh(): Promise<void> {
-  const token = getAccessToken();
-  if (!token) throw new Error('No token');
-
-  const baseURL = import.meta.env.VITE_AUTH_API_BASE_URL
-    ?? import.meta.env.VITE_AUTH_SERVICE_BASE_URL
-    ?? import.meta.env.VITE_CHAT_AUTH_BASE_URL
-    ?? '';
-  const url = baseURL.replace(/\/auth\/?$/, '') + '/api/v1/auth/me';
-
-  await axios.get(url, {
-    headers: { Authorization: `Bearer ${token}` },
-    timeout: 10000,
-  });
+  await refreshSessionAuthority();
 }
 
 authAdminApiClient.interceptors.request.use((config) => {
@@ -108,6 +112,20 @@ authAdminApiClient.interceptors.response.use(
     ) {
       originalRequest._retry = true;
       return handleAuthService401AndRetry(originalRequest);
+    }
+
+    if (error.response?.status === 403) {
+      void refreshCurrentAuthority().catch(() => undefined);
+    }
+
+    const responseCode = error.response?.data?.errorCode ?? error.response?.data?.code;
+    if (
+      error.response?.status === 503 &&
+      typeof responseCode === 'string' &&
+      responseCode.includes('AUTH')
+    ) {
+      setSessionUser(null);
+      useAuthStore.getState().setError('Dịch vụ authority tạm thời không khả dụng.');
     }
 
     return handleAxiosResponseError(error, () => {

@@ -38,7 +38,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../../features/auth/useAuth";
-import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { validatePasswordPolicy } from "../../features/auth/passwordPolicy";
 import { AUTH_ADMIN_PERMISSIONS } from "../../features/auth/permissions";
 import { AccountAuthorizationModal } from "../../features/auth-admin/AccountAuthorizationModal";
@@ -145,10 +144,9 @@ export function AccountsPage() {
   const { can, hasAnyPermission } = useAuth();
 
   const canReadAccounts = can(AUTH_ADMIN_PERMISSIONS.USERS_READ);
-  const canResetPassword = hasAnyPermission([
-    HR_PERMISSIONS.ACCOUNT_RESET_PASSWORD,
-    AUTH_ADMIN_PERMISSIONS.USERS_UPDATE,
-  ]);
+  const canResetPassword = can(AUTH_ADMIN_PERMISSIONS.USERS_UPDATE);
+  const canUpdateStatus = can(AUTH_ADMIN_PERMISSIONS.USERS_UPDATE);
+  const canRevokeSessions = can(AUTH_ADMIN_PERMISSIONS.USERS_REVOKE_SESSIONS);
   const canUpdateAccounts = hasAnyPermission([
     AUTH_ADMIN_PERMISSIONS.USERS_UPDATE,
     AUTH_ADMIN_PERMISSIONS.USERS_REVOKE_SESSIONS,
@@ -158,7 +156,6 @@ export function AccountsPage() {
     AUTH_ADMIN_PERMISSIONS.ROLES_ASSIGN,
     AUTH_ADMIN_PERMISSIONS.PERMISSIONS_ASSIGN,
     AUTH_ADMIN_PERMISSIONS.PERMISSION_GROUPS_ASSIGN,
-    AUTH_ADMIN_PERMISSIONS.USERS_UPDATE,
   ]);
 
   const [search, setSearch] = useState("");
@@ -508,6 +505,7 @@ export function AccountsPage() {
 
                   {row.account.accountState === "ACTIVE" ? (
                     <Menu.Item
+                      disabled={!canUpdateStatus}
                       leftSection={<IconLock size={14} />}
                       color="orange"
                       onClick={() =>
@@ -520,6 +518,7 @@ export function AccountsPage() {
 
                   {row.account.accountState === "LOCKED" ? (
                     <Menu.Item
+                      disabled={!canUpdateStatus}
                       leftSection={<IconLockOpen size={14} />}
                       color="green"
                       onClick={() =>
@@ -537,6 +536,7 @@ export function AccountsPage() {
 
                   {row.account.accountState === "ACTIVE" ? (
                     <Menu.Item
+                      disabled={!canUpdateStatus}
                       leftSection={<IconUserOff size={14} />}
                       color="red"
                       onClick={() =>
@@ -555,6 +555,7 @@ export function AccountsPage() {
                   {row.account.accountState === "DEACTIVATED" ||
                   row.account.accountState === "DISABLED" ? (
                     <Menu.Item
+                      disabled={!canUpdateStatus}
                       leftSection={<IconUserCheck size={14} />}
                       color="green"
                       onClick={() =>
@@ -572,6 +573,7 @@ export function AccountsPage() {
 
                   {row.account.accountState !== "TOMBSTONED" ? (
                     <Menu.Item
+                      disabled={!canUpdateStatus}
                       leftSection={<IconTrash size={14} />}
                       color="red"
                       onClick={() =>
@@ -605,6 +607,7 @@ export function AccountsPage() {
                   </Menu.Item>
 
                   <Menu.Item
+                    disabled={!canUpdateStatus}
                     leftSection={<IconRefresh size={14} />}
                     color="orange"
                     onClick={() =>
@@ -615,6 +618,7 @@ export function AccountsPage() {
                   </Menu.Item>
 
                   <Menu.Item
+                    disabled={!canRevokeSessions}
                     leftSection={<IconRefresh size={14} />}
                     onClick={() =>
                       handleAction(

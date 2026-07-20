@@ -9,7 +9,6 @@ import {
   hasAllPermissions,
   hasAnyPermission,
   hasPermission,
-  hasRole as hasNormalizedRole,
 } from './permissions';
 import type { DemoRole, LoginCredentials } from './types';
 
@@ -40,9 +39,9 @@ export function useAuth() {
       }
 
       if (status === 403) {
-        clearSession();
-        useAuthStore.getState().setError('Tài khoản đã xác thực nhưng chưa được cấp quyền HRM.');
-        message.error('Tài khoản đã xác thực nhưng chưa được cấp quyền HRM.');
+        setSessionUser(null);
+        useAuthStore.getState().setError('Tài khoản đã xác thực nhưng không được phép thực hiện thao tác này.');
+        message.error('Bạn không có quyền thực hiện thao tác này.');
         return;
       }
 
@@ -51,7 +50,8 @@ export function useAuth() {
         return;
       }
 
-      useAuthStore.getState().setError('Không tải được thông tin người dùng HRM.');
+      setSessionUser(null);
+      useAuthStore.getState().setError('Không thể xác minh quyền hiện tại. Vui lòng thử lại.');
     }
   }
 
@@ -61,10 +61,6 @@ export function useAuth() {
 
   function logout(): void {
     void logoutClient();
-  }
-
-  function hasRole(role: string): boolean {
-    return hasNormalizedRole(user, role as never);
   }
 
   function can(permission: string): boolean {
@@ -89,7 +85,6 @@ export function useAuth() {
     login,
     logout,
     refreshCurrentUser,
-    hasRole,
     hasPermission: can,
     hasAnyPermission: hasAnyPermissionForUser,
     hasAllPermissions: hasAllPermissionsForUser,

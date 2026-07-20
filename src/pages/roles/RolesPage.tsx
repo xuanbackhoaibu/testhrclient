@@ -42,7 +42,6 @@ import type {
   RoleDefinition,
   RoleDetail,
 } from '../../features/auth-admin/authAdminTypes';
-import { SENSITIVE_ROLES } from '../../features/auth-admin/authAdminTypes';
 
 const STATUS_COLOR: Record<string, string> = { active: 'green', disabled: 'gray' };
 const STATUS_LABEL: Record<string, string> = { active: 'Đang dùng', disabled: 'Vô hiệu' };
@@ -202,7 +201,7 @@ export function RolesPage() {
               <Group gap="md">
                 <IconShield
                   size={20}
-                  color={SENSITIVE_ROLES.has(role.key ?? '') ? '#fa5252' : '#228be6'}
+                  color={role.isSensitive ? '#fa5252' : '#228be6'}
                 />
                 <Stack gap={2}>
                   <Group gap="xs">

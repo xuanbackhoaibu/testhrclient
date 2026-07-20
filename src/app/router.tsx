@@ -1,7 +1,7 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter } from 'react-router-dom';
 
+import { AuthorizationLanding } from '../features/auth/AuthorizationLanding';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
-import { AUTH_ADMIN_PERMISSIONS, HR_PERMISSIONS } from '../features/auth/permissions';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { MainLayout } from '../layouts/MainLayout';
 import { AttendancePage } from '../pages/attendance/AttendancePage';
@@ -52,12 +52,12 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <Navigate to={ROUTES.dashboard} replace /> },
-      { path: ROUTES.dashboard, element: <DashboardPage /> },
+      { index: true, element: <AuthorizationLanding /> },
+      { path: ROUTES.dashboard, element: <ProtectedRoute route={ROUTES.dashboard}><DashboardPage /></ProtectedRoute> },
       {
         path: ROUTES.employees,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.EMPLOYEE_READ]}>
+          <ProtectedRoute route={ROUTES.employees}>
             <EmployeesPage />
           </ProtectedRoute>
         ),
@@ -65,7 +65,7 @@ export const router = createBrowserRouter([
       {
         path: '/employees/:id',
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.EMPLOYEE_READ]}>
+          <ProtectedRoute route="/employees/:id">
             <EmployeeDetailPage />
           </ProtectedRoute>
         ),
@@ -73,7 +73,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.businessSectors,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.BUSINESS_SECTOR_READ]}>
+          <ProtectedRoute route={ROUTES.businessSectors}>
             <BusinessSectorsPage />
           </ProtectedRoute>
         ),
@@ -81,7 +81,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.units,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.UNIT_READ]}>
+          <ProtectedRoute route={ROUTES.units}>
             <UnitsPage />
           </ProtectedRoute>
         ),
@@ -89,7 +89,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.departments,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.DEPARTMENT_READ]}>
+          <ProtectedRoute route={ROUTES.departments}>
             <DepartmentsPage />
           </ProtectedRoute>
         ),
@@ -97,18 +97,18 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.positions,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.POSITION_READ]}>
+          <ProtectedRoute route={ROUTES.positions}>
             <PositionsPage />
           </ProtectedRoute>
         ),
       },
-      { path: ROUTES.movements, element: <MovementsPage /> },
-      { path: ROUTES.contracts, element: <ContractsPage /> },
-      { path: ROUTES.leave, element: <LeavePage /> },
+      { path: ROUTES.movements, element: <ProtectedRoute route={ROUTES.movements}><MovementsPage /></ProtectedRoute> },
+      { path: ROUTES.contracts, element: <ProtectedRoute route={ROUTES.contracts}><ContractsPage /></ProtectedRoute> },
+      { path: ROUTES.leave, element: <ProtectedRoute route={ROUTES.leave}><LeavePage /></ProtectedRoute> },
       {
         path: ROUTES.attendance,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.ATTENDANCE_READ]}>
+          <ProtectedRoute route={ROUTES.attendance}>
             <AttendancePage />
           </ProtectedRoute>
         ),
@@ -116,7 +116,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.attendanceMapping,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.ATTENDANCE_READ]}>
+          <ProtectedRoute route={ROUTES.attendanceMapping}>
             <AttendanceMappingPage />
           </ProtectedRoute>
         ),
@@ -124,17 +124,17 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.calendar,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.CALENDAR_READ]}>
+          <ProtectedRoute route={ROUTES.calendar}>
             <CalendarPage />
           </ProtectedRoute>
         ),
       },
-      { path: ROUTES.onboarding, element: <OnboardingPage /> },
-      { path: ROUTES.offboarding, element: <OffboardingPage /> },
+      { path: ROUTES.onboarding, element: <ProtectedRoute route={ROUTES.onboarding}><OnboardingPage /></ProtectedRoute> },
+      { path: ROUTES.offboarding, element: <ProtectedRoute route={ROUTES.offboarding}><OffboardingPage /></ProtectedRoute> },
       {
         path: ROUTES.imports,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.EMPLOYEE_IMPORT]}>
+          <ProtectedRoute route={ROUTES.imports}>
             <ImportsPage />
           </ProtectedRoute>
         ),
@@ -142,7 +142,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.auditLogs,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.AUDIT_READ]}>
+          <ProtectedRoute route={ROUTES.auditLogs}>
             <AuditLogsPage />
           </ProtectedRoute>
         ),
@@ -150,7 +150,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.settings,
         element: (
-          <ProtectedRoute permissions={[HR_PERMISSIONS.EMPLOYEE_READ]}>
+          <ProtectedRoute route={ROUTES.settings}>
             <SettingsPage />
           </ProtectedRoute>
         ),
@@ -158,7 +158,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.accounts,
         element: (
-          <ProtectedRoute permissions={[AUTH_ADMIN_PERMISSIONS.USERS_READ]}>
+          <ProtectedRoute route={ROUTES.accounts}>
             <AccountsPage />
           </ProtectedRoute>
         ),
@@ -166,7 +166,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.pendingHrLinkAccounts,
         element: (
-          <ProtectedRoute permissions={[AUTH_ADMIN_PERMISSIONS.USERS_READ]}>
+          <ProtectedRoute route={ROUTES.pendingHrLinkAccounts}>
             <PendingHrLinkAccountsPage />
           </ProtectedRoute>
         ),
@@ -174,7 +174,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.roles,
         element: (
-          <ProtectedRoute permissions={[AUTH_ADMIN_PERMISSIONS.ROLES_READ]}>
+          <ProtectedRoute route={ROUTES.roles}>
             <RolesPage />
           </ProtectedRoute>
         ),
@@ -182,7 +182,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.permissions,
         element: (
-          <ProtectedRoute permissions={[AUTH_ADMIN_PERMISSIONS.PERMISSIONS_READ]}>
+          <ProtectedRoute route={ROUTES.permissions}>
             <PermissionsPage />
           </ProtectedRoute>
         ),
@@ -190,12 +190,12 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.permissionGroups,
         element: (
-          <ProtectedRoute permissions={[AUTH_ADMIN_PERMISSIONS.PERMISSION_GROUPS_READ]}>
+          <ProtectedRoute route={ROUTES.permissionGroups}>
             <PermissionGroupsPage />
           </ProtectedRoute>
         ),
       },
-      { path: '*', element: <Navigate to={ROUTES.dashboard} replace /> },
+      { path: '*', element: <AuthorizationLanding /> },
     ],
   },
 ]);

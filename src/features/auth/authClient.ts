@@ -73,6 +73,78 @@ export function setRefreshToken(token: string, persistent: boolean): void {
   }
 }
 
+export async function refreshCurrentAuthority(): Promise<AuthUser> {
+  const accessToken = getAccessToken();
+  const hrBaseUrl = readAuthEnv('VITE_HR_API_BASE_URL', 'VITE_API_BASE_URL');
+  if (!accessToken || !hrBaseUrl) {
+    setSessionUser(null);
+    throw new Error('Access token or HR API base URL is not configured');
+  }
+
+  try {
+    const meResponse = await axios.get(`${hrBaseUrl.replace(/\/$/, '')}/auth/me`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      timeout: 10000,
+    });
+    const identity = normalizeCurrentUser(meResponse);
+    setSessionUser(identity);
+    useAuthStore.getState().setError(null);
+    return identity;
+  } catch (error) {
+    // Never retain the previous authority when the canonical replacement fails.
+    setSessionUser(null);
+    const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+    useAuthStore.getState().setError(
+      status === 403
+        ? 'Tài khoản đã xác thực nhưng không còn quyền truy cập HRM.'
+        : 'Không thể xác minh quyền hiện tại từ dịch vụ authority.',
+    );
+    throw error;
+  }
+}
+
+export async function refreshSessionAuthority(): Promise<void> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    throw new Error('No refresh token available');
+  }
+
+  const authBaseUrl = readAuthEnv(
+    'VITE_AUTH_SERVICE_BASE_URL',
+    'VITE_CHAT_AUTH_BASE_URL',
+  );
+  if (!authBaseUrl) {
+    throw new Error('Auth or HR API base URL is not configured');
+  }
+
+  const refreshResponse = await axios.post<{
+    data?: { accessToken?: string; refreshToken?: string };
+    accessToken?: string;
+    refreshToken?: string;
+  }>(`${authBaseUrl.replace(/\/$/, '')}/refresh`, { refreshToken }, { timeout: 10000 });
+  const refreshed = refreshResponse.data.data ?? refreshResponse.data;
+  if (!refreshed.accessToken) {
+    throw new Error('Refresh response missing accessToken');
+  }
+
+  setAccessToken(refreshed.accessToken);
+  if (refreshed.refreshToken) {
+    setRefreshToken(refreshed.refreshToken, isRememberMe());
+  }
+
+  // A rotated token is not authority. Replace the entire snapshot with a
+  // fresh canonical HR `/auth/me` response before retrying the failed request.
+  try {
+    await refreshCurrentAuthority();
+  } catch (error) {
+    const statusCode = axios.isAxiosError(error) ? error.response?.status : undefined;
+    throw Object.assign(
+      new Error('Session refreshed but canonical authority replacement failed.', { cause: error }),
+      { authorityRefreshFailed: true, statusCode },
+    );
+  }
+}
+
 export function isRememberMe(): boolean {
   return getStoredString(STORAGE_KEYS.rememberMe) === 'true';
 }
@@ -90,11 +162,11 @@ export function setAccessToken(token: string): void {
 }
 
 export function setSessionUser(user: AuthUser | null): void {
-  const normalizedUser = user ? normalizeCurrentUser(user) : null;
-
   if (user) {
-    setStoredString(STORAGE_KEYS.currentUser, JSON.stringify(normalizedUser));
-    queryClient.setQueryData(CURRENT_USER_QUERY_KEY, normalizedUser);
+    // Canonical authority is memory-only. Persisting permissions or scopes can
+    // leak stale privileged UI into another session on the same browser.
+    removeStoredString(STORAGE_KEYS.currentUser);
+    queryClient.setQueryData(CURRENT_USER_QUERY_KEY, user);
   } else {
     removeStoredString(STORAGE_KEYS.currentUser);
     queryClient.removeQueries({ queryKey: CURRENT_USER_QUERY_KEY });
@@ -102,21 +174,8 @@ export function setSessionUser(user: AuthUser | null): void {
 
   useAuthStore.getState().setSession({
     accessToken: getAccessToken(),
-    user: normalizedUser,
+    user,
   });
-}
-
-export function getStoredUser(): AuthUser | null {
-  const raw = getStoredString(STORAGE_KEYS.currentUser);
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    return normalizeCurrentUser(JSON.parse(raw));
-  } catch {
-    return null;
-  }
 }
 
 function readAuthLoginError(error: unknown): string {
@@ -147,7 +206,20 @@ export async function login(
   if (isMockMode) {
     const role = typeof input === 'string' ? input : 'HR';
     const token = MOCK_TOKENS[role];
-    const user = normalizeCurrentUser(MOCK_AUTH_USERS[role]);
+    const mockUser = MOCK_AUTH_USERS[role];
+    const user = normalizeCurrentUser({
+      ...mockUser,
+      identity: {
+        authUserId: mockUser.authUserId ?? mockUser.externalAuthUserId,
+        accountStatus: mockUser.accountStatus,
+        roles: mockUser.roles,
+        permissions: mockUser.permissions,
+        scopes: mockUser.scopes,
+        dataScopes: mockUser.dataScopes,
+        permissionVersion: mockUser.permissionVersion ?? 1,
+        tokenVersion: mockUser.tokenVersion ?? 1,
+      },
+    });
     setStoredString(STORAGE_KEYS.accessToken, token);
     queryClient.clear();
     setSessionUser(user);
@@ -225,7 +297,19 @@ export function handleCallback(): string {
 
   const mockUser = getMockUserByToken(token);
   if (mockUser) {
-    setSessionUser(normalizeCurrentUser(mockUser));
+    setSessionUser(normalizeCurrentUser({
+      ...mockUser,
+      identity: {
+        authUserId: mockUser.authUserId ?? mockUser.externalAuthUserId,
+        accountStatus: mockUser.accountStatus,
+        roles: mockUser.roles,
+        permissions: mockUser.permissions,
+        scopes: mockUser.scopes,
+        dataScopes: mockUser.dataScopes,
+        permissionVersion: mockUser.permissionVersion ?? 1,
+        tokenVersion: mockUser.tokenVersion ?? 1,
+      },
+    }));
   }
 
   return token;

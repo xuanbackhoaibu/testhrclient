@@ -68,7 +68,8 @@ function permissionLabel(permission: Permission) {
 }
 
 function roleOptionLabel(role: Role) {
-  return role.description ? `${role.name} (${role.code})` : role.name;
+  const label = role.description ? `${role.name} (${role.code})` : role.name;
+  return role.isSensitive ? `${label} — Nhạy cảm` : label;
 }
 
 export function AccountAuthorizationModal({
@@ -83,11 +84,9 @@ export function AccountAuthorizationModal({
 
   const canAssignRoles = hasAnyPermission([
     AUTH_ADMIN_PERMISSIONS.ROLES_ASSIGN,
-    AUTH_ADMIN_PERMISSIONS.USERS_UPDATE,
   ]);
   const canAssignDirectPermissions = hasAnyPermission([
     AUTH_ADMIN_PERMISSIONS.PERMISSIONS_ASSIGN,
-    AUTH_ADMIN_PERMISSIONS.USERS_UPDATE,
   ]);
   const editDisabled = !canAssignRoles && !canAssignDirectPermissions;
 
@@ -488,7 +487,11 @@ export function AccountAuthorizationModal({
                       <Checkbox
                         key={role.code}
                         checked={selectedRoleSet.has(role.code)}
-                        disabled={editDisabled || !canAssignRoles}
+                        disabled={
+                          editDisabled ||
+                          !canAssignRoles ||
+                          role.isSensitive === true
+                        }
                         label={roleOptionLabel(role)}
                         description={role.description}
                         onChange={(event) => {

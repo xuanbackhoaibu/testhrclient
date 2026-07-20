@@ -25,7 +25,7 @@ import {
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { AUTH_ADMIN_PERMISSIONS } from "../../features/auth/permissions";
+import { AUTH_ADMIN_PERMISSIONS, HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
 import {
   disablePendingHrLinkUser,
@@ -109,14 +109,12 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 export function PendingHrLinkAccountsPage() {
   const queryClient = useQueryClient();
-  const { can, hasAnyPermission } = useAuth();
+  const { can } = useAuth();
 
   const canRead = can(AUTH_ADMIN_PERMISSIONS.USERS_READ);
-  const canUpdateClaim = hasAnyPermission([
-    AUTH_ADMIN_PERMISSIONS.USERS_UPDATE,
-    AUTH_ADMIN_PERMISSIONS.USERS_PROVISION,
-  ]);
-  const canLink = can(AUTH_ADMIN_PERMISSIONS.USERS_PROVISION);
+  const canUpdateClaim = can(AUTH_ADMIN_PERMISSIONS.USERS_UPDATE);
+  const canLink =
+    can(AUTH_ADMIN_PERMISSIONS.USERS_PROVISION) && can(HR_PERMISSIONS.EMPLOYEE_READ);
   const canDisable = can(AUTH_ADMIN_PERMISSIONS.USERS_UPDATE);
 
   const [search, setSearch] = useState("");
