@@ -20,7 +20,7 @@ import { useQuery } from '@tanstack/react-query';
 import { listAllDepartments } from '../organization/departmentsApi';
 import { listAllUnits } from '../organization/unitsApi';
 import { listPositionsSelect } from '../organization/positionsApi';
-import { createEmployee } from '../employees/employeesApi';
+import { createEmployee, listAllEmployees, updateEmployee } from '../employees/employeesApi';
 import { bulkProvisionFromEmployees } from '../auth-admin/authAdminApi';
 import type { Employee } from '../employees/employeeTypes';
 import type { Department, PositionSelectOption, Unit } from '../organization/organizationTypes';
@@ -30,8 +30,9 @@ type SheetRows = StyledCell[][];
 type SheetSpec = { data: SheetRows; sheet?: string; stickyRowsCount?: number; columns?: { width?: number }[] };
 type MultiSheetFn = (sheets: SheetSpec[]) => { toFile: (name: string) => Promise<void> };
 
-// Mã NS hợp lệ: 2 chữ hoa + 6 chữ số (VD: HN000001)
-const EMPLOYEE_CODE_RE = /^[A-Z]{2}\d{6}$/;
+// Mã NS hợp lệ: prefix lĩnh vực (2-10 ký tự A-Z/0-9) + 6 chữ số (VD: HN000001, IPR000064).
+// Phải khớp regex DTO backend: /^[A-Z0-9]{2,10}\d{6}$/.
+const EMPLOYEE_CODE_RE = /^[A-Z0-9]{2,10}\d{6}$/;
 
 interface ParsedRow {
   rowNumber: number;
@@ -54,6 +55,7 @@ interface ParsedRow {
 interface ImportResult {
   row: ParsedRow;
   employee: Employee | null;
+  action?: 'created' | 'updated';
   error?: string;
 }
 
@@ -207,7 +209,7 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
         if (!deptCode) errors.push('Thiếu mã phòng ban');
         if (!posCode) errors.push('Thiếu mã chức vụ');
         if (employeeCode && !EMPLOYEE_CODE_RE.test(employeeCode)) {
-          errors.push(`Mã NS "${employeeCode}" không đúng định dạng (VD: HN000001)`);
+          errors.push(`Mã NS "${employeeCode}" không đúng định dạng: prefix lĩnh vực + 6 chữ số (VD: HN000001, IPR000064)`);
         }
 
         const unit = unitCode ? unitMap.get(unitCode) : undefined;
@@ -291,23 +293,49 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
     const importResults: ImportResult[] = [];
     const today = new Date().toISOString().slice(0, 10);
 
+    // Lấy mã nhân sự làm chuẩn: dòng nào có Mã NS đã tồn tại thì cập nhật (bổ
+    // sung dữ liệu), khác/để trống thì tạo mới. Tra 1 lần rồi map code -> id.
+    const existingByCode = new Map<string, string>();
+    try {
+      const all = await listAllEmployees();
+      for (const e of all) {
+        if (e.employeeCode) existingByCode.set(e.employeeCode.toUpperCase(), e.id);
+      }
+    } catch {
+      // Không tra được danh sách hiện có -> coi như tạo mới hết (giữ hành vi cũ).
+    }
+
     for (let i = 0; i < validRows.length; i++) {
       const row = validRows[i];
+      const existingId = row.employeeCode ? existingByCode.get(row.employeeCode) : undefined;
       try {
-        // Truyền mã chấm công ngay khi tạo: nếu không nhập mã NS, backend sẽ
-        // sinh mã nhân sự từ mã chấm công (VD: 1888 + HC => HC001888).
-        const employee = await createEmployee({
-          employeeCode: row.employeeCode || undefined,
-          biotimeEmployeeCode: row.biotimeCode || undefined,
-          fullName: row.fullName,
-          phone: row.phone || undefined,
-          hireDate: today,
-          employmentStatus: 'ACTIVE',
-          unitId: row.unitId,
-          departmentId: row.departmentId,
-          positionId: row.positionId,
-        });
-        importResults.push({ row, employee });
+        if (existingId) {
+          // Trùng mã nhân sự: cập nhật thay thế các trường, không tạo trùng.
+          const employee = await updateEmployee(existingId, {
+            biotimeEmployeeCode: row.biotimeCode || undefined,
+            fullName: row.fullName,
+            phone: row.phone || undefined,
+            unitId: row.unitId,
+            departmentId: row.departmentId,
+            positionId: row.positionId,
+          });
+          importResults.push({ row, employee, action: 'updated' });
+        } else {
+          // Truyền mã chấm công ngay khi tạo: nếu không nhập mã NS, backend sẽ
+          // sinh mã nhân sự từ mã chấm công (VD: 1888 + HC => HC001888).
+          const employee = await createEmployee({
+            employeeCode: row.employeeCode || undefined,
+            biotimeEmployeeCode: row.biotimeCode || undefined,
+            fullName: row.fullName,
+            phone: row.phone || undefined,
+            hireDate: today,
+            employmentStatus: 'ACTIVE',
+            unitId: row.unitId,
+            departmentId: row.departmentId,
+            positionId: row.positionId,
+          });
+          importResults.push({ row, employee, action: 'created' });
+        }
       } catch (err) {
         importResults.push({
           row,
@@ -324,6 +352,8 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
   }
 
   const createdResults = results.filter((r) => r.employee !== null);
+  const newlyCreated = createdResults.filter((r) => r.action === 'created');
+  const updatedResults = createdResults.filter((r) => r.action === 'updated');
   const failedResults = results.filter((r) => r.employee === null);
 
   async function handleFinish() {
@@ -512,7 +542,8 @@ export function QuickEmployeeImportModal({ open, onClose, onSuccess }: Props) {
         {phase === 'done' && (
           <>
             <Alert color={failedResults.length > 0 ? 'yellow' : 'green'}>
-              Đã tạo <strong>{createdResults.length}</strong> nhân sự thành công.
+              Đã tạo mới <strong>{newlyCreated.length}</strong>, cập nhật{' '}
+              <strong>{updatedResults.length}</strong> nhân sự (trùng mã NS).
               {failedResults.length > 0 && (
                 <> Thất bại: <strong>{failedResults.length}</strong>.</>
               )}
