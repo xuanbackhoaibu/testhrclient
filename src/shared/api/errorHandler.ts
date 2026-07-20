@@ -45,6 +45,25 @@ const STATUS_MESSAGES: Record<number, string> = {
   503: 'Dịch vụ đang bảo trì. Vui lòng thử lại sau.',
 };
 
+const AUTHORIZATION_MESSAGES: Record<string, string> = {
+  PERMISSION_DENIED: 'Bạn thiếu quyền hành động bắt buộc.',
+  SCOPE_DENIED: 'Bạn có quyền hành động nhưng resource nằm ngoài phạm vi được cấp.',
+  RESOURCE_ACCESS_DENIED: 'Quan hệ sở hữu hoặc quan hệ nghiệp vụ không cho phép truy cập resource này.',
+  SENSITIVE_ASSIGNMENT_DENIED: 'Bạn không được phép thay đổi quyền nhạy cảm.',
+  SENSITIVE_REVOCATION_DENIED: 'Bạn không được phép thu hồi quyền nhạy cảm.',
+  SENSITIVE_SELF_ROLE_CHANGE_DENIED: 'Không được tự thay đổi role nhạy cảm của chính mình.',
+  SENSITIVE_SELF_PERMISSION_CHANGE_DENIED: 'Không được tự thay đổi permission nhạy cảm của chính mình.',
+  SENSITIVE_SELF_GROUP_CHANGE_DENIED: 'Không được tự thay đổi nhóm quyền nhạy cảm của chính mình.',
+  SENSITIVE_ROLE_CHANGE_REASON_REQUIRED: 'Phải nhập lý do khi thay đổi role nhạy cảm.',
+  SENSITIVE_PERMISSION_CHANGE_REASON_REQUIRED: 'Phải nhập lý do khi thay đổi permission nhạy cảm.',
+  SENSITIVE_GROUP_CHANGE_REASON_REQUIRED: 'Phải nhập lý do khi thay đổi nhóm quyền nhạy cảm.',
+  DIRECT_DENY_REASON_REQUIRED: 'Direct deny bắt buộc phải có lý do.',
+  REDUNDANT_DIRECT_ALLOW: 'Không thể thêm direct allow đã được kế thừa từ role hoặc nhóm quyền.',
+  LAST_ADMIN_PROTECTED: 'Không thể thu hồi quản trị viên cuối cùng.',
+  STALE_AUTHORITY_VERSION: 'Phân quyền đã thay đổi. Dữ liệu quyền sẽ được tải lại trước khi lưu tiếp.',
+  AUTHORITY_SERVICE_UNAVAILABLE: 'Không xác minh được quyền lúc này. Hệ thống không dùng quyền cũ; vui lòng thử lại thủ công.',
+};
+
 function appendRequestId(messageText: string, requestId?: string): string {
   return requestId ? `${messageText} (requestId: ${requestId})` : messageText;
 }
@@ -115,9 +134,10 @@ export async function handleAxiosResponseError(
       apiError.requiredPermissions?.length
         ? ` Quyền yêu cầu: ${apiError.requiredPermissions.join(', ')}.`
         : '';
+    const authorizationMessage = AUTHORIZATION_MESSAGES[errorCode];
     showError(
       appendRequestId(
-        `${apiError.message || STATUS_MESSAGES[403]}${requiredPermissions}`,
+        `${authorizationMessage || apiError.message || STATUS_MESSAGES[403]}${requiredPermissions}`,
         apiError.requestId,
       ),
     );
@@ -161,7 +181,19 @@ export async function handleAxiosResponseError(
   }
 
   if (apiError.statusCode === 409) {
-    showError(appendRequestId(apiError.message || STATUS_MESSAGES[409], apiError.requestId));
+    showError(appendRequestId(
+      AUTHORIZATION_MESSAGES[apiError.errorCode]
+        || `${apiError.message || STATUS_MESSAGES[409]} Vui lòng tải lại dữ liệu trước khi thử lại.`,
+      apiError.requestId,
+    ));
+    return Promise.reject(apiError);
+  }
+
+  if (apiError.statusCode === 503 && apiError.errorCode.includes('AUTH')) {
+    showError(appendRequestId(
+      AUTHORIZATION_MESSAGES.AUTHORITY_SERVICE_UNAVAILABLE,
+      apiError.requestId,
+    ));
     return Promise.reject(apiError);
   }
 

@@ -43,20 +43,23 @@ type Props = {
 
 const PERMISSION_SOURCE_LABELS: Record<string, string> = {
   ROLE: "Từ Vai trò",
-  PERMISSION_GROUP: "Từ Nhóm quyền",
-  DIRECT_PERMISSION: "Quyền trực tiếp",
-  DIRECT_PERMISSION_GROUP: "Nhóm quyền trực tiếp",
+  ROLE_PERMISSION_GROUP: "Từ nhóm quyền của vai trò",
+  USER_PERMISSION_GROUP: "Nhóm quyền trực tiếp",
+  DIRECT_ALLOW: "Direct allow",
+  ADMIN_AUTHORITY: "Quyền quản trị canonical",
+  SPECIALIZED_PROJECTION: "Projection chuyên biệt",
+  SUPER_ADMIN_WILDCARD: "Wildcard super-admin",
 };
 
 function badgeColorForSource(sourceType: string) {
   switch (sourceType) {
     case "ROLE":
       return "blue";
-    case "PERMISSION_GROUP":
+    case "ROLE_PERMISSION_GROUP":
       return "violet";
-    case "DIRECT_PERMISSION":
+    case "DIRECT_ALLOW":
       return "orange";
-    case "DIRECT_PERMISSION_GROUP":
+    case "USER_PERMISSION_GROUP":
       return "teal";
     default:
       return "gray";
@@ -88,11 +91,16 @@ export function AccountAuthorizationModal({
   const canAssignDirectPermissions = hasAnyPermission([
     AUTH_ADMIN_PERMISSIONS.PERMISSIONS_ASSIGN,
   ]);
+  const canAssignSensitiveRole = hasAnyPermission([AUTH_ADMIN_PERMISSIONS.ASSIGN_SENSITIVE_ROLE]);
+  const canRevokeSensitiveRole = hasAnyPermission([AUTH_ADMIN_PERMISSIONS.REVOKE_SENSITIVE_ROLE]);
+  const canAssignSensitivePermission = hasAnyPermission([AUTH_ADMIN_PERMISSIONS.ASSIGN_SENSITIVE_PERMISSION]);
+  const canAssignSensitiveGroup = hasAnyPermission([AUTH_ADMIN_PERMISSIONS.ASSIGN_SENSITIVE_GROUP]);
   const editDisabled = !canAssignRoles && !canAssignDirectPermissions;
 
   const [selectedRoleCodes, setSelectedRoleCodes] = useState<string[]>([]);
   const [selectedDirectPermissionIds, setSelectedDirectPermissionIds] =
     useState<string[]>([]);
+  const [selectedDirectDenyIds, setSelectedDirectDenyIds] = useState<string[]>([]);
   const [selectedDirectPermissionGroupIds, setSelectedDirectPermissionGroupIds] =
     useState<string[]>([]);
   const [directPermissionReason, setDirectPermissionReason] = useState("");
@@ -132,6 +140,10 @@ export function AccountAuthorizationModal({
       new Map(
         permissionCatalog.map((permission) => [permission.id, permission]),
       ),
+    [permissionCatalog],
+  );
+  const permissionByCode = useMemo(
+    () => new Map(permissionCatalog.map((permission) => [permission.code, permission])),
     [permissionCatalog],
   );
 
@@ -219,6 +231,12 @@ export function AccountAuthorizationModal({
       authzQuery.data?.directPermissions.map((permission) => permission.id) ??
         [],
     );
+    setSelectedDirectDenyIds(
+      authzQuery.data?.directOverrides
+        .filter((override) => override.effect === "DENY")
+        .map((override) => permissionByCode.get(override.permissionKey)?.id)
+        .filter((id): id is string => Boolean(id)) ?? [],
+    );
     setSelectedDirectPermissionGroupIds(
       authzQuery.data?.directPermissionGroups.map((group) => group.id) ?? [],
     );
@@ -274,19 +292,30 @@ export function AccountAuthorizationModal({
     },
     onError: (error: Error) => {
       notifications.show({ color: "red", message: error.message });
+      void authzQuery.refetch();
     },
   });
 
   const updateDirectPermissionsMutation = useMutation({
     mutationFn: async () => {
-      const permissionCodes = selectedDirectPermissionIds
-        .map((permissionId) => permissionById.get(permissionId)?.code)
-        .filter((code): code is string => Boolean(code));
+      const reason = directPermissionReason.trim();
+      const overrides = [
+        ...displayedDirectPermissionIds.map((permissionId) => ({
+          permissionKey: permissionById.get(permissionId)?.code ?? "",
+          effect: "ALLOW" as const,
+          reason,
+        })),
+        ...displayedDirectDenyIds.map((permissionId) => ({
+          permissionKey: permissionById.get(permissionId)?.code ?? "",
+          effect: "DENY" as const,
+          reason,
+        })),
+      ].filter((override) => Boolean(override.permissionKey));
 
       return updateAccountDirectPermissions(
         accountId!,
-        permissionCodes,
-        directPermissionReason.trim(),
+        overrides,
+        reason,
       );
     },
     onSuccess: async () => {
@@ -301,6 +330,7 @@ export function AccountAuthorizationModal({
     },
     onError: (error: Error) => {
       notifications.show({ color: "red", message: error.message });
+      void authzQuery.refetch();
     },
   });
 
@@ -320,6 +350,7 @@ export function AccountAuthorizationModal({
     },
     onError: (error: Error) => {
       notifications.show({ color: "red", message: error.message });
+      void authzQuery.refetch();
     },
   });
 
@@ -334,6 +365,14 @@ export function AccountAuthorizationModal({
         .sort() ?? [],
     [authzQuery.data?.directPermissions],
   );
+  const originalDirectDenyIds = useMemo(
+    () => authzQuery.data?.directOverrides
+      .filter((override) => override.effect === "DENY")
+      .map((override) => permissionByCode.get(override.permissionKey)?.id)
+      .filter((id): id is string => Boolean(id))
+      .sort() ?? [],
+    [authzQuery.data?.directOverrides, permissionByCode],
+  );
   const originalDirectPermissionGroupIds = useMemo(
     () => authzQuery.data?.directPermissionGroups.map((group) => group.id).sort() ?? [],
     [authzQuery.data?.directPermissionGroups],
@@ -346,26 +385,27 @@ export function AccountAuthorizationModal({
         : (authzQuery.data?.roles.map((role) => role.code) ?? []),
     [authzQuery.data?.roles, roleDirty, selectedRoleCodes],
   );
-  const displayedDirectPermissionIds = useMemo(
-    () =>
-      directPermissionDirty
-        ? selectedDirectPermissionIds
-        : (authzQuery.data?.directPermissions.map(
-            (permission) => permission.id,
-          ) ?? []),
-    [
-      authzQuery.data?.directPermissions,
-      directPermissionDirty,
-      selectedDirectPermissionIds,
-    ],
-  );
+  const displayedDirectPermissionIds = directPermissionDirty
+    ? selectedDirectPermissionIds
+    : (authzQuery.data?.directPermissions.map(
+        (permission) => permission.id,
+      ) ?? []);
+  const displayedDirectDenyIds = directPermissionDirty
+    ? selectedDirectDenyIds
+    : originalDirectDenyIds;
   const selectedRoleSet = useMemo(
     () => new Set(displayedRoleCodes),
     [displayedRoleCodes],
   );
-  const selectedDirectPermissionIdSet = useMemo(
-    () => new Set(displayedDirectPermissionIds),
-    [displayedDirectPermissionIds],
+  const selectedDirectPermissionIdSet = new Set(displayedDirectPermissionIds);
+  const selectedDirectDenyIdSet = new Set(displayedDirectDenyIds);
+  const inheritedPermissionCodes = useMemo(
+    () => new Set(
+      (authzQuery.data?.effectivePermissions ?? [])
+        .filter((entry) => entry.sources.some((source) => source.type !== "DIRECT_ALLOW"))
+        .map((entry) => entry.permission.code),
+    ),
+    [authzQuery.data?.effectivePermissions],
   );
   const displayedDirectPermissionGroupIds = useMemo(
     () => directPermissionGroupDirty
@@ -382,10 +422,38 @@ export function AccountAuthorizationModal({
     [...displayedRoleCodes].sort().join("|") !== originalRoleCodes.join("|");
   const hasDirectPermissionChanges =
     [...displayedDirectPermissionIds].sort().join("|") !==
-    originalDirectPermissionIds.join("|");
+      originalDirectPermissionIds.join("|") ||
+    [...displayedDirectDenyIds].sort().join("|") !== originalDirectDenyIds.join("|");
   const hasDirectPermissionGroupChanges =
     [...displayedDirectPermissionGroupIds].sort().join("|") !==
     originalDirectPermissionGroupIds.join("|");
+  const roleDiff = {
+    added: displayedRoleCodes.filter((code) => !originalRoleCodes.includes(code)),
+    removed: originalRoleCodes.filter((code) => !displayedRoleCodes.includes(code)),
+  };
+  const hasSensitiveRoleChanges = [...roleDiff.added, ...roleDiff.removed].some(
+    (code) => roleOptions.some((role) => role.code === code && role.isSensitive),
+  );
+  const changedDirectPermissionGroupIds = [
+    ...displayedDirectPermissionGroupIds.filter(
+      (id) => !originalDirectPermissionGroupIds.includes(id),
+    ),
+    ...originalDirectPermissionGroupIds.filter(
+      (id) => !displayedDirectPermissionGroupIds.includes(id),
+    ),
+  ];
+  const hasSensitivePermissionGroupChanges = changedDirectPermissionGroupIds.some(
+    (id) =>
+      permissionGroupCatalog.some(
+        (group) => group.id === id && group.isSensitive,
+      ),
+  );
+  const overrideDiff = {
+    allowAdded: displayedDirectPermissionIds.filter((id) => !originalDirectPermissionIds.includes(id)),
+    allowRemoved: originalDirectPermissionIds.filter((id) => !displayedDirectPermissionIds.includes(id)),
+    denyAdded: displayedDirectDenyIds.filter((id) => !originalDirectDenyIds.includes(id)),
+    denyRemoved: originalDirectDenyIds.filter((id) => !displayedDirectDenyIds.includes(id)),
+  };
 
   const disabledTooltip = "Bạn không có quyền thực hiện thao tác này";
   const renderEffectivePermission = (entry: EffectivePermission) => (
@@ -399,6 +467,9 @@ export function AccountAuthorizationModal({
     >
       <Text fw={600} size="sm">
         {entry.permission.code}
+        <Badge ml="xs" color={entry.effective ? "green" : "red"} variant="light">
+          {entry.effective ? "Có hiệu lực" : "Bị vô hiệu"}
+        </Badge>
       </Text>
       <Text size="xs" c="dimmed">
         {entry.permission.name}
@@ -420,6 +491,15 @@ export function AccountAuthorizationModal({
           ))
         )}
       </Group>
+      {entry.denies.length > 0 ? (
+        <Stack gap={4} mt="xs">
+          {entry.denies.map((deny) => (
+            <Badge key={deny.sourceId ?? deny.reason} color="red" variant="light">
+              Direct deny{deny.reason ? `: ${deny.reason}` : ""}
+            </Badge>
+          ))}
+        </Stack>
+      ) : null}
     </Box>
   );
 
@@ -490,7 +570,11 @@ export function AccountAuthorizationModal({
                         disabled={
                           editDisabled ||
                           !canAssignRoles ||
-                          role.isSensitive === true
+                          (role.isSensitive === true && (
+                            selectedRoleSet.has(role.code)
+                              ? !canRevokeSensitiveRole
+                              : !canAssignSensitiveRole
+                          ))
                         }
                         label={roleOptionLabel(role)}
                         description={role.description}
@@ -518,8 +602,15 @@ export function AccountAuthorizationModal({
                   </Stack>
                 </ScrollArea>
 
+                {hasRoleChanges ? (
+                  <Alert color="blue" title="Thay đổi trước khi lưu">
+                    <Text size="sm">Vai trò thêm: {roleDiff.added.join(", ") || "Không có"}</Text>
+                    <Text size="sm">Vai trò thu hồi: {roleDiff.removed.join(", ") || "Không có"}</Text>
+                  </Alert>
+                ) : null}
+
                 <TextInput
-                  label="Lý do (tùy chọn)"
+                  label={hasSensitiveRoleChanges ? "Lý do thay đổi role nhạy cảm" : "Lý do (tùy chọn)"}
                   placeholder="Nhập lý do nếu backend cần ghi audit thêm"
                   value={roleReason}
                   onChange={(event) => setRoleReason(event.currentTarget.value)}
@@ -537,7 +628,10 @@ export function AccountAuthorizationModal({
                       <Button
                         onClick={() => void updateRolesMutation.mutateAsync()}
                         disabled={
-                          !hasRoleChanges || editDisabled || !canAssignRoles
+                          !hasRoleChanges ||
+                          editDisabled ||
+                          !canAssignRoles ||
+                          (hasSensitiveRoleChanges && roleReason.trim().length === 0)
                         }
                         loading={updateRolesMutation.isPending}
                       >
@@ -567,13 +661,17 @@ export function AccountAuthorizationModal({
                         code: group.code,
                         name: group.name,
                         system: group.system ?? "unknown",
+                        isSensitive: group.isSensitive,
                       };
 
                       return (
                         <Checkbox
                           key={mappedGroup.id}
                           checked={selectedDirectPermissionGroupIdSet.has(mappedGroup.id)}
-                          disabled={!canAssignDirectPermissions}
+                          disabled={
+                            !canAssignDirectPermissions ||
+                            (mappedGroup.isSensitive && !canAssignSensitiveGroup)
+                          }
                           onChange={(event) => {
                             const checked = event.currentTarget.checked;
                             setDirectPermissionGroupDirty(true);
@@ -586,7 +684,7 @@ export function AccountAuthorizationModal({
                                 : base.filter((id) => id !== mappedGroup.id);
                             });
                           }}
-                          label={`${mappedGroup.code} · ${mappedGroup.name}`}
+                          label={`${mappedGroup.code} · ${mappedGroup.name}${mappedGroup.isSensitive ? " — Nhạy cảm" : ""}`}
                         />
                       );
                     })}
@@ -597,10 +695,16 @@ export function AccountAuthorizationModal({
                   value={directPermissionGroupReason}
                   onChange={(event) => setDirectPermissionGroupReason(event.currentTarget.value)}
                   disabled={!canAssignDirectPermissions}
+                  required={hasSensitivePermissionGroupChanges}
                 />
                 <Group justify="flex-end">
                   <Button
-                    disabled={!canAssignDirectPermissions || !hasDirectPermissionGroupChanges}
+                    disabled={
+                      !canAssignDirectPermissions ||
+                      !hasDirectPermissionGroupChanges ||
+                      (hasSensitivePermissionGroupChanges &&
+                        directPermissionGroupReason.trim().length === 0)
+                    }
                     loading={updateDirectPermissionGroupsMutation.isPending}
                     onClick={() => updateDirectPermissionGroupsMutation.mutate()}
                   >
@@ -644,38 +748,73 @@ export function AccountAuthorizationModal({
 
                 <ScrollArea h={320}>
                   <Stack gap="xs">
-                    {filteredPermissions.map((permission) => (
-                      <Checkbox
-                        key={permission.id}
-                        checked={selectedDirectPermissionIdSet.has(
-                          permission.id,
-                        )}
-                        disabled={editDisabled || !canAssignDirectPermissions}
-                        label={permissionLabel(permission)}
-                        description={permission.description}
-                        onChange={(event) => {
-                          const checked = event.currentTarget.checked;
-                          setDirectPermissionDirty(true);
-                          setSelectedDirectPermissionIds((current) =>
-                            checked
-                              ? Array.from(
-                                  new Set([
-                                    ...(directPermissionDirty
-                                      ? current
-                                      : displayedDirectPermissionIds),
-                                    permission.id,
-                                  ]),
-                                )
-                              : (directPermissionDirty
-                                  ? current
-                                  : displayedDirectPermissionIds
-                                ).filter((value) => value !== permission.id),
-                          );
-                        }}
-                      />
-                    ))}
+                    {filteredPermissions.map((permission) => {
+                      const inherited = inheritedPermissionCodes.has(permission.code);
+                      const sensitiveDisabled = permission.isSensitive && !canAssignSensitivePermission;
+                      const baseDisabled = editDisabled || !canAssignDirectPermissions || !permission.assignable || sensitiveDisabled;
+                      return (
+                        <Box key={permission.id} p="xs" style={{ borderBottom: "1px solid var(--mantine-color-gray-2)" }}>
+                          <Group justify="space-between" align="flex-start">
+                            <Box>
+                              <Text size="sm" fw={500}>{permissionLabel(permission)}</Text>
+                              {permission.description ? <Text size="xs" c="dimmed">{permission.description}</Text> : null}
+                              <Group gap="xs" mt={4}>
+                                {inherited ? <Badge color="blue" variant="light">Đã có từ vai trò/nhóm</Badge> : null}
+                                {permission.isSensitive ? <Badge color="red" variant="light">Nhạy cảm</Badge> : null}
+                              </Group>
+                            </Box>
+                            <Group gap="md">
+                              <Checkbox
+                                label="Allow"
+                                checked={selectedDirectPermissionIdSet.has(permission.id)}
+                                disabled={baseDisabled || (inherited && !selectedDirectPermissionIdSet.has(permission.id))}
+                                onChange={(event) => {
+                                  const checked = event.currentTarget.checked;
+                                  setDirectPermissionDirty(true);
+                                  const allowBase = directPermissionDirty ? selectedDirectPermissionIds : displayedDirectPermissionIds;
+                                  setSelectedDirectPermissionIds(checked
+                                    ? Array.from(new Set([...allowBase, permission.id]))
+                                    : allowBase.filter((value) => value !== permission.id));
+                                  if (checked) {
+                                    const denyBase = directPermissionDirty ? selectedDirectDenyIds : displayedDirectDenyIds;
+                                    setSelectedDirectDenyIds(denyBase.filter((value) => value !== permission.id));
+                                  }
+                                }}
+                              />
+                              <Checkbox
+                                label="Deny"
+                                color="red"
+                                checked={selectedDirectDenyIdSet.has(permission.id)}
+                                disabled={baseDisabled}
+                                onChange={(event) => {
+                                  const checked = event.currentTarget.checked;
+                                  setDirectPermissionDirty(true);
+                                  const denyBase = directPermissionDirty ? selectedDirectDenyIds : displayedDirectDenyIds;
+                                  setSelectedDirectDenyIds(checked
+                                    ? Array.from(new Set([...denyBase, permission.id]))
+                                    : denyBase.filter((value) => value !== permission.id));
+                                  if (checked) {
+                                    const allowBase = directPermissionDirty ? selectedDirectPermissionIds : displayedDirectPermissionIds;
+                                    setSelectedDirectPermissionIds(allowBase.filter((value) => value !== permission.id));
+                                  }
+                                }}
+                              />
+                            </Group>
+                          </Group>
+                        </Box>
+                      );
+                    })}
                   </Stack>
                 </ScrollArea>
+
+                {hasDirectPermissionChanges ? (
+                  <Alert color="blue" title="Thay đổi direct override trước khi lưu">
+                    <Text size="sm">Allow thêm: {overrideDiff.allowAdded.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
+                    <Text size="sm">Allow thu hồi: {overrideDiff.allowRemoved.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
+                    <Text size="sm">Deny thêm: {overrideDiff.denyAdded.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
+                    <Text size="sm">Deny thu hồi: {overrideDiff.denyRemoved.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
+                  </Alert>
+                ) : null}
 
                 <TextInput
                   label="Lý do bắt buộc"

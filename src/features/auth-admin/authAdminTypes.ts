@@ -144,6 +144,15 @@ export interface AssignPermissionsInput {
   reason?: string;
 }
 
+export interface AssignPermissionOverridesInput {
+  overrides: Array<{
+    permissionKey: string;
+    effect: 'ALLOW' | 'DENY';
+    reason?: string;
+  }>;
+  reason?: string;
+}
+
 export interface AssignPermissionGroupsInput {
   permissionGroupIds: string[];
   reason?: string;
@@ -161,6 +170,7 @@ export interface AssignPermissionsResult {
 }
 
 export interface EffectivePermissionsResult {
+  contractVersion: number;
   authUserId: string;
   roles: string[];
   directPermissions: string[];
@@ -176,6 +186,9 @@ export interface EffectivePermissionsResult {
   >;
   permissionVersion?: number;
   tokenVersion?: number;
+  directOverrides: UserPermissionOverride[];
+  effectivePermissionDetails: EffectivePermissionDetail[];
+  scopes: AuthorizationScope[];
 }
 
 export interface SendActivationResult {
@@ -232,6 +245,7 @@ export interface PermissionDefinition {
   module?: string | null;
   action?: string | null;
   isSensitive?: boolean;
+  assignable?: boolean;
   status?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -278,6 +292,7 @@ export interface PermissionGroupDefinition {
   system?: string | null;
   module?: string | null;
   status: string;
+  isSensitive?: boolean;
   permissionCount?: number;
   createdAt?: string;
   updatedAt?: string;
@@ -457,3 +472,8 @@ export const ACCOUNT_STATE_COLOR: Record<string, string> = {
   DEACTIVATED: 'red',
   TOMBSTONED: 'gray',
 };
+import type {
+  AuthorizationScope,
+  EffectivePermissionDetail,
+  UserPermissionOverride,
+} from '@hacom/chat-shared-types/auth';

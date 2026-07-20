@@ -36,21 +36,19 @@ test('authority is never restored from persisted current-user data', () => {
   assert.doesNotMatch(source, /function getStoredUser/);
 });
 
-test('sensitive routes without backend permission contracts fail closed', () => {
+test('workflow and audit routes use canonical read permissions', () => {
   const source = read('./routePolicies.ts');
-  for (const route of [
-    'ROUTES.auditLogs',
-    'ROUTES.movements',
-    'ROUTES.contracts',
-    'ROUTES.leave',
-    'ROUTES.onboarding',
-    'ROUTES.offboarding',
+  for (const permission of [
+    'HR_PERMISSIONS.AUDIT_READ',
+    'HR_PERMISSIONS.MOVEMENT_READ',
+    'HR_PERMISSIONS.CONTRACT_READ',
+    'HR_PERMISSIONS.LEAVE_READ',
+    'HR_PERMISSIONS.ONBOARDING_READ',
+    'HR_PERMISSIONS.OFFBOARDING_READ',
   ]) {
-    assert.match(
-      source,
-      new RegExp(`\\[${route.replace('.', '\\.')}\\]: \\{[\\s\\S]{0,180}kind: 'unavailable'`),
-    );
+    assert.match(source, new RegExp(permission.replace('.', '\\.')));
   }
+  assert.doesNotMatch(source, /canonical permission contract/);
 });
 
 test('employee account controls use canonical Auth actor permissions', () => {
@@ -62,4 +60,5 @@ test('employee account controls use canonical Auth actor permissions', () => {
     assert.match(source, /AUTH_ADMIN_PERMISSIONS\.USERS_REVOKE_SESSIONS/);
     assert.doesNotMatch(source, /can\(['"]hr\.account\.read['"]\)/);
   }
+  assert.doesNotMatch(tab, /HR_PERMISSIONS\.ACCOUNT_UPDATE/);
 });

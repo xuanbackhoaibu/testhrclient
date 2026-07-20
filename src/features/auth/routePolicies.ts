@@ -23,10 +23,7 @@ export const ROUTE_POLICIES: Record<string, RoutePolicy> = {
     permissions: [HR_PERMISSIONS.EMPLOYEE_IMPORT, HR_PERMISSIONS.EMPLOYEE_READ],
     match: 'any',
   },
-  [ROUTES.auditLogs]: {
-    kind: 'unavailable',
-    reason: 'Audit log đang được bảo vệ theo role ở HR API, chưa có canonical permission contract.',
-  },
+  [ROUTES.auditLogs]: { kind: 'permission', permissions: [HR_PERMISSIONS.AUDIT_READ] },
   [ROUTES.settings]: { kind: 'authenticated' },
   [ROUTES.accounts]: { kind: 'permission', permissions: [AUTH_ADMIN_PERMISSIONS.USERS_READ] },
   [ROUTES.pendingHrLinkAccounts]: { kind: 'permission', permissions: [AUTH_ADMIN_PERMISSIONS.USERS_READ] },
@@ -34,13 +31,11 @@ export const ROUTE_POLICIES: Record<string, RoutePolicy> = {
   [ROUTES.permissions]: { kind: 'permission', permissions: [AUTH_ADMIN_PERMISSIONS.PERMISSIONS_READ] },
   [ROUTES.permissionGroups]: { kind: 'permission', permissions: [AUTH_ADMIN_PERMISSIONS.PERMISSION_GROUPS_READ] },
 
-  // Backend still exposes these areas with role-only or incomplete route
-  // metadata. Frontend fails closed until canonical permission contracts exist.
-  [ROUTES.movements]: { kind: 'unavailable', reason: 'Chưa có canonical permission contract cho điều chuyển.' },
-  [ROUTES.contracts]: { kind: 'unavailable', reason: 'Chưa có canonical permission contract cho hợp đồng.' },
-  [ROUTES.leave]: { kind: 'unavailable', reason: 'Chưa có canonical permission contract cho nghỉ phép.' },
-  [ROUTES.onboarding]: { kind: 'unavailable', reason: 'Chưa có canonical permission contract cho onboarding.' },
-  [ROUTES.offboarding]: { kind: 'unavailable', reason: 'Chưa có canonical permission contract cho offboarding.' },
+  [ROUTES.movements]: { kind: 'permission', permissions: [HR_PERMISSIONS.MOVEMENT_READ] },
+  [ROUTES.contracts]: { kind: 'permission', permissions: [HR_PERMISSIONS.CONTRACT_READ] },
+  [ROUTES.leave]: { kind: 'permission', permissions: [HR_PERMISSIONS.LEAVE_READ] },
+  [ROUTES.onboarding]: { kind: 'permission', permissions: [HR_PERMISSIONS.ONBOARDING_READ] },
+  [ROUTES.offboarding]: { kind: 'permission', permissions: [HR_PERMISSIONS.OFFBOARDING_READ] },
 };
 
 export function getRoutePolicy(route: string): RoutePolicy {
@@ -59,6 +54,6 @@ export function canAccessRoute(user: AuthUser | null | undefined, route: string)
     return true;
   }
   return policy.match === 'any'
-    ? policy.permissions.some((permission) => user.permissions.includes(permission))
+    ? policy.permissions.some((permission) => user.permissions.includes('*') || user.permissions.includes(permission))
     : hasAllPermissions(user, [...policy.permissions]);
 }

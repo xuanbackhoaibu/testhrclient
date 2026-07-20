@@ -1,4 +1,5 @@
 import type { AuthUser } from './types';
+import { AUTHORIZATION_WILDCARD_PERMISSION } from '@hacom/chat-shared-types/auth';
 
 export const HR_PERMISSIONS = {
   DASHBOARD_READ: 'hr.dashboard.read',
@@ -37,6 +38,34 @@ export const HR_PERMISSIONS = {
   ATTENDANCE_SYNC_LOG_READ: 'hr.attendance.sync_log.read',
   ATTENDANCE_EXPORT: 'hr.attendance.export',
 
+  MOVEMENT_READ: 'hr.movement.read',
+  MOVEMENT_CREATE: 'hr.movement.create',
+  MOVEMENT_UPDATE: 'hr.movement.update',
+  MOVEMENT_SUBMIT: 'hr.movement.submit',
+  MOVEMENT_APPROVE: 'hr.movement.approve',
+  MOVEMENT_REJECT: 'hr.movement.reject',
+  MOVEMENT_CANCEL: 'hr.movement.cancel',
+
+  LEAVE_READ: 'hr.leave.read',
+  LEAVE_CREATE: 'hr.leave.create',
+  LEAVE_UPDATE: 'hr.leave.update',
+  LEAVE_SUBMIT: 'hr.leave.submit',
+  LEAVE_APPROVE: 'hr.leave.approve',
+  LEAVE_REJECT: 'hr.leave.reject',
+  LEAVE_CANCEL: 'hr.leave.cancel',
+
+  ONBOARDING_READ: 'hr.onboarding.read',
+  ONBOARDING_MANAGE: 'hr.onboarding.manage',
+  ONBOARDING_COMPLETE: 'hr.onboarding.complete',
+  OFFBOARDING_READ: 'hr.offboarding.read',
+  OFFBOARDING_MANAGE: 'hr.offboarding.manage',
+  OFFBOARDING_COMPLETE: 'hr.offboarding.complete',
+  CONTRACT_READ: 'hr.contract.read',
+  CONTRACT_CREATE: 'hr.contract.create',
+  CONTRACT_UPDATE: 'hr.contract.update',
+  CONTRACT_TERMINATE: 'hr.contract.terminate',
+  AUDIT_READ: 'hr.audit.read',
+
   // Calendar
   CALENDAR_READ: 'hr.calendar.read',
   CALENDAR_WRITE: 'hr.calendar.write',
@@ -53,14 +82,6 @@ export const HR_PERMISSIONS = {
   ACCOUNT_ASSIGN_PERMISSION: 'hr.account.assign_permission',
   ACCOUNT_DELETE: 'hr.account.delete',
 
-  // Compatibility aliases for existing pages/routes in this repo.
-  READ: 'hr.employee.read',
-  WRITE: 'hr.employee.create',
-  IMPORT: 'hr.employee.import',
-  PROVISION: 'hr.account.create',
-  AUDIT_READ: 'hr.employee.read',
-  AUTHORITY_READ: 'auth.role.read',
-  AUTHORITY_WRITE: 'auth.role.manage',
 } as const;
 
 export const AUTH_ADMIN_PERMISSIONS = {
@@ -75,6 +96,11 @@ export const AUTH_ADMIN_PERMISSIONS = {
   PERMISSIONS_ASSIGN: 'auth.user.assign_permission',
   PERMISSION_GROUPS_READ: 'auth.role.read',
   PERMISSION_GROUPS_ASSIGN: 'auth.user.assign_permission',
+  ASSIGN_SENSITIVE_ROLE: 'auth.user.assign_sensitive_role',
+  REVOKE_SENSITIVE_ROLE: 'auth.user.revoke_sensitive_role',
+  ASSIGN_SENSITIVE_PERMISSION: 'auth.user.assign_sensitive_permission',
+  ASSIGN_SENSITIVE_GROUP: 'auth.user.assign_sensitive_group',
+  ASSIGN_SCOPE: 'auth.user.assign_scope',
 } as const;
 
 export function hasPermission(
@@ -85,7 +111,9 @@ export function hasPermission(
     return false;
   }
 
-  return user.permissions?.includes(permission) ?? false;
+  return user.permissions?.includes(AUTHORIZATION_WILDCARD_PERMISSION)
+    || user.permissions?.includes(permission)
+    || false;
 }
 
 export function hasAnyPermission(
@@ -96,7 +124,8 @@ export function hasAnyPermission(
     return false;
   }
 
-  return permissions.some((permission) => user.permissions?.includes(permission));
+  return user.permissions?.includes(AUTHORIZATION_WILDCARD_PERMISSION)
+    || permissions.some((permission) => user.permissions?.includes(permission));
 }
 
 export function hasAllPermissions(
@@ -107,5 +136,6 @@ export function hasAllPermissions(
     return false;
   }
 
-  return permissions.every((permission) => user.permissions?.includes(permission));
+  return user.permissions?.includes(AUTHORIZATION_WILDCARD_PERMISSION)
+    || permissions.every((permission) => user.permissions?.includes(permission));
 }

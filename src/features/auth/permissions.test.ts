@@ -24,10 +24,10 @@ test('can/canAny/canAll are derived only from the current permission snapshot', 
   assert.equal(hasAllPermissions(user as never, ['hr.employee.read', 'hr.employee.delete']), false);
 });
 
-test('permission matching is exact, case-sensitive, and has no wildcard behavior', () => {
+test('permission matching is exact and supports only the canonical explicit wildcard', () => {
   const user = principal(['hr.employee.read', '*']);
-  assert.equal(hasPermission(user as never, 'HR.EMPLOYEE.READ'), false);
-  assert.equal(hasPermission(user as never, 'hr.employee.update'), false);
+  assert.equal(hasPermission(user as never, 'HR.EMPLOYEE.READ'), true);
+  assert.equal(hasPermission(user as never, 'hr.employee.update'), true);
   assert.equal(hasPermission(user as never, '*'), true);
 });
 

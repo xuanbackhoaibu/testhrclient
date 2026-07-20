@@ -24,7 +24,7 @@ import { IconEdit, IconEye, IconPlus, IconSearch, IconShield, IconTrash } from '
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../features/auth/useAuth';
-import { HR_PERMISSIONS } from '../../features/auth/permissions';
+import { AUTH_ADMIN_PERMISSIONS } from '../../features/auth/permissions';
 import {
   getRoles,
   getRole,
@@ -49,7 +49,7 @@ const STATUS_LABEL: Record<string, string> = { active: 'Đang dùng', disabled: 
 export function RolesPage() {
   const { can } = useAuth();
   const queryClient = useQueryClient();
-  const canManage = can(HR_PERMISSIONS.AUTHORITY_WRITE);
+  const canManage = can(AUTH_ADMIN_PERMISSIONS.ROLES_ASSIGN);
 
   const [search, setSearch] = useState('');
   const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);

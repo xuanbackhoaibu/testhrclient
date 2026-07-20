@@ -2,7 +2,7 @@ import { ApiError } from '../../shared/api/api.types';
 import { getEmployeesByAuthUserIds } from '../employees/employeesApi';
 import type { Employee } from '../employees/employeeTypes';
 import {
-  assignPermissions,
+  assignPermissionOverrides,
   assignPermissionGroups,
   assignRoles,
   getAuthUser,
@@ -22,7 +22,6 @@ import type {
 import type {
   AccountAuthorizationDetail,
   AccountManagementRow,
-  AccountPermissionSource,
   EffectivePermission,
   Permission,
   Role,
@@ -57,6 +56,8 @@ function toPermission(definition: PermissionDefinition): Permission {
     module: definition.module ?? modulePart,
     action: definition.action ?? actionPart,
     description: definition.description ?? undefined,
+    isSensitive: definition.isSensitive === true,
+    assignable: definition.assignable !== false,
   };
 }
 
@@ -68,6 +69,7 @@ function toRole(
     code: string;
     name: string;
     system: string;
+    isSensitive: boolean;
     permissions?: Permission[];
   }[],
 ): Role {
@@ -164,6 +166,8 @@ function resolvePermissionByCode(
     system,
     module,
     action,
+    isSensitive: false,
+    assignable: false,
   };
 }
 
@@ -175,6 +179,7 @@ async function buildEffectivePermissionsWithSources(
     | 'roles'
     | 'directPermissionGroups'
     | 'directPermissions'
+    | 'directOverrides'
     | 'effectivePermissions'
     | 'roleCatalog'
     | 'permissionGroupCatalog'
@@ -237,18 +242,6 @@ async function buildEffectivePermissionsWithSources(
     return toRole(definition ?? { id: code, key: code, name: code });
   });
 
-  const sourcesByPermissionCode = new Map<string, AccountPermissionSource[]>(
-    Object.entries(effective.permissionSources ?? {}).map(([permissionCode, sources]) => [
-      permissionCode,
-      sources.map((source) => ({
-        type: source.sourceType,
-        id: source.sourceId,
-        code: source.sourceKey,
-        name: source.sourceName,
-      })),
-    ]),
-  );
-
   const directPermissions = effective.directPermissions.map((code) => {
     const permission = resolvePermissionByCode(permissionByCode, code);
 
@@ -260,12 +253,20 @@ async function buildEffectivePermissionsWithSources(
     code: group.key,
     name: group.name,
     system: group.system ?? 'unknown',
+    isSensitive: group.isSensitive === true,
   }));
 
-  const effectivePermissions: EffectivePermission[] = effective.effectivePermissions
-    .map((code) => ({
-      permission: resolvePermissionByCode(permissionByCode, code),
-      sources: sourcesByPermissionCode.get(code) ?? [],
+  const effectivePermissions: EffectivePermission[] = effective.effectivePermissionDetails
+    .map((detail) => ({
+      permission: resolvePermissionByCode(permissionByCode, detail.permissionKey),
+      sources: detail.grants.map((source) => ({
+        type: source.sourceType,
+        id: source.sourceId ?? source.sourceKey ?? detail.permissionKey,
+        code: source.sourceKey ?? source.sourceType,
+        name: source.sourceName ?? source.sourceType,
+      })),
+      denies: detail.denies,
+      effective: detail.effective,
     }))
     .sort((left, right) => left.permission.code.localeCompare(right.permission.code));
 
@@ -273,6 +274,7 @@ async function buildEffectivePermissionsWithSources(
     roles,
     directPermissionGroups,
     directPermissions,
+    directOverrides: effective.directOverrides,
     effectivePermissions,
     roleCatalog: roleCatalog.map((role) => toRole(role)),
     permissionGroupCatalog: permissionGroupCatalog.map((group) => ({
@@ -280,6 +282,7 @@ async function buildEffectivePermissionsWithSources(
       code: group.key,
       name: group.name,
       system: group.system ?? 'unknown',
+      isSensitive: group.isSensitive === true,
     })),
     permissionCatalog,
     missingEndpoints: [],
@@ -338,6 +341,7 @@ export async function getAccountAuthorizationDetail(
     roles: authz.roles,
     directPermissionGroups: authz.directPermissionGroups,
     directPermissions: authz.directPermissions,
+    directOverrides: authz.directOverrides,
     effectivePermissions: authz.effectivePermissions,
     roleCatalog: authz.roleCatalog,
     permissionGroupCatalog: authz.permissionGroupCatalog,
@@ -363,10 +367,10 @@ export async function updateAccountRoles(
 
 export async function updateAccountDirectPermissions(
   accountId: string,
-  permissionCodes: string[],
+  overrides: Array<{ permissionKey: string; effect: 'ALLOW' | 'DENY'; reason?: string }>,
   reason: string,
 ) {
-  return assignPermissions(accountId, { permissions: permissionCodes, reason }).catch((error) =>
+  return assignPermissionOverrides(accountId, { overrides, reason }).catch((error) =>
     normalizeAuthzError(
       error,
       'cap nhat permission truc tiep',
