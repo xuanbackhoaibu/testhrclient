@@ -26,6 +26,11 @@ import {
   updateAccountDirectPermissions,
   updateAccountRoles,
 } from "./accountAuthorizationService";
+import {
+  isDirectlyAssignablePermission,
+  isWorkReportManagedPermission,
+  WORK_REPORT_MANAGED_ASSIGNMENT_MESSAGE,
+} from "./permissionAssignmentPolicy";
 import type {
   EffectivePermission,
   Permission,
@@ -316,6 +321,7 @@ export function AccountAuthorizationModal({
         accountId!,
         overrides,
         reason,
+        permissionCatalog,
       );
     },
     onSuccess: async () => {
@@ -751,7 +757,8 @@ export function AccountAuthorizationModal({
                     {filteredPermissions.map((permission) => {
                       const inherited = inheritedPermissionCodes.has(permission.code);
                       const sensitiveDisabled = permission.isSensitive && !canAssignSensitivePermission;
-                      const baseDisabled = editDisabled || !canAssignDirectPermissions || !permission.assignable || sensitiveDisabled;
+                      const managedByHrm = isWorkReportManagedPermission(permission);
+                      const baseDisabled = editDisabled || !canAssignDirectPermissions || !isDirectlyAssignablePermission(permission) || sensitiveDisabled;
                       return (
                         <Box key={permission.id} p="xs" style={{ borderBottom: "1px solid var(--mantine-color-gray-2)" }}>
                           <Group justify="space-between" align="flex-start">
@@ -761,7 +768,10 @@ export function AccountAuthorizationModal({
                               <Group gap="xs" mt={4}>
                                 {inherited ? <Badge color="blue" variant="light">Đã có từ vai trò/nhóm</Badge> : null}
                                 {permission.isSensitive ? <Badge color="red" variant="light">Nhạy cảm</Badge> : null}
+                                {managedByHrm ? <Badge color="grape" variant="light">HRM-managed</Badge> : null}
+                                {!isDirectlyAssignablePermission(permission) ? <Badge color="gray" variant="light">Not directly assignable</Badge> : null}
                               </Group>
+                              {managedByHrm ? <Text size="xs" c="dimmed" mt={4}>{WORK_REPORT_MANAGED_ASSIGNMENT_MESSAGE}</Text> : null}
                             </Box>
                             <Group gap="md">
                               <Checkbox

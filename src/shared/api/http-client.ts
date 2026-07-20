@@ -194,6 +194,11 @@ export const api = {
     return unwrapApiEnvelope<T>(response.data);
   },
 
+  async put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+    const response = await axiosInstance.put(url, data, config);
+    return unwrapApiEnvelope<T>(response.data);
+  },
+
   async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await axiosInstance.delete(url, config);
     return unwrapApiEnvelope<T>(response.data);

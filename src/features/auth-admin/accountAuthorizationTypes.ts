@@ -14,8 +14,10 @@ export type Permission = {
   module: string;
   action: string;
   description?: string;
+  active: boolean;
   isSensitive: boolean;
   assignable: boolean;
+  source?: string;
 };
 
 export type PermissionGroup = {

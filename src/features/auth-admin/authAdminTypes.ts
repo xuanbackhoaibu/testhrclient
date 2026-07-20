@@ -246,6 +246,7 @@ export interface PermissionDefinition {
   action?: string | null;
   isSensitive?: boolean;
   assignable?: boolean;
+  source?: string | null;
   status?: string;
   createdAt?: string;
   updatedAt?: string;
