@@ -41,8 +41,16 @@ jobs:
         with:
           path: hr-web-client
 
-      # NOTE: chat-shared-types is no longer a dependency — the calendar types
-      # are defined locally in hr-web-client (src/features/calendar/calendarSharedTypes.ts).
+      # The auth-admin feature imports @hacom/chat-shared-types through the
+      # committed file:../chat-shared-types dependency. Keep this checkout
+      # pinned: floating a branch would make the production build non-repeatable.
+      - name: Checkout pinned chat-shared-types
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.SHARED_TYPES_REPOSITORY || format('{0}/chat-shared-types', github.repository_owner) }}
+          ref: 18ad496b74104027140547b923671893d251b549
+          path: chat-shared-types
+          token: ${{ secrets.SHARED_TYPES_REPO_TOKEN || github.token }}
 
       - name: Set up Node.js
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
@@ -52,14 +60,32 @@ jobs:
           cache: npm
           cache-dependency-path: |
             hr-web-client/package-lock.json
+            chat-shared-types/package-lock.json
 
       - name: Install dependencies, typecheck, lint, build
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
         shell: bash
         run: |
           set -Eeuo pipefail
+          echo "== shared package preflight =="
+          pwd
+          find . -maxdepth 2 -type d -print | sort
+          node -p "require('./hr-web-client/package.json').dependencies?.['@hacom/chat-shared-types'] || require('./hr-web-client/package.json').devDependencies?.['@hacom/chat-shared-types']"
+          test -d ./chat-shared-types
+          grep -n -A8 -B4 'node_modules/@hacom/chat-shared-types' hr-web-client/package-lock.json || true
+          (
+            cd chat-shared-types
+            npm ci --no-audit --no-fund
+            npm run typecheck
+            npm run build
+            test -f dist/index.js
+            test -f dist/index.d.ts
+            test -f dist/auth.js
+            test -f dist/auth.d.ts
+          )
           cd hr-web-client
           npm ci --no-audit --no-fund
+          npm ls @hacom/chat-shared-types
           npm run typecheck
           npm run lint
           npm run build
@@ -80,7 +106,14 @@ jobs:
         with:
           path: hr-web-client
 
-      # NOTE: chat-shared-types is no longer required — calendar types are local.
+      - name: Checkout pinned chat-shared-types
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.SHARED_TYPES_REPOSITORY || format('{0}/chat-shared-types', github.repository_owner) }}
+          ref: 18ad496b74104027140547b923671893d251b549
+          path: chat-shared-types
+          token: ${{ secrets.SHARED_TYPES_REPO_TOKEN || github.token }}
 
       - name: Preflight Docker build context
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
@@ -98,8 +131,28 @@ jobs:
           test -f ./hr-web-client/package-lock.json
           test -f ./hr-web-client/deploy/nginx/default.conf.template
           test -f ./hr-web-client/deploy/docker/entrypoint.sh
+          test -f ./chat-shared-types/package-lock.json
 
-      # The Docker build context is ./hr-web-client, which has its own .dockerignore.
+      - name: Restrict root Docker build context
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cat > .dockerignore <<'EOF'
+          **
+          !chat-shared-types/
+          !chat-shared-types/**
+          !hr-web-client/
+          !hr-web-client/**
+          **/node_modules/
+          **/node_modules/**
+          **/dist/
+          **/dist/**
+          **/.git/
+          **/.git/**
+          **/.env
+          **/.env.*
+          EOF
 
       - uses: docker/setup-buildx-action@v3
 
@@ -138,7 +191,7 @@ jobs:
             --build-arg VITE_AUTH_SERVICE_REDIRECT_URI="${VITE_AUTH_SERVICE_REDIRECT_URI}" \
             --build-arg VITE_CHAT_AUTH_CLIENT_ID="${VITE_CHAT_AUTH_CLIENT_ID}" \
             --build-arg VITE_CHAT_AUTH_REDIRECT_URI="${VITE_CHAT_AUTH_REDIRECT_URI}" \
-            ./hr-web-client
+            .
 
       - name: Verify image manifest
         shell: bash
