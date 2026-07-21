@@ -178,8 +178,8 @@ export function AccountsPage() {
   const [selectedRow, setSelectedRow] = useState<AccountManagementRow | null>(
     null,
   );
-  const [authorizationAccountId, setAuthorizationAccountId] = useState<
-    string | null
+  const [authorizationAccount, setAuthorizationAccount] = useState<
+    AccountManagementRow | null
   >(null);
 
   const [confirmOpened, { open: openConfirm, close: closeConfirm }] =
@@ -479,9 +479,7 @@ export function AccountsPage() {
                 variant="subtle"
                 size="sm"
                 disabled={!canAuthorizeAccounts}
-                onClick={() =>
-                  setAuthorizationAccountId(row.account.authUserId)
-                }
+                onClick={() => setAuthorizationAccount(row)}
               >
                 <IconShield size={15} />
               </ActionIcon>
@@ -928,9 +926,7 @@ export function AccountsPage() {
                     size="xs"
                     leftSection={<IconShield size={14} />}
                     disabled={!canAuthorizeAccounts}
-                    onClick={() =>
-                      setAuthorizationAccountId(selectedRow.account.authUserId)
-                    }
+                    onClick={() => setAuthorizationAccount(selectedRow)}
                   >
                     Phân quyền
                   </Button>
@@ -989,9 +985,10 @@ export function AccountsPage() {
       </Drawer>
 
       <AccountAuthorizationModal
-        accountId={authorizationAccountId}
-        opened={Boolean(authorizationAccountId)}
-        onClose={() => setAuthorizationAccountId(null)}
+        accountId={authorizationAccount?.account.authUserId ?? null}
+        employee={authorizationAccount?.employee ?? null}
+        opened={Boolean(authorizationAccount)}
+        onClose={() => setAuthorizationAccount(null)}
         onUpdated={async () => {
           await invalidateList();
         }}
