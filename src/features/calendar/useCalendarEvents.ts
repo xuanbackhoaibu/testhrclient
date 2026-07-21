@@ -18,8 +18,8 @@ export const calendarKeys = {
    * Different ownerKey values produce isolated cache entries so data never bleeds
    * between "my calendar" and someone else's calendar.
    */
-  events: (ownerKey: string, from?: string, to?: string) =>
-    ['calendar-events', ownerKey, from, to] as const,
+  events: (scope: 'mine' | 'person' | 'unit', ownerKey: string, from?: string, to?: string) =>
+    ['calendar-events', scope, ownerKey, from, to] as const,
   event: (id: string) => ['calendar-event', id] as const,
   permissions: (id: string) => ['calendar-permissions', id] as const,
 };
@@ -27,7 +27,8 @@ export const calendarKeys = {
 export function useCalendarEvents(params?: ListCalendarEventsParams) {
   return useQuery({
     queryKey: calendarKeys.events(
-      params?.ownerId ?? params?.employeeCode ?? 'me',
+      params?.scope ?? 'mine',
+      params?.ownerId ?? params?.ownerAuthUserId ?? params?.employeeCode ?? 'me',
       params?.from,
       params?.to,
     ),
@@ -79,9 +80,10 @@ export function useCalendarOwnerEvents(
   const ownerKey = ownerId ?? employeeCode ?? 'me';
 
   return useQuery({
-    queryKey: calendarKeys.events(ownerKey, from, to),
+    queryKey: calendarKeys.events(isViewingOthers ? 'person' : 'mine', ownerKey, from, to),
     queryFn: () =>
       calendarApi.listEvents({
+        scope: isViewingOthers ? 'person' : 'mine',
         ownerId: ownerId ?? undefined,
         employeeCode: employeeCode ?? undefined,
         from,
