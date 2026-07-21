@@ -575,7 +575,12 @@ export function EmployeesPage() {
       });
       return;
     }
-    createMutation.mutate(normalizedValues);
+    // Trên form tạo, mã chấm công nằm ở state riêng — phải gửi kèm payload,
+    // nếu không giá trị người dùng nhập sẽ bị bỏ im lặng.
+    createMutation.mutate({
+      ...normalizedValues,
+      biotimeEmployeeCode: biotimeEmployeeCode.trim() || null,
+    });
   }
 
   // Sắp xếp nhân sự theo Mã chấm công (BioTime) tăng dần từ 1 tới lớn nhất.
