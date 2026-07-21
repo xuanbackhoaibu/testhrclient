@@ -26,6 +26,8 @@ import {
   type WorkReportAuthorizationLevel,
   type WorkReportAuthorizationScopeSource,
 } from './workReportAuthorizationsApi';
+import { listAllDepartments } from '../organization/departmentsApi';
+import { listAllUnits } from '../organization/unitsApi';
 
 type Props = {
   employee: Employee;
@@ -50,6 +52,17 @@ export function WorkReportAuthorizationCard({ employee, authUserId, canRead, can
     queryKey: ['work-report-authorization', authUserId],
     queryFn: () => getWorkReportAuthorization(authUserId),
     enabled: canRead,
+  });
+  const delegatedScopeEnabled = opened && scopeSource === 'DELEGATION' && level !== 'GROUP';
+  const companiesQuery = useQuery({
+    queryKey: ['work-report-authorization-companies'],
+    queryFn: () => listAllUnits({ status: 'ACTIVE' }),
+    enabled: delegatedScopeEnabled,
+  });
+  const departmentsQuery = useQuery({
+    queryKey: ['work-report-authorization-departments', companyId || null],
+    queryFn: () => listAllDepartments({ status: 'ACTIVE', unitId: companyId }),
+    enabled: delegatedScopeEnabled && level === 'DEPARTMENT' && Boolean(companyId),
   });
   const historyQuery = useQuery({
     queryKey: ['work-report-authorization-history', authUserId],
@@ -90,7 +103,7 @@ export function WorkReportAuthorizationCard({ employee, authUserId, canRead, can
   const validateWrite = () => {
     if (scopeSource !== 'DELEGATION' || level === 'GROUP') return;
     if (!companyId.trim() || (level === 'DEPARTMENT' && !departmentId.trim())) {
-      throw new Error('Delegation scope requires the company ID and, for department level, the department ID.');
+      throw new Error('Chọn đơn vị và, với phạm vi phòng ban, chọn thêm phòng ban.');
     }
   };
 
@@ -153,10 +166,10 @@ export function WorkReportAuthorizationCard({ employee, authUserId, canRead, can
               </Alert>
             ) : <Alert color="yellow">Chưa có grant. Lưu sẽ tạo một HRM Work Report authorization ở trạng thái DRAFT.</Alert>}
 
-            <Select label="Scope level" value={level} onChange={(value) => setLevel((value ?? 'DEPARTMENT') as WorkReportAuthorizationLevel)} disabled={!canManage} data={['DEPARTMENT', 'COMPANY', 'GROUP']} />
-            <Select label="Scope source" value={scopeSource} onChange={(value) => setScopeSource((value ?? 'PROFILE') as WorkReportAuthorizationScopeSource)} disabled={!canManage} data={['PROFILE', 'DELEGATION']} />
-            {scopeSource === 'DELEGATION' && level !== 'GROUP' ? <TextInput label="Company ID" value={companyId} onChange={(event) => setCompanyId(event.currentTarget.value)} disabled={!canManage} required /> : null}
-            {scopeSource === 'DELEGATION' && level === 'DEPARTMENT' ? <TextInput label="Department ID" value={departmentId} onChange={(event) => setDepartmentId(event.currentTarget.value)} disabled={!canManage} required /> : null}
+            <Select label="Cấp phạm vi" value={level} onChange={(value) => setLevel((value ?? 'DEPARTMENT') as WorkReportAuthorizationLevel)} disabled={!canManage} data={[{ value: 'DEPARTMENT', label: 'Phòng ban' }, { value: 'COMPANY', label: 'Đơn vị / công ty' }, { value: 'GROUP', label: 'Toàn hệ thống (group)' }]} />
+            <Select label="Nguồn phạm vi" value={scopeSource} onChange={(value) => setScopeSource((value ?? 'PROFILE') as WorkReportAuthorizationScopeSource)} disabled={!canManage} data={[{ value: 'PROFILE', label: 'Theo hồ sơ nhân sự' }, { value: 'DELEGATION', label: 'Ủy quyền chọn phạm vi' }]} />
+            {scopeSource === 'DELEGATION' && level !== 'GROUP' ? <Select label="Đơn vị / công ty" placeholder="Chọn đơn vị" value={companyId || null} onChange={(value) => { setCompanyId(value ?? ''); setDepartmentId(''); }} disabled={!canManage} required searchable clearable data={(companiesQuery.data ?? []).map((unit) => ({ value: unit.id, label: `${unit.code} · ${unit.name}` }))} error={companiesQuery.isError ? 'Không tải được danh mục đơn vị.' : undefined} /> : null}
+            {scopeSource === 'DELEGATION' && level === 'DEPARTMENT' ? <Select label="Phòng ban" placeholder={companyId ? 'Chọn phòng ban' : 'Chọn đơn vị trước'} value={departmentId || null} onChange={(value) => setDepartmentId(value ?? '')} disabled={!canManage || !companyId} required searchable clearable data={(departmentsQuery.data ?? []).map((department) => ({ value: department.id, label: `${department.code} · ${department.name}` }))} error={departmentsQuery.isError ? 'Không tải được danh mục phòng ban.' : undefined} /> : null}
             <Checkbox label="Aggregate reports" checked={canAggregate} onChange={(event) => setCanAggregate(event.currentTarget.checked)} disabled={!canManage} />
             <Checkbox label="Submit aggregated reports" checked={canSubmit} onChange={(event) => setCanSubmit(event.currentTarget.checked)} disabled={!canManage || level === 'GROUP'} />
             <TextInput label="Reason" value={reason} onChange={(event) => setReason(event.currentTarget.value)} disabled={!canManage} />
