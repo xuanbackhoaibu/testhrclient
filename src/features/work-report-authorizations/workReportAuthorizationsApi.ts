@@ -48,6 +48,8 @@ export type WorkReportAuthorizationWrite = {
   departmentId?: string;
   isGlobal: boolean;
   reason?: string;
+  effectiveFrom?: string;
+  expiresAt?: string;
 };
 
 export function isWorkReportAuthorizationNotFound(error: unknown): boolean {
