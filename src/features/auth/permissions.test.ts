@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { hasAllPermissions, hasAnyPermission, hasPermission } from './permissions.ts';
+import {
+  AUTH_ADMIN_PERMISSIONS,
+  hasAllPermissions,
+  hasAnyPermission,
+  hasPermission,
+} from './permissions.ts';
 
 const principal = (permissions: string[], roles: string[] = []) => ({
   accountStatus: 'ACTIVE',
@@ -43,4 +48,13 @@ test('empty, duplicate, null, and undefined inputs fail closed predictably', () 
 test('a permission removed by canonical direct deny is absent and therefore denied', () => {
   const effectiveAfterDeny = principal(['hr.employee.read'], ['HR_ADMIN']);
   assert.equal(hasPermission(effectiveAfterDeny as never, 'hr.employee.update'), false);
+});
+
+test('role definition management is not conflated with assigning a role to a user', () => {
+  assert.equal(AUTH_ADMIN_PERMISSIONS.ROLES_MANAGE, 'auth.role.manage');
+  assert.equal(AUTH_ADMIN_PERMISSIONS.ROLES_ASSIGN, 'auth.user.assign_role');
+  assert.notEqual(
+    AUTH_ADMIN_PERMISSIONS.ROLES_MANAGE,
+    AUTH_ADMIN_PERMISSIONS.ROLES_ASSIGN,
+  );
 });

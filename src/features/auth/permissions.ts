@@ -91,6 +91,7 @@ export const AUTH_ADMIN_PERMISSIONS = {
   USERS_REVOKE_SESSIONS: 'auth.user.revoke_sessions',
   USERS_SEND_ACTIVATION: 'auth.user.send_activation',
   ROLES_READ: 'auth.role.read',
+  ROLES_MANAGE: 'auth.role.manage',
   ROLES_ASSIGN: 'auth.user.assign_role',
   PERMISSIONS_READ: 'auth.role.read',
   PERMISSIONS_ASSIGN: 'auth.user.assign_permission',

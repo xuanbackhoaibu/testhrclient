@@ -49,7 +49,11 @@ const STATUS_LABEL: Record<string, string> = { active: 'Đang dùng', disabled: 
 export function RolesPage() {
   const { can } = useAuth();
   const queryClient = useQueryClient();
-  const canManage = can(AUTH_ADMIN_PERMISSIONS.ROLES_ASSIGN);
+  // Role definition is a distinct IAM capability from assigning an existing
+  // role to an account. The Auth API enforces `auth.role.manage` for all
+  // mutations under /roles; use the same key here so the UI never offers an
+  // action that the server will reject with 403.
+  const canManage = can(AUTH_ADMIN_PERMISSIONS.ROLES_MANAGE);
 
   const [search, setSearch] = useState('');
   const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);
