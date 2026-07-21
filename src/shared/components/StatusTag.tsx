@@ -56,7 +56,7 @@ export function StatusTag({ status }: { status?: string | null }) {
 
   return (
     <Badge color={STATUS_COLOR_MAP[status] ?? 'gray'} variant="light" radius="sm">
-      {STATUS_LABEL_MAP[status] ?? status}
+      {STATUS_LABEL_MAP[status] ?? `Khác: ${status}`}
     </Badge>
   );
 }

@@ -59,7 +59,8 @@ body {
 }
 
 .data-table-shell {
-  overflow: hidden;
+  overflow: visible;
+  background: var(--mantine-color-white);
 }
 
 .data-table-heading {
@@ -67,6 +68,7 @@ body {
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .data-table-row-clickable {
@@ -75,6 +77,33 @@ body {
 
 .data-table-footer {
   border-top: 1px solid #edf0f5;
+}
+
+/* AntD powers workflow/import tables; give it the same quiet table language. */
+.ant-table-wrapper .ant-table {
+  border: 1px solid #e8edf3;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ant-table-wrapper .ant-table-thead > tr > th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ant-table-wrapper .ant-table-tbody > tr > td,
+.ant-table-wrapper .ant-table-thead > tr > th {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+@media (max-width: 900px) {
+  .data-table-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 .truncate-cell {
