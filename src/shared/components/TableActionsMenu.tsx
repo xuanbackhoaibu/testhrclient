@@ -1,6 +1,8 @@
 import type { MouseEvent, ReactNode } from 'react';
-import { ActionIcon, Group, Tooltip } from '@mantine/core';
+import { ActionIcon, Group } from '@mantine/core';
 import { IconDotsVertical } from '@tabler/icons-react';
+
+import { SafeTooltip } from './SafeTooltip';
 
 export interface TableActionItem {
   label: string;
@@ -38,7 +40,7 @@ export function TableActionsMenu({
       aria-label={label}
     >
       {visibleActions.map((action) => (
-        <Tooltip key={action.label} label={action.label}>
+        <SafeTooltip key={action.label} label={action.label} disabled={action.disabled}>
           <ActionIcon
             variant="subtle"
             color={action.color ?? 'gray'}
@@ -54,7 +56,7 @@ export function TableActionsMenu({
           >
             {action.icon ?? <IconDotsVertical size={16} />}
           </ActionIcon>
-        </Tooltip>
+        </SafeTooltip>
       ))}
     </Group>
   );

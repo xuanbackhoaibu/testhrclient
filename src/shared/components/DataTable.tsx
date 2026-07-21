@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Box, Checkbox, Group, Pagination, Paper, ScrollArea, Skeleton, Stack, Table, Text } from '@mantine/core';
+import { Box, Checkbox, Group, Pagination, Paper, ScrollArea, Select, Skeleton, Stack, Table, Text } from '@mantine/core';
 
 import type { PaginationMeta } from '../types/api';
 import { EmptyState } from './EmptyState';
@@ -28,6 +28,8 @@ interface DataTableProps<T> {
   onRowClick?: (record: T) => void;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
+  pageSizeOptions?: number[];
+  maxHeight?: number | string;
 }
 
 export function DataTable<T>({
@@ -44,6 +46,8 @@ export function DataTable<T>({
   onRowClick,
   selectedIds,
   onSelectionChange,
+  pageSizeOptions = [10, 20, 50, 100],
+  maxHeight,
 }: DataTableProps<T>) {
   const selectable = Boolean(onSelectionChange);
 
@@ -102,9 +106,15 @@ export function DataTable<T>({
     selectable && data.some((r) => selectedIds?.has(rowKey(r)));
 
   return (
-    <Paper radius="md" p={0} className="data-table-shell">
-      <ScrollArea type="auto">
-        <Table miw={860} striped highlightOnHover withColumnBorders={false}>
+    <Paper radius="md" p={0} className="data-table-shell" withBorder>
+      <ScrollArea type="auto" mah={maxHeight}>
+        <Table
+          miw={860}
+          striped
+          highlightOnHover
+          withColumnBorders={false}
+          stickyHeader={Boolean(maxHeight)}
+        >
           <Table.Thead>
             <Table.Tr>
               {selectable && (
@@ -167,16 +177,29 @@ export function DataTable<T>({
           <Text size="sm" c="dimmed">
             {meta.total} bản ghi
           </Text>
-          <Box>
-            <Pagination
-              total={Math.max(1, meta.totalPages)}
-              value={meta.page}
-              onChange={(page) => onPageChange(page, meta.pageSize)}
-              size="sm"
+          <Group gap="xs" wrap="nowrap">
+            <Select
+              aria-label="Số dòng mỗi trang"
+              value={String(meta.pageSize)}
+              data={pageSizeOptions.map((size) => ({ value: String(size), label: `${size}/trang` }))}
+              w={96}
+              size="xs"
+              allowDeselect={false}
+              onChange={(value) => onPageChange(1, Number(value ?? meta.pageSize))}
             />
-          </Box>
+            <Box>
+              <Pagination
+                total={Math.max(1, meta.totalPages)}
+                value={meta.page}
+                onChange={(page) => onPageChange(page, meta.pageSize)}
+                size="sm"
+              />
+            </Box>
+          </Group>
         </Group>
       ) : null}
     </Paper>
   );
 }
+
+export { DataTable as HrmDataTable };

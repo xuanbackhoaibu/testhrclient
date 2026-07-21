@@ -55,6 +55,7 @@ import {
 import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
+import { EllipsisText } from "../../shared/components/EllipsisText";
 import { useDepartmentsSelect } from "../../features/organization/useDepartments";
 import { usePositionsSelect } from "../../features/organization/usePositions";
 import { useUnitsSelect } from "../../features/organization/useUnits";
@@ -142,11 +143,9 @@ function TruncatedCell({
 }) {
   const display = value || "-";
   return (
-    <Tooltip label={display} disabled={!value || display.length < 24}>
-      <Text span className="truncate-cell" style={{ maxWidth }}>
-        {display}
-      </Text>
-    </Tooltip>
+    <EllipsisText maxWidth={maxWidth} className="truncate-cell">
+      {display}
+    </EllipsisText>
   );
 }
 
