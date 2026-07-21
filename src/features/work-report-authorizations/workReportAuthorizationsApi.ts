@@ -50,11 +50,21 @@ export type WorkReportAuthorizationWrite = {
   reason?: string;
 };
 
+export function isWorkReportAuthorizationNotFound(error: unknown): boolean {
+  if (error instanceof ApiError) {
+    return error.statusCode === 404 && error.errorCode === 'WORK_REPORT_AUTH_NOT_FOUND';
+  }
+
+  if (typeof error !== 'object' || error === null) return false;
+  const candidate = error as { statusCode?: unknown; errorCode?: unknown };
+  return candidate.statusCode === 404 && candidate.errorCode === 'WORK_REPORT_AUTH_NOT_FOUND';
+}
+
 export async function getWorkReportAuthorization(authUserId: string): Promise<WorkReportAuthorization | null> {
   try {
     return await api.get<WorkReportAuthorization>(`${BASE}/${authUserId}`);
   } catch (error) {
-    if (error instanceof ApiError && error.statusCode === 404) return null;
+    if (isWorkReportAuthorizationNotFound(error)) return null;
     throw error;
   }
 }
