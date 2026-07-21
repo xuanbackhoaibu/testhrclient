@@ -17,7 +17,7 @@ export const ROUTE_POLICIES: Record<string, RoutePolicy> = {
   [ROUTES.positions]: { kind: 'permission', permissions: [HR_PERMISSIONS.POSITION_READ] },
   [ROUTES.attendance]: { kind: 'permission', permissions: [HR_PERMISSIONS.ATTENDANCE_READ] },
   [ROUTES.attendanceMapping]: { kind: 'permission', permissions: [HR_PERMISSIONS.ATTENDANCE_READ] },
-  [ROUTES.calendar]: { kind: 'permission', permissions: [HR_PERMISSIONS.CALENDAR_READ] },
+  [ROUTES.calendar]: { kind: 'authenticated' },
   [ROUTES.imports]: {
     kind: 'permission',
     permissions: [HR_PERMISSIONS.EMPLOYEE_IMPORT, HR_PERMISSIONS.EMPLOYEE_READ],
