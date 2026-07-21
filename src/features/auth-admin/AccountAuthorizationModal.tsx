@@ -21,6 +21,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "../auth/useAuth";
 import { AUTH_ADMIN_PERMISSIONS } from "../auth/permissions";
+import type { Employee } from "../employees/employeeTypes";
+import { WorkReportAuthorizationCard } from "../work-report-authorizations/WorkReportAuthorizationCard";
 import {
   updateAccountDirectPermissionGroups,
   updateAccountDirectPermissions,
@@ -41,6 +43,7 @@ import { useAccountAuthorization } from "./useAccountAuthorization";
 
 type Props = {
   accountId: string | null;
+  employee: Employee | null;
   opened: boolean;
   onClose: () => void;
   onUpdated?: () => Promise<void> | void;
@@ -82,6 +85,7 @@ function roleOptionLabel(role: Role) {
 
 export function AccountAuthorizationModal({
   accountId,
+  employee,
   opened,
   onClose,
   onUpdated,
@@ -100,6 +104,9 @@ export function AccountAuthorizationModal({
   const canRevokeSensitiveRole = hasAnyPermission([AUTH_ADMIN_PERMISSIONS.REVOKE_SENSITIVE_ROLE]);
   const canAssignSensitivePermission = hasAnyPermission([AUTH_ADMIN_PERMISSIONS.ASSIGN_SENSITIVE_PERMISSION]);
   const canAssignSensitiveGroup = hasAnyPermission([AUTH_ADMIN_PERMISSIONS.ASSIGN_SENSITIVE_GROUP]);
+  const canReadWorkReportAuthorization = hasAnyPermission(["admin.work_report_authorization.read"]);
+  const canManageWorkReportAuthorization = hasAnyPermission(["admin.work_report_authorization.manage"]);
+  const canAuditWorkReportAuthorization = hasAnyPermission(["admin.work_report_authorization.audit"]);
   const editDisabled = !canAssignRoles && !canAssignDirectPermissions;
 
   const [selectedRoleCodes, setSelectedRoleCodes] = useState<string[]>([]);
@@ -557,6 +564,7 @@ export function AccountAuthorizationModal({
                 Nhóm quyền trực tiếp
               </Tabs.Tab>
               <Tabs.Tab value="permissions">Quyền trực tiếp</Tabs.Tab>
+              <Tabs.Tab value="work-report">Báo cáo công việc</Tabs.Tab>
               <Tabs.Tab value="effective">Quyền hiệu lực</Tabs.Tab>
             </Tabs.List>
 
@@ -865,6 +873,23 @@ export function AccountAuthorizationModal({
                   </Tooltip>
                 </Group>
               </Stack>
+            </Tabs.Panel>
+
+            <Tabs.Panel value="work-report" pt="md">
+              {employee && accountId ? (
+                <WorkReportAuthorizationCard
+                  employee={employee}
+                  authUserId={accountId}
+                  canRead={canReadWorkReportAuthorization}
+                  canManage={canManageWorkReportAuthorization}
+                  canAudit={canAuditWorkReportAuthorization}
+                />
+              ) : (
+                <Alert color="yellow" title="Cần liên kết nhân sự">
+                  Quyền Báo cáo công việc được HRM quản lý theo nhân sự và phạm vi dữ liệu.
+                  Hãy liên kết tài khoản với hồ sơ nhân sự trước khi tạo hoặc cấp Work Report authorization.
+                </Alert>
+              )}
             </Tabs.Panel>
 
             <Tabs.Panel value="effective" pt="md">
