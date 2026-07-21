@@ -22,9 +22,10 @@ import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconEdit, IconEye, IconPlus, IconSearch, IconShield, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 
-import { useAuth } from '../../features/auth/useAuth';
-import { AUTH_ADMIN_PERMISSIONS } from '../../features/auth/permissions';
+import { useAuthorizationCapabilities } from '../../features/authorization';
+import { AuthorizationServerValidationNotice, getPermissionBusinessLabel } from '../../features/authorization';
 import {
   getRoles,
   getRole,
@@ -47,15 +48,10 @@ const STATUS_COLOR: Record<string, string> = { active: 'green', disabled: 'gray'
 const STATUS_LABEL: Record<string, string> = { active: 'Đang dùng', disabled: 'Vô hiệu' };
 
 export function RolesPage() {
-  const { can } = useAuth();
+  const { canManageRoles: canManage, canReadTechnicalCatalog } = useAuthorizationCapabilities();
   const queryClient = useQueryClient();
-  // Role definition is a distinct IAM capability from assigning an existing
-  // role to an account. The Auth API enforces `auth.role.manage` for all
-  // mutations under /roles; use the same key here so the UI never offers an
-  // action that the server will reject with 403.
-  const canManage = can(AUTH_ADMIN_PERMISSIONS.ROLES_MANAGE);
-
-  const [search, setSearch] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get('search') ?? '';
   const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);
   const [detailRoleId, setDetailRoleId] = useState<string | null>(null);
   const [detailOpened, { open: openDetail, close: closeDetail }] = useDisclosure(false);
@@ -71,6 +67,14 @@ export function RolesPage() {
   const [editDesc, setEditDesc] = useState('');
   const [addPermKey, setAddPermKey] = useState('');
   const [addGroupId, setAddGroupId] = useState('');
+
+  const setSearch = (value: string) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (value) next.set('search', value); else next.delete('search');
+      return next;
+    }, { replace: true });
+  };
 
   const { data: roles = [], isLoading } = useQuery({
     queryKey: ['roles', search],
@@ -164,7 +168,10 @@ export function RolesPage() {
 
   const availablePermOptions = allPermissions
     .filter((p) => !detail?.permissions?.some((dp) => dp.id === p.id))
-    .map((p) => ({ value: p.key, label: p.key }));
+    .map((p) => {
+      const display = getPermissionBusinessLabel(p.key);
+      return { value: p.key, label: `${display.label} — ${display.moduleLabel}` };
+    });
 
   const availableGroupOptions = allGroups
     .filter((g) => !detail?.permissionGroups?.some((dg) => dg.id === g.id))
@@ -173,7 +180,7 @@ export function RolesPage() {
   return (
     <Box>
       <Group justify="space-between" mb="md">
-        <Title order={3}>Quản lý Role</Title>
+        <div><Title order={3}>Vai trò</Title><Text c="dimmed" size="sm">Quản lý nhóm quyền dùng chung cho nhiều nhân viên.</Text></div>
         {canManage && (
           <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>
             Tạo role
@@ -229,7 +236,7 @@ export function RolesPage() {
               </Group>
             </Group>
           ))}
-          {roles.length === 0 && <Text c="dimmed" ta="center" py="lg">Không có role nào</Text>}
+          {roles.length === 0 && <Text c="dimmed" ta="center" py="lg">Không tìm thấy vai trò phù hợp.</Text>}
         </Stack>
       )}
 
@@ -391,6 +398,7 @@ export function RolesPage() {
 
             <Tabs.Panel value="perms" pt="md">
               <Stack>
+                <AuthorizationServerValidationNotice />
                 {canManage && (
                   <Group>
                     <Select
@@ -410,8 +418,10 @@ export function RolesPage() {
                 {(detail.permissions ?? []).map((p) => (
                   <Group key={p.id} justify="space-between" p="xs" style={{ border: '1px solid #eee', borderRadius: 6 }}>
                     <Stack gap={2}>
-                      <Text size="xs" ff="monospace" c="blue">{p.key}</Text>
+                      <Text size="sm" fw={500}>{getPermissionBusinessLabel(p.key).label}</Text>
                       {p.description && <Text size="xs" c="dimmed">{p.description}</Text>}
+                      <Text size="xs" c="dimmed">{getPermissionBusinessLabel(p.key).moduleLabel}</Text>
+                      {canReadTechnicalCatalog && <Text size="xs" ff="monospace" c="blue">{p.key}</Text>}
                     </Stack>
                     {canManage && (
                       <ActionIcon variant="subtle" color="red" size="sm" loading={removePermMutation.isPending}
