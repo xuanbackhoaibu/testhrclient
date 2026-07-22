@@ -93,6 +93,33 @@ export async function createPosition(payload: PositionPayload): Promise<Position
   return api.post<Position>('/positions', payload);
 }
 
+/**
+ * Xóa chức danh. Backend xử lý mềm: chuyển trạng thái sang INACTIVE và ghi
+ * audit log, không xóa hẳn bản ghi (nhân sự đang gắn vẫn giữ được lịch sử).
+ */
+export async function deletePosition(id: string): Promise<Position> {
+  if (isMockMode) {
+    await mockDelay();
+    const position = mockPositions.find((item) => item.id === id);
+    if (!position) {
+      throw new Error('Position not found');
+    }
+
+    const before = { ...position };
+    position.status = 'INACTIVE';
+    appendAuditLog({
+      entityType: 'POSITION',
+      entityId: id,
+      action: 'INACTIVE',
+      beforeJson: before as unknown as Record<string, unknown>,
+      afterJson: position as unknown as Record<string, unknown>,
+    });
+    return position;
+  }
+
+  return api.delete<Position>(`/positions/${id}`);
+}
+
 export async function updatePosition(id: string, payload: Partial<PositionPayload>): Promise<Position> {
   if (isMockMode) {
     await mockDelay();
