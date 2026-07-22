@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc --noEmit",
+    "audit:ui-text": "node scripts/audit-ui-text.mjs",
     "test:authorization": "node --experimental-strip-types --test src/features/auth/*.test.ts src/features/authorization/*.test.ts",
     "test:permission-assignment": "node --experimental-strip-types --test src/features/auth-admin/permissionAssignmentPolicy.test.ts",
     "lint": "eslint .",

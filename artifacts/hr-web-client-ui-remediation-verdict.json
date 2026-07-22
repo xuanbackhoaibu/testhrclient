@@ -1,0 +1,27 @@
+{
+  "status": "SOURCE_UPDATED_UI_RUNTIME_NOT_FULLY_VERIFIED",
+  "textAudit": {
+    "filesScanned": 203,
+    "filesChanged": 2,
+    "textsFixed": 28,
+    "mojibakeRemaining": "NOT_SEPARATELY_VERIFIED",
+    "knownUnaccentedVietnameseRemaining": 35
+  },
+  "ui": {
+    "tablesReviewed": 0,
+    "formsReviewed": 0,
+    "modalsReviewed": 1,
+    "tooltipIssuesRemaining": "NOT_FULLY_AUDITED",
+    "responsiveVerified": false
+  },
+  "quality": {
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "authorizationTests": "PASS (21 tests)",
+    "build": "PASS",
+    "diffCheck": "PASS"
+  },
+  "authorizationRegression": "PASS (source tests)",
+  "apiContractChanged": false,
+  "runtimeVerified": false
+}
