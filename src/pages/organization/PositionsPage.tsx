@@ -3,6 +3,7 @@ import {
   Button,
   Drawer,
   Group,
+  Modal,
   Select,
   SimpleGrid,
   Stack,
@@ -12,7 +13,12 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconEdit, IconPlus, IconSearch } from "@tabler/icons-react";
+import {
+  IconEdit,
+  IconPlus,
+  IconSearch,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
@@ -23,6 +29,7 @@ import { ImportExportToolbar } from "../../features/import-export/ImportExportTo
 import { useHrmCoreTemplateDownload } from "../../features/import-export/useHrmCoreTemplateDownload";
 import {
   createPosition,
+  deletePosition,
   updatePosition,
 } from "../../features/organization/positionsApi";
 import type { Position } from "../../features/organization/organizationTypes";
@@ -50,12 +57,14 @@ export function PositionsPage() {
   const { can, permissions, roles } = useAuth();
   const canCreatePosition = can(HR_PERMISSIONS.POSITION_CREATE);
   const canEditPosition = can(HR_PERMISSIONS.POSITION_UPDATE);
+  const canDeletePosition = can(HR_PERMISSIONS.POSITION_DELETE);
   const canImportPositions = can(HR_PERMISSIONS.EMPLOYEE_IMPORT);
   const canExportPositions = can(HR_PERMISSIONS.POSITION_READ);
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<Position | null>(null);
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [deleting, setDeleting] = useState<Position | null>(null);
   const [params, setParams] = useState({
     page: 1,
     pageSize: 10,
@@ -152,6 +161,38 @@ export function PositionsPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (position: Position) => {
+      debugPermissionCheck({
+        action: "position.delete",
+        required: HR_PERMISSIONS.POSITION_DELETE,
+        permissions,
+        roles,
+        allowed: canDeletePosition,
+      });
+      if (!canDeletePosition) {
+        throw new Error("Bạn không có quyền xóa chức danh.");
+      }
+      return deletePosition(position.id);
+    },
+    onSuccess: async () => {
+      notifications.show({
+        color: "green",
+        title: "Đã xóa chức danh",
+        message: "Chức danh đã được chuyển sang trạng thái tạm ngưng.",
+      });
+      setDeleting(null);
+      await queryClient.invalidateQueries({ queryKey: ["positions"] });
+    },
+    onError: () => {
+      notifications.show({
+        color: "red",
+        title: "Không xóa được chức danh",
+        message: "Vui lòng thử lại sau.",
+      });
+    },
+  });
+
   // Sắp xếp toàn bộ vị trí theo tên tăng dần rồi phân trang ở client.
   const sortedPositions = useMemo(
     () => sortByCode(allPositions, (item) => item.name),
@@ -208,7 +249,7 @@ export function PositionsPage() {
       {
         key: "actions",
         header: "",
-        width: 72,
+        width: 108,
         align: "right",
         render: (record) => (
           <TableActionsMenu
@@ -240,12 +281,35 @@ export function PositionsPage() {
                   setOpen(true);
                 },
               },
+              {
+                label:
+                  record.status === "INACTIVE"
+                    ? "Chức danh đã tạm ngưng"
+                    : "Xóa",
+                icon: <IconTrash size={16} />,
+                color: "red",
+                // Xóa = chuyển sang INACTIVE, nên bản ghi đã tạm ngưng thì thôi.
+                disabled: !canDeletePosition || record.status === "INACTIVE",
+                onClick: () => {
+                  debugPermissionCheck({
+                    action: "position.delete",
+                    required: HR_PERMISSIONS.POSITION_DELETE,
+                    permissions,
+                    roles,
+                    allowed: canDeletePosition,
+                  });
+                  if (!canDeletePosition) {
+                    return;
+                  }
+                  setDeleting(record);
+                },
+              },
             ]}
           />
         ),
       },
     ],
-    [canEditPosition, form, permissions, roles],
+    [canDeletePosition, canEditPosition, form, permissions, roles],
   );
 
   return (
@@ -397,6 +461,37 @@ export function PositionsPage() {
           queryClient.invalidateQueries({ queryKey: ["positions"] })
         }
       />
+
+      <Modal
+        opened={deleting !== null}
+        onClose={() => setDeleting(null)}
+        title="Xóa chức danh"
+        centered
+      >
+        <Stack gap="sm">
+          <Text size="sm">
+            Xóa chức danh <strong>{deleting?.name}</strong>? Chức danh sẽ chuyển
+            sang trạng thái tạm ngưng và không còn xuất hiện khi phân công nhân
+            sự. Nhân sự đang giữ chức danh này vẫn giữ nguyên dữ liệu.
+          </Text>
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={() => setDeleting(null)}>
+              Hủy
+            </Button>
+            <Button
+              color="red"
+              loading={deleteMutation.isPending}
+              onClick={() => {
+                if (deleting) {
+                  deleteMutation.mutate(deleting);
+                }
+              }}
+            >
+              Xóa
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </>
   );
 }
