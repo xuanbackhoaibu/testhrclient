@@ -60,7 +60,7 @@ const orgItems: NavItem[] = [
   { label: "Lĩnh vực", path: ROUTES.businessSectors, icon: IconBuildingBank },
   { label: "Đơn vị", path: ROUTES.units, icon: IconBuildingBank },
   { label: "Phòng ban", path: ROUTES.departments, icon: IconSitemap },
-  { label: "Chức vụ", path: ROUTES.positions, icon: IconBriefcase },
+  { label: "Chức danh", path: ROUTES.positions, icon: IconBriefcase },
 ];
 
 const iamItems: NavItem[] = [
@@ -77,7 +77,7 @@ const routeTitles: Record<string, string> = {
   [ROUTES.businessSectors]: "Lĩnh vực",
   [ROUTES.units]: "Đơn vị",
   [ROUTES.departments]: "Phòng ban",
-  [ROUTES.positions]: "Chức vụ",
+  [ROUTES.positions]: "Chức danh",
   [ROUTES.movements]: "Điều chuyển",
   [ROUTES.contracts]: "Hợp đồng",
   [ROUTES.leave]: "Nghỉ phép",
