@@ -138,7 +138,6 @@ export async function downloadEmployeesExport(params: ListQueryParams = {}): Pro
       { header: 'Phòng ban', key: 'department', width: 26, value: (r) => r.currentEmployeeAssignment?.departmentName ?? '' },
       { header: 'Mã Phòng ban', key: 'departmentCode', width: 16, value: (r) => r.currentEmployeeAssignment?.departmentCode ?? '' },
       { header: 'Chức danh', key: 'jobTitle', width: 24, value: (r) => r.currentEmployeeAssignment?.positionName ?? r.currentEmployeeAssignment?.jobTitle ?? '' },
-      { header: 'Mã Chức vụ', key: 'positionCode', width: 14, value: (r) => r.currentEmployeeAssignment?.positionCode ?? '' },
       { header: 'Giới tính', key: 'gender', width: 10, value: (r) => GENDER_LABELS[r.gender ?? ''] ?? r.gender ?? '' },
       { header: 'Ngày sinh', key: 'dateOfBirth', width: 14, value: (r) => formatDate(r.dateOfBirth) },
       { header: 'CCCD/CMND', key: 'citizenId', width: 18, value: (r) => r.citizenIdMasked ?? '' },
