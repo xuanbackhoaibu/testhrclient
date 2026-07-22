@@ -14,7 +14,8 @@ import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../sh
 import type { Position, PositionSelectOption } from './organizationTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
-type PositionPayload = Omit<Position, 'id'>;
+// `code` không còn nhập từ UI — backend tự sinh từ tên chức vụ.
+type PositionPayload = Omit<Position, 'id' | 'code'> & { code?: string };
 
 export async function listPositions(params: ListQueryParams = {}): Promise<PaginatedResponse<Position>> {
   if (isMockMode) {
@@ -78,7 +79,12 @@ export async function listPositionsSelect(): Promise<PositionSelectOption[]> {
 export async function createPosition(payload: PositionPayload): Promise<Position> {
   if (isMockMode) {
     await mockDelay();
-    const position = { id: generateId('pos'), ...payload };
+    // Mock mode tự sinh mã giống backend để giữ nguyên hình dạng Position.
+    const position: Position = {
+      ...payload,
+      code: payload.code ?? generateId('POS').toUpperCase(),
+      id: generateId('pos'),
+    };
     mockPositions.unshift(position);
     appendAuditLog({ entityType: 'POSITION', entityId: position.id, action: 'CREATE', afterJson: position as unknown as Record<string, unknown> });
     return position;
