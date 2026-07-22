@@ -244,7 +244,7 @@ export function EmployeesPage() {
       hireDate: (value) => (value ? null : "Chọn ngày vào làm."),
       unitId: (value) => (value ? null : "Vui lòng chọn đơn vị."),
       departmentId: (value) => (value ? null : "Vui lòng chọn phòng ban."),
-      positionId: (value) => (value ? null : "Vui lòng chọn chức vụ."),
+      positionId: (value) => (value ? null : "Vui lòng chọn chức danh."),
       phone: (value) =>
         trimOptional(value) && !/^0[0-9]{9}$/.test(trimOptional(value))
           ? "Số điện thoại không đúng định dạng (VD: 0901234567)."
@@ -529,7 +529,7 @@ export function EmployeesPage() {
         color: "yellow",
         title: "Dữ liệu đang tải",
         message:
-          "Vui lòng chờ tải xong mã nhân sự, đơn vị, phòng ban và chức vụ.",
+          "Vui lòng chờ tải xong mã nhân sự, đơn vị, phòng ban và chức danh.",
       });
       return;
     }
@@ -541,7 +541,7 @@ export function EmployeesPage() {
       notifications.show({
         color: "red",
         title: "Không tải được danh mục",
-        message: "Vui lòng tải lại đơn vị, phòng ban và chức vụ trước khi lưu.",
+        message: "Vui lòng tải lại đơn vị, phòng ban và chức danh trước khi lưu.",
       });
       return;
     }
@@ -1017,17 +1017,17 @@ export function EmployeesPage() {
               }
             />
             <Select
-              label="Chức vụ"
+              label="Chức danh"
               placeholder={
                 positionsSelect.isLoading
-                  ? "Đang tải chức vụ..."
-                  : "Chọn chức vụ"
+                  ? "Đang tải chức danh..."
+                  : "Chọn chức danh"
               }
               withAsterisk
               searchable
               data={positionOptions}
               disabled={positionsSelect.isLoading || positionsSelect.isError}
-              nothingFoundMessage="Không có chức vụ active"
+              nothingFoundMessage="Không có chức danh active"
               value={form.values.positionId || null}
               error={form.errors.positionId}
               onChange={(value) =>

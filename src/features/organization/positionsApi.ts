@@ -14,7 +14,7 @@ import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../sh
 import type { Position, PositionSelectOption } from './organizationTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
-// `code` không còn nhập từ UI — backend tự sinh từ tên chức vụ.
+// `code` không còn nhập từ UI — backend tự sinh từ tên chức danh.
 type PositionPayload = Omit<Position, 'id' | 'code'> & { code?: string };
 
 export async function listPositions(params: ListQueryParams = {}): Promise<PaginatedResponse<Position>> {

@@ -102,7 +102,7 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
             <InfoRow label="Email" value={email || 'Chưa có email'} />
             <InfoRow label="Đơn vị" value={employee.unitName} />
             <InfoRow label="Phòng ban" value={employee.departmentName} />
-            <InfoRow label="Chức vụ" value={employee.positionName} />
+            <InfoRow label="Chức danh" value={employee.positionName} />
           </Stack>
 
           <Divider />
