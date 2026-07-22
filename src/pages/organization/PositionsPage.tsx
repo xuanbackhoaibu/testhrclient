@@ -38,7 +38,8 @@ import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 
-type PositionFormValues = Omit<Position, "id">;
+// Mã chức vụ không còn nhập từ UI — backend tự sinh từ tên chức vụ.
+type PositionFormValues = Omit<Position, "id" | "code">;
 
 const statusOptions = [
   { value: "ACTIVE", label: "Đang hoạt động" },
@@ -61,8 +62,8 @@ export function PositionsPage() {
     search: "",
     status: undefined as string | undefined,
   });
-  // Lấy toàn bộ vị trí theo bộ lọc, sắp theo mã trên toàn danh sách rồi
-  // phân trang ở client để trang 1 luôn bắt đầu từ mã nhỏ nhất.
+  // Lấy toàn bộ vị trí theo bộ lọc, sắp theo tên trên toàn danh sách rồi
+  // phân trang ở client để trang 1 luôn bắt đầu từ tên nhỏ nhất.
   const { data: allPositions, isLoading, error, refetch } = useAllPositions({
     search: params.search || undefined,
     status: params.status,
@@ -82,7 +83,6 @@ export function PositionsPage() {
 
   const form = useForm<PositionFormValues>({
     initialValues: {
-      code: "",
       name: "",
       scope: "",
       jobFunction: "",
@@ -91,7 +91,6 @@ export function PositionsPage() {
       status: "ACTIVE",
     },
     validate: {
-      code: (value) => (value.trim() ? null : "Nhập mã chức vụ."),
       name: (value) => (value.trim() ? null : "Nhập tên chức vụ."),
     },
   });
@@ -114,7 +113,6 @@ export function PositionsPage() {
       }
 
       const payload = {
-        code: values.code.trim(),
         name: values.name.trim(),
         scope: values.scope?.trim() || undefined,
         jobFunction: values.jobFunction.trim() || undefined,
@@ -126,7 +124,6 @@ export function PositionsPage() {
         return updatePosition(editing.id, payload);
       }
       return createPosition({
-        code: payload.code,
         name: payload.name,
         scope: payload.scope,
         jobFunction: payload.jobFunction ?? "",
@@ -155,8 +152,11 @@ export function PositionsPage() {
     },
   });
 
-  // Sắp xếp toàn bộ vị trí theo mã tăng dần rồi phân trang ở client.
-  const sortedPositions = useMemo(() => sortByCode(allPositions), [allPositions]);
+  // Sắp xếp toàn bộ vị trí theo tên tăng dần rồi phân trang ở client.
+  const sortedPositions = useMemo(
+    () => sortByCode(allPositions, (item) => item.name),
+    [allPositions],
+  );
   const totalCount = sortedPositions.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / params.pageSize));
   const currentPage = Math.min(params.page, totalPages);
@@ -179,12 +179,10 @@ export function PositionsPage() {
   const columns = useMemo<DataTableColumn<Position>[]>(
     () => [
       {
-        key: "code",
-        header: "Mã",
-        width: 120,
-        render: (record) => <Text fw={600}>{record.code}</Text>,
+        key: "name",
+        header: "Tên chức vụ",
+        render: (record) => <Text fw={600}>{record.name}</Text>,
       },
-      { key: "name", header: "Tên chức vụ", render: (record) => record.name },
       {
         key: "scope",
         header: "Phạm vi",
@@ -232,7 +230,6 @@ export function PositionsPage() {
                   }
                   setEditing(record);
                   form.setValues({
-                    code: record.code,
                     name: record.name,
                     scope: record.scope ?? "",
                     jobFunction: record.jobFunction ?? "",
@@ -298,7 +295,7 @@ export function PositionsPage() {
       <Stack gap="md">
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <TextInput
-            placeholder="Tìm mã, tên, nhóm công việc"
+            placeholder="Tìm tên, nhóm công việc"
             leftSection={<IconSearch size={17} />}
             value={params.search}
             onChange={(event) => {
@@ -353,11 +350,6 @@ export function PositionsPage() {
       >
         <form onSubmit={form.onSubmit((values) => mutation.mutate(values))}>
           <Stack gap="sm">
-            <TextInput
-              label="Mã chức vụ"
-              withAsterisk
-              {...form.getInputProps("code")}
-            />
             <TextInput
               label="Tên chức vụ"
               withAsterisk
