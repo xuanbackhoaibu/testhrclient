@@ -355,7 +355,7 @@ export function AccountAuthorizationModal({
         directPermissionGroupReason.trim() || undefined,
       ),
     onSuccess: async () => {
-      notifications.show({ color: "green", message: "Da cap nhat nhom quyen truc tiep." });
+      notifications.show({ color: "green", message: "Đã cập nhật nhóm quyền trực tiếp." });
       await invalidateAccountList();
       await authzQuery.refetch();
       await handleSelfRefresh();
@@ -525,8 +525,8 @@ export function AccountAuthorizationModal({
       }}
       title={
         authzQuery.data?.account.email
-          ? `Phan quyen tai khoan: ${authzQuery.data.account.email}`
-          : "Phan quyen tai khoan"
+          ? `Phân quyền tài khoản: ${authzQuery.data.account.email}`
+          : "Phân quyền tài khoản"
       }
       size="xl"
       centered
@@ -536,7 +536,7 @@ export function AccountAuthorizationModal({
           <Loader size="sm" />
         </Group>
       ) : authzQuery.error ? (
-        <Alert color="red" title="Khong the tai thong tin phan quyen">
+        <Alert color="red" title="Không thể tải thông tin phân quyền">
           {(authzQuery.error as Error).message}
         </Alert>
       ) : authzQuery.data ? (

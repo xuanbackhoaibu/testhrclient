@@ -103,7 +103,7 @@ function normalizeAuthzError(
     throw new Error(error.message);
   }
 
-  throw error instanceof Error ? error : new Error(`Khong the ${action}.`);
+  throw error instanceof Error ? error : new Error(`Không thể ${action}.`);
 }
 
 async function getEmployeesByAuthUserIdMap(
@@ -183,7 +183,7 @@ async function buildEffectivePermissionsWithSources(
         error,
         'tai effective permissions',
         `${AUTH_ADMIN_PUBLIC_BASE}/users/${accountId}/effective-permissions`,
-        'Ban khong co quyen phan quyen tai khoan nay.',
+        'Bạn không có quyền phân quyền tài khoản này.',
       ),
     ),
     getUserPermissionGroups(accountId).catch((error) =>
@@ -191,7 +191,7 @@ async function buildEffectivePermissionsWithSources(
         error,
         'tai nhom quyen truc tiep',
         `${AUTH_ADMIN_PUBLIC_BASE}/users/${accountId}/permission-groups`,
-        'Ban khong co quyen phan quyen tai khoan nay.',
+        'Bạn không có quyền phân quyền tài khoản này.',
       ),
     ),
     getRoles({ status: 'active' }).catch((error) =>
@@ -199,7 +199,7 @@ async function buildEffectivePermissionsWithSources(
         error,
         'tai danh sach role',
         `${AUTH_ADMIN_PUBLIC_BASE}/roles`,
-        'Ban khong co quyen phan quyen tai khoan nay.',
+        'Bạn không có quyền phân quyền tài khoản này.',
       ),
     ),
     getPermissionGroups({ status: 'active' }).catch((error) =>
@@ -207,7 +207,7 @@ async function buildEffectivePermissionsWithSources(
         error,
         'tai danh sach permission group',
         `${AUTH_ADMIN_PUBLIC_BASE}/permission-groups`,
-        'Ban khong co quyen phan quyen tai khoan nay.',
+        'Bạn không có quyền phân quyền tài khoản này.',
       ),
     ),
     getPermissionsGrouped().catch((error) =>
@@ -215,7 +215,7 @@ async function buildEffectivePermissionsWithSources(
         error,
         'tai danh sach permission',
         `${AUTH_ADMIN_PUBLIC_BASE}/permissions/grouped`,
-        'Ban khong co quyen phan quyen tai khoan nay.',
+        'Bạn không có quyền phân quyền tài khoản này.',
       ),
     ),
   ]);
@@ -287,7 +287,7 @@ export async function listAccountManagementRows(
       error,
       'tai danh sach tai khoan',
       `${AUTH_ADMIN_PUBLIC_BASE}/users`,
-      'Ban khong co quyen xem danh sach tai khoan.',
+      'Bạn không có quyền xem danh sách tài khoản.',
     ),
   );
   const employeesByAuthUserId = await getEmployeesByAuthUserIdMap(result.data);
@@ -319,7 +319,7 @@ export async function getAccountAuthorizationDetail(
         error,
         'tai chi tiet tai khoan',
         `${AUTH_ADMIN_PUBLIC_BASE}/users/${accountId}`,
-        'Ban khong co quyen phan quyen tai khoan nay.',
+        'Bạn không có quyền phân quyền tài khoản này.',
       ),
     ),
     buildEffectivePermissionsWithSources(accountId),
@@ -348,9 +348,9 @@ export async function updateAccountRoles(
   return assignRoles(accountId, { roles: roleCodes, reason }).catch((error) =>
     normalizeAuthzError(
       error,
-      'cap nhat role tai khoan',
+      'cập nhật vai trò tài khoản',
       `${AUTH_ADMIN_PUBLIC_BASE}/users/${accountId}/roles`,
-      'Ban khong co quyen phan quyen tai khoan nay.',
+        'Bạn không có quyền phân quyền tài khoản này.',
     ),
   );
 }
@@ -368,9 +368,9 @@ export async function updateAccountDirectPermissions(
   return assignPermissionOverrides(accountId, { overrides, reason }).catch((error) =>
     normalizeAuthzError(
       error,
-      'cap nhat permission truc tiep',
+      'cập nhật quyền trực tiếp',
       `${AUTH_ADMIN_PUBLIC_BASE}/users/${accountId}/permissions`,
-      'Ban khong co quyen phan quyen tai khoan nay.',
+        'Bạn không có quyền phân quyền tài khoản này.',
     ),
   );
 }
@@ -383,9 +383,9 @@ export async function updateAccountDirectPermissionGroups(
   return assignPermissionGroups(accountId, { permissionGroupIds, reason }).catch((error) =>
     normalizeAuthzError(
       error,
-      'cap nhat nhom quyen truc tiep',
+      'cập nhật nhóm quyền trực tiếp',
       `${AUTH_ADMIN_PUBLIC_BASE}/users/${accountId}/permission-groups`,
-      'Ban khong co quyen phan quyen tai khoan nay.',
+        'Bạn không có quyền phân quyền tài khoản này.',
     ),
   );
 }
