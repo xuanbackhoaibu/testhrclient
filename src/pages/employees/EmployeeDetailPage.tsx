@@ -156,7 +156,7 @@ export function EmployeeDetailPage() {
           </InfoRow>
           <InfoRow label="Đơn vị">{employee.currentEmployeeAssignment?.unitName ?? '-'}</InfoRow>
           <InfoRow label="Phòng ban">{employee.currentEmployeeAssignment?.departmentName ?? '-'}</InfoRow>
-          <InfoRow label="Chức vụ">{employee.currentEmployeeAssignment?.positionName ?? '-'}</InfoRow>
+          <InfoRow label="Chức danh">{employee.currentEmployeeAssignment?.positionName ?? '-'}</InfoRow>
           <InfoRow label="Email công ty">{employee.companyEmail ?? '-'}</InfoRow>
           <InfoRow label="Số điện thoại">{employee.phone ?? '-'}</InfoRow>
           <InfoRow label="Ngày vào làm">{formatDate(employee.hireDate)}</InfoRow>
@@ -200,7 +200,7 @@ export function EmployeeDetailPage() {
                     <Table.Tr>
                       <Table.Th>Đơn vị</Table.Th>
                       <Table.Th>Phòng ban</Table.Th>
-                      <Table.Th>Chức vụ</Table.Th>
+                      <Table.Th>Chức danh</Table.Th>
                       <Table.Th>Job title</Table.Th>
                       <Table.Th>Quản lý</Table.Th>
                     </Table.Tr>

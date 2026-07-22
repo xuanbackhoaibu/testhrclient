@@ -38,7 +38,7 @@ import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 
-// Mã chức vụ không còn nhập từ UI — backend tự sinh từ tên chức vụ.
+// Mã chức danh không còn nhập từ UI — backend tự sinh từ tên chức danh.
 type PositionFormValues = Omit<Position, "id" | "code">;
 
 const statusOptions = [
@@ -91,7 +91,7 @@ export function PositionsPage() {
       status: "ACTIVE",
     },
     validate: {
-      name: (value) => (value.trim() ? null : "Nhập tên chức vụ."),
+      name: (value) => (value.trim() ? null : "Nhập tên chức danh."),
     },
   });
 
@@ -109,7 +109,7 @@ export function PositionsPage() {
         allowed,
       });
       if (!allowed) {
-        throw new Error("Bạn không có quyền lưu chức vụ.");
+        throw new Error("Bạn không có quyền lưu chức danh.");
       }
 
       const payload = {
@@ -135,8 +135,8 @@ export function PositionsPage() {
     onSuccess: async () => {
       notifications.show({
         color: "green",
-        title: editing ? "Đã cập nhật chức vụ" : "Đã tạo chức vụ",
-        message: "Danh mục chức vụ đã được cập nhật.",
+        title: editing ? "Đã cập nhật chức danh" : "Đã tạo chức danh",
+        message: "Danh mục chức danh đã được cập nhật.",
       });
       setOpen(false);
       setEditing(null);
@@ -146,7 +146,7 @@ export function PositionsPage() {
     onError: () => {
       notifications.show({
         color: "red",
-        title: "Không lưu được chức vụ",
+        title: "Không lưu được chức danh",
         message: "Vui lòng kiểm tra dữ liệu và thử lại.",
       });
     },
@@ -180,7 +180,7 @@ export function PositionsPage() {
     () => [
       {
         key: "name",
-        header: "Tên chức vụ",
+        header: "Tên chức danh",
         render: (record) => <Text fw={600}>{record.name}</Text>,
       },
       {
@@ -251,8 +251,8 @@ export function PositionsPage() {
   return (
     <>
       <PageHeader
-        title="Chức vụ"
-        subtitle="Danh mục chức vụ, nhóm công việc, grade và import Excel ngay trong modal."
+        title="Chức danh"
+        subtitle="Danh mục chức danh, nhóm công việc, grade và import Excel ngay trong modal."
         actions={
           <>
             <ImportExportToolbar
@@ -285,7 +285,7 @@ export function PositionsPage() {
                   setOpen(true);
                 }}
               >
-                Tạo chức vụ
+                Tạo chức danh
               </Button>
             ) : null}
           </>
@@ -333,8 +333,8 @@ export function PositionsPage() {
           onPageChange={(page, pageSize) =>
             setParams((current) => ({ ...current, page, pageSize }))
           }
-          emptyTitle="Chưa có chức vụ"
-          emptyDescription="Không có chức vụ phù hợp với bộ lọc hiện tại."
+          emptyTitle="Chưa có chức danh"
+          emptyDescription="Không có chức danh phù hợp với bộ lọc hiện tại."
         />
       </Stack>
 
@@ -345,13 +345,13 @@ export function PositionsPage() {
           setEditing(null);
           form.reset();
         }}
-        title={editing ? "Chỉnh sửa chức vụ" : "Tạo chức vụ"}
+        title={editing ? "Chỉnh sửa chức danh" : "Tạo chức danh"}
         position="right"
       >
         <form onSubmit={form.onSubmit((values) => mutation.mutate(values))}>
           <Stack gap="sm">
             <TextInput
-              label="Tên chức vụ"
+              label="Tên chức danh"
               withAsterisk
               {...form.getInputProps("name")}
             />
@@ -391,7 +391,7 @@ export function PositionsPage() {
       <DomainExcelImportModal
         open={importOpen}
         onOpenChange={setImportOpen}
-        title="Import Excel Chức vụ"
+        title="Import Excel Chức danh"
         module="positions"
         onSuccess={() =>
           queryClient.invalidateQueries({ queryKey: ["positions"] })
