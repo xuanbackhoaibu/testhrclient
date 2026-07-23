@@ -36,6 +36,10 @@ export type MatrixRow = {
 };
 export type MatrixResult = { items: MatrixRow[]; page: number; pageSize: number; total: number; hasNext: boolean };
 export type BusinessOption = { id: string; code?: string | null; label: string };
+export type ScopeOptionsQuery = { search?: string; unitId?: string; ids?: string; status?: 'ACTIVE' | 'INACTIVE'; page?: number; pageSize?: number };
+export type DepartmentOption = { departmentId: string; departmentCode: string; departmentName: string; unitId: string; unitCode: string; unitName: string; status: 'ACTIVE' | 'INACTIVE' };
+export type UnitOption = { unitId: string; unitCode: string; unitName: string; status: 'ACTIVE' | 'INACTIVE'; unitType?: string | null };
+export type ScopeOptionsPage<T> = { items: T[]; page: number; pageSize: number; total: number; hasNext: boolean };
 export type BusinessGrant = { employeeId: string; permissions: BusinessPermission[]; reason?: string };
 
 export function listMatrix(params: Record<string, string | number | undefined>) {
@@ -44,8 +48,13 @@ export function listMatrix(params: Record<string, string | number | undefined>) 
   return api.get<MatrixResult>(`${BASE}/matrix?${query.toString()}`);
 }
 export const listBusinessEmployees = (search?: string) => api.get<BusinessOption[]>(`${BASE}/options/employees${search ? `?search=${encodeURIComponent(search)}` : ''}`);
-export const listBusinessDepartments = (search?: string) => api.get<BusinessOption[]>(`${BASE}/options/departments${search ? `?search=${encodeURIComponent(search)}` : ''}`);
-export const listBusinessUnits = (search?: string) => api.get<BusinessOption[]>(`${BASE}/options/units${search ? `?search=${encodeURIComponent(search)}` : ''}`);
+function scopeOptionsQuery(query: ScopeOptionsQuery = {}) {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => { if (value !== undefined && value !== '') params.set(key, String(value)); });
+  return params.toString();
+}
+export const listBusinessDepartments = (query: ScopeOptionsQuery = {}) => api.get<ScopeOptionsPage<DepartmentOption>>(`${BASE}/options/departments?${scopeOptionsQuery(query)}`);
+export const listBusinessUnits = (query: ScopeOptionsQuery = {}) => api.get<ScopeOptionsPage<UnitOption>>(`${BASE}/options/units?${scopeOptionsQuery(query)}`);
 export const getCorporation = () => api.get<BusinessOption & { rootUnitId: string }>(`${BASE}/options/corporation`);
 export const previewBusinessGrant = (input: BusinessGrant) => api.post<unknown>(`${BASE}/business/preview`, input);
 export const createBusinessGrant = (input: BusinessGrant) => api.post<{ assignments: Assignment[] }>(`${BASE}/business/grants`, input);
