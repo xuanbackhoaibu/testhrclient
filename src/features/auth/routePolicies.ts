@@ -30,6 +30,7 @@ export const ROUTE_POLICIES: Record<string, RoutePolicy> = {
   [ROUTES.roles]: { kind: 'permission', permissions: [AUTH_ADMIN_PERMISSIONS.ROLES_READ] },
   [ROUTES.permissions]: { kind: 'permission', permissions: [AUTH_ADMIN_PERMISSIONS.PERMISSIONS_READ] },
   [ROUTES.permissionGroups]: { kind: 'permission', permissions: [AUTH_ADMIN_PERMISSIONS.PERMISSION_GROUPS_READ] },
+  [ROUTES.workReportAuthorizations]: { kind: 'permission', permissions: ['admin.work_report_authorization.read'] },
 
   [ROUTES.movements]: { kind: 'permission', permissions: [HR_PERMISSIONS.MOVEMENT_READ] },
   [ROUTES.contracts]: { kind: 'permission', permissions: [HR_PERMISSIONS.CONTRACT_READ] },
