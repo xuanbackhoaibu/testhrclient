@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   ActionIcon,
   Alert,
@@ -19,7 +20,7 @@ import {
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconRefresh, IconTrash } from '@tabler/icons-react';
+import { IconEye, IconPencil, IconPlus, IconRefresh, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../features/auth/useAuth';
@@ -41,18 +42,13 @@ import {
   type UnitOption,
 } from '../../features/work-report-authorizations/canonicalWorkReportAuthorizationsApi';
 import { departmentScopeLabel, toggleScopeAction, unitScopeLabel } from '../../features/work-report-authorizations/scopeSelectionPolicy';
+import { workReportAuthorizationToEmployeePermissionViewModel, type EmployeePermissionViewModel, type PermissionPresentation } from '../../features/work-report-authorizations/workReportAuthorizationViewModel';
 import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
 import { PageHeader } from '../../shared/components/PageHeader';
 
 const MANAGE = 'admin.work_report_authorization.manage';
 const canonicalDepartmentLabel = departmentScopeLabel;
 const canonicalUnitLabel = unitScopeLabel;
-const permissionLabel: Record<BusinessPermission['type'], string> = {
-  DEPARTMENT_REPORT: 'Tổng hợp cấp phòng',
-  UNIT_REPORT: 'Báo cáo lãnh đạo đơn vị',
-  CORPORATE_REPORT: 'Tổng hợp Tổng công ty',
-};
-
 type DepartmentScopeDraft = DepartmentOption & { actions: BusinessAction[] };
 type UnitScopeDraft = UnitOption & { actions: BusinessAction[] };
 
@@ -71,18 +67,22 @@ const actionsFrom = (actions: BusinessAction[], action: BusinessAction, confirmR
   return toggleScopeAction(actions, action);
 };
 
-const summary = (row: MatrixRow) => row.permissions.length
-  ? row.permissions.map((permission) => permissionLabel[permission.type]).join(', ')
-  : 'Chưa cấp';
-
 export function WorkReportAuthorizationsPage() {
   const client = useQueryClient();
   const { can } = useAuth();
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
-  const [departmentId] = useState<string | null>(null);
-  const [unitId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = Math.max(1, Number(searchParams.get('page') ?? 1));
+  const search = searchParams.get('search') ?? '';
+  const departmentId = searchParams.get('departmentId');
+  const unitId = searchParams.get('unitId');
+  const permissionFilter = searchParams.get('permission') ?? '';
+  const updateListQuery = (changes: Record<string, string | null>) => setSearchParams((current) => {
+    const next = new URLSearchParams(current);
+    Object.entries(changes).forEach(([key, value]) => value ? next.set(key, value) : next.delete(key));
+    return next;
+  });
   const [drawer, setDrawer] = useState(false);
+  const [detail, setDetail] = useState<MatrixRow | null>(null);
   const [step, setStep] = useState(0);
   const [subject, setSubject] = useState<MatrixRow | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
@@ -90,6 +90,7 @@ export function WorkReportAuthorizationsPage() {
   const [batchMode, setBatchMode] = useState(false);
   const [departmentDrafts, setDepartmentDrafts] = useState<Record<string, DepartmentScopeDraft>>({});
   const [unitDrafts, setUnitDrafts] = useState<Record<string, UnitScopeDraft>>({});
+  const [removedPermissions, setRemovedPermissions] = useState<BusinessPermission[]>([]);
   const [corporateActions, setCorporateActions] = useState<BusinessAction[]>([]);
   const [departmentSearch, setDepartmentSearch] = useState('');
   const [unitSearch, setUnitSearch] = useState('');
@@ -106,6 +107,12 @@ export function WorkReportAuthorizationsPage() {
     queryKey: ['work-report-matrix', page, debouncedMatrix, departmentId, unitId],
     queryFn: () => listMatrix({ page, pageSize: 20, search: debouncedMatrix || undefined, departmentId: departmentId ?? undefined, unitId: unitId ?? undefined }),
   });
+  const matrixScopeIds = useMemo(() => {
+    const permissions = matrix.data?.items.flatMap((row) => row.permissions) ?? [];
+    return { departments: permissions.filter((item) => item.type === 'DEPARTMENT_REPORT').map((item) => item.scopeId), units: permissions.filter((item) => item.type === 'UNIT_REPORT').map((item) => item.scopeId) };
+  }, [matrix.data]);
+  const matrixDepartments = useQuery({ queryKey: ['work-report-options', 'departments', 'matrix', matrixScopeIds.departments], queryFn: () => listBusinessDepartments({ ids: matrixScopeIds.departments.join(','), pageSize: 100 }), enabled: matrixScopeIds.departments.length > 0 });
+  const matrixUnits = useQuery({ queryKey: ['work-report-options', 'units', 'matrix', matrixScopeIds.units], queryFn: () => listBusinessUnits({ ids: matrixScopeIds.units.join(','), pageSize: 100 }), enabled: matrixScopeIds.units.length > 0 });
   const filterUnits = useQuery({ queryKey: ['work-report-options', 'units', 'filter'], queryFn: () => listBusinessUnits({ pageSize: 100 }) });
   const departments = useQuery({
     queryKey: ['work-report-options', 'departments', debouncedDepartmentSearch, departmentUnitFilter, scopeStatus],
@@ -155,8 +162,8 @@ export function WorkReportAuthorizationsPage() {
 
   const payload = (): BusinessGrant => {
     if (!effectiveEmployeeId) throw new Error('Chọn nhân sự trước khi tiếp tục.');
-    if (!permissions.length) throw new Error('Chọn ít nhất một quyền tổng hợp.');
-    return { employeeId: effectiveEmployeeId, permissions };
+    if (!permissions.length && !removedPermissions.length) throw new Error('Chọn ít nhất một thay đổi quyền.');
+    return { employeeId: effectiveEmployeeId, permissions, removedPermissions };
   };
   const refresh = () => { void client.invalidateQueries({ queryKey: ['work-report-matrix'] }); };
   const preview = useMutation({ mutationFn: () => previewBusinessGrant(payload()), onSuccess: () => { setPreviewed(true); setStep(2); }, onError: (error) => notifications.show({ color: 'red', message: error instanceof Error ? error.message : 'Không thể kiểm tra phân quyền.' }) });
@@ -166,10 +173,12 @@ export function WorkReportAuthorizationsPage() {
 
   const addDepartment = (scope: DepartmentOption) => {
     setDepartmentDrafts((current) => current[scope.departmentId] ? current : { ...current, [scope.departmentId]: { ...scope, actions: ['READ'] } });
+    setRemovedPermissions((current) => current.filter((item) => !(item.type === 'DEPARTMENT_REPORT' && item.scopeId === scope.departmentId)));
     setPreviewed(false);
   };
   const addUnit = (scope: UnitOption) => {
     setUnitDrafts((current) => current[scope.unitId] ? current : { ...current, [scope.unitId]: { ...scope, actions: ['READ'] } });
+    setRemovedPermissions((current) => current.filter((item) => !(item.type === 'UNIT_REPORT' && item.scopeId === scope.unitId)));
     setPreviewed(false);
   };
   const updateDepartmentAction = (id: string, action: BusinessAction) => setDepartmentDrafts((current) => ({ ...current, [id]: { ...current[id], actions: actionsFrom(current[id].actions, action, true) } }));
@@ -190,15 +199,30 @@ export function WorkReportAuthorizationsPage() {
     setCorporateActions(corporate);
   };
   const openDrawer = (row: MatrixRow | null, batch = false) => {
-    setBatchMode(batch); setSubject(row); setSelectedEmployeeId(row?.employeeId ?? null); hydrateActivePermissions(batch ? null : row); setPreviewed(false); setStep(0); setDrawer(true);
+    setBatchMode(batch); setSubject(row); setSelectedEmployeeId(row?.employeeId ?? null); hydrateActivePermissions(batch ? null : row); setRemovedPermissions([]); setPreviewed(false); setStep(0); setDrawer(true);
   };
 
+  const viewModels = useMemo(() => new Map((matrix.data?.items ?? []).map((row) => [row.employeeId, workReportAuthorizationToEmployeePermissionViewModel(row, matrixDepartments.data?.items, matrixUnits.data?.items)])), [matrix.data, matrixDepartments.data, matrixUnits.data]);
+  const filteredItems = useMemo(() => (matrix.data?.items ?? []).filter((row) => {
+    const view = viewModels.get(row.employeeId);
+    if (!view || !permissionFilter) return true;
+    if (permissionFilter === 'unassigned') return row.permissions.length === 0;
+    if (permissionFilter === 'department') return view.summary.departmentScopeCount > 0;
+    if (permissionFilter === 'unit') return view.summary.unitScopeCount > 0;
+    if (permissionFilter === 'corporation') return view.summary.hasCorporationScope;
+    if (permissionFilter === 'inactive') return view.summary.inactiveCount > 0;
+    if (permissionFilter === 'read') return view.summary.readOnlyCount > 0;
+    return permissionFilter === 'submit' ? view.summary.readSubmitCount > 0 : true;
+  }), [matrix.data, permissionFilter, viewModels]);
   const columns: DataTableColumn<MatrixRow>[] = [
-    { key: 'employee', header: 'Nhân sự', render: (row) => <Stack gap={0}><Text fw={600} size="sm">{row.fullName}</Text><Text size="xs" c="dimmed">{row.email ?? row.employeeCode}</Text></Stack> },
-    { key: 'organization', header: 'Đơn vị / phòng ban', render: (row) => <Text size="sm">{row.unitName ?? 'Chưa xác định'}<br />{row.departmentName ?? 'Chưa xác định'}</Text> },
-    { key: 'personal', header: 'Quyền mặc định', render: (row) => <Badge color={row.accountStatus === 'ACTIVE' ? 'green' : 'gray'}>{row.accountStatus === 'ACTIVE' ? 'Cá nhân & tuần' : 'Chưa sẵn sàng'}</Badge> },
-    { key: 'managed', header: 'Quyền tổng hợp', render: (row) => row.permissions.length ? <Badge color="green" variant="light">{summary(row)}</Badge> : <Text size="sm" c="dimmed">Chưa cấp</Text> },
-    { key: 'actions', header: 'Thao tác', render: (row) => can(MANAGE) ? <Button size="compact-sm" variant="light" onClick={() => openDrawer(row)}>Cấp / chỉnh sửa</Button> : '—' },
+    { key: 'employee', header: 'Nhân sự', render: (row) => <Button variant="subtle" px={0} onClick={() => setDetail(row)}><Stack gap={0} align="flex-start"><Text fw={600} size="sm">{row.fullName}</Text><Text size="xs" c="dimmed">{row.employeeCode} · {row.email ?? 'Chưa có email'}</Text><Badge size="xs" color={row.accountStatus === 'ACTIVE' ? 'green' : 'gray'}>{row.accountStatus === 'ACTIVE' ? 'Đang hoạt động' : 'Không hoạt động'}</Badge></Stack></Button> },
+    { key: 'organization', header: 'Đơn vị / phòng ban hiện tại', render: (row) => <Stack gap={0}><Text size="sm">{row.unitName ?? 'Chưa xác định'}{row.unitCode ? ` · ${row.unitCode}` : ''}</Text><Text size="xs" c="dimmed">{row.departmentName ?? 'Chưa xác định'}</Text></Stack> },
+    { key: 'default', header: 'Quyền mặc định', render: () => <Stack gap={3}><Badge size="sm" variant="light">Báo cáo cá nhân</Badge><Badge size="sm" variant="light">Công việc tuần · Mặc định</Badge></Stack> },
+    { key: 'department', header: 'Quyền cấp phòng', render: (row) => <ScopeCompact scopes={viewModels.get(row.employeeId)?.departmentPermissions ?? []} /> },
+    { key: 'unit', header: 'Quyền cấp đơn vị', render: (row) => <ScopeCompact scopes={viewModels.get(row.employeeId)?.unitPermissions ?? []} /> },
+    { key: 'corporation', header: 'Quyền Tổng công ty', render: (row) => <ScopeCompact scopes={viewModels.get(row.employeeId)?.corporationPermission ? [viewModels.get(row.employeeId)!.corporationPermission!] : []} empty="Chưa cấp" /> },
+    { key: 'updated', header: 'Cập nhật gần nhất', render: (row) => <Text size="xs">{row.updatedAt ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(row.updatedAt)) : '—'}</Text> },
+    { key: 'actions', header: 'Thao tác', render: (row) => <Group gap="xs"><ActionIcon aria-label={`Xem chi tiết ${row.fullName}`} variant="light" onClick={() => setDetail(row)}><IconEye size={16} /></ActionIcon>{can(MANAGE) && <ActionIcon aria-label={`Sửa quyền ${row.fullName}`} variant="light" onClick={() => openDrawer(row)}><IconPencil size={16} /></ActionIcon>}</Group> },
   ];
   const departmentOptions = useMemo(() => Object.values((departments.data?.items ?? []).reduce<Record<string, { group: string; items: { value: string; label: string }[] }>>((groups, scope) => {
     const group = `${scope.unitName} — ${scope.unitCode}`;
@@ -207,21 +231,37 @@ export function WorkReportAuthorizationsPage() {
   }, {})), [departments.data]);
   const departmentById = new Map((departments.data?.items ?? []).map((scope) => [scope.departmentId, scope]));
   const unitById = new Map((units.data?.items ?? []).map((scope) => [scope.unitId, scope]));
-  const items = matrix.data?.items ?? [];
+  const items = filteredItems;
 
   const renderScopeActions = (checked: BusinessAction[], onChange: (action: BusinessAction) => void, label: string) => <Group gap="md" wrap="nowrap"><Checkbox aria-label={`Đọc báo cáo: ${label}`} label="Đọc" checked={checked.includes('READ')} onChange={() => { onChange('READ'); setPreviewed(false); }} /><Checkbox aria-label={`Gửi báo cáo: ${label}`} label="Gửi" checked={checked.includes('SUBMIT')} onChange={() => { onChange('SUBMIT'); setPreviewed(false); }} /></Group>;
 
   return <Stack gap="lg">
     <PageHeader title="Phân quyền báo cáo công việc" subtitle="Quản lý quyền tổng hợp theo phòng ban, đơn vị và Tổng công ty." actions={<Group><ActionIcon aria-label="Làm mới" variant="default" onClick={refresh}><IconRefresh size={16} /></ActionIcon>{can(MANAGE) && <Button leftSection={<IconPlus size={16} />} onClick={() => openDrawer(null)}>Cấp quyền</Button>}{can(MANAGE) && <Button variant="default" onClick={() => openDrawer(null, true)} disabled={!selectedIds.size}>Cấp hàng loạt ({selectedIds.size})</Button>}</Group>} />
-    <Group align="end"><TextInput label="Tìm nhân sự" placeholder="Tên, mã nhân sự hoặc email" value={search} onChange={(event) => { setSearch(event.currentTarget.value); setPage(1); }} w={360} /></Group>
-    <DataTable data={items} columns={columns} rowKey={(row) => row.employeeId} loading={matrix.isLoading} error={matrix.error} onRetry={() => matrix.refetch()} meta={matrix.data ? { page: matrix.data.page, pageSize: matrix.data.pageSize, total: matrix.data.total, totalPages: Math.max(1, Math.ceil(matrix.data.total / matrix.data.pageSize)), hasNextPage: matrix.data.hasNext, hasPreviousPage: matrix.data.page > 1 } : undefined} onPageChange={setPage} selectedIds={selectedIds} onSelectionChange={setSelectedIds} emptyTitle="Chưa có nhân sự phù hợp" />
+    <Stack gap="xs"><Group align="end"><TextInput label="Tìm nhân sự" placeholder="Tìm theo tên, mã nhân sự hoặc email" value={search} onChange={(event) => updateListQuery({ search: event.currentTarget.value || null, page: null })} w={360} /><Select clearable label="Đơn vị hiện tại" data={(filterUnits.data?.items ?? []).map((unit) => ({ value: unit.unitId, label: canonicalUnitLabel(unit) }))} value={unitId} onChange={(value) => updateListQuery({ unitId: value, page: null })} w={260} /><Button variant="subtle" onClick={() => updateListQuery({ search: null, departmentId: null, unitId: null, permission: null, page: null })}>Xóa bộ lọc</Button></Group><Group gap="xs"><Text size="sm" c="dimmed">{matrix.data?.total ?? 0} kết quả</Text>{[['unassigned', 'Chưa được phân quyền'], ['department', 'Có quyền cấp phòng'], ['unit', 'Có quyền cấp đơn vị'], ['corporation', 'Có quyền Tổng công ty'], ['inactive', 'Có quyền tạm dừng'], ['read', 'Chỉ đọc'], ['submit', 'Đọc và gửi']].map(([value, label]) => <Button key={value} size="compact-xs" variant={permissionFilter === value ? 'filled' : 'light'} onClick={() => updateListQuery({ permission: permissionFilter === value ? null : value })}>{label}</Button>)}</Group></Stack>
+    <DataTable data={items} columns={columns} rowKey={(row) => row.employeeId} loading={matrix.isLoading || matrixDepartments.isLoading || matrixUnits.isLoading} error={matrix.error} onRetry={() => matrix.refetch()} meta={matrix.data ? { page: matrix.data.page, pageSize: matrix.data.pageSize, total: matrix.data.total, totalPages: Math.max(1, Math.ceil(matrix.data.total / matrix.data.pageSize)), hasNextPage: matrix.data.hasNext, hasPreviousPage: matrix.data.page > 1 } : undefined} onPageChange={(nextPage) => updateListQuery({ page: String(nextPage) })} selectedIds={selectedIds} onSelectionChange={setSelectedIds} emptyTitle="Chưa có nhân sự phù hợp" />
     <Drawer opened={drawer} onClose={() => setDrawer(false)} title={batchMode ? 'Cấp quyền báo cáo hàng loạt' : 'Cấp quyền báo cáo công việc'} position="right" size={900} styles={{ content: { maxWidth: '95vw' }, body: { paddingBottom: 84 } }}>
       <Stepper active={step} mb="lg" allowNextStepsSelect={false}><Stepper.Step label="Nhân sự" /><Stepper.Step label="Quyền và phạm vi" /><Stepper.Step label="Xem trước" /></Stepper>
       {step === 0 && <Stack><Text fw={600}>{batchMode ? `Đã chọn ${selectedIds.size} nhân sự.` : 'Chọn nhân sự cần cấp quyền.'}</Text>{!batchMode && <Select searchable label="Nhân sự" placeholder="Chọn nhân sự" data={employeeSelectData.map((item) => ({ value: item.id, label: item.label }))} value={effectiveEmployeeId} onChange={(value) => { if (value === null && subject) return; setSelectedEmployeeId(value); const current = items.find((row) => row.employeeId === value) ?? null; setSubject(current); hydrateActivePermissions(current); setPreviewed(false); }} />}{subject && <Text size="sm" c="dimmed">{subject.fullName} · {subject.employeeCode} · {subject.departmentName ?? 'Chưa xác định phòng ban'}</Text>}<Group justify="flex-end"><Button onClick={() => setStep(1)} disabled={!batchMode && !effectiveEmployeeId}>Tiếp tục</Button></Group></Stack>}
       {step === 1 && <Stack gap="md"><Alert color="blue" title="Phạm vi được giữ độc lập">Tìm để thêm phạm vi; thay đổi bộ lọc không xóa các phạm vi đang chọn. Bật Gửi luôn tự bật Đọc.</Alert><Tabs defaultValue="departments"><Tabs.List><Tabs.Tab value="departments">Cấp phòng ({selectedDepartmentCount})</Tabs.Tab><Tabs.Tab value="units">Cấp đơn vị ({selectedUnitCount})</Tabs.Tab><Tabs.Tab value="corporation">Tổng công ty</Tabs.Tab></Tabs.List><Tabs.Panel value="departments" pt="md"><Stack><Group align="end"><TextInput label="Thêm phòng ban" placeholder="Tìm theo tên phòng, mã phòng hoặc đơn vị" value={departmentSearch} onChange={(event) => setDepartmentSearch(event.currentTarget.value)} style={{ flex: 1 }} /><Select clearable searchable label="Đơn vị" placeholder="Tất cả đơn vị" data={(filterUnits.data?.items ?? []).map((unit) => ({ value: unit.unitId, label: canonicalUnitLabel(unit) }))} value={departmentUnitFilter} onChange={setDepartmentUnitFilter} w={260} /><Select label="Trạng thái" data={[{ value: 'ACTIVE', label: 'Đang hoạt động' }, { value: 'INACTIVE', label: 'Không hoạt động' }]} value={scopeStatus} onChange={(value) => setScopeStatus(value === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE')} w={160} /></Group><Select searchable nothingFoundMessage={departments.isFetching ? 'Đang tải danh sách phòng ban…' : 'Không tìm thấy phòng ban phù hợp.'} placeholder="Chọn phòng ban để thêm" data={departmentOptions} value={null} onChange={(value) => { const scope = value ? departmentById.get(value) : undefined; if (scope) addDepartment(scope); }} /><Text size="xs" c="dimmed">{departments.data?.total ?? 0} kết quả · {selectedDepartmentCount} phòng đã chọn</Text><SelectedDepartments scopes={displayDepartmentDrafts} onAction={updateDepartmentAction} onRemove={(id) => { setDepartmentDrafts((current) => { const next = { ...current }; delete next[id]; return next; }); setPreviewed(false); }} renderActions={renderScopeActions} /></Stack></Tabs.Panel><Tabs.Panel value="units" pt="md"><Stack><TextInput label="Thêm đơn vị" placeholder="Tìm theo tên hoặc mã đơn vị" value={unitSearch} onChange={(event) => setUnitSearch(event.currentTarget.value)} /><Select searchable nothingFoundMessage={units.isFetching ? 'Đang tải danh sách đơn vị…' : 'Không tìm thấy đơn vị phù hợp.'} placeholder="Chọn đơn vị để thêm" data={(units.data?.items ?? []).map((scope) => ({ value: scope.unitId, label: canonicalUnitLabel(scope) }))} value={null} onChange={(value) => { const scope = value ? unitById.get(value) : undefined; if (scope) addUnit(scope); }} /><SelectedUnits scopes={displayUnitDrafts} onAction={updateUnitAction} onRemove={(id) => { setUnitDrafts((current) => { const next = { ...current }; delete next[id]; return next; }); setPreviewed(false); }} renderActions={renderScopeActions} /></Stack></Tabs.Panel><Tabs.Panel value="corporation" pt="md">{corporation.isError ? <Alert color="red" title="Chưa cấu hình Tổng công ty">Không thể cấp quyền Tổng công ty. Quyền phòng ban và đơn vị vẫn sẵn sàng.</Alert> : <Paper withBorder p="md"><Stack gap="xs"><Text fw={600}>{corporation.data?.label ?? 'Đang tải cấu hình…'}</Text><Text size="sm" c="dimmed">Mã đơn vị: DV001 · Phạm vi: Toàn Tổng công ty</Text>{renderScopeActions(corporateActions, (action) => setCorporateActions((current) => actionsFrom(current, action, true)), 'Tổng công ty')}</Stack></Paper>}</Tabs.Panel></Tabs><Group justify="space-between"><Button variant="default" onClick={() => setStep(0)}>Quay lại</Button><Button onClick={() => batchMode ? batchPreview.mutate() : preview.mutate()} loading={batchMode ? batchPreview.isPending : preview.isPending} disabled={!permissions.length}>Xem trước</Button></Group></Stack>}
       {step === 2 && <Stack><Text fw={600}>Xem trước thay đổi</Text><Preview scopes={displayDepartmentDrafts} units={displayUnitDrafts} corporateActions={corporateActions} corporationName={corporation.data?.label} /><Text size="sm" c="dimmed">Máy chủ sẽ kiểm tra trùng lặp, phạm vi inactive và các thay đổi cần tạo/cập nhật trước khi áp dụng.</Text><Group justify="space-between"><Button variant="default" onClick={() => setStep(1)}>Chỉnh sửa</Button><Button onClick={() => batchMode ? batchApply.mutate() : grant.mutate()} loading={batchMode ? batchApply.isPending : grant.isPending} disabled={!previewed}>Xác nhận cấp quyền</Button></Group></Stack>}
     </Drawer>
+    <Drawer opened={Boolean(detail)} onClose={() => setDetail(null)} title="Chi tiết quyền báo cáo công việc" position="right" size={920} styles={{ content: { maxWidth: '95vw' }, body: { paddingBottom: 24 } }}>
+      {detail && <PermissionDetail view={viewModels.get(detail.employeeId) ?? workReportAuthorizationToEmployeePermissionViewModel(detail)} onEdit={() => { setDetail(null); openDrawer(detail); }} />}
+    </Drawer>
   </Stack>;
+}
+
+function ScopeCompact({ scopes, empty = 'Chưa cấp' }: { scopes: PermissionPresentation[]; empty?: string }) {
+  if (!scopes.length) return <Text size="xs" c="dimmed">{empty}</Text>;
+  const shown = scopes.slice(0, 2);
+  return <Stack gap={5}>{shown.map((scope) => <Stack key={`${scope.type}:${scope.scopeId}`} gap={1}><Text size="xs" fw={600}>{scope.name}{scope.code ? ` · ${scope.code}` : ''}</Text>{scope.ownerName && <Text size="xs" c="dimmed">{scope.ownerName} · {scope.ownerCode}</Text>}<Group gap={4}><Badge size="xs" variant="light">{scope.accessLabel}</Badge>{scope.statusLabel !== 'Đang hoạt động' && <Badge size="xs" color="orange">{scope.statusLabel}</Badge>}</Group></Stack>)}{scopes.length > 2 && <Text size="xs" c="blue">+{scopes.length - 2} phạm vi khác</Text>}</Stack>;
+}
+
+function PermissionDetail({ view, onEdit }: { view: EmployeePermissionViewModel; onEdit: () => void }) {
+  const groups: Array<[string, PermissionPresentation[]]> = [
+    ['Cấp phòng', view.departmentPermissions], ['Cấp đơn vị', view.unitPermissions], ['Tổng công ty', view.corporationPermission ? [view.corporationPermission] : []],
+  ];
+  return <Stack gap="md"><Paper withBorder p="md"><Text fw={700}>{view.employee.fullName}</Text><Text size="sm" c="dimmed">{view.employee.employeeCode} · {view.employee.email ?? 'Chưa có email'}</Text><Text size="sm">{view.employee.jobTitle ?? 'Chưa xác định chức danh'} · {view.employee.departmentName ?? 'Chưa xác định phòng ban'} · {view.employee.unitName ?? 'Chưa xác định đơn vị'}</Text><Group mt="sm"><Badge>{view.summary.departmentScopeCount} phòng ban</Badge><Badge>{view.summary.unitScopeCount} đơn vị</Badge><Badge>{view.summary.hasCorporationScope ? 'Có quyền Tổng công ty' : 'Không có quyền Tổng công ty'}</Badge></Group></Paper><Paper withBorder p="md"><Text fw={600}>Quyền mặc định</Text><Text size="sm">Báo cáo cá nhân — Mặc định</Text><Text size="sm">Công việc tuần — Mặc định</Text></Paper>{groups.map(([label, scopes]) => <Stack key={label} gap="xs"><Text fw={600}>{label}</Text>{scopes.length ? scopes.map((scope) => <Paper key={`${scope.type}:${scope.scopeId}`} withBorder p="md"><Group justify="space-between" align="start"><Stack gap={2}><Text fw={600}>{scope.name}</Text><Text size="sm" c="dimmed">{scope.ownerName ? `${scope.ownerName} · ${scope.ownerCode}` : scope.code}</Text><Text size="sm">{scope.accessLabel}</Text><Text size="sm">Trạng thái: {scope.statusLabel}</Text><Text size="xs" c="dimmed">Cập nhật: {scope.updatedAt ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(scope.updatedAt)) : 'Chưa có dữ liệu'}</Text></Stack><Badge color={scope.statusLabel === 'Đang hoạt động' ? 'green' : 'orange'}>{scope.statusLabel}</Badge></Group></Paper>) : <Text size="sm" c="dimmed">Nhân sự chưa được cấp quyền tại phạm vi này.</Text>}</Stack>)}<Group justify="flex-end"><Button leftSection={<IconPencil size={16} />} onClick={onEdit}>Sửa quyền</Button></Group></Stack>;
 }
 
 function SelectedDepartments({ scopes, onAction, onRemove, renderActions }: { scopes: Record<string, DepartmentScopeDraft>; onAction: (id: string, action: BusinessAction) => void; onRemove: (id: string) => void; renderActions: (actions: BusinessAction[], onChange: (action: BusinessAction) => void, label: string) => ReactNode }) {
@@ -237,5 +277,7 @@ function SelectedUnits({ scopes, onAction, onRemove, renderActions }: { scopes: 
 }
 
 function Preview({ scopes, units, corporateActions, corporationName }: { scopes: Record<string, DepartmentScopeDraft>; units: Record<string, UnitScopeDraft>; corporateActions: BusinessAction[]; corporationName?: string }) {
-  return <Stack gap="sm"><Divider label="Cấp phòng" labelPosition="left" />{Object.values(scopes).map((scope) => <Paper key={scope.departmentId} withBorder p="sm"><Text fw={600}>{scope.departmentName}</Text><Text size="sm" c="dimmed">{scope.unitName} — {scope.unitCode} · {scope.departmentCode}</Text><Text size="sm">Đọc: {scope.actions.includes('READ') ? 'Có' : 'Không'} · Gửi: {scope.actions.includes('SUBMIT') ? 'Có' : 'Không'}</Text></Paper>)}<Divider label="Cấp đơn vị" labelPosition="left" />{Object.values(units).map((scope) => <Paper key={scope.unitId} withBorder p="sm"><Text fw={600}>{scope.unitName} — {scope.unitCode}</Text><Text size="sm">Đọc: {scope.actions.includes('READ') ? 'Có' : 'Không'} · Gửi: {scope.actions.includes('SUBMIT') ? 'Có' : 'Không'}</Text></Paper>)}{corporateActions.length ? <><Divider label="Tổng công ty" labelPosition="left" /><Paper withBorder p="sm"><Text fw={600}>{corporationName ?? 'Tổng công ty'} — DV001</Text><Text size="sm">Đọc: {corporateActions.includes('READ') ? 'Có' : 'Không'} · Gửi: {corporateActions.includes('SUBMIT') ? 'Có' : 'Không'}</Text></Paper></> : null}</Stack>;
+  const label = (actions: BusinessAction[]) => actions.includes('SUBMIT') ? 'Đọc và gửi' : 'Chỉ đọc';
+  const diff = (actions: BusinessAction[]) => <Stack gap={2}><Text size="sm">Quyền sau áp dụng: <b>{label(actions)}</b></Text><Text size="xs">= Đọc báo cáo</Text>{actions.includes('SUBMIT') && <Text size="xs">+ Gửi báo cáo</Text>}</Stack>;
+  return <Stack gap="sm"><Alert color="blue" title="Tóm tắt thay đổi">{Object.keys(scopes).length + Object.keys(units).length + (corporateActions.length ? 1 : 0)} phạm vi sẽ được tạo mới hoặc cập nhật. Máy chủ xác nhận diff cuối cùng trước khi áp dụng.</Alert><Divider label="Cấp phòng" labelPosition="left" />{Object.values(scopes).map((scope) => <Paper key={scope.departmentId} withBorder p="sm"><Text fw={600}>{scope.departmentName}</Text><Text size="sm" c="dimmed">{scope.unitName} — {scope.unitCode} · {scope.departmentCode}</Text>{diff(scope.actions)}</Paper>)}<Divider label="Cấp đơn vị" labelPosition="left" />{Object.values(units).map((scope) => <Paper key={scope.unitId} withBorder p="sm"><Text fw={600}>{scope.unitName} — {scope.unitCode}</Text>{diff(scope.actions)}</Paper>)}{corporateActions.length ? <><Divider label="Tổng công ty" labelPosition="left" /><Paper withBorder p="sm"><Text fw={600}>{corporationName ?? 'Tổng công ty'} — DV001</Text>{diff(corporateActions)}</Paper></> : null}</Stack>;
 }

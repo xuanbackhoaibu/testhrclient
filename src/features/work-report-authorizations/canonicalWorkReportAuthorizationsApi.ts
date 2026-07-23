@@ -28,10 +28,14 @@ export const revokeAssignment = (id: string, assignmentVersion: number, reason: 
 export const listAssignmentAudit = (id: string) => api.get<{ items: Array<Record<string, unknown>> }>(`${BASE}/${id}/audit`);
 
 export type BusinessAction = 'READ' | 'SUBMIT';
-export type BusinessPermission = { type: 'DEPARTMENT_REPORT' | 'UNIT_REPORT' | 'CORPORATE_REPORT'; scopeId: string; actions: BusinessAction[] };
+export type BusinessPermissionStatus = 'ACTIVE' | 'INACTIVE' | 'REVOKED' | 'EXPIRED';
+export type BusinessPermission = {
+  type: 'DEPARTMENT_REPORT' | 'UNIT_REPORT' | 'CORPORATE_REPORT'; scopeId: string; actions: BusinessAction[];
+  status?: BusinessPermissionStatus; updatedAt?: string; assignmentVersion?: number; assignmentId?: string; sourceType?: string;
+};
 export type MatrixRow = {
   employeeId: string; authUserId: string | null; employeeCode: string; fullName: string; email: string | null;
-  departmentId: string | null; departmentName: string | null; unitId: string | null; unitName: string | null;
+  departmentId: string | null; departmentName: string | null; departmentCode?: string | null; unitId: string | null; unitName: string | null; unitCode?: string | null; jobTitle?: string | null;
   accountStatus: 'ACTIVE' | 'INACTIVE' | 'UNLINKED'; permissions: BusinessPermission[]; assignmentCount: number; updatedAt: string | null;
 };
 export type MatrixResult = { items: MatrixRow[]; page: number; pageSize: number; total: number; hasNext: boolean };
@@ -40,7 +44,7 @@ export type ScopeOptionsQuery = { search?: string; unitId?: string; ids?: string
 export type DepartmentOption = { departmentId: string; departmentCode: string; departmentName: string; unitId: string; unitCode: string; unitName: string; status: 'ACTIVE' | 'INACTIVE' };
 export type UnitOption = { unitId: string; unitCode: string; unitName: string; status: 'ACTIVE' | 'INACTIVE'; unitType?: string | null };
 export type ScopeOptionsPage<T> = { items: T[]; page: number; pageSize: number; total: number; hasNext: boolean };
-export type BusinessGrant = { employeeId: string; permissions: BusinessPermission[]; reason?: string };
+export type BusinessGrant = { employeeId: string; permissions: BusinessPermission[]; removedPermissions?: BusinessPermission[]; reason?: string };
 
 export function listMatrix(params: Record<string, string | number | undefined>) {
   const query = new URLSearchParams();
