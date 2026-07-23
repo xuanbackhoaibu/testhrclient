@@ -61,7 +61,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: ${{ vars.SHARED_TYPES_REPOSITORY || 'hacom-holding-dx/chat-shared-types' }}
-          ref: 18ad496b74104027140547b923671893d251b549
+          ref: 529eef085d519816d280237aca015d1c28402f05
           path: chat-shared-types
           token: ${{ secrets.SHARED_TYPES_REPO_TOKEN }}
 
@@ -138,7 +138,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: ${{ vars.SHARED_TYPES_REPOSITORY || 'hacom-holding-dx/chat-shared-types' }}
-          ref: 18ad496b74104027140547b923671893d251b549
+          ref: 529eef085d519816d280237aca015d1c28402f05
           path: chat-shared-types
           token: ${{ secrets.SHARED_TYPES_REPO_TOKEN }}
 
