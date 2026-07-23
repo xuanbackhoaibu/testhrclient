@@ -22,6 +22,18 @@ const permissionSummary = (row: MatrixRow) => row.permissions.length
   ? row.permissions.map((permission) => permissionLabel[permission.type]).join(', ')
   : 'Chưa cấp';
 
+const splitActivePermissions = (row: MatrixRow | null) => {
+  const departmentActions: Record<string, BusinessAction[]> = {};
+  const unitActions: Record<string, BusinessAction[]> = {};
+  let corporateActions: BusinessAction[] = [];
+  for (const permission of row?.permissions ?? []) {
+    if (permission.type === 'DEPARTMENT_REPORT') departmentActions[permission.scopeId] = permission.actions;
+    if (permission.type === 'UNIT_REPORT') unitActions[permission.scopeId] = permission.actions;
+    if (permission.type === 'CORPORATE_REPORT') corporateActions = permission.actions;
+  }
+  return { departmentActions, unitActions, corporateActions };
+};
+
 export function WorkReportAuthorizationsPage() {
   const client = useQueryClient();
   const { can } = useAuth();
@@ -68,12 +80,18 @@ export function WorkReportAuthorizationsPage() {
   const batchApply = useMutation({ mutationFn: () => applyBusinessBatch({ employeeIds: [...selectedIds], permissions, idempotencyKey: crypto.randomUUID() }), onSuccess: () => { notifications.show({ color: 'green', message: 'Đã tạo và hoàn tất thao tác hàng loạt.' }); setDrawer(false); setPreviewed(false); setSelectedIds(new Set()); refresh(); }, onError: (error) => notifications.show({ color: 'red', message: error instanceof Error ? error.message : 'Không thể áp dụng thao tác hàng loạt.' }) });
   const toggleAction = (set: React.Dispatch<React.SetStateAction<Record<string, BusinessAction[]>>>, scopeId: string, action: BusinessAction) => set((current) => { const actions = new Set(current[scopeId] ?? []); if (actions.has(action)) actions.delete(action); else { if (action === 'SUBMIT') actions.add('READ'); actions.add(action); } return { ...current, [scopeId]: [...actions].sort() as BusinessAction[] }; });
   const toggleCorporate = (action: BusinessAction) => setCorporateActions((current) => { const actions = new Set(current); if (actions.has(action)) actions.delete(action); else { if (action === 'SUBMIT') actions.add('READ'); actions.add(action); } return [...actions].sort() as BusinessAction[]; });
-  const openDrawer = (row: MatrixRow | null, batch = false) => { setBatchMode(batch); setSubject(row); setSelectedEmployeeId(row?.employeeId ?? null); setDepartmentActions({}); setUnitActions({}); setCorporateActions([]); setPreviewed(false); setDrawer(true); };
+  const hydrateActivePermissions = (row: MatrixRow | null) => {
+    const active = splitActivePermissions(row);
+    setDepartmentActions(active.departmentActions);
+    setUnitActions(active.unitActions);
+    setCorporateActions(active.corporateActions);
+  };
+  const openDrawer = (row: MatrixRow | null, batch = false) => { setBatchMode(batch); setSubject(row); setSelectedEmployeeId(row?.employeeId ?? null); hydrateActivePermissions(batch ? null : row); setPreviewed(false); setDrawer(true); };
   const columns: DataTableColumn<MatrixRow>[] = [
     { key: 'employee', header: 'Nhân sự', render: (row) => <Stack gap={0}><Text fw={600} size="sm">{row.fullName}</Text><Text size="xs" c="dimmed">{row.email ?? row.employeeCode}</Text></Stack> },
     { key: 'organization', header: 'Đơn vị / phòng ban', render: (row) => <Text size="sm">{row.unitName ?? 'Chưa xác định'}<br />{row.departmentName ?? 'Chưa xác định'}</Text> },
     { key: 'personal', header: 'Quyền mặc định', render: (row) => <Badge color={row.accountStatus === 'ACTIVE' ? 'green' : 'gray'}>{row.accountStatus === 'ACTIVE' ? 'Cá nhân & tuần' : 'Chưa sẵn sàng'}</Badge> },
-    { key: 'managed', header: 'Quyền tổng hợp', render: (row) => <Text size="sm">{permissionSummary(row)}</Text> },
+    { key: 'managed', header: 'Quyền tổng hợp', render: (row) => row.permissions.length ? <Badge color="green" variant="light">Đang hiệu lực: {permissionSummary(row)}</Badge> : <Text size="sm" c="dimmed">Chưa cấp</Text> },
     { key: 'actions', header: 'Thao tác', render: (row) => can(MANAGE) ? <Button size="compact-sm" variant="light" onClick={() => openDrawer(row)}>Cấp / thêm quyền</Button> : '—' },
   ];
   const items = matrix.data?.items ?? [];
@@ -82,8 +100,9 @@ export function WorkReportAuthorizationsPage() {
     <Group align="end"><TextInput label="Tìm nhân sự" placeholder="Tên, mã nhân sự hoặc email" value={search} onChange={(event) => { setSearch(event.currentTarget.value); setPage(1); }} w={360} /><Select clearable label="Phòng ban" data={(departments.data ?? []).map((item) => ({ value: item.id, label: item.label }))} value={departmentId} onChange={(value) => { setDepartmentId(value); setPage(1); }} w={250} /><Select clearable label="Đơn vị" data={(units.data ?? []).map((item) => ({ value: item.id, label: item.label }))} value={unitId} onChange={(value) => { setUnitId(value); setPage(1); }} w={250} /></Group>
     <DataTable data={items} columns={columns} rowKey={(row) => row.employeeId} loading={matrix.isLoading} error={matrix.error} onRetry={() => matrix.refetch()} meta={matrix.data ? { page: matrix.data.page, pageSize: matrix.data.pageSize, total: matrix.data.total, totalPages: Math.max(1, Math.ceil(matrix.data.total / matrix.data.pageSize)), hasNextPage: matrix.data.hasNext, hasPreviousPage: matrix.data.page > 1 } : undefined} onPageChange={setPage} selectedIds={selectedIds} onSelectionChange={setSelectedIds} emptyTitle="Chưa có nhân sự phù hợp" />
     <Drawer opened={drawer} onClose={() => setDrawer(false)} title={batchMode ? 'Cấp quyền báo cáo hàng loạt' : 'Cấp quyền báo cáo công việc'} position="right" size="xl"><Stack gap="lg">
-      {batchMode ? <Text fw={600}>Đã chọn {selectedIds.size} nhân sự trên các trang đã xem.</Text> : <Select searchable label="Nhân sự" placeholder="Chọn nhân sự" data={employeeSelectData.map((item) => ({ value: item.id, label: item.label }))} value={effectiveEmployeeId} onChange={(value) => { if (value === null && subject) return; setSelectedEmployeeId(value); const current = items.find((row) => row.employeeId === value); setSubject(current ?? null); setPreviewed(false); }} />}
+      {batchMode ? <Text fw={600}>Đã chọn {selectedIds.size} nhân sự trên các trang đã xem.</Text> : <Select searchable label="Nhân sự" placeholder="Chọn nhân sự" data={employeeSelectData.map((item) => ({ value: item.id, label: item.label }))} value={effectiveEmployeeId} onChange={(value) => { if (value === null && subject) return; setSelectedEmployeeId(value); const current = items.find((row) => row.employeeId === value) ?? null; setSubject(current); hydrateActivePermissions(current); setPreviewed(false); }} />}
       {subject && <Text size="sm">{subject.fullName} · {subject.employeeCode} · {subject.departmentName ?? 'Chưa xác định phòng ban'}</Text>}
+      {!batchMode && subject?.permissions.length ? <Text size="sm" c="green">Đang hiển thị {subject.permissions.length} quyền tổng hợp ACTIVE từ Chat Auth. Các checkbox đã chọn là quyền hiệu lực hiện tại.</Text> : null}
       <Text fw={600}>Tổng hợp cấp phòng</Text><Table withTableBorder><Table.Thead><Table.Tr><Table.Th>Phòng ban</Table.Th><Table.Th>Đọc báo cáo</Table.Th><Table.Th>Gửi báo cáo</Table.Th></Table.Tr></Table.Thead><Table.Tbody>{(departments.data ?? []).map((item) => <Table.Tr key={item.id}><Table.Td>{item.label}</Table.Td><Table.Td><Checkbox checked={(departmentActions[item.id] ?? []).includes('READ')} onChange={() => { toggleAction(setDepartmentActions, item.id, 'READ'); setPreviewed(false); }} /></Table.Td><Table.Td><Checkbox checked={(departmentActions[item.id] ?? []).includes('SUBMIT')} onChange={() => { toggleAction(setDepartmentActions, item.id, 'SUBMIT'); setPreviewed(false); }} /></Table.Td></Table.Tr>)}</Table.Tbody></Table>
       <Text fw={600}>Báo cáo lãnh đạo đơn vị</Text><Table withTableBorder><Table.Thead><Table.Tr><Table.Th>Đơn vị</Table.Th><Table.Th>Đọc báo cáo</Table.Th><Table.Th>Gửi báo cáo</Table.Th></Table.Tr></Table.Thead><Table.Tbody>{(units.data ?? []).map((item) => <Table.Tr key={item.id}><Table.Td>{item.label}</Table.Td><Table.Td><Checkbox checked={(unitActions[item.id] ?? []).includes('READ')} onChange={() => { toggleAction(setUnitActions, item.id, 'READ'); setPreviewed(false); }} /></Table.Td><Table.Td><Checkbox checked={(unitActions[item.id] ?? []).includes('SUBMIT')} onChange={() => { toggleAction(setUnitActions, item.id, 'SUBMIT'); setPreviewed(false); }} /></Table.Td></Table.Tr>)}</Table.Tbody></Table>
       <Text fw={600}>Tổng hợp Tổng công ty</Text><Group><Text>{corporation.data ? `${corporation.data.label} — DV001` : 'Không khả dụng'}</Text><Checkbox label="Đọc báo cáo toàn Tổng công ty" checked={corporateActions.includes('READ')} disabled={!corporation.data} onChange={() => { toggleCorporate('READ'); setPreviewed(false); }} /><Checkbox label="Gửi báo cáo tổng hợp Tổng công ty" checked={corporateActions.includes('SUBMIT')} disabled={!corporation.data} onChange={() => { toggleCorporate('SUBMIT'); setPreviewed(false); }} /></Group>
