@@ -30,7 +30,7 @@ import {
   WORK_REPORT_MANAGED_ASSIGNMENT_MESSAGE,
 } from '../../../features/auth-admin/permissionAssignmentPolicy';
 import { useAvailableRoles } from '../../../features/auth-admin/useAvailableRoles';
-import { WorkReportAuthorizationCard } from '../../../features/work-report-authorizations/WorkReportAuthorizationCard';
+import { WorkReportAuthorizationSummary } from '../../../features/work-report-authorizations/WorkReportAuthorizationSummary';
 import { AUTH_ADMIN_PERMISSIONS } from '../../../features/auth/permissions';
 import { useAuth } from '../../../features/auth/useAuth';
 import type { Employee } from '../../../features/employees/employeeTypes';
@@ -54,9 +54,6 @@ export function AccessTab({ employee }: Props) {
   const canAssignPerms = can(AUTH_ADMIN_PERMISSIONS.PERMISSIONS_ASSIGN);
   const canAssignSensitivePerms = can(AUTH_ADMIN_PERMISSIONS.ASSIGN_SENSITIVE_PERMISSION);
   const canReadPerms = can('auth.role.read');
-  const canReadWorkReportAuthorization = can('admin.work_report_authorization.read');
-  const canManageWorkReportAuthorization = can('admin.work_report_authorization.manage');
-  const canAuditWorkReportAuthorization = can('admin.work_report_authorization.audit');
   const { roles: roleCatalog, asSelectOptions: roleOptions } = useAvailableRoles();
 
   const authUserId = employee.authUserId;
@@ -265,13 +262,7 @@ export function AccessTab({ employee }: Props) {
             </Alert>
           ) : null}
 
-          <WorkReportAuthorizationCard
-            employee={employee}
-            authUserId={authUserId}
-            canRead={canReadWorkReportAuthorization}
-            canManage={canManageWorkReportAuthorization}
-            canAudit={canAuditWorkReportAuthorization}
-          />
+          <WorkReportAuthorizationSummary authUserId={authUserId} />
 
           <div>
             <Title order={6} mb="xs">Effective Permissions</Title>

@@ -24,5 +24,6 @@ export const ROUTES = {
   roles: '/roles',
   permissions: '/permissions',
   permissionGroups: '/permission-groups',
+  workReportAuthorizations: '/administration/work-report-authorizations',
   changePassword: '/change-password',
 } as const;

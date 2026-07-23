@@ -69,6 +69,7 @@ const iamItems: NavItem[] = [
   { label: "Role", path: ROUTES.roles, icon: IconShield },
   { label: "Nhóm quyền", path: ROUTES.permissionGroups, icon: IconShield },
   { label: "Permission", path: ROUTES.permissions, icon: IconKey },
+  { label: "Phân quyền báo cáo công việc", path: ROUTES.workReportAuthorizations, icon: IconClipboardList },
 ];
 
 const routeTitles: Record<string, string> = {
@@ -93,6 +94,7 @@ const routeTitles: Record<string, string> = {
   [ROUTES.roles]: "Role",
   [ROUTES.permissionGroups]: "Nhóm quyền",
   [ROUTES.permissions]: "Permission",
+  [ROUTES.workReportAuthorizations]: "Phân quyền báo cáo công việc",
 };
 
 function isActive(pathname: string, path: string) {

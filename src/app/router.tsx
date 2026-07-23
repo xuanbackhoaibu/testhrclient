@@ -24,6 +24,7 @@ import { PendingHrLinkAccountsPage } from '../pages/accounts/PendingHrLinkAccoun
 import { RolesPage } from '../pages/roles/RolesPage';
 import { PermissionsPage } from '../pages/permissions/PermissionsPage';
 import { PermissionGroupsPage } from '../pages/permission-groups/PermissionGroupsPage';
+import { WorkReportAuthorizationsPage } from '../pages/work-report-authorizations/WorkReportAuthorizationsPage';
 import { BusinessSectorsPage } from '../pages/organization/BusinessSectorsPage';
 import { UnitsPage } from '../pages/organization/UnitsPage';
 import { DepartmentsPage } from '../pages/organization/DepartmentsPage';
@@ -195,6 +196,7 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      { path: ROUTES.workReportAuthorizations, element: <ProtectedRoute route={ROUTES.workReportAuthorizations}><WorkReportAuthorizationsPage /></ProtectedRoute> },
       { path: '*', element: <AuthorizationLanding /> },
     ],
   },
