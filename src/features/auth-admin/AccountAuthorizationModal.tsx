@@ -22,7 +22,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/useAuth";
 import { AUTH_ADMIN_PERMISSIONS } from "../auth/permissions";
 import type { Employee } from "../employees/employeeTypes";
-import { WorkReportAuthorizationCard } from "../work-report-authorizations/WorkReportAuthorizationCard";
+import { WorkReportAuthorizationSummary } from "../work-report-authorizations/WorkReportAuthorizationSummary";
 import {
   updateAccountDirectPermissionGroups,
   updateAccountDirectPermissions,
@@ -104,9 +104,6 @@ export function AccountAuthorizationModal({
   const canRevokeSensitiveRole = hasAnyPermission([AUTH_ADMIN_PERMISSIONS.REVOKE_SENSITIVE_ROLE]);
   const canAssignSensitivePermission = hasAnyPermission([AUTH_ADMIN_PERMISSIONS.ASSIGN_SENSITIVE_PERMISSION]);
   const canAssignSensitiveGroup = hasAnyPermission([AUTH_ADMIN_PERMISSIONS.ASSIGN_SENSITIVE_GROUP]);
-  const canReadWorkReportAuthorization = hasAnyPermission(["admin.work_report_authorization.read"]);
-  const canManageWorkReportAuthorization = hasAnyPermission(["admin.work_report_authorization.manage"]);
-  const canAuditWorkReportAuthorization = hasAnyPermission(["admin.work_report_authorization.audit"]);
   const editDisabled = !canAssignRoles && !canAssignDirectPermissions;
 
   const [selectedRoleCodes, setSelectedRoleCodes] = useState<string[]>([]);
@@ -877,13 +874,7 @@ export function AccountAuthorizationModal({
 
             <Tabs.Panel value="work-report" pt="md">
               {employee && accountId ? (
-                <WorkReportAuthorizationCard
-                  employee={employee}
-                  authUserId={accountId}
-                  canRead={canReadWorkReportAuthorization}
-                  canManage={canManageWorkReportAuthorization}
-                  canAudit={canAuditWorkReportAuthorization}
-                />
+                <WorkReportAuthorizationSummary authUserId={accountId} />
               ) : (
                 <Alert color="yellow" title="Cần liên kết nhân sự">
                   Quyền Báo cáo công việc được HRM quản lý theo nhân sự và phạm vi dữ liệu.
