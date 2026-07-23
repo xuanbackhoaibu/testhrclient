@@ -50,10 +50,16 @@ export function WorkReportAuthorizationsPage() {
     ...(unitIds.length ? [{ type: 'UNIT_REPORT' as const, unitIds }] : []),
     ...(corporate ? [{ type: 'CORPORATE_REPORT' as const }] : []),
   ], [departmentIds, unitIds, corporate]);
+  const effectiveEmployeeId = selectedEmployeeId ?? subject?.employeeId ?? null;
+  const employeeSelectData = useMemo(() => {
+    const options = employeeOptions.data ?? [];
+    if (!subject || !effectiveEmployeeId || options.some((item) => item.id === effectiveEmployeeId)) return options;
+    return [{ id: effectiveEmployeeId, label: `${subject.fullName} · ${subject.employeeCode}` }, ...options];
+  }, [effectiveEmployeeId, employeeOptions.data, subject]);
   const payload = (): BusinessGrant => {
-    if (!selectedEmployeeId) throw new Error('Chọn nhân sự trước khi tiếp tục.');
+    if (!effectiveEmployeeId) throw new Error('Chọn nhân sự trước khi tiếp tục.');
     if (!permissions.length) throw new Error('Chọn ít nhất một quyền tổng hợp.');
-    return { employeeId: selectedEmployeeId, permissions };
+    return { employeeId: effectiveEmployeeId, permissions };
   };
   const refresh = () => { void client.invalidateQueries({ queryKey: ['work-report-matrix'] }); };
   const preview = useMutation({ mutationFn: () => previewBusinessGrant(payload()), onSuccess: () => { setPreviewed(true); notifications.show({ color: 'blue', message: 'Bản xem trước hợp lệ. Xác nhận để cấp quyền.' }); }, onError: (error) => notifications.show({ color: 'red', message: error instanceof Error ? error.message : 'Không thể kiểm tra phân quyền.' }) });
@@ -74,14 +80,14 @@ export function WorkReportAuthorizationsPage() {
     <Group align="end"><TextInput label="Tìm nhân sự" placeholder="Tên, mã nhân sự hoặc email" value={search} onChange={(event) => { setSearch(event.currentTarget.value); setPage(1); }} w={360} /><Select clearable label="Phòng ban" data={(departments.data ?? []).map((item) => ({ value: item.id, label: item.label }))} value={departmentId} onChange={(value) => { setDepartmentId(value); setPage(1); }} w={250} /><Select clearable label="Đơn vị" data={(units.data ?? []).map((item) => ({ value: item.id, label: item.label }))} value={unitId} onChange={(value) => { setUnitId(value); setPage(1); }} w={250} /></Group>
     <DataTable data={items} columns={columns} rowKey={(row) => row.employeeId} loading={matrix.isLoading} error={matrix.error} onRetry={() => matrix.refetch()} meta={matrix.data ? { page: matrix.data.page, pageSize: matrix.data.pageSize, total: matrix.data.total, totalPages: Math.max(1, Math.ceil(matrix.data.total / matrix.data.pageSize)), hasNextPage: matrix.data.hasNext, hasPreviousPage: matrix.data.page > 1 } : undefined} onPageChange={setPage} selectedIds={selectedIds} onSelectionChange={setSelectedIds} emptyTitle="Chưa có nhân sự phù hợp" />
     <Drawer opened={drawer} onClose={() => setDrawer(false)} title={batchMode ? 'Cấp quyền báo cáo hàng loạt' : 'Cấp quyền báo cáo công việc'} position="right" size="xl"><Stack gap="lg">
-      {batchMode ? <Text fw={600}>Đã chọn {selectedIds.size} nhân sự trên các trang đã xem.</Text> : <Select searchable label="Nhân sự" placeholder="Chọn nhân sự" data={(employeeOptions.data ?? []).map((item) => ({ value: item.id, label: item.label }))} value={selectedEmployeeId} onChange={(value) => { setSelectedEmployeeId(value); const current = items.find((row) => row.employeeId === value); setSubject(current ?? null); setPreviewed(false); }} />}
+      {batchMode ? <Text fw={600}>Đã chọn {selectedIds.size} nhân sự trên các trang đã xem.</Text> : <Select searchable label="Nhân sự" placeholder="Chọn nhân sự" data={employeeSelectData.map((item) => ({ value: item.id, label: item.label }))} value={effectiveEmployeeId} onChange={(value) => { if (value === null && subject) return; setSelectedEmployeeId(value); const current = items.find((row) => row.employeeId === value); setSubject(current ?? null); setPreviewed(false); }} />}
       {subject && <Text size="sm">{subject.fullName} · {subject.employeeCode} · {subject.departmentName ?? 'Chưa xác định phòng ban'}</Text>}
       <MultiSelect label="Phạm vi phòng ban" description="Có thể chọn nhiều phòng ban." data={(departments.data ?? []).map((item) => ({ value: item.id, label: item.label }))} value={departmentIds} onChange={(value) => { setDepartmentIds(value); setPreviewed(false); }} />
       <MultiSelect label="Phạm vi đơn vị" description="Có thể chọn nhiều đơn vị." data={(units.data ?? []).map((item) => ({ value: item.id, label: item.label }))} value={unitIds} onChange={(value) => { setUnitIds(value); setPreviewed(false); }} />
       <Button variant={corporate ? 'filled' : 'default'} color="violet" loading={corporation.isLoading} onClick={() => { if (corporation.data) { setCorporate((value) => !value); setPreviewed(false); } }}>Tổng công ty: {corporation.data?.label ?? 'Không khả dụng'}</Button>
       {corporation.isError && <Text c="red" size="sm">Không thể cấp quyền Tổng công ty: phạm vi canonical chưa được cấu hình. Quyền phòng ban và đơn vị vẫn sẵn sàng.</Text>}
       <Text size="sm" c="dimmed">Quyền cá nhân và công việc tuần được suy ra từ trạng thái tài khoản HR-linked đang hoạt động. Các lựa chọn trên chỉ thêm quyền tổng hợp canonical tại Chat Auth.</Text>
-      <Group justify="flex-end"><Button variant="default" onClick={() => batchMode ? batchPreview.mutate() : preview.mutate()} loading={batchMode ? batchPreview.isPending : preview.isPending} disabled={batchMode ? !selectedIds.size || !permissions.length : !selectedEmployeeId || !permissions.length}>Xem trước</Button><Button onClick={() => batchMode ? batchApply.mutate() : grant.mutate()} loading={batchMode ? batchApply.isPending : grant.isPending} disabled={!previewed}>Xác nhận cấp quyền</Button></Group>
+      <Group justify="flex-end"><Button variant="default" onClick={() => batchMode ? batchPreview.mutate() : preview.mutate()} loading={batchMode ? batchPreview.isPending : preview.isPending} disabled={batchMode ? !selectedIds.size || !permissions.length : !effectiveEmployeeId || !permissions.length}>Xem trước</Button><Button onClick={() => batchMode ? batchApply.mutate() : grant.mutate()} loading={batchMode ? batchApply.isPending : grant.isPending} disabled={!previewed}>Xác nhận cấp quyền</Button></Group>
     </Stack></Drawer>
   </Stack>;
 }
