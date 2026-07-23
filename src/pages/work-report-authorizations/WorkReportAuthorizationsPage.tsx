@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ActionIcon, Badge, Button, Drawer, Group, MultiSelect, Select, Stack, Text, TextInput } from '@mantine/core';
+import { ActionIcon, Badge, Button, Checkbox, Drawer, Group, Select, Stack, Table, Text, TextInput } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconRefresh } from '@tabler/icons-react';
@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../features/auth/useAuth';
 import {
   applyBusinessBatch, createBusinessGrant, getCorporation, listBusinessDepartments, listBusinessEmployees, listBusinessUnits,
-  listMatrix, previewBusinessBatch, previewBusinessGrant, type BusinessGrant, type BusinessPermission, type MatrixRow,
+  listMatrix, previewBusinessBatch, previewBusinessGrant, type BusinessAction, type BusinessGrant, type BusinessPermission, type MatrixRow,
 } from '../../features/work-report-authorizations/canonicalWorkReportAuthorizationsApi';
 import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
 import { PageHeader } from '../../shared/components/PageHeader';
@@ -34,9 +34,9 @@ export function WorkReportAuthorizationsPage() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchMode, setBatchMode] = useState(false);
-  const [departmentIds, setDepartmentIds] = useState<string[]>([]);
-  const [unitIds, setUnitIds] = useState<string[]>([]);
-  const [corporate, setCorporate] = useState(false);
+  const [departmentActions, setDepartmentActions] = useState<Record<string, BusinessAction[]>>({});
+  const [unitActions, setUnitActions] = useState<Record<string, BusinessAction[]>>({});
+  const [corporateActions, setCorporateActions] = useState<BusinessAction[]>([]);
   const [previewed, setPreviewed] = useState(false);
   const [debounced] = useDebouncedValue(search, 300);
 
@@ -46,10 +46,10 @@ export function WorkReportAuthorizationsPage() {
   const employeeOptions = useQuery({ queryKey: ['work-report-options', 'employees'], queryFn: () => listBusinessEmployees() });
   const corporation = useQuery({ queryKey: ['work-report-options', 'corporation'], queryFn: getCorporation, retry: false });
   const permissions = useMemo<BusinessPermission[]>(() => [
-    ...(departmentIds.length ? [{ type: 'DEPARTMENT_REPORT' as const, departmentIds }] : []),
-    ...(unitIds.length ? [{ type: 'UNIT_REPORT' as const, unitIds }] : []),
-    ...(corporate ? [{ type: 'CORPORATE_REPORT' as const }] : []),
-  ], [departmentIds, unitIds, corporate]);
+    ...Object.entries(departmentActions).filter(([, actions]) => actions.length).map(([scopeId, actions]) => ({ type: 'DEPARTMENT_REPORT' as const, scopeId, actions })),
+    ...Object.entries(unitActions).filter(([, actions]) => actions.length).map(([scopeId, actions]) => ({ type: 'UNIT_REPORT' as const, scopeId, actions })),
+    ...(corporation.data && corporateActions.length ? [{ type: 'CORPORATE_REPORT' as const, scopeId: corporation.data.rootUnitId, actions: corporateActions }] : []),
+  ], [corporation.data, corporateActions, departmentActions, unitActions]);
   const effectiveEmployeeId = selectedEmployeeId ?? subject?.employeeId ?? null;
   const employeeSelectData = useMemo(() => {
     const options = employeeOptions.data ?? [];
@@ -66,7 +66,9 @@ export function WorkReportAuthorizationsPage() {
   const grant = useMutation({ mutationFn: () => createBusinessGrant(payload()), onSuccess: () => { notifications.show({ color: 'green', message: `Đã cấp quyền cho ${subject?.fullName ?? 'nhân sự'}.` }); setDrawer(false); setPreviewed(false); refresh(); }, onError: (error) => notifications.show({ color: 'red', message: error instanceof Error ? error.message : 'Không thể cấp quyền. Vui lòng thử lại.' }) });
   const batchPreview = useMutation({ mutationFn: () => previewBusinessBatch({ employeeIds: [...selectedIds], permissions }), onSuccess: (result) => { setPreviewed(true); notifications.show({ color: 'blue', message: `Có thể áp dụng cho ${result.eligibleSubjects}/${result.totalSubjects} nhân sự.` }); }, onError: (error) => notifications.show({ color: 'red', message: error instanceof Error ? error.message : 'Không thể xem trước thao tác hàng loạt.' }) });
   const batchApply = useMutation({ mutationFn: () => applyBusinessBatch({ employeeIds: [...selectedIds], permissions, idempotencyKey: crypto.randomUUID() }), onSuccess: () => { notifications.show({ color: 'green', message: 'Đã tạo và hoàn tất thao tác hàng loạt.' }); setDrawer(false); setPreviewed(false); setSelectedIds(new Set()); refresh(); }, onError: (error) => notifications.show({ color: 'red', message: error instanceof Error ? error.message : 'Không thể áp dụng thao tác hàng loạt.' }) });
-  const openDrawer = (row: MatrixRow | null, batch = false) => { setBatchMode(batch); setSubject(row); setSelectedEmployeeId(row?.employeeId ?? null); setDepartmentIds([]); setUnitIds([]); setCorporate(false); setPreviewed(false); setDrawer(true); };
+  const toggleAction = (set: React.Dispatch<React.SetStateAction<Record<string, BusinessAction[]>>>, scopeId: string, action: BusinessAction) => set((current) => { const actions = new Set(current[scopeId] ?? []); if (actions.has(action)) actions.delete(action); else { if (action === 'SUBMIT') actions.add('READ'); actions.add(action); } return { ...current, [scopeId]: [...actions].sort() as BusinessAction[] }; });
+  const toggleCorporate = (action: BusinessAction) => setCorporateActions((current) => { const actions = new Set(current); if (actions.has(action)) actions.delete(action); else { if (action === 'SUBMIT') actions.add('READ'); actions.add(action); } return [...actions].sort() as BusinessAction[]; });
+  const openDrawer = (row: MatrixRow | null, batch = false) => { setBatchMode(batch); setSubject(row); setSelectedEmployeeId(row?.employeeId ?? null); setDepartmentActions({}); setUnitActions({}); setCorporateActions([]); setPreviewed(false); setDrawer(true); };
   const columns: DataTableColumn<MatrixRow>[] = [
     { key: 'employee', header: 'Nhân sự', render: (row) => <Stack gap={0}><Text fw={600} size="sm">{row.fullName}</Text><Text size="xs" c="dimmed">{row.email ?? row.employeeCode}</Text></Stack> },
     { key: 'organization', header: 'Đơn vị / phòng ban', render: (row) => <Text size="sm">{row.unitName ?? 'Chưa xác định'}<br />{row.departmentName ?? 'Chưa xác định'}</Text> },
@@ -82,9 +84,9 @@ export function WorkReportAuthorizationsPage() {
     <Drawer opened={drawer} onClose={() => setDrawer(false)} title={batchMode ? 'Cấp quyền báo cáo hàng loạt' : 'Cấp quyền báo cáo công việc'} position="right" size="xl"><Stack gap="lg">
       {batchMode ? <Text fw={600}>Đã chọn {selectedIds.size} nhân sự trên các trang đã xem.</Text> : <Select searchable label="Nhân sự" placeholder="Chọn nhân sự" data={employeeSelectData.map((item) => ({ value: item.id, label: item.label }))} value={effectiveEmployeeId} onChange={(value) => { if (value === null && subject) return; setSelectedEmployeeId(value); const current = items.find((row) => row.employeeId === value); setSubject(current ?? null); setPreviewed(false); }} />}
       {subject && <Text size="sm">{subject.fullName} · {subject.employeeCode} · {subject.departmentName ?? 'Chưa xác định phòng ban'}</Text>}
-      <MultiSelect label="Phạm vi phòng ban" description="Có thể chọn nhiều phòng ban." data={(departments.data ?? []).map((item) => ({ value: item.id, label: item.label }))} value={departmentIds} onChange={(value) => { setDepartmentIds(value); setPreviewed(false); }} />
-      <MultiSelect label="Phạm vi đơn vị" description="Có thể chọn nhiều đơn vị." data={(units.data ?? []).map((item) => ({ value: item.id, label: item.label }))} value={unitIds} onChange={(value) => { setUnitIds(value); setPreviewed(false); }} />
-      <Button variant={corporate ? 'filled' : 'default'} color="violet" loading={corporation.isLoading} onClick={() => { if (corporation.data) { setCorporate((value) => !value); setPreviewed(false); } }}>Tổng công ty: {corporation.data?.label ?? 'Không khả dụng'}</Button>
+      <Text fw={600}>Tổng hợp cấp phòng</Text><Table withTableBorder><Table.Thead><Table.Tr><Table.Th>Phòng ban</Table.Th><Table.Th>Đọc báo cáo</Table.Th><Table.Th>Gửi báo cáo</Table.Th></Table.Tr></Table.Thead><Table.Tbody>{(departments.data ?? []).map((item) => <Table.Tr key={item.id}><Table.Td>{item.label}</Table.Td><Table.Td><Checkbox checked={(departmentActions[item.id] ?? []).includes('READ')} onChange={() => { toggleAction(setDepartmentActions, item.id, 'READ'); setPreviewed(false); }} /></Table.Td><Table.Td><Checkbox checked={(departmentActions[item.id] ?? []).includes('SUBMIT')} onChange={() => { toggleAction(setDepartmentActions, item.id, 'SUBMIT'); setPreviewed(false); }} /></Table.Td></Table.Tr>)}</Table.Tbody></Table>
+      <Text fw={600}>Báo cáo lãnh đạo đơn vị</Text><Table withTableBorder><Table.Thead><Table.Tr><Table.Th>Đơn vị</Table.Th><Table.Th>Đọc báo cáo</Table.Th><Table.Th>Gửi báo cáo</Table.Th></Table.Tr></Table.Thead><Table.Tbody>{(units.data ?? []).map((item) => <Table.Tr key={item.id}><Table.Td>{item.label}</Table.Td><Table.Td><Checkbox checked={(unitActions[item.id] ?? []).includes('READ')} onChange={() => { toggleAction(setUnitActions, item.id, 'READ'); setPreviewed(false); }} /></Table.Td><Table.Td><Checkbox checked={(unitActions[item.id] ?? []).includes('SUBMIT')} onChange={() => { toggleAction(setUnitActions, item.id, 'SUBMIT'); setPreviewed(false); }} /></Table.Td></Table.Tr>)}</Table.Tbody></Table>
+      <Text fw={600}>Tổng hợp Tổng công ty</Text><Group><Text>{corporation.data ? `${corporation.data.label} — DV001` : 'Không khả dụng'}</Text><Checkbox label="Đọc báo cáo toàn Tổng công ty" checked={corporateActions.includes('READ')} disabled={!corporation.data} onChange={() => { toggleCorporate('READ'); setPreviewed(false); }} /><Checkbox label="Gửi báo cáo tổng hợp Tổng công ty" checked={corporateActions.includes('SUBMIT')} disabled={!corporation.data} onChange={() => { toggleCorporate('SUBMIT'); setPreviewed(false); }} /></Group>
       {corporation.isError && <Text c="red" size="sm">Không thể cấp quyền Tổng công ty: phạm vi canonical chưa được cấu hình. Quyền phòng ban và đơn vị vẫn sẵn sàng.</Text>}
       <Text size="sm" c="dimmed">Quyền cá nhân và công việc tuần được suy ra từ trạng thái tài khoản HR-linked đang hoạt động. Các lựa chọn trên chỉ thêm quyền tổng hợp canonical tại Chat Auth.</Text>
       <Group justify="flex-end"><Button variant="default" onClick={() => batchMode ? batchPreview.mutate() : preview.mutate()} loading={batchMode ? batchPreview.isPending : preview.isPending} disabled={batchMode ? !selectedIds.size || !permissions.length : !effectiveEmployeeId || !permissions.length}>Xem trước</Button><Button onClick={() => batchMode ? batchApply.mutate() : grant.mutate()} loading={batchMode ? batchApply.isPending : grant.isPending} disabled={!previewed}>Xác nhận cấp quyền</Button></Group>

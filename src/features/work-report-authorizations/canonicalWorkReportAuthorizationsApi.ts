@@ -27,7 +27,8 @@ export const deactivateAssignment = (id: string, assignmentVersion: number) => a
 export const revokeAssignment = (id: string, assignmentVersion: number, reason: string) => api.post<Assignment>(`${BASE}/${id}/revoke`, { assignmentVersion, reason });
 export const listAssignmentAudit = (id: string) => api.get<{ items: Array<Record<string, unknown>> }>(`${BASE}/${id}/audit`);
 
-export type BusinessPermission = { type: 'DEPARTMENT_REPORT'; departmentIds: string[] } | { type: 'UNIT_REPORT'; unitIds: string[] } | { type: 'CORPORATE_REPORT' };
+export type BusinessAction = 'READ' | 'SUBMIT';
+export type BusinessPermission = { type: 'DEPARTMENT_REPORT' | 'UNIT_REPORT' | 'CORPORATE_REPORT'; scopeId: string; actions: BusinessAction[] };
 export type MatrixRow = {
   employeeId: string; authUserId: string | null; employeeCode: string; fullName: string; email: string | null;
   departmentId: string | null; departmentName: string | null; unitId: string | null; unitName: string | null;
