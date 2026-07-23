@@ -79,6 +79,29 @@ body {
   border-top: 1px solid #edf0f5;
 }
 
+/* Permission rows contain deliberate multi-line business context. Do not let
+   Mantine's compact controls impose a one-line row height on that content. */
+.work-report-permission-matrix .mantine-Table-th,
+.work-report-permission-matrix .mantine-Table-td {
+  padding: 12px 14px;
+  vertical-align: top;
+}
+
+.work-report-permission-matrix .mantine-Table-th {
+  background: #f8fafc;
+}
+
+.work-report-employee-cell {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  text-align: left;
+}
+
+.work-report-employee-cell:hover > * {
+  color: var(--mantine-color-blue-7);
+}
+
 /* AntD powers workflow/import tables; give it the same quiet table language. */
 .ant-table-wrapper .ant-table {
   border: 1px solid #e8edf3;
