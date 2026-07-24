@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Accordion,
   ActionIcon,
@@ -8,6 +8,7 @@ import {
   Group,
   Loader,
   Modal,
+  Select,
   Stack,
   Switch,
   Text,
@@ -16,9 +17,9 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
+import { useDebouncedValue, useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconEdit, IconPlus, IconSearch } from '@tabler/icons-react';
+import { IconEdit, IconPlus } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../features/auth/useAuth';
@@ -33,6 +34,8 @@ import type {
   PermissionDefinition,
   UpdatePermissionInput,
 } from '../../features/auth-admin/authAdminTypes';
+import { NormalizedSearchInput } from '../../shared/components/NormalizedSearchInput';
+import { includesNormalizedSearch } from '../../shared/utils/normalizeSearchText';
 
 const DOMAIN_LABEL: Record<string, string> = {
   hr: 'HRM',
@@ -50,6 +53,9 @@ export function PermissionsPage() {
   const canDeprecate = can('auth.permission.deprecate');
 
   const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<'all' | 'active' | 'disabled'>('all');
+  const [sensitivity, setSensitivity] = useState<'all' | 'sensitive' | 'standard'>('all');
+  const [debouncedSearch] = useDebouncedValue(search, 350);
   const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);
   const [editPerm, setEditPerm] = useState<PermissionDefinition | null>(null);
   const [editOpened, { open: openEdit, close: closeEdit }] = useDisclosure(false);
@@ -108,16 +114,18 @@ export function PermissionsPage() {
     openEdit();
   };
 
-  const filteredSystems = (data?.systems ?? [])
+  const filteredSystems = useMemo(() => (data?.systems ?? [])
     .map((sys) => ({
       ...sys,
       permissions: sys.permissions.filter((p) => {
-        if (!search) return true;
-        const q = search.toLowerCase();
-        return p.key.toLowerCase().includes(q) || (p.description ?? '').toLowerCase().includes(q);
+        const searchableText = [p.key, p.name, p.description, sys.domain, DOMAIN_LABEL[sys.domain]].join(' ');
+        const matchesStatus = status === 'all' || p.status === status;
+        const matchesSensitivity = sensitivity === 'all'
+          || (sensitivity === 'sensitive' ? p.isSensitive : !p.isSensitive);
+        return includesNormalizedSearch(searchableText, debouncedSearch) && matchesStatus && matchesSensitivity;
       }),
     }))
-    .filter((sys) => sys.permissions.length > 0);
+    .filter((sys) => sys.permissions.length > 0), [data?.systems, debouncedSearch, sensitivity, status]);
 
   const total = data?.total ?? 0;
 
@@ -135,14 +143,37 @@ export function PermissionsPage() {
         )}
       </Group>
 
-      <TextInput
-        placeholder="Tìm theo key, mô tả..."
-        leftSection={<IconSearch size={16} />}
+      <Group align="end" mb="md" gap="sm">
+      <NormalizedSearchInput
+        placeholder="Tìm tên, mã quyền, mô tả hoặc nhóm..."
         value={search}
-        onChange={(e) => setSearch(e.currentTarget.value)}
-        mb="md"
+        onChange={setSearch}
         w={320}
       />
+      <Select
+        aria-label="Lọc trạng thái permission"
+        label="Trạng thái"
+        value={status}
+        onChange={(value) => setStatus((value as typeof status) ?? 'all')}
+        data={[{ value: 'all', label: 'Tất cả trạng thái' }, { value: 'active', label: 'Đang dùng' }, { value: 'disabled', label: 'Vô hiệu' }]}
+        w={180}
+        allowDeselect={false}
+      />
+      <Select
+        aria-label="Lọc mức độ nhạy cảm"
+        label="Mức độ"
+        value={sensitivity}
+        onChange={(value) => setSensitivity((value as typeof sensitivity) ?? 'all')}
+        data={[{ value: 'all', label: 'Tất cả' }, { value: 'sensitive', label: 'Nhạy cảm' }, { value: 'standard', label: 'Thông thường' }]}
+        w={170}
+        allowDeselect={false}
+      />
+      {(search || status !== 'all' || sensitivity !== 'all') && (
+        <Button variant="subtle" color="gray" onClick={() => { setSearch(''); setStatus('all'); setSensitivity('all'); }}>
+          Xóa bộ lọc
+        </Button>
+      )}
+      </Group>
 
       {isLoading ? (
         <Group justify="center" py="xl"><Loader /></Group>

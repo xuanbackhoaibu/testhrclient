@@ -64,11 +64,11 @@ const orgItems: NavItem[] = [
 ];
 
 const iamItems: NavItem[] = [
-  { label: "Tài khoản", path: ROUTES.accounts, icon: IconUserCheck },
-  { label: "Chờ link nhân sự", path: ROUTES.pendingHrLinkAccounts, icon: IconLink },
-  { label: "Role", path: ROUTES.roles, icon: IconShield },
+  { label: "Danh sách tài khoản", path: ROUTES.accounts, icon: IconUserCheck },
+  { label: "Tài khoản chờ liên kết", path: ROUTES.pendingHrLinkAccounts, icon: IconLink },
+  { label: "Vai trò", path: ROUTES.roles, icon: IconShield },
   { label: "Nhóm quyền", path: ROUTES.permissionGroups, icon: IconShield },
-  { label: "Permission", path: ROUTES.permissions, icon: IconKey },
+  { label: "Danh mục quyền", path: ROUTES.permissions, icon: IconKey },
   { label: "Phân quyền báo cáo công việc", path: ROUTES.workReportAuthorizations, icon: IconClipboardList },
 ];
 
@@ -91,9 +91,9 @@ const routeTitles: Record<string, string> = {
   [ROUTES.settings]: "Cài đặt",
   [ROUTES.accounts]: "Tài khoản",
   [ROUTES.pendingHrLinkAccounts]: "Tài khoản chờ liên kết nhân sự",
-  [ROUTES.roles]: "Role",
+  [ROUTES.roles]: "Vai trò",
   [ROUTES.permissionGroups]: "Nhóm quyền",
-  [ROUTES.permissions]: "Permission",
+  [ROUTES.permissions]: "Danh mục quyền",
   [ROUTES.workReportAuthorizations]: "Phân quyền báo cáo công việc",
 };
 
@@ -116,6 +116,7 @@ export function MainLayout() {
 
   const showOrganizationMenu = visibleOrgItems.length > 0;
   const showIamMenu = visibleIamItems.length > 0;
+  const isIamRoute = visibleIamItems.some((item) => isActive(location.pathname, item.path));
   const selectedPath = location.pathname.startsWith("/employees/")
     ? ROUTES.employees
     : location.pathname;
@@ -233,23 +234,25 @@ export function MainLayout() {
                 <NavLink
                   label="Phân quyền"
                   leftSection={<IconShield size={18} />}
-                  defaultOpened={visibleIamItems.some((item) => isActive(location.pathname, item.path))}
+                  defaultOpened={isIamRoute}
                   className="app-nav-link"
                 >
-                  {visibleIamItems
-                    .map((item) => {
+                  <NavLink label="Người dùng và tài khoản" defaultOpened={visibleIamItems.slice(0, 2).some((item) => isActive(location.pathname, item.path))}>
+                    {visibleIamItems.slice(0, 2).map((item) => {
                       const Icon = item.icon;
-                      return (
-                        <NavLink
-                          key={item.path}
-                          label={item.label}
-                          leftSection={<Icon size={17} />}
-                          active={isActive(location.pathname, item.path)}
-                          onClick={() => goTo(item.path)}
-                          className="app-nav-link"
-                        />
-                      );
+                      return <NavLink key={item.path} label={item.label} leftSection={<Icon size={17} />} active={isActive(location.pathname, item.path)} onClick={() => goTo(item.path)} className="app-nav-link" />;
                     })}
+                  </NavLink>
+                  <NavLink label="Vai trò và quyền" defaultOpened={visibleIamItems.slice(2, 5).some((item) => isActive(location.pathname, item.path))}>
+                    {visibleIamItems.slice(2, 5).map((item) => {
+                      const Icon = item.icon;
+                      return <NavLink key={item.path} label={item.label} leftSection={<Icon size={17} />} active={isActive(location.pathname, item.path)} onClick={() => goTo(item.path)} className="app-nav-link" />;
+                    })}
+                  </NavLink>
+                  {visibleIamItems.slice(5).map((item) => {
+                    const Icon = item.icon;
+                    return <NavLink key={item.path} label="Báo cáo công việc" leftSection={<Icon size={17} />} active={isActive(location.pathname, item.path)} onClick={() => goTo(item.path)} className="app-nav-link" />;
+                  })}
                 </NavLink>
               ) : null}
 

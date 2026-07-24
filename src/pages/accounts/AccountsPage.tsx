@@ -28,14 +28,13 @@ import {
   IconLock,
   IconLockOpen,
   IconRefresh,
-  IconSearch,
   IconShield,
   IconTrash,
   IconUserCheck,
   IconUserOff,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../../features/auth/useAuth";
 import { validatePasswordPolicy } from "../../features/auth/passwordPolicy";
@@ -65,7 +64,7 @@ import {
   type DataTableColumn,
 } from "../../shared/components/DataTable";
 import { PageHeader } from "../../shared/components/PageHeader";
-import { sortByCode } from "../../shared/utils/sort";
+import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 
 const STATUS_OPTIONS = [
   { value: "", label: "Tất cả trạng thái" },
@@ -140,6 +139,7 @@ const DEFAULT_RESET_PASSWORD_FORM: ResetPasswordFormState = {
 
 export function AccountsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { can, hasAnyPermission } = useAuth();
 
@@ -158,10 +158,22 @@ export function AccountsPage() {
     AUTH_ADMIN_PERMISSIONS.PERMISSION_GROUPS_ASSIGN,
   ]);
 
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
+  const search = searchParams.get("q") ?? "";
+  const status = searchParams.get("status") ?? "";
+  const page = Math.max(1, Number(searchParams.get("page") ?? 1));
+  const pageSize = Math.max(1, Number(searchParams.get("pageSize") ?? 20));
   const [debouncedSearch] = useDebouncedValue(search, 300);
+
+  const updateListQuery = (changes: Record<string, string | null>) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      Object.entries(changes).forEach(([key, value]) => {
+        if (value) next.set(key, value);
+        else next.delete(key);
+      });
+      return next;
+    }, { replace: true });
+  };
 
   const [confirmAction, setConfirmAction] = useState<{
     type: string;
@@ -194,13 +206,13 @@ export function AccountsPage() {
         : null;
 
   const accountsQuery = useQuery({
-    queryKey: ["auth-admin-users", debouncedSearch, status, page],
+    queryKey: ["auth-admin-users", debouncedSearch, status, page, pageSize],
     queryFn: () =>
       listAccountManagementRows({
         search: debouncedSearch || undefined,
         status: status || undefined,
         page,
-        pageSize: 20,
+        pageSize,
       }),
     enabled: canReadAccounts,
   });
@@ -356,12 +368,6 @@ export function AccountsPage() {
     });
   };
 
-  // Sắp xếp tài khoản theo Mã nhân viên tăng dần (trong trang hiện tại).
-  const sortedAccounts = sortByCode(
-    accountsQuery.data?.data,
-    (row) => row.account.employeeCode,
-  );
-
   const columns: DataTableColumn<AccountManagementRow>[] = [
     {
       key: "account",
@@ -460,10 +466,11 @@ export function AccountsPage() {
           justify="flex-end"
           onClick={(event) => event.stopPropagation()}
         >
-          <Tooltip label="Xem chi tiet">
+          <Tooltip label="Xem chi tiết">
             <ActionIcon
               variant="subtle"
               size="sm"
+              aria-label="Xem chi tiết tài khoản"
               onClick={() => {
                 setSelectedRow(row);
                 openDetail();
@@ -479,6 +486,7 @@ export function AccountsPage() {
                 variant="subtle"
                 size="sm"
                 disabled={!canAuthorizeAccounts}
+                aria-label="Quản lý phân quyền tài khoản"
                 onClick={() => setAuthorizationAccount(row)}
               >
                 <IconShield size={15} />
@@ -494,6 +502,7 @@ export function AccountsPage() {
                     variant="subtle"
                     size="sm"
                     disabled={!canUpdateAccounts}
+                    aria-label="Thao tác tài khoản"
                   >
                     <IconDots size={15} />
                   </ActionIcon>
@@ -646,31 +655,33 @@ export function AccountsPage() {
         breadcrumbs={["Hệ thống", "Tài khoản"]}
       />
 
-      <Group gap="sm">
-        <TextInput
-          placeholder="Tìm theo email, username, mã nhân sự..."
-          leftSection={<IconSearch size={16} />}
+      <Group gap="sm" align="end">
+        <NormalizedSearchInput
+          label="Tìm kiếm"
+          placeholder="Tên, email, username hoặc mã nhân sự..."
           value={search}
-          onChange={(event) => {
-            setSearch(event.currentTarget.value);
-            setPage(1);
-          }}
+          onChange={(value) => updateListQuery({ q: value || null, page: null })}
           w={360}
         />
         <Select
+          label="Trạng thái"
           data={STATUS_OPTIONS}
           value={status}
           onChange={(value) => {
-            setStatus(value ?? "");
-            setPage(1);
+            updateListQuery({ status: value || null, page: null });
           }}
           w={220}
           clearable={false}
         />
+        {(search || status) ? (
+          <Button variant="subtle" color="gray" onClick={() => updateListQuery({ q: null, status: null, page: null })}>
+            Xóa bộ lọc
+          </Button>
+        ) : null}
       </Group>
 
       <DataTable
-        data={sortedAccounts}
+        data={accountsQuery.data?.data ?? []}
         columns={columns}
         rowKey={(row) => row.account.authUserId}
         meta={
@@ -690,7 +701,7 @@ export function AccountsPage() {
         error={accountsQuery.error}
         emptyTitle="Không có tài khoản"
         emptyDescription="Chưa có tài khoản nào khớp với bộ lọc"
-        onPageChange={(nextPage) => setPage(nextPage)}
+        onPageChange={(nextPage, nextPageSize) => updateListQuery({ page: String(nextPage), pageSize: String(nextPageSize) })}
         onRowClick={(row) => {
           if (row.employee?.id) {
             navigate(`/employees/${row.employee.id}`);

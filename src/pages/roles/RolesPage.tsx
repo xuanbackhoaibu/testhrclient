@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActionIcon,
   Badge,
@@ -15,12 +15,11 @@ import {
   Text,
   Textarea,
   TextInput,
-  Title,
   Tooltip,
 } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
+import { useDebouncedValue, useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconEdit, IconEye, IconPlus, IconSearch, IconShield, IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconEye, IconPlus, IconShield, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 
@@ -43,6 +42,9 @@ import type {
   RoleDefinition,
   RoleDetail,
 } from '../../features/auth-admin/authAdminTypes';
+import { NormalizedSearchInput } from '../../shared/components/NormalizedSearchInput';
+import { PageHeader } from '../../shared/components/PageHeader';
+import { includesNormalizedSearch } from '../../shared/utils/normalizeSearchText';
 
 const STATUS_COLOR: Record<string, string> = { active: 'green', disabled: 'gray' };
 const STATUS_LABEL: Record<string, string> = { active: 'Đang dùng', disabled: 'Vô hiệu' };
@@ -52,6 +54,8 @@ export function RolesPage() {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const search = searchParams.get('search') ?? '';
+  const status = searchParams.get('status') ?? 'all';
+  const [debouncedSearch] = useDebouncedValue(search, 350);
   const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);
   const [detailRoleId, setDetailRoleId] = useState<string | null>(null);
   const [detailOpened, { open: openDetail, close: closeDetail }] = useDisclosure(false);
@@ -76,10 +80,22 @@ export function RolesPage() {
     }, { replace: true });
   };
 
+  const setStatus = (value: string) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (value !== 'all') next.set('status', value); else next.delete('status');
+      return next;
+    }, { replace: true });
+  };
+
   const { data: roles = [], isLoading } = useQuery({
-    queryKey: ['roles', search],
-    queryFn: () => getRoles({ search: search || undefined }),
+    queryKey: ['roles', status],
+    queryFn: () => getRoles({ status: status === 'all' ? undefined : status }),
   });
+  const visibleRoles = useMemo(
+    () => roles.filter((role) => includesNormalizedSearch([role.name, role.key, role.description].join(' '), debouncedSearch)),
+    [debouncedSearch, roles],
+  );
 
   const { data: detail, isLoading: detailLoading } = useQuery<RoleDetail>({
     queryKey: ['role', detailRoleId],
@@ -179,8 +195,8 @@ export function RolesPage() {
 
   return (
     <Box>
-      <Group justify="space-between" mb="md">
-        <div><Title order={3}>Vai trò</Title><Text c="dimmed" size="sm">Quản lý nhóm quyền dùng chung cho nhiều nhân viên.</Text></div>
+      <Group justify="space-between" mb="md" align="flex-end">
+        <PageHeader title="Vai trò" subtitle="Quản lý nhóm quyền dùng chung cho nhiều nhân viên." breadcrumbs={['Phân quyền', 'Vai trò']} />
         {canManage && (
           <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>
             Tạo role
@@ -188,20 +204,30 @@ export function RolesPage() {
         )}
       </Group>
 
-      <TextInput
-        placeholder="Tìm theo tên, key, mô tả..."
-        leftSection={<IconSearch size={16} />}
+      <Group align="end" gap="sm" mb="md">
+      <NormalizedSearchInput
+        label="Tìm kiếm"
+        placeholder="Tên vai trò, mã vai trò hoặc mô tả..."
         value={search}
-        onChange={(e) => setSearch(e.currentTarget.value)}
-        mb="md"
+        onChange={setSearch}
         w={320}
       />
+      <Select
+        label="Trạng thái"
+        value={status}
+        data={[{ value: 'all', label: 'Tất cả trạng thái' }, { value: 'active', label: 'Đang dùng' }, { value: 'disabled', label: 'Vô hiệu' }]}
+        onChange={(value) => setStatus(value ?? 'all')}
+        allowDeselect={false}
+        w={180}
+      />
+      {(search || status !== 'all') && <Button variant="subtle" color="gray" onClick={() => { setSearch(''); setStatus('all'); }}>Xóa bộ lọc</Button>}
+      </Group>
 
       {isLoading ? (
         <Group justify="center" py="xl"><Loader /></Group>
       ) : (
         <Stack gap="xs">
-          {roles.map((role) => (
+          {visibleRoles.map((role) => (
             <Group
               key={role.id ?? role.key}
               p="md"
@@ -236,7 +262,7 @@ export function RolesPage() {
               </Group>
             </Group>
           ))}
-          {roles.length === 0 && <Text c="dimmed" ta="center" py="lg">Không tìm thấy vai trò phù hợp.</Text>}
+          {visibleRoles.length === 0 && <Text c="dimmed" ta="center" py="lg">Không tìm thấy vai trò phù hợp.</Text>}
         </Stack>
       )}
 
