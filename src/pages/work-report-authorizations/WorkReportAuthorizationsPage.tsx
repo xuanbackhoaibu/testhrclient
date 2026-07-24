@@ -236,8 +236,8 @@ export function WorkReportAuthorizationsPage() {
     { key: 'actions', header: 'Thao tác', minWidth: 92, render: (row) => <Group gap="xs" wrap="nowrap"><ActionIcon aria-label={`Xem chi tiết ${row.fullName}`} variant="light" onClick={() => setDetail(row)}><IconEye size={16} /></ActionIcon>{can(MANAGE) && <ActionIcon aria-label={`Sửa quyền ${row.fullName}`} variant="light" onClick={() => openDrawer(row)}><IconPencil size={16} /></ActionIcon>}</Group> },
   ];
   const departmentOptions = useMemo(() => Object.values((departments.data?.items ?? []).reduce<Record<string, { group: string; items: { value: string; label: string }[] }>>((groups, scope) => {
-    const group = `${scope.unitName} — ${scope.unitCode}`;
-    (groups[group] ??= { group, items: [] }).items.push({ value: scope.departmentId, label: `${scope.departmentName} · ${scope.departmentCode}` });
+    const group = `Đơn vị: ${scope.unitName}`;
+    (groups[group] ??= { group, items: [] }).items.push({ value: scope.departmentId, label: `${scope.departmentName} — ${scope.unitName}` });
     return groups;
   }, {})), [departments.data]);
   const departmentById = new Map((departments.data?.items ?? []).map((scope) => [scope.departmentId, scope]));
