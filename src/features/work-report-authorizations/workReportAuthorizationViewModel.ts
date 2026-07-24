@@ -6,7 +6,7 @@ export type PermissionPresentation = BusinessPermission & {
   ownerName?: string;
   ownerCode?: string;
   scopeKind: 'department' | 'unit' | 'corporation';
-  accessLabel: 'Chỉ đọc' | 'Đọc và gửi' | 'Không có quyền';
+  accessLabel: 'Chỉ đọc' | 'Đọc và gửi' | 'Tổng hợp báo cáo' | 'Không có quyền';
   statusLabel: 'Đang hoạt động' | 'Tạm dừng' | 'Đã thu hồi' | 'Hết hiệu lực';
 };
 
@@ -20,7 +20,7 @@ export type EmployeePermissionViewModel = {
 };
 
 const accessLabel = (actions: string[]): PermissionPresentation['accessLabel'] =>
-  actions.includes('SUBMIT') ? 'Đọc và gửi' : actions.includes('READ') ? 'Chỉ đọc' : 'Không có quyền';
+  actions.includes('AGGREGATE') ? 'Tổng hợp báo cáo' : actions.includes('SUBMIT') ? 'Đọc và gửi' : actions.includes('READ') ? 'Chỉ đọc' : 'Không có quyền';
 const statusLabel = (status?: BusinessPermission['status']): PermissionPresentation['statusLabel'] =>
   status === 'INACTIVE' ? 'Tạm dừng' : status === 'REVOKED' ? 'Đã thu hồi' : status === 'EXPIRED' ? 'Hết hiệu lực' : 'Đang hoạt động';
 
@@ -42,7 +42,7 @@ export function workReportAuthorizationToEmployeePermissionViewModel(
       const scope = unitById.get(permission.scopeId);
       return { ...permission, name: scope?.unitName ?? 'Đơn vị đã cấp', code: scope?.unitCode ?? '', scopeKind: 'unit', accessLabel: access, statusLabel: status };
     }
-    return { ...permission, name: 'Công ty CPĐT Hacom Holdings', code: 'DV001', ownerName: 'Phạm vi toàn Tổng công ty', scopeKind: 'corporation', accessLabel: access, statusLabel: status };
+    return { ...permission, name: 'Toàn Tổng công ty', code: 'TCT', ownerName: 'Tổng hợp báo cáo công việc toàn Tổng công ty', scopeKind: 'corporation', accessLabel: access, statusLabel: status };
   };
   const permissions = employee.permissions.map(present);
   const departmentPermissions = permissions.filter((item) => item.scopeKind === 'department');

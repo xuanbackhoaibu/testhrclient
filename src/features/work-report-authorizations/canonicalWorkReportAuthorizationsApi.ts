@@ -27,7 +27,7 @@ export const deactivateAssignment = (id: string, assignmentVersion: number) => a
 export const revokeAssignment = (id: string, assignmentVersion: number, reason: string) => api.post<Assignment>(`${BASE}/${id}/revoke`, { assignmentVersion, reason });
 export const listAssignmentAudit = (id: string) => api.get<{ items: Array<Record<string, unknown>> }>(`${BASE}/${id}/audit`);
 
-export type BusinessAction = 'READ' | 'SUBMIT';
+export type BusinessAction = 'READ' | 'SUBMIT' | 'AGGREGATE';
 export type BusinessPermissionStatus = 'ACTIVE' | 'INACTIVE' | 'REVOKED' | 'EXPIRED';
 export type BusinessPermission = {
   type: 'DEPARTMENT_REPORT' | 'UNIT_REPORT' | 'CORPORATE_REPORT'; scopeId: string; actions: BusinessAction[];
@@ -59,7 +59,7 @@ function scopeOptionsQuery(query: ScopeOptionsQuery = {}) {
 }
 export const listBusinessDepartments = (query: ScopeOptionsQuery = {}) => api.get<ScopeOptionsPage<DepartmentOption>>(`${BASE}/options/departments?${scopeOptionsQuery(query)}`);
 export const listBusinessUnits = (query: ScopeOptionsQuery = {}) => api.get<ScopeOptionsPage<UnitOption>>(`${BASE}/options/units?${scopeOptionsQuery(query)}`);
-export const getCorporation = () => api.get<BusinessOption & { rootUnitId: string }>(`${BASE}/options/corporation`);
+export const getCorporation = () => api.get<BusinessOption & { scopeId: string; rootUnitId: string }>(`${BASE}/options/corporation`);
 export const previewBusinessGrant = (input: BusinessGrant) => api.post<unknown>(`${BASE}/business/preview`, input);
 export const createBusinessGrant = (input: BusinessGrant) => api.post<{ assignments: Assignment[] }>(`${BASE}/business/grants`, input);
 export const previewBusinessBatch = (input: { employeeIds: string[]; permissions: BusinessPermission[] }) => api.post<{ totalSubjects: number; eligibleSubjects: number; skippedSubjects: number; assignmentCount: number }>(`${BASE}/business/batch/preview`, input);
