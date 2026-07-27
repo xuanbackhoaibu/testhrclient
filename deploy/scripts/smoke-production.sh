@@ -94,6 +94,15 @@ if [ "${CONTAINER_STATUS}" = "unknown" ]; then
   exit 64
 fi
 
+if [ -n "${EXPECTED_IMAGE_REF:-}" ]; then
+  ACTUAL_IMAGE_REF="$(docker inspect "${HR_WEB_CONTAINER}" --format '{{.Config.Image}}')"
+  if [ "${ACTUAL_IMAGE_REF}" != "${EXPECTED_IMAGE_REF}" ]; then
+    echo "ERROR: HR Web container image mismatch: expected=${EXPECTED_IMAGE_REF} actual=${ACTUAL_IMAGE_REF}" >&2
+    exit 64
+  fi
+  echo "HR Web running image verified: ${ACTUAL_IMAGE_REF}"
+fi
+
 echo ""
 echo "--- HR Web health check via docker exec (container-internal /healthz) ---"
 WEB_HEALTH_OK=0
