@@ -21,10 +21,6 @@ import { provisionFromEmployee } from '../auth-admin/authAdminApi';
 import type { ProvisionFromEmployeeResult } from '../auth-admin/authAdminTypes';
 import type { Employee } from './employeeTypes';
 import { api } from '../../shared/api/httpClient';
-import {
-  DEFAULT_EMPLOYEE_PASSWORD,
-  FORCE_CHANGE_PASSWORD_NOTICE,
-} from '../../shared/constants/account';
 
 interface Props {
   employee: Employee;
@@ -52,13 +48,8 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
   const provision = useMutation({
     mutationFn: () =>
       provisionFromEmployee({
-        employeeId: employee.id,
-        employeeCode: employee.employeeCode,
-        fullName: employee.fullName,
-        email: email || null,
-        unitName: employee.unitName ?? undefined,
-        departmentName: employee.departmentName ?? undefined,
-        positionName: employee.positionName ?? undefined,
+        hrmEmployeeId: employee.id,
+        expectedEmployeeCode: employee.employeeCode,
         sendActivationEmail: sendOtp,
       }),
     onSuccess: async (data) => {
@@ -109,9 +100,8 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
 
           <Stack gap={4}>
             <InfoRow label="Tài khoản đăng nhập" value={expectedUsername} />
-            <InfoRow label="Mật khẩu mặc định" value={DEFAULT_EMPLOYEE_PASSWORD} />
             <Text size="xs" c="dimmed">
-              Tài khoản đăng nhập là mã nhân viên. Tài khoản mới được tạo với mật khẩu mặc định. {FORCE_CHANGE_PASSWORD_NOTICE}
+              Tài khoản đăng nhập là mã nhân viên. Nhân sự bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.
             </Text>
           </Stack>
 
@@ -130,7 +120,7 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
 
           {!sendOtp && (
             <Alert color="blue" variant="light">
-              Tài khoản sẽ ở trạng thái <strong>Hoạt động</strong> ngay sau khi tạo với mật khẩu mặc định <strong>{DEFAULT_EMPLOYEE_PASSWORD}</strong>.
+              Tài khoản sẽ ở trạng thái <strong>Hoạt động</strong> ngay sau khi tạo và bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.
             </Alert>
           )}
 
@@ -174,20 +164,20 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
             <InfoRow label="Email" value={result.email ?? 'Chưa có'} />
           </Stack>
 
-          {result.status === 'created' && (
+          {result.status === 'created' && result.initialCredential && (
             <>
-              <Divider label="Mật khẩu mặc định" labelPosition="center" />
-              <Alert color="orange" title="Bàn giao mật khẩu mặc định cho nhân sự">
-                Tài khoản được tạo với mật khẩu mặc định cố định. {FORCE_CHANGE_PASSWORD_NOTICE}
+              <Divider label="Mật khẩu khởi tạo" labelPosition="center" />
+              <Alert color="orange" title="Bàn giao mật khẩu khởi tạo">
+                Mật khẩu này chỉ được hiển thị trong lần tạo tài khoản này. Nhân sự bắt buộc đổi mật khẩu khi đăng nhập lần đầu.
               </Alert>
               <Group gap="xs" align="center">
                 <TextInput
-                  value={DEFAULT_EMPLOYEE_PASSWORD}
+                  value={result.initialCredential ?? ''}
                   readOnly
                   style={{ flex: 1 }}
                   styles={{ input: { fontFamily: 'monospace', fontWeight: 600, letterSpacing: '0.05em' } }}
                 />
-                <CopyButton value={DEFAULT_EMPLOYEE_PASSWORD}>
+                <CopyButton value={result.initialCredential ?? ''}>
                   {({ copied, copy }) => (
                     <Tooltip label={copied ? 'Đã copy' : 'Copy mật khẩu'}>
                       <Button

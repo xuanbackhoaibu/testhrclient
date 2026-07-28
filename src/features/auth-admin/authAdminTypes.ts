@@ -50,15 +50,8 @@ export interface ResetPasswordInput {
 }
 
 export interface ProvisionFromEmployeeInput {
-  employeeId: string;
-  employeeCode: string;
-  fullName: string;
-  // Optional: HRM accounts log in by employee code. Omit/null when no email.
-  email?: string | null;
-  unitCode?: string;
-  unitName?: string;
-  departmentName?: string;
-  positionName?: string;
+  hrmEmployeeId: string;
+  expectedEmployeeCode?: string;
   sendActivationEmail?: boolean;
 }
 
@@ -78,6 +71,8 @@ export interface ProvisionFromEmployeeResult {
   updated?: boolean;
   status?: 'created' | 'updated' | 'already_exists';
   mustChangePassword?: boolean;
+  /** Returned only once for a newly-created account; never persisted by the UI. */
+  initialCredential?: string;
   message?: string;
 }
 
@@ -399,15 +394,8 @@ export interface BulkProvisionFromBatchResult {
 // ─── Bulk provision from employee selection ───────────────────────────────────
 
 export interface BulkProvisionEmployeeItem {
-  employeeId: string;
-  employeeCode: string;
-  fullName: string;
-  // Optional: emailless employees are provisioned with a code-login account.
-  email?: string | null;
-  unitCode?: string;
-  unitName?: string;
-  departmentName?: string;
-  positionName?: string;
+  hrmEmployeeId: string;
+  expectedEmployeeCode?: string;
 }
 
 export interface BulkProvisionFromEmployeesInput {

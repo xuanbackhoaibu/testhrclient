@@ -41,10 +41,6 @@ import { api } from '../../../shared/api/httpClient';
 import { LoadingState } from '../../../shared/components/LoadingState';
 import { ErrorState } from '../../../shared/components/ErrorState';
 import { formatDateTime } from '../../../shared/utils/date';
-import {
-  DEFAULT_EMPLOYEE_PASSWORD,
-  FORCE_CHANGE_PASSWORD_NOTICE,
-} from '../../../shared/constants/account';
 
 interface Props {
   employee: Employee;
@@ -104,14 +100,8 @@ export function AccountTab({ employee }: Props) {
   const provisionMutation = useMutation({
     mutationFn: async () => {
       const result = await provisionFromEmployee({
-        employeeId: employee.id,
-        employeeCode: employee.employeeCode,
-        fullName: employee.fullName,
-        email: employee.companyEmail ?? employee.personalEmail ?? null,
-        unitCode: undefined,
-        unitName: employee.unitName ?? undefined,
-        departmentName: employee.departmentName ?? undefined,
-        positionName: employee.positionName ?? undefined,
+        hrmEmployeeId: employee.id,
+        expectedEmployeeCode: employee.employeeCode,
         sendActivationEmail: false,
       });
       await api.patch(`/employees/${employee.id}/auth-link`, {
@@ -122,10 +112,8 @@ export function AccountTab({ employee }: Props) {
     },
     onSuccess: async (result) => {
       setCreateModalOpen(false);
-      // Only a freshly created account uses the fixed default password (never
-      // returned by the API). Existing/synced accounts keep their password.
-      if (result.status === 'created') {
-        setProvisionedPassword(DEFAULT_EMPLOYEE_PASSWORD);
+      if (result.status === 'created' && result.initialCredential) {
+        setProvisionedPassword(result.initialCredential);
       }
       notifications.show({
         color: 'green',
@@ -254,7 +242,7 @@ export function AccountTab({ employee }: Props) {
                 </CopyButton>
               </Group>
               <Text size="xs" c="dimmed">
-                {FORCE_CHANGE_PASSWORD_NOTICE}
+                Nhân sự bắt buộc đổi mật khẩu khi đăng nhập lần đầu. Mật khẩu này không thể xem lại sau khi đóng màn hình.
               </Text>
             </Stack>
           </Alert>

@@ -35,10 +35,6 @@ import {
 } from '../auth-admin/authAdminTypes';
 import { AUTH_ADMIN_PERMISSIONS } from '../auth/permissions';
 import { useAuth } from '../auth/useAuth';
-import {
-  DEFAULT_EMPLOYEE_PASSWORD,
-  FORCE_CHANGE_PASSWORD_NOTICE,
-} from '../../shared/constants/account';
 import { formatDateTime } from '../../shared/utils/date';
 import type { Employee } from './employeeTypes';
 
@@ -115,8 +111,7 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
   const resetPasswordMutation = useMutation({
     mutationFn: () =>
       resetPassword(authUser!.authUserId, {
-        autoGenerate: false,
-        password: DEFAULT_EMPLOYEE_PASSWORD,
+        autoGenerate: true,
         mustChangePassword: true,
         notifyUser: false,
         reason: 'HR admin reset to default password',
@@ -127,7 +122,7 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
       notifications.show({
         color: 'green',
         title: 'Da reset mat khau',
-        message: FORCE_CHANGE_PASSWORD_NOTICE,
+        message: 'Nhân sự bắt buộc đổi mật khẩu khi đăng nhập lần đầu.',
       });
       await invalidate();
     },
@@ -399,7 +394,7 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
             ve mac dinh?
           </Text>
           <Alert color="orange" variant="light">
-            {FORCE_CHANGE_PASSWORD_NOTICE} Mat khau moi se hien thi sau khi reset
+            Nhân sự bắt buộc đổi mật khẩu khi đăng nhập lần đầu. Mat khau moi se hien thi sau khi reset
             de ban giao cho nguoi dung.
           </Alert>
           <Group justify="flex-end">
