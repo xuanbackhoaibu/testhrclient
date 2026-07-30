@@ -6,7 +6,6 @@ import { canAccessRoute } from './routePolicies';
 import { useAuth } from './useAuth';
 
 const LANDING_ROUTES = [
-  ROUTES.dashboard,
   ROUTES.employees,
   ROUTES.businessSectors,
   ROUTES.units,
@@ -24,7 +23,12 @@ const LANDING_ROUTES = [
 
 export function AuthorizationLanding() {
   const { user } = useAuth();
-  const destination = LANDING_ROUTES.find((route) => canAccessRoute(user, route));
+  // Dashboard is an operations overview reserved as the default landing screen
+  // for Super Admin. Other users go straight to their first usable feature.
+  const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
+  const destination = isSuperAdmin && canAccessRoute(user, ROUTES.dashboard)
+    ? ROUTES.dashboard
+    : LANDING_ROUTES.find((route) => canAccessRoute(user, route));
 
   return destination ? (
     <Navigate to={destination} replace />
