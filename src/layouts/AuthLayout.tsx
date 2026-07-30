@@ -5,10 +5,10 @@ import { BrandLogo } from '../shared/components/BrandLogo';
 
 export function AuthLayout() {
   return (
-    <Box mih="100vh" bg="#f6f8fb" px="md" py="xl">
+    <Box mih="100vh" bg="#f6f8fb" px="md" py="xl" className="auth-page">
       <Center mih="calc(100vh - 64px)">
         <Container size={420} w="100%">
-          <Paper p="xl" radius="md">
+          <Paper p="xl" radius="md" className="auth-card">
             <Stack gap="lg">
               <Stack gap={2}>
                 <BrandLogo />

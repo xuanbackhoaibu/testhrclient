@@ -17,6 +17,7 @@ import type { DemoRole } from "../features/auth/types";
 import { useAuthStore } from "../features/auth/authStore";
 import { useAuth } from "../features/auth/useAuth";
 import { ROUTES } from "../shared/constants/routes";
+import { getPostLoginDestination } from "../features/auth/postLoginDestination";
 
 interface LoginFormValues {
   loginIdentifier: string;
@@ -70,7 +71,10 @@ export function LoginPage() {
         navigate(ROUTES.changePassword, { replace: true });
         return;
       }
-      navigate(ROUTES.dashboard, { replace: true });
+      const authState = useAuthStore.getState();
+      navigate(getPostLoginDestination(authState.user) ?? ROUTES.root, {
+        replace: true,
+      });
     } catch (loginFailure) {
       setLoginError(readLoginError(loginFailure));
     } finally {
@@ -105,7 +109,9 @@ export function LoginPage() {
           title: "Đăng nhập thành công",
           message: "Đang mở HRM.",
         });
-        navigate(ROUTES.dashboard, { replace: true });
+        navigate(getPostLoginDestination(authState.user) ?? ROUTES.root, {
+          replace: true,
+        });
         return;
       }
 

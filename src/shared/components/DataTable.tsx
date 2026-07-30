@@ -177,7 +177,7 @@ export function DataTable<T>({
           <Text size="sm" c="dimmed">
             {meta.total} bản ghi
           </Text>
-          <Group gap="xs" wrap="nowrap">
+          <Group gap="xs" className="data-table-pagination-controls">
             <Select
               aria-label="Số dòng mỗi trang"
               value={String(meta.pageSize)}
@@ -187,7 +187,7 @@ export function DataTable<T>({
               allowDeselect={false}
               onChange={(value) => onPageChange(1, Number(value ?? meta.pageSize))}
             />
-            <Box>
+            <Box className="data-table-pagination">
               <Pagination
                 total={Math.max(1, meta.totalPages)}
                 value={meta.page}
