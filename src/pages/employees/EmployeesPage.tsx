@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import { useDebouncedValue } from "@mantine/hooks";
 import {
   Badge,
   Button,
@@ -18,7 +17,6 @@ import {
   IconEdit,
   IconEye,
   IconPlus,
-  IconSearch,
   IconUserCheck,
   IconUsers,
 } from "@tabler/icons-react";
@@ -62,6 +60,7 @@ import { useUnitsSelect } from "../../features/organization/useUnits";
 import { ApiError } from "../../shared/api/api.types";
 import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
 import { sortByCode } from "../../shared/utils/sort";
+import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 
 const employmentStatusOptions = [
   { value: "ACTIVE", label: "Đang làm việc" },
@@ -228,7 +227,6 @@ export function EmployeesPage() {
   const [suggestedCode, setSuggestedCode] = useState("");
   const [biotimeEmployeeCode, setBiotimeEmployeeCode] = useState("");
   const [searchInput, setSearchInput] = useState("");
-  const [debouncedSearch] = useDebouncedValue(searchInput, 300);
   const [params, setParams] = useState({
     page: 1,
     pageSize: 10,
@@ -271,7 +269,7 @@ export function EmployeesPage() {
     employmentStatus: params.employmentStatus,
     unitId: params.unitId,
     departmentId: params.departmentId,
-    search: debouncedSearch,
+    search: searchInput,
   });
   const unitsSelect = useUnitsSelect();
   const filterDepartmentsSelect = useDepartmentsSelect(params.unitId);
@@ -303,7 +301,7 @@ export function EmployeesPage() {
   }));
 
   const exportMutation = useMutation({
-    mutationFn: () => downloadEmployeesExport({ ...params, search: debouncedSearch }),
+    mutationFn: () => downloadEmployeesExport({ ...params, search: searchInput }),
     onError: () => {
       notifications.show({
         color: "red",
@@ -804,12 +802,11 @@ export function EmployeesPage() {
 
       <Stack gap="md">
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm">
-          <TextInput
+          <NormalizedSearchInput
             placeholder="Tìm tên, email, SĐT"
-            leftSection={<IconSearch size={17} />}
             value={searchInput}
-            onChange={(event) => {
-              setSearchInput(event.currentTarget.value);
+            onChange={(value) => {
+              setSearchInput(value);
               setParams((current) => ({ ...current, page: 1 }));
             }}
           />

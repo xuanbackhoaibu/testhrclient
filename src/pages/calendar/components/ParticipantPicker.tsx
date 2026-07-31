@@ -11,10 +11,10 @@ import {
   TextInput,
   UnstyledButton,
 } from '@mantine/core';
-import { useDebouncedValue } from '@mantine/hooks';
 import { IconSearch, IconX } from '@tabler/icons-react';
 
 import { useEmployees } from '../../../features/employees/useEmployees';
+import { useImeSafeSearch } from '../../../shared/hooks/useImeSafeSearch';
 
 export interface SelectedParticipant {
   id: string;
@@ -36,10 +36,10 @@ export function ParticipantPicker({
   excludeEmployeeId,
 }: ParticipantPickerProps) {
   const [search, setSearch] = useState('');
-  const [debouncedSearch] = useDebouncedValue(search.trim(), 300);
+  const searchInput = useImeSafeSearch({ value: search, onSearch: setSearch });
 
   const { data, isLoading, isFetching } = useEmployees({
-    search: debouncedSearch || undefined,
+    search: search.trim() || undefined,
     page: 1,
     pageSize: 20,
   });
@@ -59,14 +59,14 @@ export function ParticipantPicker({
   const add = (emp: SelectedParticipant) => {
     if (selectedIds.has(emp.id)) return;
     onChange([...value, emp]);
-    setSearch('');
+    searchInput.clear();
   };
 
   const remove = (id: string) => {
     onChange(value.filter((p) => p.id !== id));
   };
 
-  const showDropdown = debouncedSearch.length > 0;
+  const showDropdown = search.length > 0;
 
   return (
     <Stack gap="xs">
@@ -101,16 +101,15 @@ export function ParticipantPicker({
         rightSection={
           isFetching ? (
             <Loader size={14} />
-          ) : search ? (
+          ) : searchInput.inputValue ? (
             <IconX
               size={14}
               style={{ cursor: 'pointer' }}
-              onClick={() => setSearch('')}
+              onClick={() => searchInput.clear()}
             />
           ) : null
         }
-        value={search}
-        onChange={(e) => setSearch(e.currentTarget.value)}
+        {...searchInput.inputProps}
       />
 
       {showDropdown && (

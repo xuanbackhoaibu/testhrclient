@@ -13,7 +13,7 @@ import {
   TextInput,
   Tooltip,
 } from "@mantine/core";
-import { useDebouncedValue, useDisclosure } from "@mantine/hooks";
+import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,
@@ -45,6 +45,7 @@ import {
   type DataTableColumn,
 } from "../../shared/components/DataTable";
 import { PageHeader } from "../../shared/components/PageHeader";
+import { useImeSafeSearch } from "../../shared/hooks/useImeSafeSearch";
 
 const PAGE_SIZE = 20;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -119,7 +120,13 @@ export function PendingHrLinkAccountsPage() {
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [debouncedSearch] = useDebouncedValue(search, 300);
+  const pendingSearch = useImeSafeSearch({
+    value: search,
+    onSearch: (value) => {
+      setSearch(value);
+      setPage(1);
+    },
+  });
 
   const [claimUser, setClaimUser] = useState<AuthAdminUser | null>(null);
   const [claimForm, setClaimForm] = useState<ClaimFormState>({
@@ -143,21 +150,21 @@ export function PendingHrLinkAccountsPage() {
     useDisclosure(false);
   const [disableOpened, { open: openDisable, close: closeDisable }] =
     useDisclosure(false);
-  const [debouncedEmployeeSearch] = useDebouncedValue(
-    linkForm.employeeSearch,
-    300,
-  );
+  const employeeSearch = useImeSafeSearch({
+    value: linkForm.employeeSearch,
+    onSearch: (value) => setLinkForm((current) => ({ ...current, employeeSearch: value })),
+  });
 
   const pendingQuery = useQuery({
     queryKey: [
       "admin",
       "users",
       "pending-hr-link",
-      { search: debouncedSearch, page },
+      { search, page },
     ],
     queryFn: () =>
       getPendingHrLinkUsers({
-        search: debouncedSearch || undefined,
+        search: search || undefined,
         page,
         pageSize: PAGE_SIZE,
       }),
@@ -165,10 +172,10 @@ export function PendingHrLinkAccountsPage() {
   });
 
   const employeeQuery = useQuery({
-    queryKey: ["employees", "pending-hr-link-search", debouncedEmployeeSearch],
+    queryKey: ["employees", "pending-hr-link-search", linkForm.employeeSearch],
     queryFn: () =>
       listEmployees({
-        search: debouncedEmployeeSearch || undefined,
+        search: linkForm.employeeSearch || undefined,
         page: 1,
         pageSize: 10,
       }),
@@ -476,11 +483,7 @@ export function PendingHrLinkAccountsPage() {
         <TextInput
           placeholder="Tìm theo email, mã nhân sự claim, username..."
           leftSection={<IconSearch size={16} />}
-          value={search}
-          onChange={(event) => {
-            setSearch(event.currentTarget.value);
-            setPage(1);
-          }}
+          {...pendingSearch.inputProps}
           w={380}
         />
         <Button
@@ -604,13 +607,7 @@ export function PendingHrLinkAccountsPage() {
               label="Tìm hồ sơ nhân sự HRM"
               placeholder="Nhập mã nhân sự, email hoặc họ tên"
               leftSection={<IconSearch size={16} />}
-              value={linkForm.employeeSearch}
-              onChange={(event) =>
-                setLinkForm((current) => ({
-                  ...current,
-                  employeeSearch: event.currentTarget.value,
-                }))
-              }
+              {...employeeSearch.inputProps}
             />
             <Select
               label="Hồ sơ nhân sự chính thức"

@@ -10,18 +10,38 @@ const codeCollator = new Intl.Collator('vi', {
   sensitivity: 'base',
 });
 
+export interface CodeSortable {
+  code?: string | number | null;
+  name?: string | null;
+  label?: string | null;
+}
+
+function normalizedCode(value: string | number | null | undefined): string | null {
+  const code = String(value ?? '').trim();
+  return code || null;
+}
+
 /** So sánh hai mã. Trả về < 0 nếu a đứng trước b. */
 export function compareCode(
   a: string | number | null | undefined,
   b: string | number | null | undefined,
 ): number {
   // Giá trị rỗng/null luôn xếp xuống cuối.
-  const aEmpty = a === null || a === undefined || a === '';
-  const bEmpty = b === null || b === undefined || b === '';
+  const normalizedA = normalizedCode(a);
+  const normalizedB = normalizedCode(b);
+  const aEmpty = normalizedA === null;
+  const bEmpty = normalizedB === null;
   if (aEmpty && bEmpty) return 0;
   if (aEmpty) return 1;
   if (bEmpty) return -1;
-  return codeCollator.compare(String(a), String(b));
+  return codeCollator.compare(normalizedA, normalizedB);
+}
+
+/** Natural business-code ordering with deterministic name fallback. */
+export function compareByBusinessCode<T extends CodeSortable>(left: T, right: T): number {
+  const codeResult = compareCode(left.code, right.code);
+  if (codeResult !== 0) return codeResult;
+  return codeCollator.compare(left.name ?? left.label ?? '', right.name ?? right.label ?? '');
 }
 
 /**
@@ -37,5 +57,11 @@ export function sortByCode<T>(
     (item as { code?: string | number }).code,
 ): T[] {
   if (!items) return [];
-  return [...items].sort((a, b) => compareCode(getCode(a), getCode(b)));
+  return [...items].sort((a, b) => {
+    const codeResult = compareCode(getCode(a), getCode(b));
+    if (codeResult !== 0) return codeResult;
+    const left = a as CodeSortable;
+    const right = b as CodeSortable;
+    return codeCollator.compare(left.name ?? left.label ?? '', right.name ?? right.label ?? '');
+  });
 }

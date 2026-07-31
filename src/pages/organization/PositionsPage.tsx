@@ -16,7 +16,6 @@ import { notifications } from "@mantine/notifications";
 import {
   IconEdit,
   IconPlus,
-  IconSearch,
   IconTrash,
 } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -44,6 +43,7 @@ import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
 import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
+import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 
 // Mã chức danh không còn nhập từ UI — backend tự sinh từ tên chức danh.
 type PositionFormValues = Omit<Position, "id" | "code">;
@@ -193,9 +193,9 @@ export function PositionsPage() {
     },
   });
 
-  // Sắp xếp toàn bộ vị trí theo tên tăng dần rồi phân trang ở client.
+  // This endpoint returns all matching records, so client-side code ordering is complete.
   const sortedPositions = useMemo(
-    () => sortByCode(allPositions, (item) => item.name),
+    () => sortByCode(allPositions),
     [allPositions],
   );
   const totalCount = sortedPositions.length;
@@ -358,12 +358,10 @@ export function PositionsPage() {
 
       <Stack gap="md">
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-          <TextInput
+          <NormalizedSearchInput
             placeholder="Tìm tên, nhóm công việc"
-            leftSection={<IconSearch size={17} />}
             value={params.search}
-            onChange={(event) => {
-              const value = event.currentTarget.value;
+            onChange={(value) => {
               setParams((current) => ({
                 ...current,
                 search: value,
