@@ -22,7 +22,6 @@ import {
   IconCheck,
   IconLink,
   IconRefresh,
-  IconSearch,
   IconUserCheck,
   IconUsers,
   IconX,
@@ -42,6 +41,8 @@ import {
 } from '../../features/attendance/attendanceApi';
 import type { MappingStats, UnmappedAttendanceItem } from '../../features/attendance/attendanceTypes';
 import { sortByCode } from '../../shared/utils/sort';
+import { NormalizedSearchInput } from '../../shared/components/NormalizedSearchInput';
+import { includesNormalizedSearch } from '../../shared/utils/normalizeSearchText';
 
 const PAGE_SIZE = 20;
 
@@ -150,11 +151,10 @@ function UnmappedTable({
   return (
     <Card withBorder padding={0}>
       <Group p="sm" gap="xs" style={{ borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
-        <TextInput
+        <NormalizedSearchInput
           placeholder="Tìm mã chấm công, họ tên, phòng ban..."
-          leftSection={<IconSearch size={15} />}
           value={search}
-          onChange={(e) => onSearchChange(e.currentTarget.value)}
+          onChange={onSearchChange}
           style={{ flex: 1 }}
           size="sm"
         />
@@ -310,8 +310,7 @@ function MapEmployeeModal({
 
   const filteredSuggestions = suggestions?.filter(
     (s) =>
-      s.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.employeeCode.toLowerCase().includes(searchQuery.toLowerCase()),
+      includesNormalizedSearch(`${s.fullName} ${s.employeeCode}`, searchQuery),
   ) ?? [];
 
   const scoreLabel = (score: number) => {
@@ -417,12 +416,11 @@ function MapEmployeeModal({
             </Stack>
           )}
 
-          <TextInput
+          <NormalizedSearchInput
             label="Tìm nhân sự khác"
             placeholder="Nhập tên hoặc mã nhân sự..."
-            leftSection={<IconSearch size={15} />}
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.currentTarget.value)}
+            onChange={setSearchQuery}
             size="sm"
           />
 

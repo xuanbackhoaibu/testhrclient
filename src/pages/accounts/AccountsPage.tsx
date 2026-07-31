@@ -19,7 +19,7 @@ import {
   TextInput,
   Tooltip,
 } from "@mantine/core";
-import { useDebouncedValue, useDisclosure } from "@mantine/hooks";
+import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
   IconDots,
@@ -162,7 +162,6 @@ export function AccountsPage() {
   const status = searchParams.get("status") ?? "";
   const page = Math.max(1, Number(searchParams.get("page") ?? 1));
   const pageSize = Math.max(1, Number(searchParams.get("pageSize") ?? 20));
-  const [debouncedSearch] = useDebouncedValue(search, 300);
 
   const updateListQuery = (changes: Record<string, string | null>) => {
     setSearchParams((current) => {
@@ -206,10 +205,10 @@ export function AccountsPage() {
         : null;
 
   const accountsQuery = useQuery({
-    queryKey: ["auth-admin-users", debouncedSearch, status, page, pageSize],
+    queryKey: ["auth-admin-users", search, status, page, pageSize],
     queryFn: () =>
       listAccountManagementRows({
-        search: debouncedSearch || undefined,
+        search: search || undefined,
         status: status || undefined,
         page,
         pageSize,

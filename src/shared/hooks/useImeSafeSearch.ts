@@ -22,16 +22,22 @@ export function useImeSafeSearch({
   const composingRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onSearchRef = useRef(onSearch);
+  const externalValueRef = useRef(value);
 
   useEffect(() => {
     onSearchRef.current = onSearch;
   }, [onSearch]);
 
   useEffect(() => {
-    if (!composingRef.current && value !== undefined && value !== inputValue) {
+    // A controlled value represents an external navigation/reset only when it
+    // actually changes. Do not copy the previous committed value back into the
+    // input while the user is typing ahead of the debounce timer.
+    if (value === externalValueRef.current) return;
+    externalValueRef.current = value;
+    if (!composingRef.current && value !== undefined) {
       setInputValue(value);
     }
-  }, [inputValue, value]);
+  }, [value]);
 
   const cancelPendingSearch = useCallback(() => {
     if (timerRef.current) {

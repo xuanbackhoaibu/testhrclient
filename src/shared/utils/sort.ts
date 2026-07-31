@@ -5,7 +5,7 @@
  *   "1", "2", "10"  ->  thay vì  "1", "10", "2" (kiểu sắp chữ thông thường).
  * Vẫn xử lý được mã chữ-số như "PB01", "PB02", "PB10".
  */
-const codeCollator = new Intl.Collator('vi', {
+const codeCollator = new Intl.Collator('vi-VN', {
   numeric: true,
   sensitivity: 'base',
 });

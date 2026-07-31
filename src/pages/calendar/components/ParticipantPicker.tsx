@@ -66,7 +66,7 @@ export function ParticipantPicker({
     onChange(value.filter((p) => p.id !== id));
   };
 
-  const showDropdown = search.length > 0;
+  const showDropdown = searchInput.inputValue.length > 0;
 
   return (
     <Stack gap="xs">

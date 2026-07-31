@@ -44,6 +44,7 @@ import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
 import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
+import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 
 type UnitFormValues = {
@@ -74,6 +75,7 @@ function TruncatedCell({ value }: { value?: string | null }) {
 }
 
 export function UnitsPage() {
+  const selectSearch = useImeSafeSelectFilter();
   const { can, permissions, roles } = useAuth();
   const canCreateUnit = can(HR_PERMISSIONS.UNIT_CREATE);
   const canEditUnit = can(HR_PERMISSIONS.UNIT_UPDATE);
@@ -526,6 +528,7 @@ export function UnitsPage() {
               label="Lĩnh vực"
               withAsterisk
               searchable
+              {...selectSearch}
               data={sectorOptions}
               disabled={sectorsQuery.isLoading}
               {...form.getInputProps("sectorId")}

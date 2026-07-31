@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Alert, Badge, Button, Group, Stack, Text, TextInput } from '@mantine/core';
+import { Alert, Badge, Button, Group, Stack, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconCheck, IconRefresh, IconSearch, IconUsers } from '@tabler/icons-react';
+import { IconCheck, IconRefresh, IconUsers } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 import { useBioTimeDepartments, useSyncBioTimeDepartments } from '../../../features/attendance/useAttendanceSync';
 import { DataTable } from '../../../shared/components/DataTable';
 import { sortByCode } from '../../../shared/utils/sort';
+import { NormalizedSearchInput } from '../../../shared/components/NormalizedSearchInput';
 import type { BioTimeDepartment } from '../../../features/attendance/attendanceTypes';
 
 export function BioTimeDepartmentsTable() {
@@ -72,12 +73,11 @@ export function BioTimeDepartmentsTable() {
   return (
     <Stack gap="sm">
       <Group justify="space-between">
-        <TextInput
+        <NormalizedSearchInput
           placeholder="Tìm kiếm phòng ban..."
-          leftSection={<IconSearch size={14} />}
           value={keyword}
-          onChange={(e) => {
-            setKeyword(e.currentTarget.value);
+          onChange={(value) => {
+            setKeyword(value);
             setPage(1);
           }}
           style={{ flex: 1, maxWidth: 300 }}

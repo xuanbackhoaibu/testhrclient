@@ -14,11 +14,13 @@ import { IconSearch, IconX, IconCalendar } from '@tabler/icons-react';
 import { useEmployees } from '../../../features/employees/useEmployees';
 import type { SelectedOwner } from '../../../features/calendar/useCalendarView';
 import { useCalendarOwner } from '../../../features/calendar/CalendarContext';
+import { useImeSafeSearch } from '../../../shared/hooks/useImeSafeSearch';
 import styles from './CalendarSidebar.module.css';
 
 export function CalendarSidebar() {
   const { selectedOwner, selectOwner, isViewingOthers } = useCalendarOwner();
   const [search, setSearch] = useState('');
+  const searchInput = useImeSafeSearch({ value: search, onSearch: setSearch });
 
   const { data: employeesData, isLoading } = useEmployees({
     search: search || undefined,
@@ -90,16 +92,15 @@ export function CalendarSidebar() {
           placeholder="Tìm kiếm nhân viên..."
           leftSection={<IconSearch size={14} />}
           rightSection={
-            search ? (
+            searchInput.inputValue ? (
               <IconX
                 size={14}
                 style={{ cursor: 'pointer' }}
-                onClick={() => setSearch('')}
+                onClick={() => searchInput.clear()}
               />
             ) : null
           }
-          value={search}
-          onChange={(e) => setSearch(e.currentTarget.value)}
+          {...searchInput.inputProps}
           size="xs"
         />
 
@@ -113,7 +114,7 @@ export function CalendarSidebar() {
               </Stack>
             ) : employees.length === 0 ? (
               <Text size="xs" c="dimmed" ta="center" py="md">
-                {search ? 'Không tìm thấy nhân viên' : 'Không có nhân viên'}
+                {searchInput.inputValue ? 'Không tìm thấy nhân viên' : 'Không có nhân viên'}
               </Text>
             ) : (
               employees.map((emp) => {

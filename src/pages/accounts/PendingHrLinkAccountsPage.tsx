@@ -46,6 +46,8 @@ import {
 } from "../../shared/components/DataTable";
 import { PageHeader } from "../../shared/components/PageHeader";
 import { useImeSafeSearch } from "../../shared/hooks/useImeSafeSearch";
+import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
+import { sortByCode } from "../../shared/utils/sort";
 
 const PAGE_SIZE = 20;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -109,6 +111,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 export function PendingHrLinkAccountsPage() {
+  const selectSearch = useImeSafeSelectFilter();
   const queryClient = useQueryClient();
   const { can } = useAuth();
 
@@ -182,8 +185,10 @@ export function PendingHrLinkAccountsPage() {
     enabled: linkOpened,
   });
 
+  // This endpoint is paginated. Sort only the returned candidates here; the
+  // canonical global employee order must be supplied by the backend.
   const employees = useMemo(
-    () => employeeQuery.data?.items ?? employeeQuery.data?.data ?? [],
+    () => sortByCode(employeeQuery.data?.items ?? employeeQuery.data?.data, (employee) => employee.employeeCode),
     [employeeQuery.data],
   );
   const selectedEmployee = useMemo(
@@ -540,7 +545,7 @@ export function PendingHrLinkAccountsPage() {
               onChange={(event) =>
                 setClaimForm((current) => ({
                   ...current,
-                  claimedEmployeeCode: event.currentTarget.value.trimStart().toUpperCase(),
+                  claimedEmployeeCode: event.currentTarget.value,
                 }))
               }
             />
@@ -550,7 +555,7 @@ export function PendingHrLinkAccountsPage() {
               onChange={(event) =>
                 setClaimForm((current) => ({
                   ...current,
-                  claimedEmail: event.currentTarget.value.trimStart(),
+                  claimedEmail: event.currentTarget.value,
                 }))
               }
             />
@@ -612,6 +617,7 @@ export function PendingHrLinkAccountsPage() {
             <Select
               label="Hồ sơ nhân sự chính thức"
               searchable
+              {...selectSearch}
               clearable
               placeholder={
                 employeeQuery.isFetching

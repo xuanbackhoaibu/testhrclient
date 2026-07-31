@@ -6,6 +6,7 @@ import { AttendanceDateFilter } from './AttendanceDateFilter';
 import type { AttendanceDateFilterValue } from './AttendanceDateFilter.types';
 import styles from './AttendanceFilterBar.module.css';
 import { useImeSafeSearch } from '../../../shared/hooks/useImeSafeSearch';
+import { useImeSafeSelectFilter } from '../../../shared/hooks/useImeSafeSelectFilter';
 
 export interface AttendanceFilters {
   search: string;
@@ -74,6 +75,7 @@ export function AttendanceFilterBar({
   maySync,
   unmappedConflictCount = 0,
 }: AttendanceFilterBarProps) {
+  const selectSearch = useImeSafeSelectFilter();
   const search = useImeSafeSearch({
     value: filters.search,
     onSearch: (value) => onChange({ ...filters, search: value }),
@@ -161,6 +163,7 @@ export function AttendanceFilterBar({
           }
           clearable
           searchable
+          {...selectSearch}
           size="sm"
           className={styles.selectInput}
           comboboxProps={{ withinPortal: true }}

@@ -61,6 +61,7 @@ import { ApiError } from "../../shared/api/api.types";
 import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
 import { sortByCode } from "../../shared/utils/sort";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
+import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
 
 const employmentStatusOptions = [
   { value: "ACTIVE", label: "Đang làm việc" },
@@ -202,6 +203,7 @@ const emptyEmployeeFormValues: EmployeePayload = {
 };
 
 export function EmployeesPage() {
+  const selectSearch = useImeSafeSelectFilter();
   const navigate = useNavigate();
   const { can, permissions, roles } = useAuth();
   const mayCreateEmployee = can(HR_PERMISSIONS.EMPLOYEE_CREATE);
@@ -957,6 +959,7 @@ export function EmployeesPage() {
               }
               withAsterisk
               searchable
+              {...selectSearch}
               data={unitOptions}
               disabled={unitsSelect.isLoading || unitsSelect.isError}
               nothingFoundMessage="Không có đơn vị active"
@@ -1000,6 +1003,7 @@ export function EmployeesPage() {
               }
               withAsterisk
               searchable
+              {...selectSearch}
               data={formDepartmentOptions}
               disabled={
                 !form.values.unitId ||
@@ -1022,6 +1026,7 @@ export function EmployeesPage() {
               }
               withAsterisk
               searchable
+              {...selectSearch}
               data={positionOptions}
               disabled={positionsSelect.isLoading || positionsSelect.isError}
               nothingFoundMessage="Không có chức danh active"

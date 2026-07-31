@@ -19,7 +19,7 @@ import {
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconEdit, IconEye, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconEye, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../features/auth/useAuth';
@@ -36,11 +36,14 @@ import type {
   CreatePermissionGroupInput,
   PermissionGroupDefinition,
 } from '../../features/auth-admin/authAdminTypes';
+import { NormalizedSearchInput } from '../../shared/components/NormalizedSearchInput';
+import { useImeSafeSelectFilter } from '../../shared/hooks/useImeSafeSelectFilter';
 
 const STATUS_LABEL: Record<string, string> = { active: 'Đang dùng', inactive: 'Vô hiệu' };
 const STATUS_COLOR: Record<string, string> = { active: 'green', inactive: 'gray' };
 
 export function PermissionGroupsPage() {
+  const selectSearch = useImeSafeSelectFilter();
   const { can } = useAuth();
   const queryClient = useQueryClient();
   const canManage = can('auth.permission_group.manage');
@@ -152,11 +155,10 @@ export function PermissionGroupsPage() {
       </Group>
 
       <Group mb="md">
-        <TextInput
+        <NormalizedSearchInput
           placeholder="Tìm theo tên, key..."
-          leftSection={<IconSearch size={16} />}
           value={search}
-          onChange={(e) => setSearch(e.currentTarget.value)}
+          onChange={setSearch}
           style={{ flex: 1 }}
         />
         <Select
@@ -369,6 +371,7 @@ export function PermissionGroupsPage() {
                   value={addPermKey}
                   onChange={(v) => setAddPermKey(v ?? '')}
                   searchable
+                  {...selectSearch}
                   style={{ flex: 1 }}
                 />
                 <Button

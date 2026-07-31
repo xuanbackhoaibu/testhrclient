@@ -41,6 +41,7 @@ import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
+import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
 
 type DepartmentFormValues = {
   code: string;
@@ -56,6 +57,7 @@ const statusOptions = [
 ];
 
 export function DepartmentsPage() {
+  const selectSearch = useImeSafeSelectFilter();
   const { can, permissions, roles } = useAuth();
   const canCreateDepartment = can(HR_PERMISSIONS.DEPARTMENT_CREATE);
   const canEditDepartment = can(HR_PERMISSIONS.DEPARTMENT_UPDATE);
@@ -439,6 +441,7 @@ export function DepartmentsPage() {
               data={unitOptions}
               withAsterisk
               searchable
+              {...selectSearch}
               {...form.getInputProps("unitId")}
             />
             <TextInput

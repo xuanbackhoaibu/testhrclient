@@ -12,7 +12,7 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconEdit, IconPlus, IconSearch, IconX } from "@tabler/icons-react";
+import { IconEdit, IconPlus, IconX } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
@@ -36,6 +36,7 @@ import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
 import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
+import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 
 type BusinessSectorFormValues = {
   code: string;
@@ -314,12 +315,10 @@ export function BusinessSectorsPage() {
 
       <Stack gap="md">
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-          <TextInput
+          <NormalizedSearchInput
             placeholder="Tìm mã hoặc tên lĩnh vực"
-            leftSection={<IconSearch size={17} />}
             value={params.search}
-            onChange={(event) => {
-              const value = event.currentTarget.value;
+            onChange={(value) => {
               setParams((current) => ({
                 ...current,
                 search: value,
