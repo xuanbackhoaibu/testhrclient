@@ -39,7 +39,19 @@ Bactx
 Bxuan964@gmail.com
 ```
 
-- Các thay đổi hiện tại chỉ nằm local, chưa commit và chưa push lên Git.
+- Các thay đổi đã được commit và push lên nhánh riêng `Bactx` trên GitHub.
+
+Commit hiện tại:
+
+```text
+c092454 feat: improve HRM UI workflows
+```
+
+Nhánh remote:
+
+```text
+origin/Bactx
+```
 
 ## 3. Tìm hiểu cấu trúc dự án
 
@@ -526,7 +538,7 @@ HTTP/1.1 200 OK
 
 ## 14. File đã thay đổi
 
-Các file hiện đang thay đổi:
+Các file đã được thay đổi trong commit `c092454`:
 
 ```text
 src/features/import-export/ExcelImportModal.tsx
@@ -537,10 +549,13 @@ src/features/auth/postLoginDestination.ts
 src/features/auth/AuthorizationLanding.tsx
 src/features/auth/ProtectedRoute.tsx
 src/features/auth/routePolicies.ts
+src/layouts/AuthLayout.tsx
+src/layouts/MainLayout.tsx
 src/pages/AuthCallbackPage.tsx
 src/pages/LoginPage.tsx
 src/pages/employees/EmployeesPage.tsx
 src/pages/employees/EmployeeDetailPage.tsx
+src/shared/components/PageHeader.tsx
 src/styles.css
 docs/HRM_UI_RESEARCH_Bactx.md
 ```
@@ -565,13 +580,32 @@ Kết quả:
 ## 16. Trạng thái hiện tại
 
 - Đang làm việc trên nhánh `Bactx`.
-- Các thay đổi vẫn ở local.
-- Chưa commit.
-- Chưa push lên GitHub.
+- Đã commit các thay đổi UI/HRM vào nhánh `Bactx`.
+- Đã push nhánh `Bactx` lên GitHub.
+- Nhánh local `Bactx` đang tracking remote `origin/Bactx`.
+- Working tree sau khi push sạch, không còn file thay đổi chưa commit.
+- Commit mới nhất:
+
+```text
+c092454 feat: improve HRM UI workflows
+```
+
+- Link kiểm tra nhánh trên GitHub:
+
+```text
+https://github.com/hacom-holding-dx/hr-web-client/tree/Bactx
+```
+
+- Link tạo Pull Request:
+
+```text
+https://github.com/hacom-holding-dx/hr-web-client/pull/new/Bactx
+```
+
 - App chạy được tại:
 
 ```text
-http://127.0.0.1:5176/
+http://127.0.0.1:5173/
 ```
 
 ## 17. Hướng nâng cấp tiếp theo
@@ -579,8 +613,8 @@ http://127.0.0.1:5176/
 Các hướng nên làm tiếp sau phần hiện tại:
 
 1. Rà lại import Excel sau khi có backend thật để đồng bộ message lỗi/cảnh báo theo dữ liệu backend trả về.
-2. Kiểm tra UI thực tế trên trình duyệt ở mobile/desktop trước khi commit.
-3. Chuẩn bị commit nội bộ trên nhánh `Bactx` sau khi tự kiểm tra đủ các role.
+2. Kiểm tra UI thực tế trên trình duyệt ở mobile/desktop trước khi tạo Pull Request.
+3. Chuẩn bị mô tả Pull Request để gửi lead review nhánh `Bactx`.
 
 Không ưu tiên nâng cấp dashboard trong phạm vi này vì phần dashboard/tổng quan đã có ở khu vực super admin.
 
