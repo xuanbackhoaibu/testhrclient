@@ -181,6 +181,20 @@ export async function handleAxiosResponseError(
   }
 
   if (apiError.statusCode === 409) {
+    if (apiError.errorCode === 'HR_PROJECTION_NOT_READY') {
+      showError(appendRequestId(
+        'Dữ liệu nhân sự đang được đồng bộ sang hệ thống tài khoản. Vui lòng thử lại sau ít phút.',
+        apiError.requestId,
+      ));
+      return Promise.reject(apiError);
+    }
+    if (apiError.errorCode === 'IDENTITY_CONFLICT') {
+      showError(appendRequestId(
+        'Dữ liệu định danh nhân sự đang bị trùng. Vui lòng liên hệ quản trị viên xử lý.',
+        apiError.requestId,
+      ));
+      return Promise.reject(apiError);
+    }
     showError(appendRequestId(
       AUTHORIZATION_MESSAGES[apiError.errorCode]
         || `${apiError.message || STATUS_MESSAGES[409]} Vui lòng tải lại dữ liệu trước khi thử lại.`,
