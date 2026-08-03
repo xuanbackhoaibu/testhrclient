@@ -160,7 +160,7 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
             <>
               <Divider label="Mật khẩu khởi tạo" labelPosition="center" />
               <Alert color="orange" title="Bàn giao mật khẩu khởi tạo">
-                Mật khẩu này chỉ được hiển thị trong lần tạo tài khoản này. Nhân sự bắt buộc đổi mật khẩu khi đăng nhập lần đầu.
+                Mật khẩu ban đầu: <Code>{result.initialCredential}</Code>. Chỉ hiển thị trong lần tạo tài khoản này; nhân sự bắt buộc đổi mật khẩu khi đăng nhập lần đầu.
               </Alert>
               <Group gap="xs" align="center">
                 <TextInput
