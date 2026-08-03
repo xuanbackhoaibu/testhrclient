@@ -12,7 +12,6 @@ import {
   TextInput,
   Tooltip,
 } from '@mantine/core';
-import { notifications } from '@mantine/notifications';
 import { IconCheck, IconCopy } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -60,13 +59,6 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
       });
       await queryClient.invalidateQueries({ queryKey: ['employees'] });
       await queryClient.invalidateQueries({ queryKey: ['employee-detail', employee.id] });
-    },
-    onError: (err: unknown) => {
-      notifications.show({
-        color: 'red',
-        title: 'Cấp tài khoản thất bại',
-        message: (err as { message?: string })?.message ?? 'Đã xảy ra lỗi.',
-      });
     },
   });
 
@@ -138,7 +130,7 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
             <Button variant="default" onClick={handleClose}>Hủy</Button>
             <Button
               loading={provision.isPending}
-              disabled={!hasEmail && sendOtp}
+              disabled={provision.isPending || (!hasEmail && sendOtp)}
               onClick={() => provision.mutate()}
             >
               Cấp tài khoản

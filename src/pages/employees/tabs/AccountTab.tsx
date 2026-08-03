@@ -126,9 +126,6 @@ export function AccountTab({ employee }: Props) {
       });
       await invalidate();
     },
-    onError: (err: unknown) => {
-      notifications.show({ color: 'red', message: (err as { message?: string })?.message ?? 'Tạo tài khoản thất bại.' });
-    },
   });
 
   const sendActivationMutation = useMutation({
@@ -286,6 +283,7 @@ export function AccountTab({ employee }: Props) {
                 <Button variant="default" onClick={() => setCreateModalOpen(false)}>Hủy</Button>
                 <Button
                   loading={provisionMutation.isPending}
+                  disabled={provisionMutation.isPending}
                   onClick={() => provisionMutation.mutate()}
                 >
                   Tạo tài khoản
