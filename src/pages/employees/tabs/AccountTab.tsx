@@ -277,7 +277,7 @@ export function AccountTab({ employee }: Props) {
                 <InfoRow label="Phòng ban">{employee.departmentName ?? '-'}</InfoRow>
               </Stack>
               <Text size="sm" c="dimmed" mb="md">
-                Tài khoản sẽ được tạo ở trạng thái <strong>Hoạt động</strong> với mật khẩu ban đầu do hệ thống sinh tự động. Mật khẩu chỉ hiển thị một lần sau khi tạo.
+                Tài khoản sẽ được tạo ở trạng thái <strong>Hoạt động</strong> với mật khẩu ban đầu <Code>Hacomholdings@88</Code>. Nhân sự bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.
               </Text>
               <Group justify="flex-end">
                 <Button variant="default" onClick={() => setCreateModalOpen(false)}>Hủy</Button>

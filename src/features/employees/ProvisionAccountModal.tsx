@@ -93,7 +93,7 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
           <Stack gap={4}>
             <InfoRow label="Tài khoản đăng nhập" value={expectedUsername} />
             <Text size="xs" c="dimmed">
-              Tài khoản đăng nhập là mã nhân viên. Nhân sự bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.
+              Tài khoản sẽ ở trạng thái Hoạt động ngay sau khi tạo, sử dụng mật khẩu mặc định Hacomholdings@88 và bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.
             </Text>
           </Stack>
 
@@ -112,13 +112,13 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
 
           {!sendOtp && (
             <Alert color="blue" variant="light">
-              Tài khoản sẽ ở trạng thái <strong>Hoạt động</strong> ngay sau khi tạo và bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.
+              Tài khoản sẽ ở trạng thái <strong>Hoạt động</strong> ngay sau khi tạo, sử dụng mật khẩu mặc định <Code>Hacomholdings@88</Code> và bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.
             </Alert>
           )}
 
           {sendOtp && (
             <Alert color="blue" variant="light">
-              Tài khoản sẽ được tạo và email kích hoạt sẽ được gửi đến <strong>{email}</strong>.
+              Tài khoản vẫn được tạo với mật khẩu mặc định <Code>Hacomholdings@88</Code>; email kích hoạt sẽ được gửi đến <strong>{email}</strong>.
             </Alert>
           )}
 
