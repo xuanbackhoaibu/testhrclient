@@ -119,7 +119,7 @@ export function AccountTab({ employee }: Props) {
         color: 'green',
         message:
           result.status === 'created'
-            ? 'Tạo tài khoản thành công.'
+            ? `Đã cấp tài khoản ${result.loginAccount ?? employee.employeeCode}. ${result.initialCredential ? `Mật khẩu ban đầu: ${result.initialCredential}. ` : ''}Nhân sự bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.`
             : result.status === 'updated'
               ? 'Nhân sự đã có tài khoản — đã đồng bộ email/thông tin.'
               : 'Nhân sự đã có tài khoản — đã đồng bộ trạng thái.',
