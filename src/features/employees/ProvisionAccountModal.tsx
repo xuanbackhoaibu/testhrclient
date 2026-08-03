@@ -45,12 +45,14 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
   const hasEmail = Boolean(email);
 
   const provision = useMutation({
-    mutationFn: () =>
-      provisionFromEmployee({
+    mutationFn: async () => {
+      await api.post(`/employees/${employee.id}/auth-provision-reconcile`);
+      return provisionFromEmployee({
         hrmEmployeeId: employee.id,
         expectedEmployeeCode: employee.employeeCode,
         sendActivationEmail: sendOtp,
-      }),
+      });
+    },
     onSuccess: async (data) => {
       setResult(data);
       await api.patch(`/employees/${employee.id}/auth-link`, {
