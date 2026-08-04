@@ -119,7 +119,7 @@ export function AccountTab({ employee }: Props) {
         color: 'green',
         message:
           result.status === 'created'
-            ? 'Tạo tài khoản thành công.'
+            ? `Đã cấp tài khoản ${result.loginAccount ?? employee.employeeCode}. ${result.initialCredential ? `Mật khẩu ban đầu: ${result.initialCredential}. ` : ''}Nhân sự bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.`
             : result.status === 'updated'
               ? 'Nhân sự đã có tài khoản — đã đồng bộ email/thông tin.'
               : 'Nhân sự đã có tài khoản — đã đồng bộ trạng thái.',
@@ -277,7 +277,7 @@ export function AccountTab({ employee }: Props) {
                 <InfoRow label="Phòng ban">{employee.departmentName ?? '-'}</InfoRow>
               </Stack>
               <Text size="sm" c="dimmed" mb="md">
-                Tài khoản sẽ được tạo ở trạng thái <strong>Hoạt động</strong> với mật khẩu ban đầu do hệ thống sinh tự động. Mật khẩu chỉ hiển thị một lần sau khi tạo.
+                Tài khoản sẽ được tạo ở trạng thái <strong>Hoạt động</strong> với mật khẩu ban đầu <Code>Hacomholdings@88</Code>. Nhân sự bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.
               </Text>
               <Group justify="flex-end">
                 <Button variant="default" onClick={() => setCreateModalOpen(false)}>Hủy</Button>
