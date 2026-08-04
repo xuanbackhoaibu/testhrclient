@@ -111,7 +111,11 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
   const resetPasswordMutation = useMutation({
     mutationFn: () =>
       resetPassword(authUser!.authUserId, {
-        autoGenerate: true,
+        // QUY ƯỚC NGHIỆP VỤ — KHÔNG ĐỔI SANG autoGenerate:
+        // nút này phải trả tài khoản về mật khẩu mặc định của công ty, không
+        // phải mật khẩu ngẫu nhiên. Giá trị mặc định do backend giữ, frontend
+        // không hardcode. Chỉ màn quản trị /accounts mới cho phép sinh ngẫu nhiên.
+        useDefaultPassword: true,
         mustChangePassword: true,
         notifyUser: false,
         reason: 'HR admin reset to default password',
@@ -394,8 +398,9 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
             ve mac dinh?
           </Text>
           <Alert color="orange" variant="light">
-            Nhân sự bắt buộc đổi mật khẩu khi đăng nhập lần đầu. Mat khau moi se hien thi sau khi reset
-            de ban giao cho nguoi dung.
+            Tài khoản sẽ được đưa về mật khẩu mặc định của công ty và bị thu hồi
+            toàn bộ phiên đăng nhập. Nhân sự bắt buộc đổi mật khẩu khi đăng nhập
+            lần tới. Mật khẩu sẽ hiển thị sau khi reset để bàn giao.
           </Alert>
           <Group justify="flex-end">
             <Button
@@ -419,13 +424,20 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
       <Modal
         opened={Boolean(resetResult)}
         onClose={() => setResetResult(null)}
-        title="Mat khau moi"
+        title="Mật khẩu mới"
         size="sm"
       >
         {resetResult ? (
           <Stack>
-            <Alert color="orange" title="Mat khau chi hien thi mot lan">
-              Ban giao ngay cho nguoi dung qua kenh an toan.
+            <Alert
+              color="orange"
+              title={
+                resetResult.usedDefaultPassword
+                  ? 'Đã về mật khẩu mặc định'
+                  : 'Mật khẩu chỉ hiển thị một lần'
+              }
+            >
+              Bàn giao ngay cho người dùng qua kênh an toàn.
             </Alert>
 
             <TextInput
