@@ -15,7 +15,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useForm } from "@mantine/form";
-import { IconCalendarCheck, IconPlus } from "@tabler/icons-react";
+import { IconBan, IconCalendarCheck, IconCheck, IconPlus, IconSend, IconX } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 
@@ -194,16 +194,36 @@ export function LeavePage() {
       render: (record) => {
         const actions: TableActionItem[] = [];
         if (record.status === "DRAFT" && can(HR_PERMISSIONS.LEAVE_SUBMIT)) {
-          actions.push({ label: "Gửi duyệt", onClick: () => setConfirmState({ action: "submit", record }) });
+          actions.push({
+            label: "Gửi duyệt",
+            color: "blue",
+            icon: <IconSend size={16} />,
+            onClick: () => setConfirmState({ action: "submit", record }),
+          });
         }
         if (record.status === "SUBMITTED" && can(HR_PERMISSIONS.LEAVE_APPROVE)) {
-          actions.push({ label: "Duyệt", color: "green", onClick: () => setConfirmState({ action: "approve", record }) });
+          actions.push({
+            label: "Duyệt",
+            color: "green",
+            icon: <IconCheck size={16} />,
+            onClick: () => setConfirmState({ action: "approve", record }),
+          });
         }
         if (record.status === "SUBMITTED" && can(HR_PERMISSIONS.LEAVE_REJECT)) {
-          actions.push({ label: "Từ chối", color: "red", onClick: () => setConfirmState({ action: "reject", record }) });
+          actions.push({
+            label: "Từ chối",
+            color: "red",
+            icon: <IconX size={16} />,
+            onClick: () => setConfirmState({ action: "reject", record }),
+          });
         }
         if (["DRAFT", "SUBMITTED"].includes(record.status) && can(HR_PERMISSIONS.LEAVE_CANCEL)) {
-          actions.push({ label: "Hủy", color: "orange", onClick: () => setConfirmState({ action: "cancel", record }) });
+          actions.push({
+            label: "Hủy",
+            color: "orange",
+            icon: <IconBan size={16} />,
+            onClick: () => setConfirmState({ action: "cancel", record }),
+          });
         }
         return <TableActionsMenu actions={actions} />;
       },

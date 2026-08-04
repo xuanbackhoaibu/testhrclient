@@ -14,7 +14,7 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconAlertTriangle, IconFileText, IconPlus } from "@tabler/icons-react";
+import { IconAlertTriangle, IconFileText, IconFileOff, IconPlus } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 
@@ -154,7 +154,12 @@ export function ContractsPage() {
       render: (record) => {
         const actions: TableActionItem[] = [];
         if (record.status !== "TERMINATED" && can(HR_PERMISSIONS.CONTRACT_TERMINATE)) {
-          actions.push({ label: "Kết thúc hợp đồng", color: "red", onClick: () => setTerminateTarget(record) });
+          actions.push({
+            label: "Kết thúc hợp đồng",
+            color: "red",
+            icon: <IconFileOff size={16} />,
+            onClick: () => setTerminateTarget(record),
+          });
         }
         return <TableActionsMenu actions={actions} />;
       },
