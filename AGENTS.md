@@ -28,6 +28,22 @@ No test runner is currently configured. For now, verify changes with `npm run li
 
 The current history only shows an initial commit, so no detailed project convention is established yet. Use concise, imperative commit subjects such as `Add employee import validation` or `Fix auth callback handling`. Pull requests should include a short summary, affected routes or modules, environment assumptions, verification commands, and screenshots for visible UI changes.
 
+## Business Rules That Must Not Be "Fixed" Back
+
+**Reset mật khẩu nhân sự (chốt 04/08/2026) — đừng đổi sang mật khẩu ngẫu nhiên.**
+Nút "Reset mật khẩu" ở drawer *Xem tài khoản* (`src/features/employees/AccountDetailDrawer.tsx`)
+phải đưa tài khoản **về mật khẩu mặc định của công ty** (`Hacomholdings@88`), đúng bằng mật khẩu
+lúc cấp tài khoản mới. Lý do: HR bàn giao một mật khẩu thống nhất, không phải chép từng chuỗi
+random khác nhau cho từng người.
+
+- Frontend gửi `useDefaultPassword: true`, **không hardcode** giá trị mật khẩu.
+- Mật khẩu mặc định do backend giữ: `chat-auth-service` → `config.hrProvisioning.defaultEmployeePassword`.
+  Muốn đổi thì sửa đúng một chỗ đó.
+- Sinh ngẫu nhiên (`autoGenerate`) chỉ dành cho màn quản trị nâng cao `src/pages/accounts/AccountsPage.tsx`,
+  nơi admin chủ động chọn — **không** dùng cho drawer nói trên.
+- Hành vi được khoá bằng test ở `chat-auth-service/src/tests/` (`hr-auth-admin-account-status.test.ts`,
+  `password-validation-rules.test.ts`). Đổi sang random là test đỏ ngay.
+
 ## Security & Configuration Tips
 
 Do not add real secrets to `.env` or committed files. Authentication is delegated to `chat-auth-service`; this client should not call `POST /auth/login` on `hr-api-service`. Keep bearer-token handling centralized through the existing auth and HTTP client modules.
