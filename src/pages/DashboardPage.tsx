@@ -42,6 +42,15 @@ interface MetricCardProps {
   onClick?: () => void;
 }
 
+interface ActionItem {
+  label: string;
+  description: string;
+  count: number;
+  icon: typeof IconUsers;
+  tone: MetricTone;
+  onClick: () => void;
+}
+
 const statusLabels: Record<string, string> = {
   ACTIVE: "Đang làm việc",
   PROBATION: "Thử việc",
@@ -49,20 +58,23 @@ const statusLabels: Record<string, string> = {
   TERMINATED: "Đã nghỉ việc",
 };
 
+// 4 chỉ số cốt lõi, mỗi thẻ 1 giá trị duy nhất, tiêu đề ngắn — cố tình giữ
+// bố cục đơn giản 4 cột để không lặp lại lỗi tiêu đề dài tràn dòng khi nhồi
+// quá nhiều số vào 1 hàng.
 function MetricCard({ title, value, helper, icon: Icon, tone, onClick }: MetricCardProps) {
   const content = (
     <Group justify="space-between" align="flex-start" wrap="nowrap">
-      <Stack gap={6}>
+      <Stack gap={6} style={{ minWidth: 0 }}>
         <Text className="dashboard-metric-label">{title}</Text>
-        <Title order={3} className="dashboard-metric-value">
+        <Title order={2} className="dashboard-metric-value">
           {value.toLocaleString("vi-VN")}
         </Title>
-        <Text size="xs" c="dimmed">
+        <Text className="dashboard-metric-helper" size="xs" c="dimmed">
           {helper}
         </Text>
       </Stack>
-      <ThemeIcon variant="light" color={tone} size={46} radius="md">
-        <Icon size={23} stroke={1.8} />
+      <ThemeIcon variant="light" color={tone} size={44} radius="md">
+        <Icon size={22} stroke={1.8} />
       </ThemeIcon>
     </Group>
   );
@@ -81,6 +93,37 @@ function MetricCard({ title, value, helper, icon: Icon, tone, onClick }: MetricC
         {content}
       </Paper>
     </UnstyledButton>
+  );
+}
+
+// Gộp toàn bộ số liệu "cần xử lý" (nghỉ phép, điều chuyển, onboarding,
+// offboarding) vào MỘT nơi duy nhất dạng danh sách — tránh lặp lại việc
+// nhồi 2 loại số liệu khác nhau vào chung 1 thẻ nhỏ như bản trước.
+function ActionRow({ label, description, count, icon: Icon, tone, onClick }: ActionItem) {
+  return (
+    <Group justify="space-between" align="center" gap="md" wrap="wrap" className="dashboard-action-row">
+      <Group gap="sm" wrap="nowrap">
+        <ThemeIcon size={38} radius="md" color={tone} variant="light">
+          <Icon size={19} />
+        </ThemeIcon>
+        <div>
+          <Text size="sm" fw={600}>
+            {label}
+          </Text>
+          <Text size="xs" c="dimmed">
+            {description}
+          </Text>
+        </div>
+      </Group>
+      <Group gap="xs" wrap="nowrap">
+        <Badge size="lg" variant="light" color={tone} radius="sm">
+          {count.toLocaleString("vi-VN")}
+        </Badge>
+        <Button variant="subtle" size="xs" rightSection={<IconChevronRight size={14} />} onClick={onClick}>
+          Xem
+        </Button>
+      </Group>
+    </Group>
   );
 }
 
@@ -164,53 +207,75 @@ export function DashboardPage() {
     year: "numeric",
   }).format(new Date());
 
-  const pendingTotal = data.pendingLeaveRequests + data.pendingMovements;
-  const inProgressTotal = data.onboardingInProgress + data.offboardingInProgress;
-
-  // Đủ 6 chỉ số cốt lõi backend trả về (không gộp mất chi tiết) — mỗi thẻ bấm
-  // được để đi thẳng tới trang xử lý tương ứng.
   const metrics: MetricCardProps[] = [
     {
       title: "Tổng nhân sự",
       value: data.totalEmployees,
-      helper: `${data.activeEmployees.toLocaleString("vi-VN")} đang hoạt động (${activeRate}%)`,
+      helper: `${data.activeEmployees.toLocaleString("vi-VN")} đang hoạt động`,
       icon: IconUsers,
       tone: "blue",
       onClick: () => navigate(ROUTES.employees),
+    },
+    {
+      title: "Tỷ lệ hoạt động",
+      value: activeRate,
+      helper: "% nhân sự đang làm việc",
+      icon: IconTrendingUp,
+      tone: "teal",
     },
     {
       title: "Nhân sự mới",
       value: data.newHiresThisMonth,
       helper: "Tuyển mới trong tháng",
       icon: IconUserPlus,
-      tone: "teal",
-      onClick: () => navigate(ROUTES.employees),
+      tone: "violet",
+      onClick: () => navigate(`${ROUTES.employees}?newHires=1`),
     },
     {
-      title: "Nghỉ việc tháng này",
+      title: "Nghỉ việc",
       value: data.terminatedThisMonth,
-      helper: "Nhân sự đã chấm dứt hợp đồng",
+      helper: "Chấm dứt hợp đồng trong tháng",
       icon: IconUserMinus,
       tone: "red",
-      onClick: () => navigate(ROUTES.offboarding),
+      onClick: () => navigate(`${ROUTES.employees}?status=TERMINATED`),
     },
+  ];
+
+  const allActionItems: ActionItem[] = [
     {
-      title: "Yêu cầu chờ duyệt",
-      value: pendingTotal,
-      helper: `${data.pendingLeaveRequests.toLocaleString("vi-VN")} nghỉ phép • ${data.pendingMovements.toLocaleString("vi-VN")} điều chuyển`,
+      label: "Nghỉ phép chờ duyệt",
+      description: "Yêu cầu nghỉ phép đang chờ xử lý",
+      count: data.pendingLeaveRequests,
       icon: IconClipboardCheck,
       tone: "orange",
       onClick: () => navigate(ROUTES.leave),
     },
     {
-      title: "Quy trình đang chạy",
-      value: inProgressTotal,
-      helper: `${data.onboardingInProgress.toLocaleString("vi-VN")} onboarding • ${data.offboardingInProgress.toLocaleString("vi-VN")} offboarding`,
+      label: "Điều chuyển chờ xử lý",
+      description: "Đề nghị điều chuyển đang chờ phê duyệt",
+      count: data.pendingMovements,
+      icon: IconArrowUpRight,
+      tone: "blue",
+      onClick: () => navigate(ROUTES.movements),
+    },
+    {
+      label: "Onboarding đang chạy",
+      description: "Đợt hòa nhập nhân sự mới đang thực hiện",
+      count: data.onboardingInProgress,
       icon: IconBriefcase,
-      tone: "violet",
+      tone: "teal",
       onClick: () => navigate(ROUTES.onboarding),
     },
+    {
+      label: "Offboarding đang chạy",
+      description: "Đợt bàn giao nghỉ việc đang thực hiện",
+      count: data.offboardingInProgress,
+      icon: IconBriefcase,
+      tone: "violet",
+      onClick: () => navigate(ROUTES.offboarding),
+    },
   ];
+  const actionItems = allActionItems.filter((item) => item.count > 0);
 
   return (
     <Stack className="dashboard-page" gap="lg">
@@ -253,11 +318,34 @@ export function DashboardPage() {
         </Group>
       </Paper>
 
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: 3, xl: 5 }} spacing="md">
+      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
         {metrics.map((metric) => (
           <MetricCard key={metric.title} {...metric} />
         ))}
       </SimpleGrid>
+
+      <Paper className="dashboard-panel dashboard-action-panel" p="lg" radius="lg" withBorder>
+        <Stack gap={2} mb="lg">
+          <Text fw={700}>Việc cần xử lý</Text>
+          <Text size="xs" c="dimmed">
+            Tổng hợp các yêu cầu và quy trình đang chờ bạn
+          </Text>
+        </Stack>
+        {actionItems.length ? (
+          <Stack gap="xs">
+            {actionItems.map((item, index) => (
+              <div key={item.label}>
+                <ActionRow {...item} />
+                {index < actionItems.length - 1 ? <div className="dashboard-action-divider" /> : null}
+              </div>
+            ))}
+          </Stack>
+        ) : (
+          <Text size="sm" c="dimmed">
+            Không có yêu cầu nào đang chờ xử lý. 🎉
+          </Text>
+        )}
+      </Paper>
 
       <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
         <DistributionCard
@@ -272,59 +360,6 @@ export function DashboardPage() {
           status
         />
       </SimpleGrid>
-
-      <Paper className="dashboard-action-panel" p="lg" radius="lg" withBorder>
-        <Stack gap="md">
-          <Text fw={700}>Việc cần ưu tiên</Text>
-          <Stack gap="sm">
-            {data.pendingLeaveRequests > 0 ? (
-              <Group justify="space-between" align="center" gap="md" wrap="wrap">
-                <Group gap="sm" wrap="nowrap">
-                  <ThemeIcon size={38} radius="md" color="orange" variant="light">
-                    <IconClipboardCheck size={19} />
-                  </ThemeIcon>
-                  <div>
-                    <Text size="sm" fw={600}>
-                      {data.pendingLeaveRequests.toLocaleString("vi-VN")} yêu cầu nghỉ phép đang chờ duyệt
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      Xử lý sớm để không ảnh hưởng lịch làm việc của nhân viên.
-                    </Text>
-                  </div>
-                </Group>
-                <Button variant="subtle" size="xs" rightSection={<IconChevronRight size={14} />} onClick={() => navigate(ROUTES.leave)}>
-                  Xem yêu cầu
-                </Button>
-              </Group>
-            ) : null}
-            {data.pendingMovements > 0 ? (
-              <Group justify="space-between" align="center" gap="md" wrap="wrap">
-                <Group gap="sm" wrap="nowrap">
-                  <ThemeIcon size={38} radius="md" color="blue" variant="light">
-                    <IconBriefcase size={19} />
-                  </ThemeIcon>
-                  <div>
-                    <Text size="sm" fw={600}>
-                      {data.pendingMovements.toLocaleString("vi-VN")} đề nghị điều chuyển đang chờ xử lý
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      Kiểm tra thông tin trước khi phê duyệt điều chuyển.
-                    </Text>
-                  </div>
-                </Group>
-                <Button variant="subtle" size="xs" rightSection={<IconChevronRight size={14} />} onClick={() => navigate(ROUTES.movements)}>
-                  Xem đề nghị
-                </Button>
-              </Group>
-            ) : null}
-            {pendingTotal === 0 ? (
-              <Text size="sm" c="dimmed">
-                Không có yêu cầu nào đang chờ xử lý. 🎉
-              </Text>
-            ) : null}
-          </Stack>
-        </Stack>
-      </Paper>
     </Stack>
   );
 }

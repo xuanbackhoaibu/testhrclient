@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import {
+  Alert,
   Badge,
   Button,
   Drawer,
@@ -18,10 +19,12 @@ import {
   IconEye,
   IconPlus,
   IconUserCheck,
+  IconUserPlus,
   IconUsers,
 } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import dayjs from "dayjs";
 
 import { AUTH_ADMIN_PERMISSIONS, HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
@@ -205,6 +208,9 @@ const emptyEmployeeFormValues: EmployeePayload = {
 export function EmployeesPage() {
   const selectSearch = useImeSafeSelectFilter();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const statusFromQuery = searchParams.get("status") ?? undefined;
+  const newHiresOnly = searchParams.get("newHires") === "1";
   const { can, permissions, roles } = useAuth();
   const mayCreateEmployee = can(HR_PERMISSIONS.EMPLOYEE_CREATE);
   const mayEditEmployee = can(HR_PERMISSIONS.EMPLOYEE_UPDATE);
@@ -232,7 +238,7 @@ export function EmployeesPage() {
   const [params, setParams] = useState({
     page: 1,
     pageSize: 10,
-    employmentStatus: undefined as string | undefined,
+    employmentStatus: statusFromQuery,
     unitId: undefined as string | undefined,
     departmentId: undefined as string | undefined,
   });
@@ -589,15 +595,29 @@ export function EmployeesPage() {
     [allEmployees],
   );
 
+  // Khi vào từ thẻ "Nhân sự mới" trên Dashboard (?newHires=1): lọc thêm ở
+  // client theo hireDate nằm trong tháng hiện tại — API không có filter theo
+  // khoảng ngày vào làm nên không thể lọc phía server, nhưng hireDate đã có
+  // sẵn trong dữ liệu employee nên lọc tại đây là chính xác, không bịa field.
+  const now = useMemo(() => dayjs(), []);
+  const visibleEmployees = useMemo(() => {
+    if (!newHiresOnly) return sortedEmployees;
+    return sortedEmployees.filter((emp) => {
+      if (!emp.hireDate) return false;
+      const hireDate = dayjs(emp.hireDate);
+      return hireDate.isValid() && hireDate.isSame(now, "month") && hireDate.isSame(now, "year");
+    });
+  }, [sortedEmployees, newHiresOnly, now]);
+
   // Phân trang ở client trên danh sách đã sắp xếp.
-  const totalCount = sortedEmployees.length;
+  const totalCount = visibleEmployees.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / params.pageSize));
   const currentPage = Math.min(params.page, totalPages);
 
   const pagedEmployees = useMemo(() => {
     const start = (currentPage - 1) * params.pageSize;
-    return sortedEmployees.slice(start, start + params.pageSize);
-  }, [sortedEmployees, currentPage, params.pageSize]);
+    return visibleEmployees.slice(start, start + params.pageSize);
+  }, [visibleEmployees, currentPage, params.pageSize]);
 
   const pagedMeta = useMemo<PaginationMeta>(
     () => ({
@@ -803,6 +823,31 @@ export function EmployeesPage() {
       />
 
       <Stack gap="md">
+        {newHiresOnly ? (
+          <Alert
+            color="teal"
+            variant="light"
+            icon={<IconUserPlus size={18} />}
+            withCloseButton
+            onClose={() => setSearchParams({})}
+            title="Đang lọc: Nhân sự mới trong tháng này"
+          >
+            Danh sách dưới đây chỉ hiện nhân sự có ngày vào làm trong tháng hiện tại
+            ({visibleEmployees.length.toLocaleString("vi-VN")} người). Bấm dấu X để xem lại toàn bộ danh sách.
+          </Alert>
+        ) : null}
+        {statusFromQuery === "TERMINATED" ? (
+          <Alert
+            color="red"
+            variant="light"
+            withCloseButton
+            onClose={() => setSearchParams({})}
+            title="Đang lọc: Nhân sự nghỉ việc"
+          >
+            Đây là toàn bộ nhân sự có trạng thái "Nghỉ việc" ({visibleEmployees.length.toLocaleString("vi-VN")} người),
+            không giới hạn theo tháng vì hệ thống hiện chưa lưu ngày nghỉ việc riêng cho từng nhân sự.
+          </Alert>
+        ) : null}
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm">
           <NormalizedSearchInput
             placeholder="Tìm tên, email, SĐT"
