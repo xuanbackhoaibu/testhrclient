@@ -43,6 +43,12 @@ export interface ForceChangePasswordResult {
 
 export interface ResetPasswordInput {
   password?: string;
+  /**
+   * Đưa tài khoản về mật khẩu mặc định của công ty (giá trị do backend giữ,
+   * frontend không hardcode). Đây là hành vi chuẩn của nút "Reset mật khẩu"
+   * ở drawer "Xem tài khoản". Khi bật thì `autoGenerate` bị bỏ qua.
+   */
+  useDefaultPassword?: boolean;
   autoGenerate?: boolean;
   mustChangePassword?: boolean;
   notifyUser?: boolean;
@@ -99,6 +105,8 @@ export interface ResetPasswordResult {
   authUserId: string;
   temporaryPassword?: string;
   tempPassword?: string;
+  /** true khi backend đã đặt lại về mật khẩu mặc định thay vì sinh ngẫu nhiên. */
+  usedDefaultPassword?: boolean;
   mustChangePassword: boolean;
   passwordChangedAt?: string;
   tokenVersion?: number;
