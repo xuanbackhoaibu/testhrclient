@@ -136,7 +136,7 @@ export function LoginPage() {
         </Text>
       </Stack>
 
-      <Paper withBorder radius="lg" p="lg" bg="white" style={{ boxShadow: '0 20px 60px rgba(15, 23, 42, 0.08)' }}>
+      <Paper withBorder radius="lg" p="lg" bg="white" style={{ boxShadow: 'var(--mantine-shadow-lg)' }}>
         <Stack gap="md">
           {error ? (
             <Alert color="yellow" icon={<IconAlertCircle size={18} />}>
@@ -154,7 +154,7 @@ export function LoginPage() {
               <Text c="dimmed" size="sm">
                 Chế độ demo mock chỉ dùng trong môi trường phát triển.
               </Text>
-              <Paper withBorder radius="md" p="md" bg="#f8fafc">
+              <Paper withBorder radius="md" p="md" bg="gray.0">
                 <Select
                   data={demoRoles.map((item) => ({ value: item.value, label: item.label }))}
                   value={role}

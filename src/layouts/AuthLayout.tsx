@@ -6,7 +6,7 @@ import { BrandLogo } from '../shared/components/BrandLogo';
 
 export function AuthLayout() {
   return (
-    <Box mih="100vh" bg="linear-gradient(180deg, #eef5fb 0%, #f8fbff 100%)" px="md" py="xl">
+    <Box mih="100vh" bg="linear-gradient(180deg, var(--mantine-color-blue-0) 0%, var(--mantine-color-body) 100%)" px="md" py="xl">
       <Center mih="calc(100vh - 64px)">
         <Container size={880} w="100%">
           <Paper shadow="xl" withBorder radius="xl" style={{ overflow: 'hidden' }}>
@@ -14,12 +14,12 @@ export function AuthLayout() {
               <Box
                 p="xl"
                 style={{
-                  background: 'linear-gradient(170deg, #f4f8ff 0%, #dcecff 100%)',
+                  background: 'linear-gradient(170deg, var(--mantine-color-blue-0) 0%, var(--mantine-color-blue-1) 100%)',
                   minHeight: 460,
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
-                  borderRight: '1px solid rgba(255, 255, 255, 0.75)',
+                  borderRight: '1px solid var(--mantine-color-gray-1)',
                 }}
               >
                 <Stack gap={16}>
