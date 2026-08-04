@@ -12,8 +12,8 @@ export async function listAuditLogs(params: ListQueryParams = {}): Promise<Pagin
     await mockDelay();
     const filtered = mockAuditLogs
       .filter((item) => (params.entityType ? item.entityType === params.entityType : true))
-      .filter((item) => (params.entityId ? item.entityId === params.entityId : true))
-      .filter((item) => (params.action ? item.action === params.action : true))
+      .filter((item) => (params.entityId ? includesIgnoreCase(item.entityId, params.entityId) : true))
+      .filter((item) => (params.action ? includesIgnoreCase(item.action, params.action) : true))
       .filter((item) => (params.actorUserId ? item.actorUserId === params.actorUserId : true))
       .filter((item) => (params.fromDate ? item.createdAt >= params.fromDate : true))
       .filter((item) => (params.toDate ? item.createdAt <= params.toDate : true))
