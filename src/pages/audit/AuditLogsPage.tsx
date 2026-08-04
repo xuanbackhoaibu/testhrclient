@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Badge, Group, Modal, Paper, SimpleGrid, Select, Stack, Text, TextInput } from "@mantine/core";
-import { DateInput } from "@mantine/dates";
 import { IconEye } from "@tabler/icons-react";
-import dayjs from "dayjs";
 
 import type { AuditLog } from "../../features/audit/auditTypes";
 import { useAuditLogs } from "../../features/audit/useAuditLogs";
@@ -117,31 +115,21 @@ export function AuditLogsPage() {
             }}
           />
           <Group grow>
-            <DateInput
+            <TextInput
               label="Từ ngày"
-              placeholder="dd/mm/yyyy"
-              valueFormat="DD/MM/YYYY"
-              clearable
-              onChange={(value) =>
-                setParams((current) => ({
-                  ...current,
-                  page: 1,
-                  fromDate: value ? dayjs(value as unknown as string).format("YYYY-MM-DD") : undefined,
-                }))
-              }
+              type="date"
+              onChange={(event) => {
+                const value = event.currentTarget.value || undefined;
+                setParams((current) => ({ ...current, page: 1, fromDate: value }));
+              }}
             />
-            <DateInput
+            <TextInput
               label="Đến ngày"
-              placeholder="dd/mm/yyyy"
-              valueFormat="DD/MM/YYYY"
-              clearable
-              onChange={(value) =>
-                setParams((current) => ({
-                  ...current,
-                  page: 1,
-                  toDate: value ? dayjs(value as unknown as string).format("YYYY-MM-DD") : undefined,
-                }))
-              }
+              type="date"
+              onChange={(event) => {
+                const value = event.currentTarget.value || undefined;
+                setParams((current) => ({ ...current, page: 1, toDate: value }));
+              }}
             />
           </Group>
         </SimpleGrid>

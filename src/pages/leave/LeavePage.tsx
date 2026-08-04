@@ -11,8 +11,8 @@ import {
   Stack,
   Text,
   Textarea,
+  TextInput,
 } from "@mantine/core";
-import { DateInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { useForm } from "@mantine/form";
 import { IconCalendarCheck, IconPlus } from "@tabler/icons-react";
@@ -296,27 +296,17 @@ export function LeavePage() {
               {...form.getInputProps("leaveType")}
             />
             <Group grow>
-              <DateInput
+              <TextInput
                 label="Ngày bắt đầu"
-                placeholder="dd/mm/yyyy"
+                type="date"
                 required
-                valueFormat="DD/MM/YYYY"
-                value={form.values.startDate ? new Date(form.values.startDate) : null}
-                onChange={(value) =>
-                  form.setFieldValue("startDate", value ? dayjs(value as unknown as string).format("YYYY-MM-DD") : "")
-                }
-                error={form.errors.startDate}
+                {...form.getInputProps("startDate")}
               />
-              <DateInput
+              <TextInput
                 label="Ngày kết thúc"
-                placeholder="dd/mm/yyyy"
+                type="date"
                 required
-                valueFormat="DD/MM/YYYY"
-                value={form.values.endDate ? new Date(form.values.endDate) : null}
-                onChange={(value) =>
-                  form.setFieldValue("endDate", value ? dayjs(value as unknown as string).format("YYYY-MM-DD") : "")
-                }
-                error={form.errors.endDate}
+                {...form.getInputProps("endDate")}
               />
             </Group>
             <NumberInput

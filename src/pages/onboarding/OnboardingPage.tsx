@@ -12,13 +12,12 @@ import {
   Stack,
   Tabs,
   Text,
+  TextInput,
 } from "@mantine/core";
-import { DateInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconChecklist, IconPlus, IconTemplate, IconUserPlus } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import dayjs from "dayjs";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
@@ -214,16 +213,11 @@ export function OnboardingPage() {
               data={(data?.templates ?? []).map((item) => ({ value: item.name, label: item.name }))}
               {...form.getInputProps("templateName")}
             />
-            <DateInput
+            <TextInput
               label="Ngày bắt đầu"
-              placeholder="dd/mm/yyyy"
+              type="date"
               required
-              valueFormat="DD/MM/YYYY"
-              value={form.values.startDate ? new Date(form.values.startDate) : null}
-              onChange={(value) =>
-                form.setFieldValue("startDate", value ? dayjs(value as unknown as string).format("YYYY-MM-DD") : "")
-              }
-              error={form.errors.startDate}
+              {...form.getInputProps("startDate")}
             />
             <Group justify="flex-end" mt="sm">
               <Button variant="default" onClick={() => setOpened(false)}>

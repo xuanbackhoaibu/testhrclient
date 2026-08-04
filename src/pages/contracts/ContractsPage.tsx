@@ -10,8 +10,8 @@ import {
   SimpleGrid,
   Stack,
   Text,
+  TextInput,
 } from "@mantine/core";
-import { DateInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconAlertTriangle, IconFileText, IconPlus } from "@tabler/icons-react";
@@ -232,6 +232,12 @@ export function ContractsPage() {
               data={employeeOptions}
               {...form.getInputProps("employeeId")}
             />
+            <TextInput
+              label="Số hợp đồng"
+              placeholder="VD: HD-2026-001"
+              required
+              {...form.getInputProps("contractNo")}
+            />
             <Group grow>
               <Select
                 label="Loại hợp đồng"
@@ -248,25 +254,16 @@ export function ContractsPage() {
               />
             </Group>
             <Group grow>
-              <DateInput
+              <TextInput
                 label="Ngày bắt đầu"
-                placeholder="dd/mm/yyyy"
+                type="date"
                 required
-                valueFormat="DD/MM/YYYY"
-                value={form.values.startDate ? new Date(form.values.startDate) : null}
-                onChange={(value) =>
-                  form.setFieldValue("startDate", value ? dayjs(value as unknown as string).format("YYYY-MM-DD") : "")
-                }
-                error={form.errors.startDate}
+                {...form.getInputProps("startDate")}
               />
-              <DateInput
+              <TextInput
                 label="Ngày kết thúc (nếu có)"
-                placeholder="dd/mm/yyyy"
-                valueFormat="DD/MM/YYYY"
-                value={form.values.endDate ? new Date(form.values.endDate) : null}
-                onChange={(value) =>
-                  form.setFieldValue("endDate", value ? dayjs(value as unknown as string).format("YYYY-MM-DD") : "")
-                }
+                type="date"
+                {...form.getInputProps("endDate")}
               />
             </Group>
             <Group justify="flex-end" mt="sm">
@@ -298,19 +295,11 @@ export function ContractsPage() {
             <Text size="sm" c="dimmed">
               Kết thúc hợp đồng {terminateTarget?.contractNo} của {terminateTarget?.employeeName}.
             </Text>
-            <DateInput
+            <TextInput
               label="Ngày kết thúc"
-              placeholder="dd/mm/yyyy"
+              type="date"
               required
-              valueFormat="DD/MM/YYYY"
-              value={terminateForm.values.endDate ? new Date(terminateForm.values.endDate) : null}
-              onChange={(value) =>
-                terminateForm.setFieldValue(
-                  "endDate",
-                  value ? dayjs(value as unknown as string).format("YYYY-MM-DD") : "",
-                )
-              }
-              error={terminateForm.errors.endDate}
+              {...terminateForm.getInputProps("endDate")}
             />
             <Group justify="flex-end">
               <Button variant="default" onClick={() => setTerminateTarget(null)} disabled={terminateMutation.isPending}>
