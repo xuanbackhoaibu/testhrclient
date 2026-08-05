@@ -373,17 +373,30 @@ export async function createEmployee(payload: EmployeePayload): Promise<Employee
 export async function updateEmployee(id: string, payload: Partial<EmployeePayload>): Promise<Employee> {
   if (isMockMode) {
     await mockDelay();
-    const employee = mockEmployees.find((item) => item.id === id);
-    if (!employee) {
+    const index = mockEmployees.findIndex((item) => item.id === id);
+    if (index === -1) {
       throw new Error('Employee not found');
     }
+    const employee = mockEmployees[index];
 
     const before = { ...employee };
     const unit = mockUnits.find((item) => item.id === payload.unitId);
     const department = mockDepartments.find((item) => item.id === payload.departmentId);
     const position = mockPositions.find((item) => item.id === payload.positionId);
-    Object.assign(employee, {
-      ...payload,
+
+    // employeeCode la ma dinh danh, khong duoc phep sua qua form cap nhat
+    // thong tin thong thuong -> loai bo khoi payload truoc khi merge de
+    // tranh bi ghi de thanh rong khi form khong mang field nay.
+    const safePayload: Partial<EmployeePayload> = { ...payload };
+    delete safePayload.employeeCode;
+
+    // Tao OBJECT MOI thay vi mutate truc tiep employee cu: neu sua tai cho,
+    // React Query se giu nguyen tham chieu mang cu (structural sharing thay
+    // "khong co gi thay doi" vi cung 1 object), khien cac so lieu useMemo
+    // (vd dem so nguoi "Thu viec") khong duoc tinh lai.
+    const updated: Employee = {
+      ...employee,
+      ...safePayload,
       citizenIdMasked: payload.citizenId ? maskSensitiveValue(payload.citizenId) : employee.citizenIdMasked,
       currentEmployeeAssignment: employee.currentEmployeeAssignment
         ? {
@@ -398,21 +411,23 @@ export async function updateEmployee(id: string, payload: Partial<EmployeePayloa
             managerName: payload.managerName ?? employee.currentEmployeeAssignment.managerName,
           }
         : null,
-    });
-    employee.unitId = payload.unitId ?? employee.currentEmployeeAssignment?.unitId;
-    employee.unitName = unit?.name ?? employee.currentEmployeeAssignment?.unitName;
-    employee.departmentId = payload.departmentId ?? employee.currentEmployeeAssignment?.departmentId;
-    employee.departmentName = department?.name ?? employee.currentEmployeeAssignment?.departmentName;
-    employee.positionId = payload.positionId ?? employee.currentEmployeeAssignment?.positionId;
-    employee.positionName = position?.name ?? employee.currentEmployeeAssignment?.positionName;
+      unitId: payload.unitId ?? employee.currentEmployeeAssignment?.unitId,
+      unitName: unit?.name ?? employee.currentEmployeeAssignment?.unitName,
+      departmentId: payload.departmentId ?? employee.currentEmployeeAssignment?.departmentId,
+      departmentName: department?.name ?? employee.currentEmployeeAssignment?.departmentName,
+      positionId: payload.positionId ?? employee.currentEmployeeAssignment?.positionId,
+      positionName: position?.name ?? employee.currentEmployeeAssignment?.positionName,
+    };
+
+    mockEmployees[index] = updated;
     appendAuditLog({
       entityType: 'EMPLOYEE',
-      entityId: employee.id,
+      entityId: updated.id,
       action: 'UPDATE',
       beforeJson: before as unknown as Record<string, unknown>,
-      afterJson: employee as unknown as Record<string, unknown>,
+      afterJson: updated as unknown as Record<string, unknown>,
     });
-    return employee;
+    return updated;
   }
 
   const url = `/employees/${id}`;
@@ -493,6 +508,26 @@ export async function updateEmployeeBioTimeCode(
   employeeId: string,
   biotimeEmployeeCode: string | null,
 ): Promise<Employee> {
+  if (isMockMode) {
+    await mockDelay();
+    const index = mockEmployees.findIndex((item) => item.id === employeeId);
+    if (index === -1) {
+      throw new Error('Employee not found');
+    }
+    const employee = mockEmployees[index];
+    const before = { ...employee };
+    const updated: Employee = { ...employee, biotimeEmployeeCode };
+    mockEmployees[index] = updated;
+    appendAuditLog({
+      entityType: 'EMPLOYEE',
+      entityId: updated.id,
+      action: 'UPDATE',
+      beforeJson: before as unknown as Record<string, unknown>,
+      afterJson: updated as unknown as Record<string, unknown>,
+    });
+    return updated;
+  }
+
   return api.patch<Employee>(`/employees/${employeeId}/biotime-code`, {
     biotimeEmployeeCode,
   });

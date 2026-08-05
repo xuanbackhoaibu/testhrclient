@@ -752,6 +752,13 @@ export function EmployeesPage() {
           if (newBioTimeCode !== (editing.biotimeEmployeeCode ?? null)) {
             try {
               await updateEmployeeBioTimeCode(editing.id, newBioTimeCode);
+              // Mã chấm công được cập nhật ở API riêng, SAU khi danh sách
+              // "employees" đã được invalidate bởi updateMutation ở trên.
+              // Phải invalidate lại lần nữa ở đây, nếu không bảng và các
+              // tab đếm (vd. "Thiếu mã CC") sẽ vẫn hiển thị dữ liệu cũ cho
+              // đến khi người dùng tự tải lại trang.
+              await queryClient.invalidateQueries({ queryKey: ["employees"] });
+              await queryClient.invalidateQueries({ queryKey: ["employee-detail"] });
               notifications.show({
                 color: "green",
                 title: "Đã cập nhật mã chấm công",
@@ -1275,9 +1282,25 @@ export function EmployeesPage() {
               <SegmentedControl
                 value={quickFilter}
                 onChange={(value) => {
-                  setQuickFilter(value as EmployeeQuickFilter);
+                  const next = value as EmployeeQuickFilter;
+                  setQuickFilter(next);
                   setSelectedIds(new Set());
-                  setParams((current) => ({ ...current, page: 1 }));
+                  if (next === "all") {
+                    // "Tất cả" nghĩa là hiện toàn bộ nhân sự: xóa luôn
+                    // các bộ lọc Đơn vị / Phòng ban / Trạng thái / tìm kiếm
+                    // thay vì chỉ bỏ phân loại nhanh, tránh gây hiểu lầm
+                    // "Tất cả" mà vẫn đang bị lọc ngầm.
+                    setSearchInput("");
+                    setParams((current) => ({
+                      ...current,
+                      page: 1,
+                      employmentStatus: undefined,
+                      unitId: undefined,
+                      departmentId: undefined,
+                    }));
+                  } else {
+                    setParams((current) => ({ ...current, page: 1 }));
+                  }
                 }}
                 data={[
                   { value: "all", label: "Tất cả" },
@@ -1359,7 +1382,6 @@ export function EmployeesPage() {
           onSelectionChange={mayProvisionAccounts ? setSelectedIds : undefined}
           emptyTitle={activeFilterCount > 0 ? "Không có nhân sự phù hợp" : "Chưa có nhân sự"}
           emptyDescription="Không tìm thấy nhân sự phù hợp với bộ lọc hiện tại."
-          maxHeight="calc(100vh - 360px)"
         />
       </Stack>
 
