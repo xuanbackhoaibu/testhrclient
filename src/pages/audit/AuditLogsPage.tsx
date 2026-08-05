@@ -189,7 +189,7 @@ export function AuditLogsPage() {
 
             {diffFields.length ? (
               <Paper withBorder radius="md">
-                <Group px="sm" py={6} bg="gray.0" justify="space-between">
+                <Group px="sm" py={6} bg="gray.0" justify="space-between" wrap="nowrap">
                   <Text size="xs" fw={700} c="dimmed" w="30%">
                     Trường
                   </Text>

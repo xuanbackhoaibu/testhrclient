@@ -1,6 +1,21 @@
 import type { ReactNode } from 'react';
-import { Alert, Button, Modal, Space, Statistic, Tabs, Upload, message } from 'antd';
-import { DownloadOutlined, UploadOutlined } from '@ant-design/icons';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Col,
+  Modal,
+  Row,
+  Space,
+  Statistic,
+  Steps,
+  Tabs,
+  Typography,
+  Upload,
+  message,
+} from 'antd';
+import { DownloadOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
 
 import { isExcelFile } from '../../shared/utils/excel';
 
@@ -16,6 +31,7 @@ interface ExcelImportModalProps {
   onUpload: (file: File) => Promise<void>;
   onCommit?: () => Promise<void>;
   onDownloadErrors?: () => Promise<void>;
+  onResetPreview?: () => void;
   title?: string;
   description?: string;
   summary?: ImportPreviewStat[];
@@ -32,6 +48,12 @@ interface ExcelImportModalProps {
   isDownloadingErrors?: boolean;
 }
 
+function readSummaryNumber(summary: ImportPreviewStat[], label: string): number {
+  const item = summary.find((stat) => stat.label === label);
+  const value = Number(item?.value ?? 0);
+  return Number.isFinite(value) ? value : 0;
+}
+
 export function ExcelImportModal({
   open,
   onClose,
@@ -39,6 +61,7 @@ export function ExcelImportModal({
   onUpload,
   onCommit,
   onDownloadErrors,
+  onResetPreview,
   title = 'Import dữ liệu từ Excel',
   description = 'Vui lòng tải mẫu Excel, điền dữ liệu và upload lại file đã hoàn thiện.',
   summary = [],
@@ -54,6 +77,20 @@ export function ExcelImportModal({
   isCommitting = false,
   isDownloadingErrors = false,
 }: ExcelImportModalProps) {
+  const currentStep = hasPreview ? (hasErrors ? 1 : 2) : 0;
+  const errorCount = readSummaryNumber(summary, 'Lỗi');
+  const warningCount = readSummaryNumber(summary, 'Cảnh báo');
+  const resultMessage = hasErrors
+    ? 'Có lỗi cần xử lý'
+    : hasWarnings
+      ? 'Có cảnh báo cần kiểm tra'
+      : 'Dữ liệu hợp lệ';
+  const resultDescription = hasErrors
+    ? 'Tải file lỗi hoặc mở tab Lỗi để xem chi tiết, sau đó sửa file và upload lại.'
+    : hasWarnings
+      ? 'Kiểm tra tab Cảnh báo trước khi xác nhận import.'
+      : 'Bạn có thể xác nhận import sau khi đã kiểm tra preview.';
+
   return (
     <Modal
       open={open}
@@ -64,6 +101,16 @@ export function ExcelImportModal({
         <Button key="close" onClick={onClose}>
           Đóng
         </Button>,
+        hasPreview && onResetPreview ? (
+          <Button
+            key="reset"
+            icon={<ReloadOutlined />}
+            disabled={isUploading || isCommitting}
+            onClick={onResetPreview}
+          >
+            Chọn file khác
+          </Button>
+        ) : null,
         onDownloadErrors ? (
           <Button
             key="errors"
@@ -88,25 +135,42 @@ export function ExcelImportModal({
         ) : null,
       ]}
     >
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
-        <Alert
-          type="info"
-          showIcon
-          message="Quy trình import"
-          description={description}
-        />
-        <Space wrap>
-          <Button
-            icon={<DownloadOutlined />}
-            loading={isDownloadingTemplate}
-            disabled={isDownloadingTemplate}
-            onClick={() => void onDownloadTemplate()}
-          >
-            Tải mẫu Excel
-          </Button>
-          <Upload
+      <Space direction="vertical" size={16} style={{ width: '100%' }} className="excel-import-modal">
+        <Card size="small" className="excel-import-guide">
+          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            <Steps
+              size="small"
+              current={currentStep}
+              items={[
+                { title: 'Tải mẫu' },
+                { title: 'Kiểm tra file' },
+                { title: 'Xác nhận' },
+              ]}
+            />
+            <Alert
+              type="info"
+              showIcon
+              message="Quy trình import"
+              description={description}
+            />
+            <Space wrap>
+              <Button
+                icon={<DownloadOutlined />}
+                loading={isDownloadingTemplate}
+                disabled={isDownloadingTemplate}
+                onClick={() => void onDownloadTemplate()}
+              >
+                Tải mẫu Excel
+              </Button>
+            </Space>
+          </Space>
+        </Card>
+
+        {!hasPreview ? (
+          <Upload.Dragger
             accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             showUploadList={false}
+            disabled={isUploading}
             beforeUpload={(file) => {
               if (!isExcelFile(file) || !file.name.toLowerCase().endsWith('.xlsx')) {
                 message.error('Chỉ chấp nhận file Excel .xlsx.');
@@ -115,42 +179,81 @@ export function ExcelImportModal({
               void onUpload(file);
               return false;
             }}
+            className="excel-import-dropzone"
           >
-            <Button icon={<UploadOutlined />} loading={isUploading}>
-              Chọn file Excel
-            </Button>
-          </Upload>
-        </Space>
+            <p className="ant-upload-drag-icon">
+              <UploadOutlined />
+            </p>
+            <Typography.Text strong>
+              {isUploading ? 'Đang kiểm tra file...' : 'Kéo thả hoặc chọn file Excel'}
+            </Typography.Text>
+            <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+              Chỉ nhận file .xlsx theo mẫu của hệ thống.
+            </Typography.Paragraph>
+          </Upload.Dragger>
+        ) : null}
 
         {hasPreview ? (
           <Alert
             type={hasErrors ? 'error' : hasWarnings ? 'warning' : 'success'}
             showIcon
-            message={hasErrors ? 'Có lỗi cần xử lý' : 'Dữ liệu hợp lệ'}
-            description={
-              hasErrors
-                ? 'Vui lòng tải file lỗi, sửa dữ liệu và upload lại trước khi import.'
-                : hasWarnings
-                  ? 'Dữ liệu có cảnh báo. Hãy kiểm tra trước khi xác nhận import.'
-                  : 'Bạn có thể xác nhận import sau khi đã kiểm tra preview.'
+            message={resultMessage}
+            description={resultDescription}
+            action={
+              hasErrors || onResetPreview ? (
+                <Space wrap>
+                  {hasErrors && onDownloadErrors ? (
+                    <Button
+                      size="small"
+                      icon={<DownloadOutlined />}
+                      loading={isDownloadingErrors}
+                      onClick={() => void onDownloadErrors()}
+                    >
+                      Tải file lỗi
+                    </Button>
+                  ) : null}
+                  {onResetPreview ? (
+                    <Button
+                      size="small"
+                      icon={<ReloadOutlined />}
+                      disabled={isUploading || isCommitting}
+                      onClick={onResetPreview}
+                    >
+                      Chọn file khác
+                    </Button>
+                  ) : null}
+                </Space>
+              ) : undefined
             }
           />
         ) : null}
 
         {summary.length ? (
-          <Space wrap>
+          <Row gutter={[12, 12]}>
             {summary.map((item) => (
-              <Statistic key={item.label} title={item.label} value={item.value} />
+              <Col key={item.label} xs={12} sm={8} md={6}>
+                <Card size="small" className="excel-import-stat">
+                  <Statistic title={item.label} value={item.value} />
+                </Card>
+              </Col>
             ))}
-          </Space>
+          </Row>
         ) : null}
 
         {hasPreview ? (
           <Tabs
             items={[
               { key: 'preview', label: 'Preview', children: previewContent },
-              { key: 'errors', label: 'Lỗi', children: errorsContent },
-              { key: 'warnings', label: 'Cảnh báo', children: warningsContent },
+              {
+                key: 'errors',
+                label: <Badge count={errorCount} size="small">Lỗi</Badge>,
+                children: errorsContent,
+              },
+              {
+                key: 'warnings',
+                label: <Badge count={warningCount} size="small">Cảnh báo</Badge>,
+                children: warningsContent,
+              },
             ]}
           />
         ) : null}

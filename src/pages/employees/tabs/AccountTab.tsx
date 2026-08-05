@@ -41,6 +41,10 @@ import { api } from '../../../shared/api/httpClient';
 import { LoadingState } from '../../../shared/components/LoadingState';
 import { ErrorState } from '../../../shared/components/ErrorState';
 import { formatDateTime } from '../../../shared/utils/date';
+import {
+  DEFAULT_EMPLOYEE_PASSWORD,
+  FORCE_CHANGE_PASSWORD_NOTICE,
+} from '../../../shared/constants/account';
 
 interface Props {
   employee: Employee;
@@ -112,19 +116,24 @@ export function AccountTab({ employee }: Props) {
     },
     onSuccess: async (result) => {
       setCreateModalOpen(false);
-      if (result.status === 'created' && result.initialCredential) {
-        setProvisionedPassword(result.initialCredential);
+      // Only a freshly created account uses the fixed default password (never
+      // returned by the API). Existing/synced accounts keep their password.
+      if (result.status === 'created') {
+        setProvisionedPassword(DEFAULT_EMPLOYEE_PASSWORD);
       }
       notifications.show({
         color: 'green',
         message:
           result.status === 'created'
-            ? `Đã cấp tài khoản ${result.loginAccount ?? employee.employeeCode}. ${result.initialCredential ? `Mật khẩu ban đầu: ${result.initialCredential}. ` : ''}Nhân sự bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.`
+            ? 'Tạo tài khoản thành công.'
             : result.status === 'updated'
               ? 'Nhân sự đã có tài khoản — đã đồng bộ email/thông tin.'
               : 'Nhân sự đã có tài khoản — đã đồng bộ trạng thái.',
       });
       await invalidate();
+    },
+    onError: (err: unknown) => {
+      notifications.show({ color: 'red', message: (err as { message?: string })?.message ?? 'Tạo tài khoản thất bại.' });
     },
   });
 
@@ -239,7 +248,7 @@ export function AccountTab({ employee }: Props) {
                 </CopyButton>
               </Group>
               <Text size="xs" c="dimmed">
-                Nhân sự bắt buộc đổi mật khẩu khi đăng nhập lần đầu. Mật khẩu này không thể xem lại sau khi đóng màn hình.
+                {FORCE_CHANGE_PASSWORD_NOTICE}
               </Text>
             </Stack>
           </Alert>
@@ -277,13 +286,12 @@ export function AccountTab({ employee }: Props) {
                 <InfoRow label="Phòng ban">{employee.departmentName ?? '-'}</InfoRow>
               </Stack>
               <Text size="sm" c="dimmed" mb="md">
-                Tài khoản sẽ được tạo ở trạng thái <strong>Hoạt động</strong> với mật khẩu ban đầu <Code>Hacomholdings@88</Code>. Nhân sự bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.
+                Tài khoản sẽ được tạo ở trạng thái <strong>Hoạt động</strong> với mật khẩu ban đầu do hệ thống sinh tự động. Mật khẩu chỉ hiển thị một lần sau khi tạo.
               </Text>
               <Group justify="flex-end">
                 <Button variant="default" onClick={() => setCreateModalOpen(false)}>Hủy</Button>
                 <Button
                   loading={provisionMutation.isPending}
-                  disabled={provisionMutation.isPending}
                   onClick={() => provisionMutation.mutate()}
                 >
                   Tạo tài khoản

@@ -229,7 +229,7 @@ export function DashboardPage() {
       helper: "Tuyển mới trong tháng",
       icon: IconUserPlus,
       tone: "violet",
-      onClick: () => navigate(`${ROUTES.employees}?newHires=1`),
+      onClick: () => navigate(`${ROUTES.employees}?quick=newHires`),
     },
     {
       title: "Nghỉ việc",

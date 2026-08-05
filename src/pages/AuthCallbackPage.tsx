@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { handleCallback } from '../features/auth/authClient';
 import { useAuthStore } from '../features/auth/authStore';
+import { getPostLoginDestination } from '../features/auth/postLoginDestination';
 import { useAuth } from '../features/auth/useAuth';
 import { ROUTES } from '../shared/constants/routes';
 import { LoadingState } from '../shared/components/LoadingState';
@@ -18,7 +19,10 @@ export function AuthCallbackPage() {
       try {
         handleCallback();
         await refreshCurrentUser();
-        navigate(ROUTES.dashboard, { replace: true });
+        const user = useAuthStore.getState().user;
+        navigate(getPostLoginDestination(user) ?? ROUTES.root, {
+          replace: true,
+        });
       } catch (callbackError) {
         useAuthStore.getState().setError(
           callbackError instanceof Error ? callbackError.message : 'Không xử lý được callback từ dịch vụ xác thực.',

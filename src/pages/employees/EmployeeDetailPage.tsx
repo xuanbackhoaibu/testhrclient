@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   Group,
+  ScrollArea,
   SimpleGrid,
   Stack,
   Table,
@@ -15,7 +16,7 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import type { AttendanceRecord } from '../../features/attendance/attendanceTypes';
 import type { AuditLog } from '../../features/audit/auditTypes';
@@ -41,8 +42,27 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
   );
 }
 
+function DetailEmpty({ children }: { children: React.ReactNode }) {
+  return (
+    <Text c="dimmed" size="sm" className="employee-detail-empty">
+      {children}
+    </Text>
+  );
+}
+
+function DetailTable({ children }: { children: React.ReactNode }) {
+  return (
+    <ScrollArea type="auto" offsetScrollbars className="employee-detail-table-scroll">
+      <Table striped highlightOnHover miw={720} className="employee-detail-table">
+        {children}
+      </Table>
+    </ScrollArea>
+  );
+}
+
 export function EmployeeDetailPage() {
   const { id: employeeId } = useParams();
+  const navigate = useNavigate();
   const { can } = useAuth();
   const canReadAccount = can('auth.user.read');
 
@@ -93,6 +113,11 @@ export function EmployeeDetailPage() {
         title={`${employee.employeeCode} — ${employee.fullName}`}
         subtitle={employee.currentEmployeeAssignment?.jobTitle ?? 'Chưa có phân công'}
         breadcrumbs={['Nhân sự', employee.employeeCode]}
+        actions={
+          <Button variant="default" onClick={() => navigate(-1)}>
+            Quay lại
+          </Button>
+        }
       />
 
       <Card withBorder mb="md">
@@ -193,9 +218,9 @@ export function EmployeeDetailPage() {
             <Card withBorder>
               <Title order={5} mb="sm">Phân công</Title>
               {data.assignments.length === 0 ? (
-                <Text c="dimmed" size="sm">Chưa có phân công</Text>
+                <DetailEmpty>Chưa có phân công</DetailEmpty>
               ) : (
-                <Table striped highlightOnHover>
+                <DetailTable>
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>Đơn vị</Table.Th>
@@ -216,16 +241,16 @@ export function EmployeeDetailPage() {
                       </Table.Tr>
                     ))}
                   </Table.Tbody>
-                </Table>
+                </DetailTable>
               )}
             </Card>
 
             <Card withBorder>
               <Title order={5} mb="sm">Hợp đồng</Title>
               {data.contracts.length === 0 ? (
-                <Text c="dimmed" size="sm">Chưa có hợp đồng</Text>
+                <DetailEmpty>Chưa có hợp đồng</DetailEmpty>
               ) : (
-                <Table striped highlightOnHover>
+                <DetailTable>
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>Số HĐ</Table.Th>
@@ -246,7 +271,7 @@ export function EmployeeDetailPage() {
                       </Table.Tr>
                     ))}
                   </Table.Tbody>
-                </Table>
+                </DetailTable>
               )}
             </Card>
           </Stack>
@@ -269,9 +294,9 @@ export function EmployeeDetailPage() {
             <Card withBorder>
               <Title order={5} mb="sm">Nghỉ phép</Title>
               {data.leaveRequests.length === 0 ? (
-                <Text c="dimmed" size="sm">Chưa có đơn nghỉ phép</Text>
+                <DetailEmpty>Chưa có đơn nghỉ phép</DetailEmpty>
               ) : (
-                <Table striped highlightOnHover>
+                <DetailTable>
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>Loại nghỉ</Table.Th>
@@ -292,16 +317,16 @@ export function EmployeeDetailPage() {
                       </Table.Tr>
                     ))}
                   </Table.Tbody>
-                </Table>
+                </DetailTable>
               )}
             </Card>
 
             <Card withBorder>
               <Title order={5} mb="sm">Chấm công</Title>
               {data.attendanceRecords.length === 0 ? (
-                <Text c="dimmed" size="sm">Chưa có dữ liệu chấm công</Text>
+                <DetailEmpty>Chưa có dữ liệu chấm công</DetailEmpty>
               ) : (
-                <Table striped highlightOnHover>
+                <DetailTable>
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>Ngày</Table.Th>
@@ -320,16 +345,16 @@ export function EmployeeDetailPage() {
                       </Table.Tr>
                     ))}
                   </Table.Tbody>
-                </Table>
+                </DetailTable>
               )}
             </Card>
 
             <Card withBorder>
               <Title order={5} mb="sm">Nhật ký thao tác</Title>
               {data.auditLogs.length === 0 ? (
-                <Text c="dimmed" size="sm">Chưa có nhật ký</Text>
+                <DetailEmpty>Chưa có nhật ký</DetailEmpty>
               ) : (
-                <Table striped highlightOnHover>
+                <DetailTable>
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>Hành động</Table.Th>
@@ -346,7 +371,7 @@ export function EmployeeDetailPage() {
                       </Table.Tr>
                     ))}
                   </Table.Tbody>
-                </Table>
+                </DetailTable>
               )}
             </Card>
           </Stack>

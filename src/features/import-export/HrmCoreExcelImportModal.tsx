@@ -131,8 +131,7 @@ export function HrmCoreExcelImportModal({
       await queryClient.invalidateQueries({ queryKey: ['import-batches'] });
       await onCommitted?.();
       message.success('Import dữ liệu thành công.');
-      setPreview((current) => (current ? { ...current, status: 'COMMITTED' } : current));
-      onClose();
+      handleClose();
     },
     onError: () => message.error('Import dữ liệu thất bại.'),
   });
@@ -146,6 +145,23 @@ export function HrmCoreExcelImportModal({
     },
     onError: (error) => showDownloadError(error, 'Tải file lỗi thất bại.'),
   });
+
+  function handleResetPreview() {
+    setPreview(null);
+    setRows([]);
+    setAllowWarnings(false);
+    setUnitCodeDrafts({});
+    setDepartmentCodeDrafts({});
+    previewMutation.reset();
+    updateCodesMutation.reset();
+    commitMutation.reset();
+    errorFileMutation.reset();
+  }
+
+  function handleClose() {
+    handleResetPreview();
+    onClose();
+  }
 
   const hasErrors = Boolean(preview && preview.summary.errors > 0);
   const hasWarnings = Boolean(preview && preview.summary.warnings > 0);
@@ -176,7 +192,7 @@ export function HrmCoreExcelImportModal({
   return (
     <ExcelImportModal
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       description="Mẫu này hỗ trợ đơn vị, phòng ban, nhân sự và phân công. Vui lòng tải mẫu Excel, điền dữ liệu và upload lại file đã hoàn thiện."
       onDownloadTemplate={() => templateMutation.mutateAsync()}
       onUpload={async (file) => {
@@ -186,6 +202,7 @@ export function HrmCoreExcelImportModal({
         await commitMutation.mutateAsync();
       }}
       onDownloadErrors={() => errorFileMutation.mutateAsync()}
+      onResetPreview={preview ? handleResetPreview : undefined}
       hasPreview={Boolean(preview)}
       hasErrors={hasErrors}
       hasWarnings={hasWarnings}

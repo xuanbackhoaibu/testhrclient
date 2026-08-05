@@ -129,13 +129,17 @@ export function DomainExcelImportModal({
   });
 
   function handleClose() {
+    handleResetPreview();
+    onOpenChange(false);
+  }
+
+  function handleResetPreview() {
     setBatchId(null);
     setRows([]);
     setSummary([]);
     previewMutation.reset();
     commitMutation.reset();
     errorReportMutation.reset();
-    onOpenChange(false);
   }
 
   const preview = previewMutation.data;
@@ -208,6 +212,7 @@ export function DomainExcelImportModal({
           ? () => errorReportMutation.mutateAsync().then(() => undefined)
           : undefined
       }
+      onResetPreview={hasPreview ? handleResetPreview : undefined}
       summary={summary}
       previewContent={
         <Table
