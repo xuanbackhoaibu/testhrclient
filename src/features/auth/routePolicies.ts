@@ -46,10 +46,20 @@ export function getRoutePolicy(route: string): RoutePolicy {
   };
 }
 
+export function isSuperAdmin(user: AuthUser | null | undefined): boolean {
+  return Boolean(
+    user?.roles?.includes('SUPER_ADMIN') ||
+      user?.permissions?.includes('*'),
+  );
+}
+
 export function canAccessRoute(user: AuthUser | null | undefined, route: string): boolean {
   const policy = getRoutePolicy(route);
   if (!user || user.accountStatus !== 'ACTIVE' || policy.kind === 'unavailable') {
     return false;
+  }
+  if (route === ROUTES.dashboard) {
+    return isSuperAdmin(user);
   }
   if (policy.kind === 'authenticated') {
     return true;
