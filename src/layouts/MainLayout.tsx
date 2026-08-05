@@ -136,8 +136,9 @@ export function MainLayout() {
       navbar={{ width: 260, breakpoint: "md", collapsed: { mobile: !opened } }}
       padding="lg"
       bg="#f6f8fb"
+      className="app-shell"
     >
-      <AppShell.Header>
+      <AppShell.Header className="app-shell-header">
         <Group h="100%" px="lg" justify="space-between" wrap="nowrap">
           <Group gap="sm" wrap="nowrap">
             <Burger
@@ -146,16 +147,16 @@ export function MainLayout() {
               hiddenFrom="md"
               size="sm"
             />
-            <Title order={1} size="h3">
+            <Title order={1} size="h3" className="app-shell-title">
               {routeTitles[selectedPath] ?? "HACOM HRM"}
             </Title>
           </Group>
 
-          <Group gap="sm" wrap="nowrap">
+          <Group gap="sm" wrap="nowrap" className="app-shell-user-tools">
           <NotificationBell />
           <Menu position="bottom-end" shadow="md" width={230}>
             <Menu.Target>
-              <UnstyledButton>
+              <UnstyledButton className="app-user-menu-button">
                 <Group gap="xs" wrap="nowrap">
                   <Avatar size={32} radius="xl" color="blue">
                     {(user?.fullName ?? user?.email ?? "U")
@@ -189,7 +190,7 @@ export function MainLayout() {
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar p="md">
+      <AppShell.Navbar p="md" className="app-shell-navbar">
         <Stack gap="md" h="100%">
           <Group px="xs">
             <BrandLogo />
@@ -278,7 +279,7 @@ export function MainLayout() {
         </Stack>
       </AppShell.Navbar>
 
-      <AppShell.Main>
+      <AppShell.Main className="app-shell-main">
         <Outlet />
       </AppShell.Main>
     </AppShell>

@@ -10,7 +10,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, subtitle, actions, breadcrumbs }: PageHeaderProps) {
   return (
-    <Group justify="space-between" align="flex-start" gap="md" mb="lg" wrap="wrap">
+    <Group justify="space-between" align="flex-start" gap="md" mb="lg" wrap="wrap" className="page-header">
       <Stack gap={4}>
         {breadcrumbs?.length ? (
           <Breadcrumbs fz="sm">
@@ -30,7 +30,7 @@ export function PageHeader({ title, subtitle, actions, breadcrumbs }: PageHeader
           </Text>
         ) : null}
       </Stack>
-      {actions ? <Group gap="xs">{actions}</Group> : null}
+      {actions ? <Group gap="xs" className="page-header-actions">{actions}</Group> : null}
     </Group>
   );
 }

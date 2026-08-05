@@ -1,0 +1,36 @@
+.auth-page-bg {
+  background: linear-gradient(180deg, var(--mantine-color-blue-0) 0%, var(--mantine-color-body) 100%);
+}
+
+.auth-shell {
+  overflow: hidden;
+}
+
+.auth-intro {
+  background: linear-gradient(170deg, var(--mantine-color-blue-0) 0%, var(--mantine-color-blue-1) 100%);
+  min-height: 460px;
+  border-right: 1px solid var(--mantine-color-gray-1);
+}
+
+.auth-intro-title {
+  max-width: 340px;
+  line-height: 1.15;
+}
+
+.auth-intro-desc {
+  max-width: 340px;
+  line-height: 1.6;
+}
+
+.auth-form-area {
+  min-height: 460px;
+}
+
+@media (max-width: 48em) {
+  .auth-intro {
+    display: none;
+  }
+  .auth-form-area {
+    min-height: unset;
+  }
+}
