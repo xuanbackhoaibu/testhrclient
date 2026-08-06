@@ -84,6 +84,7 @@ const iamItems: NavItem[] = [
 
 const routeTitles: Record<string, string> = {
   [ROUTES.dashboard]: "Dashboard",
+  [ROUTES.calendar]: "Lịch của tôi",
   [ROUTES.employees]: "Nhân sự",
   [ROUTES.businessSectors]: "Lĩnh vực",
   [ROUTES.units]: "Đơn vị",
