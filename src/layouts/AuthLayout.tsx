@@ -1,71 +1,110 @@
-import { Box, Center, Container, Group, Paper, SimpleGrid, Stack, Text, ThemeIcon } from '@mantine/core';
-import { IconCheck } from '@tabler/icons-react';
+import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
-
-import { BrandLogo } from '../shared/components/BrandLogo';
 import './AuthLayout.css';
 
-const highlights = [
-  'Tin cậy cho bộ phận nhân sự và lãnh đạo',
-  'Kết nối dữ liệu chấm công và đơn từ tức thì',
-  'Bảo mật theo tiêu chuẩn nội bộ của HACOM',
+interface SlideImage {
+  src: string;
+  title: string;
+  subtitle: string;
+}
+
+const HACOM_IMAGES: SlideImage[] = [
+  {
+    src: '/hacom-riverside.jpg',
+    title: 'Hacom Riverside',
+    subtitle: 'Không gian sống hiện đại bên sông - Nơi hội tụ tinh hoa và đẳng cấp thượng lưu',
+  },
+  {
+    src: '/hacom-imperial-dalat.jpg',
+    title: 'Hacom Imperial Dalat',
+    subtitle: 'Dự án nổi bật tại Đà Lạt - Kiến trúc tân cổ điển sang trọng giữa ngàn hoa',
+  },
+  {
+    src: '/hacom-tower.jpg',
+    title: 'Hacom Tower',
+    subtitle: 'Biểu tượng mới của thành phố - Tòa cao ốc phức hợp hiện đại bậc nhất',
+  },
+  {
+    src: '/hacom-wind.jpg',
+    title: 'Hacom Wind',
+    subtitle: 'Năng lượng xanh cho tương lai - Kiến tạo giá trị bền vững cho thế hệ mai sau',
+  },
 ];
 
+const EXIT_DURATION = 300;
+const SLIDE_DURATION = 5000;
+
 export function AuthLayout() {
+  const [index, setIndex] = useState(0);
+  const [phase, setPhase] = useState<'enter' | 'exit'>('enter');
+
+  const goToSlide = (next: number) => {
+    setPhase('exit');
+    window.setTimeout(() => {
+      setIndex(next);
+      setPhase('enter');
+    }, EXIT_DURATION);
+  };
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      goToSlide((index + 1) % HACOM_IMAGES.length);
+    }, SLIDE_DURATION);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index]);
+
+  const current = HACOM_IMAGES[index];
+
   return (
-    <Box mih="100vh" className="auth-page-bg" px="md" py="xl">
-      <Center mih="calc(100vh - 64px)">
-        <Container size={880} w="100%">
-          <Paper shadow="xl" withBorder radius="xl" className="auth-shell">
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="0">
-              <Box p="xl" className="auth-intro">
-                <Stack gap={16} justify="space-between" h="100%">
-                  <Stack gap={16}>
-                    <BrandLogo compact />
-                    <Text size="xl" fw={700} className="auth-intro-title">
-                      Giải pháp quản lý nhân sự nội bộ cho HACOM.
-                    </Text>
-                    <Text c="dimmed" size="sm" className="auth-intro-desc">
-                      Quản lý hồ sơ nhân sự, chấm công, phê duyệt và báo cáo trong giao diện rõ ràng, hiện đại và tin cậy.
-                    </Text>
-                    <Stack gap={10} className="auth-intro-desc">
-                      {highlights.map((item) => (
-                        <Group key={item} align="flex-start" gap="sm" wrap="nowrap">
-                          <ThemeIcon size={26} radius="xl" color="blue" variant="light">
-                            <IconCheck size={15} />
-                          </ThemeIcon>
-                          <Text size="sm" c="dimmed">
-                            {item}
-                          </Text>
-                        </Group>
-                      ))}
-                    </Stack>
-                  </Stack>
-                  <Text size="xs" c="dimmed" className="auth-intro-desc">
-                    Giao diện thiết kế dành cho quy trình nội bộ, giúp nhóm HR thao tác nhanh và dễ dàng.
-                  </Text>
-                </Stack>
-              </Box>
-              <Box p="xl" className="auth-form-area">
-                <Stack gap="lg" justify="center" h="100%">
-                  <Stack gap={2} hiddenFrom="sm">
-                    <BrandLogo compact />
-                  </Stack>
-                  <Stack gap={2}>
-                    <Text fw={700} size="lg">
-                      Đăng nhập
-                    </Text>
-                    <Text c="dimmed" size="sm">
-                      Đăng nhập hệ thống nhân sự nội bộ.
-                    </Text>
-                  </Stack>
-                  <Outlet />
-                </Stack>
-              </Box>
-            </SimpleGrid>
-          </Paper>
-        </Container>
-      </Center>
-    </Box>
+    <div className="auth-shell-root">
+      <div className="auth-shell-image">
+        {HACOM_IMAGES.map((img, i) => (
+          <div
+            key={img.src}
+            className={`auth-shell-image-layer${i === index ? ' is-active' : ''}`}
+            style={{ backgroundImage: `url(${img.src})` }}
+          />
+        ))}
+        <div className="auth-shell-image-scrim" />
+
+        <div className="auth-shell-image-content">
+          <h2
+            key={`title-${current.title}`}
+            className={`auth-shell-image-title${phase === 'exit' ? ' is-exiting' : ''}`}
+          >
+            {current.title}
+          </h2>
+          <p
+            key={`subtitle-${current.title}`}
+            className={`auth-shell-image-subtitle${phase === 'exit' ? ' is-exiting' : ''}`}
+          >
+            {current.subtitle}
+          </p>
+
+          <div className="auth-shell-dots">
+            {HACOM_IMAGES.map((img, i) => (
+              <button
+                key={img.src}
+                type="button"
+                aria-label={`Xem ${img.title}`}
+                onClick={() => goToSlide(i)}
+                className={`auth-shell-dot${i === index ? ' is-active' : ''}`}
+              >
+                {i === index && phase === 'enter' ? (
+                  <span key={index} className="auth-shell-dot-fill" />
+                ) : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="auth-shell-form-side">
+        <div className="auth-shell-card">
+          <Outlet />
+        </div>
+      </div>
+    </div>
   );
 }

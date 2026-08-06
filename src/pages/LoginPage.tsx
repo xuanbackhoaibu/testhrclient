@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Button,
   Checkbox,
   Group,
+  Image,
   SimpleGrid,
   Stack,
   Text,
@@ -19,7 +20,6 @@ import {
   IconBriefcase,
   IconBuildingSkyscraper,
   IconCheck,
-  IconLock,
   IconSettings,
   IconShieldCheck,
   IconUser,
@@ -103,7 +103,7 @@ export function LoginPage() {
     initialValues: {
       loginIdentifier: "",
       password: "",
-      rememberMe: true,
+      rememberMe: false,
     },
     validate: {
       loginIdentifier: (value) =>
@@ -111,6 +111,12 @@ export function LoginPage() {
       password: (value) => (value ? null : "Nhập mật khẩu."),
     },
   });
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   async function handleMockLogin() {
     setSubmitting(true);
@@ -177,14 +183,35 @@ export function LoginPage() {
   }
 
   return (
-    <Stack gap="md">
+    <Stack
+      gap="lg"
+      className={`login-card${mounted ? " login-card--mounted" : ""}`}
+    >
+      <Stack gap={4} align="center" className="login-header">
+        <Image
+          src="/logo.png"
+          alt="Hacom Holdings"
+          className="login-logo"
+          fit="contain"
+          w="auto"
+          h={72}
+          style={{ height: 72, width: "auto", maxWidth: 220 }}
+        />
+        <Text component="h1" ta="center" className="login-title" fw={700}>
+          Chào mừng trở lại với <span className="login-title-accent">HACOM HRM</span>
+        </Text>
+        <Text ta="center" size="sm" c="dimmed" fw={400} className="login-subtitle">
+          Đăng nhập vào tài khoản của bạn để tiếp tục
+        </Text>
+      </Stack>
+
       {error ? (
-        <Alert color="yellow" icon={<IconAlertCircle size={18} />}>
+        <Alert color="yellow" icon={<IconAlertCircle size={18} />} radius="lg">
           {error}
         </Alert>
       ) : null}
       {loginError ? (
-        <Alert color="red" icon={<IconAlertCircle size={18} />}>
+        <Alert color="red" icon={<IconAlertCircle size={18} />} radius="lg">
           {loginError}
         </Alert>
       ) : null}
@@ -215,7 +242,8 @@ export function LoginPage() {
                           size={36}
                           radius="md"
                           variant={selected ? "filled" : "light"}
-                          color="blue"
+                          color="red"
+                          className={selected ? "role-icon role-icon--selected" : "role-icon"}
                         >
                           <Icon size={18} />
                         </ThemeIcon>
@@ -229,7 +257,7 @@ export function LoginPage() {
                         </Stack>
                       </Group>
                       {selected ? (
-                        <ThemeIcon size={20} radius="xl" color="blue" variant="filled">
+                        <ThemeIcon size={20} radius="xl" color="red" className="role-icon role-icon--selected">
                           <IconCheck size={13} />
                         </ThemeIcon>
                       ) : null}
@@ -239,7 +267,14 @@ export function LoginPage() {
               })}
             </SimpleGrid>
           </Stack>
-          <Button size="md" loading={submitting} onClick={handleMockLogin}>
+          <Button
+            size="md"
+            radius="md"
+            loading={submitting}
+            onClick={handleMockLogin}
+            className="login-submit-btn"
+            fullWidth
+          >
             Đăng nhập mock
           </Button>
         </Stack>
@@ -247,28 +282,44 @@ export function LoginPage() {
         <form onSubmit={form.onSubmit(handleRealLogin)}>
           <Stack gap="md">
             <TextInput
-              label="Email / Số điện thoại / Mã nhân viên"
-              placeholder="Nhập email, số điện thoại hoặc mã nhân viên"
-              leftSection={<IconUser size={18} />}
+              label="Email hoặc mã nhân viên"
+              placeholder="Nhập email hoặc mã nhân viên"
               autoComplete="username"
               disabled={submitting}
+              radius="md"
+              size="md"
+              classNames={{ input: "login-input", label: "login-input-label" }}
               {...form.getInputProps("loginIdentifier")}
             />
             <PasswordInput
               label="Mật khẩu"
-              placeholder="Mật khẩu"
-              leftSection={<IconLock size={18} />}
+              placeholder="Nhập mật khẩu"
               autoComplete="current-password"
               disabled={submitting}
+              radius="md"
+              size="md"
+              classNames={{ input: "login-input", label: "login-input-label" }}
               {...form.getInputProps("password")}
             />
-            <Checkbox
-              label="Ghi nhớ đăng nhập"
-              disabled={submitting}
-              {...form.getInputProps("rememberMe", { type: "checkbox" })}
-            />
-            <Button type="submit" size="md" loading={submitting}>
-              Đăng nhập
+            <Group justify="space-between" wrap="nowrap" className="login-remember-row">
+              <Checkbox
+                label="Ghi nhớ đăng nhập"
+                disabled={submitting}
+                radius="sm"
+                color="red"
+                className="login-remember-checkbox"
+                {...form.getInputProps("rememberMe", { type: "checkbox" })}
+              />
+            </Group>
+            <Button
+              type="submit"
+              size="md"
+              radius="md"
+              loading={submitting}
+              className="login-submit-btn"
+              fullWidth
+            >
+              Đăng nhập ngay
             </Button>
           </Stack>
         </form>

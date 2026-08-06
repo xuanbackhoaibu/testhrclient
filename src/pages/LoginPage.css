@@ -1,3 +1,118 @@
+.login-card {
+  width: 100%;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.35s ease-out, transform 0.35s ease-out;
+}
+
+.login-card--mounted {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.login-header {
+  margin-bottom: 4px;
+}
+
+.login-logo {
+  height: 72px !important;
+  width: auto !important;
+  max-width: 220px;
+  margin: 0 auto 6px;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+  transition: transform 150ms ease;
+}
+
+.login-logo:hover {
+  transform: scale(1.05);
+}
+
+.login-logo img {
+  height: 72px !important;
+  width: auto !important;
+  object-fit: contain;
+}
+
+.login-title {
+  margin: 0;
+  font-size: clamp(1.125rem, 2.5vw, 1.5rem) !important;
+  font-weight: 700 !important;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: #1a1a1a !important;
+  text-wrap: balance;
+}
+
+.login-title-accent {
+  color: #c41e3a;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.login-subtitle {
+  font-size: 0.9rem !important;
+  font-weight: 400 !important;
+  color: #6b7280 !important;
+}
+
+/* ---------- Inputs ---------- */
+
+.login-input-label {
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+
+.login-input {
+  height: 48px;
+  border-color: #cdd2d9 !important;
+  font-weight: 500;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.login-input:focus,
+.login-input:focus-within {
+  border-color: #c41e3a !important;
+  box-shadow: 0 0 0 3px rgba(196, 30, 58, 0.15) !important;
+}
+
+.login-remember-row {
+  padding-block: 2px;
+}
+
+.login-remember-checkbox :where(input) {
+  cursor: pointer;
+}
+
+.login-remember-checkbox :where(input:checked) {
+  background-color: #c41e3a !important;
+  border-color: #c41e3a !important;
+}
+
+/* ---------- Submit button ---------- */
+/* Tri-color gradient to match the chat web client's login button. */
+
+.login-submit-btn {
+  height: 48px;
+  border: none !important;
+  font-weight: 700;
+  background: linear-gradient(90deg, #c41e3a 0%, #d32f2f 55%, #ffc857 100%) !important;
+  box-shadow: 0 10px 25px -8px rgba(196, 30, 58, 0.45);
+  transition: filter 150ms ease, transform 100ms ease, box-shadow 150ms ease;
+}
+
+.login-submit-btn:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 12px 28px -6px rgba(196, 30, 58, 0.5);
+}
+
+.login-submit-btn:active {
+  transform: scale(0.98);
+}
+
+/* ---------- Demo role cards ---------- */
+
 .role-option-card {
   display: block;
   width: 100%;
@@ -13,14 +128,14 @@
 }
 
 .role-option-card:hover {
-  border-color: var(--mantine-color-blue-3);
-  background: var(--mantine-color-blue-0);
+  border-color: #e3a3af;
+  background: #fdf3f4;
 }
 
 .role-option-card--selected {
-  border-color: var(--mantine-color-blue-5);
-  background: var(--mantine-color-blue-0);
-  box-shadow: 0 0 0 1px var(--mantine-color-blue-5);
+  border-color: #c41e3a;
+  background: #fdf3f4;
+  box-shadow: 0 0 0 1px #c41e3a;
 }
 
 .role-option-card:disabled {
@@ -31,4 +146,14 @@
 .role-option-card:disabled:hover {
   border-color: #e5ebf3;
   background: #ffffff;
+}
+
+.role-icon {
+  background: #fdf3f4;
+  color: #c41e3a;
+}
+
+.role-icon--selected {
+  background: #c41e3a;
+  color: #ffffff;
 }
