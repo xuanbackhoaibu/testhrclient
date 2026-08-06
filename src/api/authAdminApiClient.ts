@@ -96,7 +96,19 @@ authAdminApiClient.interceptors.request.use((config) => {
 authAdminApiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+    // error.config có thể undefined nếu request lỗi trước khi Axios gắn
+    // config (network error, request bị hủy...). Phải guard trước khi đọc
+    // _retry, tránh "Cannot read properties of undefined (reading '_retry')".
+    const originalRequest = error.config as
+      | (AxiosRequestConfig & { _retry?: boolean })
+      | undefined;
+
+    if (!originalRequest) {
+      return handleAxiosResponseError(error, () => {
+        clearSession();
+        window.location.assign('/login');
+      });
+    }
 
     if (originalRequest._retry) {
       return handleAxiosResponseError(error, () => {

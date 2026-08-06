@@ -5,7 +5,11 @@
   padding: var(--mantine-spacing-md);
   background-color: var(--mantine-color-white);
   border-bottom: 1px solid var(--mantine-color-gray-2);
-  height: 100%;
+  /* Trước đây nằm trong AppShell.Header (cao cố định 60px) nên dùng
+     height:100%. Giờ là một thanh công cụ trong luồng flex-column bình
+     thường của .page, nên tự quy định chiều cao + không co lại. */
+  height: 60px;
+  flex-shrink: 0;
   overflow: hidden;
 }
 

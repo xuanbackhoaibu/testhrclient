@@ -1,6 +1,19 @@
+/* Trước đây trang này dùng <AppShell> riêng với header cao 60px, nên chỉ
+   cần trừ 60px cho phần layout còn lại. Giờ trang nằm trong AppShell.Main
+   của MainLayout (header chung cao 64px, xem src/layouts/MainLayout.tsx),
+   nên .page phải tự lấp đầy phần không gian còn lại của viewport, còn
+   CalendarHeader (thanh "Lịch của tôi") chỉ là một thanh công cụ trong
+   luồng bình thường (không phải AppShell.Header) nằm phía trên .layout. */
+.page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 64px);
+  overflow: hidden;
+}
+
 .layout {
   display: flex;
-  height: calc(100vh - 60px);
+  flex: 1;
   overflow: hidden;
 }
 

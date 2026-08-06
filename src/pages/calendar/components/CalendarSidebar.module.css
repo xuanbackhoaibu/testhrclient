@@ -81,12 +81,19 @@
   height: auto;
   justify-content: flex-start;
   min-width: 0;
+  /* Mantine's Button label centers its children by default (inherits
+     text-align:center from the native <button>). Tên nhân viên đủ dài nên
+     gần lấp đầy chiều rộng (khó nhận ra bị canh giữa), nhưng mã nhân viên
+     ngắn hơn nhiều nên bị đẩy lệch vào giữa thay vì thẳng hàng bên trái
+     với tên — đúng như trong ảnh chụp màn hình. */
+  text-align: left;
 }
 
 .employeeRow {
   min-width: 0;
   flex: 1;
   overflow: hidden;
+  text-align: left;
 }
 
 .employeeName {
@@ -94,6 +101,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+  text-align: left;
 }
 
 .employeeSub {
@@ -103,4 +111,5 @@
   max-width: 100%;
   font-size: 11px;
   color: var(--mantine-color-dimmed);
+  text-align: left;
 }

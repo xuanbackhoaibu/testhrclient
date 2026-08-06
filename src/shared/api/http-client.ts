@@ -134,7 +134,20 @@ axiosInstance.interceptors.request.use((config) => {
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+    // error.config có thể là undefined khi request thất bại trước khi Axios
+    // kịp gắn config (lỗi mạng, CORS, request bị hủy...). Phải kiểm tra
+    // trước khi đọc originalRequest._retry, nếu không sẽ ném
+    // "Cannot read properties of undefined (reading '_retry')" và vỡ UI.
+    const originalRequest = error.config as
+      | (AxiosRequestConfig & { _retry?: boolean })
+      | undefined;
+
+    if (!originalRequest) {
+      return handleAxiosResponseError(error, () => {
+        clearSession();
+        window.location.assign('/login');
+      });
+    }
 
     // If this request already went through a 401 retry, don't loop
     if (originalRequest._retry) {

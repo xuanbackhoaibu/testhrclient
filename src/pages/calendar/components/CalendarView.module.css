@@ -5,20 +5,17 @@
   overflow: hidden;
 }
 
-.calendarHeader {
+/* Trước đây file này định nghĩa .calendarHeader / .calendarGrid / .eventItem /
+   .todayText — không class nào trong số đó được component dùng (component
+   dùng .header / .eventPill / .dayNumber). Kết quả là toàn bộ phần lưới lịch
+   chạy gần như không có style riêng. Đổi tên khớp lại với component bên dưới. */
+.header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
   background-color: var(--mantine-color-white);
   border-bottom: 1px solid var(--mantine-color-gray-2);
-}
-
-.calendarGrid {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: auto;
 }
 
 .dayHeaders {
@@ -29,21 +26,27 @@
 }
 
 .dayHeader {
-  padding: var(--mantine-spacing-sm);
+  padding: 10px var(--mantine-spacing-sm);
   text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--mantine-color-gray-6);
 }
 
 .daysGrid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: minmax(108px, 1fr);
   flex: 1;
+  overflow: auto;
 }
 
 .dayCell {
-  min-height: 100px;
+  position: relative;
   border-right: 1px solid var(--mantine-color-gray-2);
   border-bottom: 1px solid var(--mantine-color-gray-2);
-  padding: var(--mantine-spacing-xs);
+  padding: 6px;
   background-color: var(--mantine-color-white);
   cursor: pointer;
   transition: background-color 0.15s ease;
@@ -57,52 +60,76 @@
   background-color: var(--mantine-color-gray-0);
 }
 
-.otherMonth .dayHeader {
-  opacity: 0.5;
+.otherMonth .dayNumber {
+  color: var(--mantine-color-gray-4);
 }
 
+/* Trước đây "hôm nay" chỉ đổi màu nền cả ô, dễ lẫn với sự kiện màu xanh bên
+   trong. Giờ chỉ đánh dấu con số ngày bằng badge tròn — rõ ràng hơn mà vẫn
+   giữ giao diện gọn gàng, không tô cả ô. */
 .today {
   background-color: var(--mantine-color-blue-0);
 }
 
-.todayText {
+.today:hover {
+  background-color: var(--mantine-color-blue-1);
+}
+
+.dayNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  margin-bottom: 4px;
+  border-radius: var(--mantine-radius-xl);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--mantine-color-gray-7);
+}
+
+.today .dayNumber {
+  background-color: var(--mantine-color-blue-6);
+  color: var(--mantine-color-white);
   font-weight: 700;
-  color: var(--mantine-color-blue-6);
 }
 
 .eventsContainer {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
-.eventItem {
+.eventPill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: var(--mantine-radius-sm);
+  border-left: 3px solid var(--mantine-color-gray-5);
+  font-size: 11.5px;
+  line-height: 1.3;
+  font-weight: 500;
+  color: var(--mantine-color-gray-8);
   cursor: pointer;
-  border-left: 3px solid var(--mantine-color-blue-5);
-  transition: transform 0.1s ease;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
-.eventItem:hover {
-  transform: scale(1.02);
-}
-
-.eventItem[data-type="MEETING"] {
-  border-left-color: var(--mantine-color-blue-5);
-}
-
-.eventItem[data-type="TASK"] {
-  border-left-color: var(--mantine-color-green-5);
-}
-
-.eventItem[data-type="LEAVE"] {
-  border-left-color: var(--mantine-color-orange-5);
-}
-
-.eventItem[data-type="DEADLINE"] {
-  border-left-color: var(--mantine-color-red-5);
+.eventPill:hover {
+  transform: translateX(1px);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
 }
 
 .moreEvents {
-  padding: 2px 4px;
+  padding: 2px 6px;
   cursor: pointer;
+  font-weight: 500;
+}
+
+.moreEvents:hover {
+  text-decoration: underline;
 }

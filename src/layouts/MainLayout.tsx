@@ -15,6 +15,7 @@ import { useDisclosure } from "@mantine/hooks";
 import {
   IconBriefcase,
   IconBuildingBank,
+  IconCalendar,
   IconCalendarCheck,
   IconChevronDown,
   IconClipboardList,
@@ -48,6 +49,11 @@ interface NavItem {
 
 const mainItems: NavItem[] = [
   { label: "Dashboard", path: ROUTES.dashboard, icon: IconDashboard },
+  // "Lịch của tôi" dùng chung route/quyền 'authenticated' như Cài đặt (mọi
+  // vai trò đăng nhập đều truy cập được) — trước đây route đã đăng ký và
+  // employee còn được điều hướng thẳng vào đây sau khi login, nhưng mục
+  // sidebar bị thiếu nên rời trang là không còn cách quay lại.
+  { label: "Lịch của tôi", path: ROUTES.calendar, icon: IconCalendar },
   { label: "Nhân sự", path: ROUTES.employees, icon: IconUsers },
   { label: "Điều chuyển", path: ROUTES.movements, icon: IconTransfer },
   { label: "Hợp đồng", path: ROUTES.contracts, icon: IconBriefcase },
