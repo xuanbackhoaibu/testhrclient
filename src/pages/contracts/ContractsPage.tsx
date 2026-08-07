@@ -55,7 +55,7 @@ export function ContractsPage() {
     <>
       <PageHeader title="Contracts" subtitle="Contract metadata demo cho HRM phase 1." actions={<Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Create</Button>} />
       <Card className="page-card">
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
           <Row gutter={12}>
             <Col xs={24} md={10}>
               <Select allowClear placeholder="Employee" style={{ width: '100%' }} options={mockEmployees.map((item) => ({ value: item.id, label: item.fullName }))} onChange={(value) => setParams((current) => ({ ...current, employeeId: value }))} />

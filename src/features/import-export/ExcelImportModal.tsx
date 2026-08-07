@@ -135,9 +135,9 @@ export function ExcelImportModal({
         ) : null,
       ]}
     >
-      <Space direction="vertical" size={16} style={{ width: '100%' }} className="excel-import-modal">
+      <Space orientation="vertical" size={16} style={{ width: '100%' }} className="excel-import-modal">
         <Card size="small" className="excel-import-guide">
-          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Space orientation="vertical" size={12} style={{ width: '100%' }}>
             <Steps
               size="small"
               current={currentStep}

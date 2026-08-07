@@ -22,7 +22,7 @@ export function ConfirmActionModal({
   onConfirm,
 }: ConfirmActionModalProps) {
   return (
-    <Modal opened={opened} onClose={onClose} title={title} centered>
+    <Modal opened={opened} onClose={onClose} title={title} centered className="confirm-action-modal">
       <Stack gap="md">
         <Text size="sm" c="dimmed">
           {message}

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Breadcrumbs, Group, Stack, Text, Title } from '@mantine/core';
+import { Breadcrumbs, Box, Group, Stack, Text, Title } from '@mantine/core';
 
 interface PageHeaderProps {
   title: string;
@@ -11,7 +11,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, subtitle, actions, breadcrumbs }: PageHeaderProps) {
   return (
     <Group justify="space-between" align="flex-start" gap="md" mb="lg" wrap="wrap" className="page-header">
-      <Stack gap={4}>
+      <Stack gap={4} className="page-header-copy">
         {breadcrumbs?.length ? (
           <Breadcrumbs fz="sm">
             {breadcrumbs.map((item) => (
@@ -21,7 +21,7 @@ export function PageHeader({ title, subtitle, actions, breadcrumbs }: PageHeader
             ))}
           </Breadcrumbs>
         ) : null}
-        <Title order={2} size="h3">
+        <Title order={2} size="h3" className="page-header-title">
           {title}
         </Title>
         {subtitle ? (
@@ -30,7 +30,13 @@ export function PageHeader({ title, subtitle, actions, breadcrumbs }: PageHeader
           </Text>
         ) : null}
       </Stack>
-      {actions ? <Group gap="xs" className="page-header-actions">{actions}</Group> : null}
+      {actions ? (
+        <Box className="page-header-actions">
+          <Group gap="xs" justify="flex-end" wrap="wrap">
+            {actions}
+          </Group>
+        </Box>
+      ) : null}
     </Group>
   );
 }

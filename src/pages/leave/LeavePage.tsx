@@ -65,7 +65,7 @@ export function LeavePage() {
     <>
       <PageHeader title="Leave" subtitle="Leave workflow" actions={can(HR_PERMISSIONS.LEAVE_CREATE) ? <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Create</Button> : undefined} />
       <Card className="page-card">
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
           <Row gutter={12}>
             <Col xs={24} md={8}>
               <Select allowClear placeholder="Employee" style={{ width: '100%' }} options={mockEmployees.map((item) => ({ value: item.id, label: item.fullName }))} onChange={(value) => setParams((current) => ({ ...current, employeeId: value }))} />

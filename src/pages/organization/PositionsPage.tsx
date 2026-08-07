@@ -357,7 +357,7 @@ export function PositionsPage() {
       />
 
       <Stack gap="md">
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" className="list-filter-panel">
           <TextInput
             placeholder="Tìm tên, nhóm công việc"
             leftSection={<IconSearch size={17} />}
@@ -411,6 +411,7 @@ export function PositionsPage() {
         }}
         title={editing ? "Chỉnh sửa chức danh" : "Tạo chức danh"}
         position="right"
+        className="entity-drawer"
       >
         <form onSubmit={form.onSubmit((values) => mutation.mutate(values))}>
           <Stack gap="sm">

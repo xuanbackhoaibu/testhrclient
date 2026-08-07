@@ -655,13 +655,13 @@ export function AccountsPage() {
         breadcrumbs={["Hệ thống", "Tài khoản"]}
       />
 
-      <Group gap="sm" align="end">
+      <Group gap="sm" align="end" className="list-filter-panel">
         <NormalizedSearchInput
           label="Tìm kiếm"
           placeholder="Tên, email, username hoặc mã nhân sự..."
           value={search}
           onChange={(value) => updateListQuery({ q: value || null, page: null })}
-          w={360}
+          className="list-filter-search"
         />
         <Select
           label="Trạng thái"
@@ -670,7 +670,7 @@ export function AccountsPage() {
           onChange={(value) => {
             updateListQuery({ status: value || null, page: null });
           }}
-          w={220}
+          className="list-filter-control"
           clearable={false}
         />
         {(search || status) ? (

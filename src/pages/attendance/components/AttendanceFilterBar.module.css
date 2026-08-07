@@ -1,8 +1,9 @@
 .root {
   background: var(--mantine-color-white);
-  border: 0.5px solid #e5e7eb;
-  border-radius: 14px;
+  border: 1px solid var(--hrm-border);
+  border-radius: var(--hrm-radius);
   padding: 12px 16px;
+  box-shadow: var(--hrm-shadow);
 }
 
 .row {
@@ -75,15 +76,12 @@
 
   .actions {
     grid-column: 1;
-    justify-content: flex-end;
+    justify-content: stretch;
     margin-left: 0;
+    width: 100%;
   }
-}
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .root {
-    border-color: #404040;
-    background: #1e1e1e;
+  .actions :global(.mantine-Button-root) {
+    flex: 1 1 150px;
   }
 }

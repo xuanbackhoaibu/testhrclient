@@ -41,7 +41,13 @@ Bxuan964@gmail.com
 
 - Các thay đổi đã được commit và push lên nhánh riêng `Bactx` trên GitHub.
 
-Commit hiện tại:
+Commit mới nhất trên nhánh:
+
+```text
+8f9bcd5 docs: update Bactx branch status
+```
+
+Commit nâng cấp UI chính:
 
 ```text
 c092454 feat: improve HRM UI workflows
@@ -527,7 +533,7 @@ Kết quả kiểm tra:
 Đã kiểm tra dev server đang chạy:
 
 ```text
-http://127.0.0.1:5176/
+http://127.0.0.1:5173/
 ```
 
 Kết quả HTTP:
@@ -538,7 +544,7 @@ HTTP/1.1 200 OK
 
 ## 14. File đã thay đổi
 
-Các file đã được thay đổi trong commit `c092454`:
+Các file đã được thay đổi trên nhánh `Bactx`:
 
 ```text
 src/features/import-export/ExcelImportModal.tsx
@@ -585,6 +591,12 @@ Kết quả:
 - Nhánh local `Bactx` đang tracking remote `origin/Bactx`.
 - Working tree sau khi push sạch, không còn file thay đổi chưa commit.
 - Commit mới nhất:
+
+```text
+8f9bcd5 docs: update Bactx branch status
+```
+
+- Commit nâng cấp UI chính:
 
 ```text
 c092454 feat: improve HRM UI workflows

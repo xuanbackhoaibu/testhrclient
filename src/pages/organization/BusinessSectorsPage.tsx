@@ -313,7 +313,7 @@ export function BusinessSectorsPage() {
       />
 
       <Stack gap="md">
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" className="list-filter-panel">
           <TextInput
             placeholder="Tìm mã hoặc tên lĩnh vực"
             leftSection={<IconSearch size={17} />}
@@ -368,6 +368,7 @@ export function BusinessSectorsPage() {
         title={editing ? "Chỉnh sửa lĩnh vực" : "Tạo lĩnh vực"}
         position="right"
         size="lg"
+        className="entity-drawer"
       >
         <form onSubmit={form.onSubmit((values) => mutation.mutate(values))}>
           <Stack gap="sm">

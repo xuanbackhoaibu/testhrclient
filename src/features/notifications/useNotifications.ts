@@ -8,6 +8,7 @@ import { notificationApi, type ListNotificationsParams } from './notificationApi
  * unread badge fresh without hammering the API.
  */
 const POLL_INTERVAL_MS = 30_000;
+const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
 
 export const notificationKeys = {
   all: ['notifications'] as const,
@@ -20,8 +21,8 @@ export function useUnreadNotificationCount() {
   return useQuery({
     queryKey: notificationKeys.unreadCount,
     queryFn: () => notificationApi.unreadCount(),
-    refetchInterval: POLL_INTERVAL_MS,
-    refetchOnWindowFocus: true,
+    refetchInterval: isMockMode ? false : POLL_INTERVAL_MS,
+    refetchOnWindowFocus: !isMockMode,
     staleTime: 10_000,
   });
 }
@@ -30,7 +31,7 @@ export function useNotifications(params?: ListNotificationsParams) {
   return useQuery({
     queryKey: notificationKeys.list(params),
     queryFn: () => notificationApi.list(params),
-    refetchInterval: POLL_INTERVAL_MS,
+    refetchInterval: isMockMode ? false : POLL_INTERVAL_MS,
     staleTime: 10_000,
   });
 }

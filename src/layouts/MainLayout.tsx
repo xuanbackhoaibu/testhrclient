@@ -194,6 +194,11 @@ export function MainLayout() {
 
           <ScrollArea flex={1}>
             <Stack gap={4}>
+              {visibleMainItems.length > 0 ? (
+                <Text size="xs" fw={750} c="dimmed" className="app-nav-section-label">
+                  Vận hành
+                </Text>
+              ) : null}
               {visibleMainItems.slice(0, 2).map((item) => {
                 const Icon = item.icon;
                 return (
@@ -209,6 +214,10 @@ export function MainLayout() {
               })}
 
               {showOrganizationMenu ? (
+                <>
+                <Text size="xs" fw={750} c="dimmed" className="app-nav-section-label">
+                  Danh mục
+                </Text>
                 <NavLink
                   label="Tổ chức"
                   leftSection={<IconBuildingBank size={18} />}
@@ -229,9 +238,14 @@ export function MainLayout() {
                     );
                   })}
                 </NavLink>
+                </>
               ) : null}
 
               {showIamMenu ? (
+                <>
+                <Text size="xs" fw={750} c="dimmed" className="app-nav-section-label">
+                  Quản trị
+                </Text>
                 <NavLink
                   label="Phân quyền"
                   leftSection={<IconShield size={18} />}
@@ -255,6 +269,7 @@ export function MainLayout() {
                     return <NavLink key={item.path} label="Báo cáo công việc" leftSection={<Icon size={17} />} active={isActive(location.pathname, item.path)} onClick={() => goTo(item.path)} className="app-nav-link" />;
                   })}
                 </NavLink>
+                </>
               ) : null}
 
               {visibleMainItems.slice(2).map((item) => {

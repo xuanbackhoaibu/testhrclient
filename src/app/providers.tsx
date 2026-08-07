@@ -27,6 +27,31 @@ const theme = createTheme({
     fontWeight: '650',
   },
   components: {
+    Button: {
+      defaultProps: {
+        radius: 'md',
+      },
+    },
+    ActionIcon: {
+      defaultProps: {
+        radius: 'md',
+      },
+    },
+    TextInput: {
+      defaultProps: {
+        radius: 'md',
+      },
+    },
+    PasswordInput: {
+      defaultProps: {
+        radius: 'md',
+      },
+    },
+    Select: {
+      defaultProps: {
+        radius: 'md',
+      },
+    },
     Paper: {
       defaultProps: {
         withBorder: true,

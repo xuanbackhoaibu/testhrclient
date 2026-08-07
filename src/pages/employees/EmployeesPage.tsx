@@ -1337,7 +1337,6 @@ export function EmployeesPage() {
           onSelectionChange={mayProvisionAccounts ? setSelectedIds : undefined}
           emptyTitle={activeFilterCount > 0 ? "Không có nhân sự phù hợp" : "Chưa có nhân sự"}
           emptyDescription="Không tìm thấy nhân sự phù hợp với bộ lọc hiện tại."
-          maxHeight="calc(100vh - 360px)"
         />
       </Stack>
 
@@ -1347,6 +1346,7 @@ export function EmployeesPage() {
         title={editing ? "Sửa nhân sự" : "Tạo nhân sự"}
         position="right"
         size="lg"
+        className="entity-drawer"
       >
         <form onSubmit={form.onSubmit(submitEmployee, handleEmployeeFormValidationFailure)}>
           <Stack gap="sm">

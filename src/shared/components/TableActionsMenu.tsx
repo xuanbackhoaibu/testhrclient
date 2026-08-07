@@ -38,12 +38,14 @@ export function TableActionsMenu({
       wrap="nowrap"
       onMouseDown={stopRowClick}
       aria-label={label}
+      className="table-actions-menu"
     >
       {visibleActions.map((action) => (
         <SafeTooltip key={action.label} label={action.label} disabled={action.disabled}>
           <ActionIcon
             variant="subtle"
             color={action.color ?? 'gray'}
+            size="sm"
             aria-label={action.label}
             disabled={action.disabled}
             onMouseDown={stopRowClick}

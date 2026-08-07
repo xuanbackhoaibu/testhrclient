@@ -13,7 +13,6 @@ import {
   Text,
   TextInput,
   Textarea,
-  Title,
   Tooltip,
   Select,
 } from '@mantine/core';
@@ -36,6 +35,7 @@ import type {
   CreatePermissionGroupInput,
   PermissionGroupDefinition,
 } from '../../features/auth-admin/authAdminTypes';
+import { PageHeader } from '../../shared/components/PageHeader';
 
 const STATUS_LABEL: Record<string, string> = { active: 'Đang dùng', inactive: 'Vô hiệu' };
 const STATUS_COLOR: Record<string, string> = { active: 'green', inactive: 'gray' };
@@ -142,37 +142,44 @@ export function PermissionGroupsPage() {
 
   return (
     <Box>
-      <Group justify="space-between" mb="md">
-        <Title order={3}>Nhóm quyền</Title>
-        {canManage && (
+      <PageHeader
+        title="Nhóm quyền"
+        subtitle="Quản lý các nhóm permission dùng để gán nhanh cho vai trò và tài khoản."
+        breadcrumbs={['Phân quyền', 'Nhóm quyền']}
+        actions={
+          canManage ? (
           <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>
             Tạo nhóm quyền
           </Button>
-        )}
-      </Group>
+          ) : undefined
+        }
+      />
 
-      <Group mb="md">
+      <Group mb="md" className="list-filter-panel">
         <TextInput
+          label="Tìm kiếm"
           placeholder="Tìm theo tên, key..."
           leftSection={<IconSearch size={16} />}
           value={search}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          style={{ flex: 1 }}
+          className="list-filter-search"
         />
         <Select
+          label="Hệ thống"
           placeholder="Lọc hệ thống"
           data={systemOptions}
           value={systemFilter}
           onChange={setSystemFilter}
           clearable
-          w={160}
+          className="list-filter-control"
         />
       </Group>
 
       {isLoading ? (
         <Group justify="center" py="xl"><Loader /></Group>
       ) : (
-        <Table striped highlightOnHover withTableBorder>
+        <Box className="data-table-shell">
+        <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Key</Table.Th>
@@ -224,6 +231,7 @@ export function PermissionGroupsPage() {
             )}
           </Table.Tbody>
         </Table>
+        </Box>
       )}
 
       {/* Create modal */}
@@ -232,6 +240,7 @@ export function PermissionGroupsPage() {
         onClose={closeCreate}
         title="Tạo nhóm quyền"
         size="md"
+        className="entity-modal"
       >
         <Stack>
           <TextInput
@@ -304,6 +313,7 @@ export function PermissionGroupsPage() {
         title={detail ? `Nhóm: ${detail.name}` : 'Nhóm quyền'}
         position="right"
         size="lg"
+        className="entity-drawer"
       >
         {detailLoading || !detail ? (
           <Group justify="center" py="xl"><Loader /></Group>
@@ -384,7 +394,7 @@ export function PermissionGroupsPage() {
 
             <Stack gap="xs">
               {(detail.permissions ?? []).map((perm) => (
-                <Group key={perm.id} justify="space-between" p="xs" style={{ border: '1px solid #eee', borderRadius: 6 }}>
+                <Group key={perm.id} justify="space-between" p="xs" className="resource-list-row">
                   <Stack gap={2}>
                     <Text size="xs" ff="monospace" c="blue">{perm.key}</Text>
                     {perm.description && <Text size="xs" c="dimmed">{perm.description}</Text>}

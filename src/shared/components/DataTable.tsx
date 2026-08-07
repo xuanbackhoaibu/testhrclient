@@ -84,12 +84,13 @@ export function DataTable<T>({
     );
   }
 
-  if (loading) {
+  if (loading && !data.length) {
     return (
-      <Paper p="md" radius="md">
-        <Stack gap="sm">
+      <Paper p="md" radius="md" className="data-table-shell">
+        <Stack gap="xs">
+          <Skeleton height={18} width={180} radius="sm" />
           {Array.from({ length: 6 }).map((_, index) => (
-            <Skeleton key={index} height={34} radius="sm" />
+            <Skeleton key={index} height={38} radius="sm" />
           ))}
         </Stack>
       </Paper>
@@ -106,7 +107,14 @@ export function DataTable<T>({
     selectable && data.some((r) => selectedIds?.has(rowKey(r)));
 
   return (
-    <Paper radius="md" p={0} className="data-table-shell" withBorder>
+    <Paper radius="md" p={0} className="data-table-shell" withBorder data-loading={loading ? 'true' : undefined}>
+      {loading ? (
+        <Group px="md" py={6} className="data-table-refreshing" justify="space-between">
+          <Text size="xs" c="blue" fw={650}>
+            Đang cập nhật dữ liệu...
+          </Text>
+        </Group>
+      ) : null}
       <ScrollArea type="auto" mah={maxHeight}>
         <Table
           miw={860}
@@ -114,6 +122,7 @@ export function DataTable<T>({
           highlightOnHover
           withColumnBorders={false}
           stickyHeader={Boolean(maxHeight)}
+          className="data-table"
         >
           <Table.Thead>
             <Table.Tr>

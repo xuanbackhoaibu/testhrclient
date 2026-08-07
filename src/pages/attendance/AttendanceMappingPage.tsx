@@ -615,6 +615,7 @@ export function AttendanceMappingPage() {
       <Stack gap="md">
         <MappingStatsSection stats={stats} isLoading={loadingStats} />
 
+        <div className="workflow-table-section">
         <UnmappedTable
           items={unmapped?.items ?? []}
           total={unmapped?.total ?? 0}
@@ -626,6 +627,7 @@ export function AttendanceMappingPage() {
           onSearchChange={handleSearchChange}
           onMap={setMapTarget}
         />
+        </div>
       </Stack>
 
       <MapEmployeeModal

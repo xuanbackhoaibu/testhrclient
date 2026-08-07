@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   Badge,
+  Box,
   Button,
   Card,
   Group,
@@ -37,7 +38,9 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
   return (
     <Group gap="xs" wrap="nowrap" align="flex-start">
       <Text size="sm" c="dimmed" w={140} style={{ flexShrink: 0 }}>{label}</Text>
-      <Text size="sm">{children}</Text>
+      <Box fz="sm" style={{ minWidth: 0 }}>
+        {children}
+      </Box>
     </Group>
   );
 }

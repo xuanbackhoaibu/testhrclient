@@ -472,8 +472,9 @@ export function PendingHrLinkAccountsPage() {
         Chỉ liên kết khi đã chọn đúng hồ sơ nhân sự từ HRM và xác nhận lại thông tin.
       </Alert>
 
-      <Group gap="sm">
+      <Group gap="sm" className="list-filter-panel">
         <TextInput
+          label="Tìm kiếm"
           placeholder="Tìm theo email, mã nhân sự claim, username..."
           leftSection={<IconSearch size={16} />}
           value={search}
@@ -481,7 +482,7 @@ export function PendingHrLinkAccountsPage() {
             setSearch(event.currentTarget.value);
             setPage(1);
           }}
-          w={380}
+          className="list-filter-search"
         />
         <Button
           variant="default"

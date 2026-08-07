@@ -1,4 +1,14 @@
-import { SimpleGrid, Group, Paper, Stack, Text, Title } from "@mantine/core";
+import { SimpleGrid, Group, Paper, Stack, Text, ThemeIcon, Title } from "@mantine/core";
+import {
+  IconBriefcase,
+  IconCalendarQuestion,
+  IconDoorExit,
+  IconExchange,
+  IconUserCheck,
+  IconUserPlus,
+  IconUsers,
+  IconUserX,
+} from "@tabler/icons-react";
 
 import { useDashboardSummary } from "../features/dashboard/useDashboardSummary";
 import { EmptyState } from "../shared/components/EmptyState";
@@ -6,15 +16,32 @@ import { ErrorState } from "../shared/components/ErrorState";
 import { LoadingState } from "../shared/components/LoadingState";
 import { PageHeader } from "../shared/components/PageHeader";
 
-function MetricCard({ title, value }: { title: string; value: number }) {
+function MetricCard({
+  title,
+  value,
+  color,
+  icon: Icon,
+}: {
+  title: string;
+  value: number;
+  color: string;
+  icon: typeof IconUsers;
+}) {
   return (
-    <Paper p="md" radius="md">
-      <Stack gap={4}>
-        <Text c="dimmed" size="sm">
-          {title}
-        </Text>
-        <Title order={3}>{value.toLocaleString("vi-VN")}</Title>
-      </Stack>
+    <Paper p="md" radius="md" className="dashboard-metric-card">
+      <Group justify="space-between" align="flex-start" wrap="nowrap">
+        <Stack gap={4}>
+          <Text c="dimmed" size="sm" fw={600}>
+            {title}
+          </Text>
+          <Title order={3} className="dashboard-metric-value">
+            {value.toLocaleString("vi-VN")}
+          </Title>
+        </Stack>
+        <ThemeIcon variant="light" color={color} radius="md" size={38}>
+          <Icon size={20} />
+        </ThemeIcon>
+      </Group>
     </Paper>
   );
 }
@@ -27,7 +54,7 @@ function BreakdownList({
   items: Array<{ label: string; value: number }>;
 }) {
   return (
-    <Paper p="md" radius="md">
+    <Paper p="md" radius="md" className="dashboard-breakdown-card">
       <Stack gap="sm">
         <Text fw={650}>{title}</Text>
         {items.map((item) => (
@@ -61,14 +88,14 @@ export function DashboardPage() {
   }
 
   const metrics = [
-    { title: "Tổng nhân sự", value: data.totalEmployees },
-    { title: "Đang làm việc", value: data.activeEmployees },
-    { title: "Tuyển mới tháng này", value: data.newHiresThisMonth },
-    { title: "Nghỉ việc tháng này", value: data.terminatedThisMonth },
-    { title: "Đơn nghỉ phép chờ duyệt", value: data.pendingLeaveRequests },
-    { title: "Điều chuyển chờ xử lý", value: data.pendingMovements },
-    { title: "Onboarding đang chạy", value: data.onboardingInProgress },
-    { title: "Offboarding đang chạy", value: data.offboardingInProgress },
+    { title: "Tổng nhân sự", value: data.totalEmployees, color: "blue", icon: IconUsers },
+    { title: "Đang làm việc", value: data.activeEmployees, color: "green", icon: IconUserCheck },
+    { title: "Tuyển mới tháng này", value: data.newHiresThisMonth, color: "teal", icon: IconUserPlus },
+    { title: "Nghỉ việc tháng này", value: data.terminatedThisMonth, color: "red", icon: IconUserX },
+    { title: "Đơn nghỉ phép chờ duyệt", value: data.pendingLeaveRequests, color: "yellow", icon: IconCalendarQuestion },
+    { title: "Điều chuyển chờ xử lý", value: data.pendingMovements, color: "orange", icon: IconExchange },
+    { title: "Onboarding đang chạy", value: data.onboardingInProgress, color: "indigo", icon: IconBriefcase },
+    { title: "Offboarding đang chạy", value: data.offboardingInProgress, color: "gray", icon: IconDoorExit },
   ];
 
   return (
@@ -85,6 +112,8 @@ export function DashboardPage() {
               key={metric.title}
               title={metric.title}
               value={metric.value}
+              color={metric.color}
+              icon={metric.icon}
             />
           ))}
         </SimpleGrid>

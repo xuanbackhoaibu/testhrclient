@@ -18,12 +18,12 @@ export function EmptyState({
   icon,
 }: EmptyStateProps) {
   return (
-    <Paper p="xl" radius="md">
+    <Paper p="xl" radius="md" className="empty-state-surface">
       <Stack align="center" gap="xs" ta="center">
-        <ThemeIcon size={42} radius="xl" variant="light" color="gray">
+        <ThemeIcon size={44} radius="md" variant="light" color="blue" className="empty-state-icon">
           {icon ?? <IconInbox size={22} />}
         </ThemeIcon>
-        <Title order={4}>{title}</Title>
+        <Title order={4} className="empty-state-title">{title}</Title>
         <Text c="dimmed" size="sm" maw={360}>
           {description}
         </Text>

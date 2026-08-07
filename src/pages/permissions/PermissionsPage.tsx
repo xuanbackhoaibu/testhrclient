@@ -14,7 +14,6 @@ import {
   Text,
   Textarea,
   TextInput,
-  Title,
   Tooltip,
 } from '@mantine/core';
 import { useDebouncedValue, useDisclosure } from '@mantine/hooks';
@@ -35,6 +34,7 @@ import type {
   UpdatePermissionInput,
 } from '../../features/auth-admin/authAdminTypes';
 import { NormalizedSearchInput } from '../../shared/components/NormalizedSearchInput';
+import { PageHeader } from '../../shared/components/PageHeader';
 import { includesNormalizedSearch } from '../../shared/utils/normalizeSearchText';
 
 const DOMAIN_LABEL: Record<string, string> = {
@@ -131,24 +131,26 @@ export function PermissionsPage() {
 
   return (
     <Box>
-      <Group justify="space-between" mb="md">
-        <Stack gap={2}>
-          <Title order={3}>Permission</Title>
-          <Text size="sm" c="dimmed">Tổng: {total} quyền</Text>
-        </Stack>
-        {canCreate && (
+      <PageHeader
+        title="Danh mục quyền"
+        subtitle={`Tổng: ${total} quyền. Quản lý permission kỹ thuật theo hệ thống, trạng thái và mức độ nhạy cảm.`}
+        breadcrumbs={['Phân quyền', 'Danh mục quyền']}
+        actions={
+          canCreate ? (
           <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>
             Tạo permission
           </Button>
-        )}
-      </Group>
+          ) : undefined
+        }
+      />
 
-      <Group align="end" mb="md" gap="sm">
+      <Group align="end" mb="md" gap="sm" className="list-filter-panel">
       <NormalizedSearchInput
+        label="Tìm kiếm"
         placeholder="Tìm tên, mã quyền, mô tả hoặc nhóm..."
         value={search}
         onChange={setSearch}
-        w={320}
+        className="list-filter-search"
       />
       <Select
         aria-label="Lọc trạng thái permission"
@@ -156,7 +158,7 @@ export function PermissionsPage() {
         value={status}
         onChange={(value) => setStatus((value as typeof status) ?? 'all')}
         data={[{ value: 'all', label: 'Tất cả trạng thái' }, { value: 'active', label: 'Đang dùng' }, { value: 'disabled', label: 'Vô hiệu' }]}
-        w={180}
+        className="list-filter-control"
         allowDeselect={false}
       />
       <Select
@@ -165,7 +167,7 @@ export function PermissionsPage() {
         value={sensitivity}
         onChange={(value) => setSensitivity((value as typeof sensitivity) ?? 'all')}
         data={[{ value: 'all', label: 'Tất cả' }, { value: 'sensitive', label: 'Nhạy cảm' }, { value: 'standard', label: 'Thông thường' }]}
-        w={170}
+        className="list-filter-control"
         allowDeselect={false}
       />
       {(search || status !== 'all' || sensitivity !== 'all') && (
@@ -190,8 +192,7 @@ export function PermissionsPage() {
               <Accordion.Panel>
                 <Stack gap="xs">
                   {sys.permissions.map((perm) => (
-                    <Group key={perm.id} justify="space-between" p="xs"
-                      style={{ border: '1px solid #f1f3f5', borderRadius: 6 }}>
+                    <Group key={perm.id} justify="space-between" p="xs" className="resource-list-row">
                       <Stack gap={2}>
                         <Group gap="xs">
                           <Text size="xs" ff="monospace" c="blue">{perm.key}</Text>
@@ -224,7 +225,7 @@ export function PermissionsPage() {
       )}
 
       {/* Create modal */}
-      <Modal opened={createOpened} onClose={closeCreate} title="Tạo permission mới" size="md">
+      <Modal opened={createOpened} onClose={closeCreate} title="Tạo permission mới" size="md" className="entity-modal">
         <Stack>
           <TextInput
             label="Key"
@@ -281,6 +282,7 @@ export function PermissionsPage() {
         onClose={closeEdit}
         title={`Sửa: ${editPerm?.key}`}
         size="md"
+        className="entity-modal"
       >
         {editPerm && (
           <Stack>

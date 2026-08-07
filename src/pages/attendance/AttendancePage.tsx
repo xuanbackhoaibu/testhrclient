@@ -1,12 +1,19 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Badge, Card, Drawer, Group, Stack, Text, Tooltip } from '@mantine/core';
+import { Badge, Button, Drawer, Group, Stack, Text, Tooltip } from '@mantine/core';
 import { useDisclosure, useLocalStorage } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconCheck } from '@tabler/icons-react';
+import {
+  IconBuildingCommunity,
+  IconCheck,
+  IconDownload,
+  IconHistory,
+  IconRefresh,
+} from '@tabler/icons-react';
 import dayjs from 'dayjs';
 import { EmptyState } from '../../shared/components/EmptyState';
 import { ErrorState } from '../../shared/components/ErrorState';
+import { LoadingState } from '../../shared/components/LoadingState';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { ROUTES } from '../../shared/constants/routes';
 import { formatDate } from '../../shared/utils/date';
@@ -315,44 +322,43 @@ export function AttendancePage() {
         actions={
           <Group gap="xs">
             {mayViewSyncLog && (
-              <Text
+              <Button
                 size="sm"
-                c="blue"
-                style={{ cursor: 'pointer' }}
+                variant="default"
+                leftSection={<IconBuildingCommunity size={16} />}
                 onClick={openBiotimeDepts}
               >
                 Phòng ban BioTime
-              </Text>
+              </Button>
             )}
             {mayViewSyncLog && (
-              <Text
+              <Button
                 size="sm"
-                c="blue"
-                style={{ cursor: 'pointer' }}
+                variant="default"
+                leftSection={<IconHistory size={16} />}
                 onClick={openSyncHistory}
               >
                 Lịch sử đồng bộ
-              </Text>
+              </Button>
             )}
             {mayExport && (
-              <Text
+              <Button
                 size="sm"
-                c="blue"
-                style={{ cursor: 'pointer' }}
+                variant="default"
+                leftSection={<IconDownload size={16} />}
                 onClick={handleExport}
               >
                 Xuất CSV
-              </Text>
+              </Button>
             )}
             {maySync && (
-              <Text
+              <Button
                 size="sm"
-                c="blue"
-                style={{ cursor: 'pointer' }}
+                leftSection={<IconRefresh size={16} />}
                 onClick={handleSync}
               >
                 Đồng bộ dữ liệu
-              </Text>
+              </Button>
             )}
           </Group>
         }
@@ -391,7 +397,7 @@ export function AttendancePage() {
 
         {/* Data Table or Empty State */}
         {isLoading ? (
-          <ErrorState title="Đang tải dữ liệu..." />
+          <LoadingState tip="Đang tải dữ liệu chấm công..." />
         ) : error || !data ? (
           <ErrorState onRetry={() => void refetch()} />
         ) : records.length === 0 ? (
@@ -402,10 +408,9 @@ export function AttendancePage() {
             onAction={emptyReason.action}
           />
         ) : (
-          <Card withBorder padding={0} className={styles.tableCard}>
-            <DataTable
-              data={records}
-              columns={[
+          <DataTable
+            data={records}
+            columns={[
                 {
                   key: 'workDate',
                   header: 'Ngày',
@@ -554,13 +559,12 @@ export function AttendancePage() {
                     </Tooltip>
                   ),
                 },
-              ]}
-              rowKey={(record) => record.id}
-              meta={pagination ?? undefined}
-              loading={isFetching}
-              onPageChange={handlePageChange}
-            />
-          </Card>
+            ]}
+            rowKey={(record) => record.id}
+            meta={pagination ?? undefined}
+            loading={isFetching}
+            onPageChange={handlePageChange}
+          />
         )}
       </Stack>
 

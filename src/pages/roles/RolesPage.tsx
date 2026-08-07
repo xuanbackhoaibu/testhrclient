@@ -195,22 +195,26 @@ export function RolesPage() {
 
   return (
     <Box>
-      <Group justify="space-between" mb="md" align="flex-end">
-        <PageHeader title="Vai trò" subtitle="Quản lý nhóm quyền dùng chung cho nhiều nhân viên." breadcrumbs={['Phân quyền', 'Vai trò']} />
-        {canManage && (
+      <PageHeader
+        title="Vai trò"
+        subtitle="Quản lý nhóm quyền dùng chung cho nhiều nhân viên."
+        breadcrumbs={['Phân quyền', 'Vai trò']}
+        actions={
+          canManage ? (
           <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>
             Tạo role
           </Button>
-        )}
-      </Group>
+          ) : undefined
+        }
+      />
 
-      <Group align="end" gap="sm" mb="md">
+      <Group align="end" gap="sm" mb="md" className="list-filter-panel">
       <NormalizedSearchInput
         label="Tìm kiếm"
         placeholder="Tên vai trò, mã vai trò hoặc mô tả..."
         value={search}
         onChange={setSearch}
-        w={320}
+        className="list-filter-search"
       />
       <Select
         label="Trạng thái"
@@ -218,7 +222,7 @@ export function RolesPage() {
         data={[{ value: 'all', label: 'Tất cả trạng thái' }, { value: 'active', label: 'Đang dùng' }, { value: 'disabled', label: 'Vô hiệu' }]}
         onChange={(value) => setStatus(value ?? 'all')}
         allowDeselect={false}
-        w={180}
+        className="list-filter-control"
       />
       {(search || status !== 'all') && <Button variant="subtle" color="gray" onClick={() => { setSearch(''); setStatus('all'); }}>Xóa bộ lọc</Button>}
       </Group>
@@ -226,12 +230,12 @@ export function RolesPage() {
       {isLoading ? (
         <Group justify="center" py="xl"><Loader /></Group>
       ) : (
-        <Stack gap="xs">
+        <Stack gap="xs" className="resource-list">
           {visibleRoles.map((role) => (
             <Group
               key={role.id ?? role.key}
               p="md"
-              style={{ border: '1px solid #e9ecef', borderRadius: 8, cursor: 'pointer' }}
+              className="resource-list-row"
               onClick={() => handleOpenDetail(role)}
               justify="space-between"
             >
@@ -326,6 +330,7 @@ export function RolesPage() {
         title={detail ? `Role: ${detail.name}` : 'Chi tiết role'}
         position="right"
         size="xl"
+        className="entity-drawer"
       >
         {detailLoading || !detail ? (
           <Group justify="center" py="xl"><Loader /></Group>
@@ -403,7 +408,7 @@ export function RolesPage() {
                   </Group>
                 )}
                 {(detail.permissionGroups ?? []).map((g) => (
-                  <Group key={g.id} justify="space-between" p="xs" style={{ border: '1px solid #eee', borderRadius: 6 }}>
+                  <Group key={g.id} justify="space-between" p="xs" className="resource-list-row">
                     <Stack gap={2}>
                       <Text size="sm" fw={500}>{g.name}</Text>
                       <Text size="xs" ff="monospace" c="blue">{g.key}</Text>
@@ -442,7 +447,7 @@ export function RolesPage() {
                   </Group>
                 )}
                 {(detail.permissions ?? []).map((p) => (
-                  <Group key={p.id} justify="space-between" p="xs" style={{ border: '1px solid #eee', borderRadius: 6 }}>
+                  <Group key={p.id} justify="space-between" p="xs" className="resource-list-row">
                     <Stack gap={2}>
                       <Text size="sm" fw={500}>{getPermissionBusinessLabel(p.key).label}</Text>
                       {p.description && <Text size="xs" c="dimmed">{p.description}</Text>}
