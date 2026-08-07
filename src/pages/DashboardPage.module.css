@@ -1,0 +1,164 @@
+.overviewPanel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #dfe6f0;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.overviewPanel::after {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #0b5ed7;
+  content: "";
+}
+
+.summaryTile {
+  min-height: 92px;
+  border: 1px solid #edf1f6;
+  border-radius: 12px;
+  background: #fbfcfe;
+  padding: 14px 16px;
+}
+
+.summaryTile_blue {
+  background: #f7fbff;
+}
+
+.summaryTile_green {
+  background: #f7fcf9;
+}
+
+.summaryTile_teal {
+  background: #f5fcfb;
+}
+
+.summaryTile_red {
+  background: #fff8f8;
+}
+
+.summaryTile_yellow {
+  background: #fffdf4;
+}
+
+.summaryTile_orange {
+  background: #fff9f3;
+}
+
+.summaryTile_indigo {
+  background: #f8f9ff;
+}
+
+.summaryTile_gray {
+  background: #fbfcfd;
+}
+
+.summaryValue {
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.metricValue {
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.metricLabel {
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.metricCard,
+.panel {
+  border-color: #dfe6f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.metricCard {
+  min-height: 132px;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.metricCard_blue {
+  border-left: 3px solid #228be6;
+}
+
+.metricCard_green {
+  border-left: 3px solid #2f9e44;
+}
+
+.metricCard_teal {
+  border-left: 3px solid #12b886;
+}
+
+.metricCard_red {
+  border-left: 3px solid #fa5252;
+}
+
+.metricCard_yellow {
+  border-left: 3px solid #fab005;
+}
+
+.metricCard_orange {
+  border-left: 3px solid #fd7e14;
+}
+
+.metricCard_indigo {
+  border-left: 3px solid #4c6ef5;
+}
+
+.metricCard_gray {
+  border-left: 3px solid #868e96;
+}
+
+.panel {
+  height: 100%;
+  background: #ffffff;
+}
+
+.priorityColumn {
+  min-width: 0;
+}
+
+.queueRow {
+  min-height: 44px;
+  border-left: 3px solid #dfe6f0;
+  border-radius: 8px;
+  background: #fbfcfe;
+  padding: 8px 10px;
+}
+
+.queueRow_yellow {
+  border-left-color: #fab005;
+}
+
+.queueRow_orange {
+  border-left-color: #fd7e14;
+}
+
+.queueRow_indigo {
+  border-left-color: #4c6ef5;
+}
+
+.queueRow_gray {
+  border-left-color: #868e96;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .overviewPanel {
+    border-radius: 12px;
+  }
+
+  .metricCard {
+    min-height: auto;
+  }
+}
