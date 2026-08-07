@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Badge, Button, Group, Select, Stack, TextInput } from '@mantine/core';
 import { IconRefresh, IconSearch, IconX } from '@tabler/icons-react';
 import { useBioTimeDepartments } from '../../../features/attendance/useAttendanceSync';
 import { AttendanceDateFilter } from './AttendanceDateFilter';
 import type { AttendanceDateFilterValue } from './AttendanceDateFilter.types';
 import styles from './AttendanceFilterBar.module.css';
+import { useImeSafeSearch } from '../../../shared/hooks/useImeSafeSearch';
+import { useImeSafeSelectFilter } from '../../../shared/hooks/useImeSafeSelectFilter';
 
 export interface AttendanceFilters {
   search: string;
@@ -73,7 +75,11 @@ export function AttendanceFilterBar({
   maySync,
   unmappedConflictCount = 0,
 }: AttendanceFilterBarProps) {
-  const [searchInput, setSearchInput] = useState(filters.search);
+  const selectSearch = useImeSafeSelectFilter();
+  const search = useImeSafeSearch({
+    value: filters.search,
+    onSearch: (value) => onChange({ ...filters, search: value }),
+  });
 
   // Derive date filter value from filters
   const dateFilterValue: AttendanceDateFilterValue = useMemo(() => {
@@ -99,16 +105,6 @@ export function AttendanceFilterBar({
     }));
   }, [departmentsData]);
 
-  // Debounce search input 300ms
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchInput !== filters.search) {
-        onChange({ ...filters, search: searchInput });
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchInput, filters, onChange]);
-
   const handleDateFilterChange = (value: AttendanceDateFilterValue) => {
     onChange({
       ...filters,
@@ -119,7 +115,7 @@ export function AttendanceFilterBar({
   };
 
   const handleClear = () => {
-    setSearchInput('');
+    search.clear(false);
     onChange({ ...DEFAULT_FILTERS });
   };
 
@@ -133,19 +129,17 @@ export function AttendanceFilterBar({
           placeholder="Tìm mã NV, họ tên, phòng ban..."
           leftSection={<IconSearch size={15} />}
           rightSection={
-            searchInput ? (
+            search.inputValue ? (
               <IconX
                 size={14}
                 style={{ cursor: 'pointer' }}
                 onClick={() => {
-                  setSearchInput('');
-                  onChange({ ...filters, search: '' });
+                  search.clear();
                 }}
               />
             ) : null
           }
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.currentTarget.value)}
+          {...search.inputProps}
           className={styles.searchInput}
           size="sm"
         />
@@ -169,6 +163,7 @@ export function AttendanceFilterBar({
           }
           clearable
           searchable
+          {...selectSearch}
           size="sm"
           className={styles.selectInput}
           comboboxProps={{ withinPortal: true }}

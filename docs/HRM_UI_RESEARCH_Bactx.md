@@ -44,13 +44,15 @@ Bxuan964@gmail.com
 Commit mới nhất trên nhánh:
 
 ```text
-8f9bcd5 docs: update Bactx branch status
+0b1a9dd Match login UI with Son branch
 ```
 
-Commit nâng cấp UI chính:
+Các commit chính trên nhánh:
 
 ```text
 c092454 feat: improve HRM UI workflows
+e7d554e Update HR web client UI and attendance flows
+0b1a9dd Match login UI with Son branch
 ```
 
 Nhánh remote:
@@ -542,11 +544,88 @@ Kết quả HTTP:
 HTTP/1.1 200 OK
 ```
 
+## 13.2. Cập nhật giao diện đăng nhập theo nhánh Sơn
+
+Đã cập nhật giao diện đăng nhập của nhánh `Bactx` theo thiết kế từ nhánh:
+
+```text
+sondcn/refactors/giao-dien-hrm
+```
+
+Các thay đổi đã làm:
+
+- Thay layout đăng nhập cũ bằng layout 2 cột.
+- Cột trái hiển thị slideshow hình ảnh dự án HACOM.
+- Cột phải là card đăng nhập mới, gọn hơn và tập trung vào form.
+- Thêm logo HACOM lớn trong card đăng nhập.
+- Đổi phần chọn role mock từ segmented control sang card role có icon và mô tả.
+- Thêm hiệu ứng vào form đăng nhập và slideshow.
+- Bổ sung `prefers-reduced-motion` trong CSS để giảm animation khi hệ thống yêu cầu.
+
+File liên quan:
+
+```text
+src/layouts/AuthLayout.tsx
+src/layouts/AuthLayout.css
+src/pages/LoginPage.tsx
+src/pages/LoginPage.css
+public/hacom-imperial-dalat.jpg
+public/hacom-riverside.jpg
+public/hacom-tower.jpg
+public/hacom-wind.jpg
+```
+
+Commit đã push:
+
+```text
+0b1a9dd Match login UI with Son branch
+```
+
+## 13.3. Đưa phần chấm công và mapping về theo main
+
+Sau khi thử lấy phần chấm công/mapping từ nhánh Sơn, đã điều chỉnh lại theo yêu cầu mới:
+
+- Bỏ hướng lấy trực tiếp từ nhánh Sơn.
+- Fetch `origin/main` mới nhất từ GitHub.
+- Thay nhóm file chấm công/mapping bằng nội dung từ `origin/main`.
+- Giữ nguyên các thay đổi đăng nhập đã commit trước đó.
+
+Các điểm chính của bản `main` đang được áp vào `Bactx`:
+
+- `attendanceApi.ts` không tự dựng dữ liệu chấm công/mapping từ mock local cho các API daily/sync/mapping.
+- Trang chấm công và mapping dùng lại cấu trúc UI/filter của `main`.
+- Có thêm helper search IME-safe và filter Select dùng chung từ `main`.
+
+File liên quan:
+
+```text
+src/features/attendance/attendanceApi.ts
+src/pages/attendance/AttendanceMappingPage.tsx
+src/pages/attendance/AttendancePage.module.css
+src/pages/attendance/AttendancePage.tsx
+src/pages/attendance/components/AttendanceFilterBar.module.css
+src/pages/attendance/components/AttendanceFilterBar.tsx
+src/pages/attendance/components/BioTimeDepartmentsTable.tsx
+src/shared/hooks/useImeSafeSearch.ts
+src/shared/hooks/useImeSafeSelectFilter.ts
+src/shared/utils/filterSelectOptions.ts
+```
+
+Trạng thái:
+
+- Đã chạy `npm run build`: pass.
+- Đã chạy `npm run lint`: pass.
+- Các thay đổi này hiện chưa commit.
+
 ## 14. File đã thay đổi
 
 Các file đã được thay đổi trên nhánh `Bactx`:
 
 ```text
+public/hacom-imperial-dalat.jpg
+public/hacom-riverside.jpg
+public/hacom-tower.jpg
+public/hacom-wind.jpg
 src/features/import-export/ExcelImportModal.tsx
 src/features/import-export/DomainExcelImportModal.tsx
 src/features/import-export/HrmCoreExcelImportModal.tsx
@@ -555,15 +634,32 @@ src/features/auth/postLoginDestination.ts
 src/features/auth/AuthorizationLanding.tsx
 src/features/auth/ProtectedRoute.tsx
 src/features/auth/routePolicies.ts
+src/layouts/AuthLayout.css
 src/layouts/AuthLayout.tsx
 src/layouts/MainLayout.tsx
 src/pages/AuthCallbackPage.tsx
+src/pages/LoginPage.css
 src/pages/LoginPage.tsx
 src/pages/employees/EmployeesPage.tsx
 src/pages/employees/EmployeeDetailPage.tsx
 src/shared/components/PageHeader.tsx
 src/styles.css
 docs/HRM_UI_RESEARCH_Bactx.md
+```
+
+Các file chấm công/mapping đang được đưa về theo bản `origin/main` và hiện chưa commit:
+
+```text
+src/features/attendance/attendanceApi.ts
+src/pages/attendance/AttendanceMappingPage.tsx
+src/pages/attendance/AttendancePage.module.css
+src/pages/attendance/AttendancePage.tsx
+src/pages/attendance/components/AttendanceFilterBar.module.css
+src/pages/attendance/components/AttendanceFilterBar.tsx
+src/pages/attendance/components/BioTimeDepartmentsTable.tsx
+src/shared/hooks/useImeSafeSearch.ts
+src/shared/hooks/useImeSafeSelectFilter.ts
+src/shared/utils/filterSelectOptions.ts
 ```
 
 ## 15. Kiểm tra đã thực hiện
@@ -589,14 +685,14 @@ Kết quả:
 - Đã commit các thay đổi UI/HRM vào nhánh `Bactx`.
 - Đã push nhánh `Bactx` lên GitHub.
 - Nhánh local `Bactx` đang tracking remote `origin/Bactx`.
-- Working tree sau khi push sạch, không còn file thay đổi chưa commit.
+- Working tree hiện có thay đổi chưa commit ở nhóm chấm công/mapping vì đang đưa phần này về theo bản `origin/main`.
 - Commit mới nhất:
 
 ```text
-8f9bcd5 docs: update Bactx branch status
+0b1a9dd Match login UI with Son branch
 ```
 
-- Commit nâng cấp UI chính:
+- Commit nâng cấp UI chính trước đó:
 
 ```text
 c092454 feat: improve HRM UI workflows

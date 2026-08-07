@@ -1,3 +1,8 @@
+.tableCard {
+  border-radius: 14px;
+  overflow: hidden;
+}
+
 .dateCell {
   fontVariantNumeric: tabular-nums;
   white-space: nowrap;
@@ -17,4 +22,54 @@
   font-variant-numeric: tabular-nums;
   text-align: right;
   padding-right: 8px !important;
+}
+
+/* Table header styling */
+:global(.data-table-heading) {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #475569 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.02em !important;
+  white-space: nowrap !important;
+  background: #f8fafc !important;
+  height: 44px;
+  padding: 0 16px !important;
+  border-bottom: 1px solid #e5e7eb !important;
+}
+
+/* Table row styling */
+:global(.data-table-shell tr) {
+  height: 46px;
+}
+
+:global(.data-table-shell td) {
+  padding: 0 16px !important;
+  vertical-align: middle !important;
+  font-size: 14px;
+  color: #111827;
+  border-bottom: 1px solid #edf0f4;
+}
+
+/* Hover effect */
+:global(.data-table-shell tbody tr:hover td) {
+  background: #f8fbff !important;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :global(.data-table-heading) {
+    color: #e9ecef !important;
+    background: #212529 !important;
+    border-bottom-color: #495057 !important;
+  }
+
+  :global(.data-table-shell td) {
+    color: #e9ecef;
+    border-bottom-color: #343a40;
+  }
+
+  :global(.data-table-shell tbody tr:hover td) {
+    background: #2a2d30 !important;
+  }
 }

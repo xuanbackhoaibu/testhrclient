@@ -1,19 +1,12 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Badge, Button, Drawer, Group, Stack, Text, Tooltip } from '@mantine/core';
+import { Badge, Card, Drawer, Group, Stack, Text, Tooltip } from '@mantine/core';
 import { useDisclosure, useLocalStorage } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import {
-  IconBuildingCommunity,
-  IconCheck,
-  IconDownload,
-  IconHistory,
-  IconRefresh,
-} from '@tabler/icons-react';
+import { IconCheck } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 import { EmptyState } from '../../shared/components/EmptyState';
 import { ErrorState } from '../../shared/components/ErrorState';
-import { LoadingState } from '../../shared/components/LoadingState';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { ROUTES } from '../../shared/constants/routes';
 import { formatDate } from '../../shared/utils/date';
@@ -322,43 +315,44 @@ export function AttendancePage() {
         actions={
           <Group gap="xs">
             {mayViewSyncLog && (
-              <Button
+              <Text
                 size="sm"
-                variant="default"
-                leftSection={<IconBuildingCommunity size={16} />}
+                c="blue"
+                style={{ cursor: 'pointer' }}
                 onClick={openBiotimeDepts}
               >
                 Phòng ban BioTime
-              </Button>
+              </Text>
             )}
             {mayViewSyncLog && (
-              <Button
+              <Text
                 size="sm"
-                variant="default"
-                leftSection={<IconHistory size={16} />}
+                c="blue"
+                style={{ cursor: 'pointer' }}
                 onClick={openSyncHistory}
               >
                 Lịch sử đồng bộ
-              </Button>
+              </Text>
             )}
             {mayExport && (
-              <Button
+              <Text
                 size="sm"
-                variant="default"
-                leftSection={<IconDownload size={16} />}
+                c="blue"
+                style={{ cursor: 'pointer' }}
                 onClick={handleExport}
               >
                 Xuất CSV
-              </Button>
+              </Text>
             )}
             {maySync && (
-              <Button
+              <Text
                 size="sm"
-                leftSection={<IconRefresh size={16} />}
+                c="blue"
+                style={{ cursor: 'pointer' }}
                 onClick={handleSync}
               >
                 Đồng bộ dữ liệu
-              </Button>
+              </Text>
             )}
           </Group>
         }
@@ -397,7 +391,7 @@ export function AttendancePage() {
 
         {/* Data Table or Empty State */}
         {isLoading ? (
-          <LoadingState tip="Đang tải dữ liệu chấm công..." />
+          <ErrorState title="Đang tải dữ liệu..." />
         ) : error || !data ? (
           <ErrorState onRetry={() => void refetch()} />
         ) : records.length === 0 ? (
@@ -408,9 +402,10 @@ export function AttendancePage() {
             onAction={emptyReason.action}
           />
         ) : (
-          <DataTable
-            data={records}
-            columns={[
+          <Card withBorder padding={0} className={styles.tableCard}>
+            <DataTable
+              data={records}
+              columns={[
                 {
                   key: 'workDate',
                   header: 'Ngày',
@@ -559,12 +554,13 @@ export function AttendancePage() {
                     </Tooltip>
                   ),
                 },
-            ]}
-            rowKey={(record) => record.id}
-            meta={pagination ?? undefined}
-            loading={isFetching}
-            onPageChange={handlePageChange}
-          />
+              ]}
+              rowKey={(record) => record.id}
+              meta={pagination ?? undefined}
+              loading={isFetching}
+              onPageChange={handlePageChange}
+            />
+          </Card>
         )}
       </Stack>
 
