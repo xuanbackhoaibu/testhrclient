@@ -452,7 +452,7 @@ jobs:
           deploy_dir="$1"
           runtime_env_file="$2"
           cd "${deploy_dir}" || exit 0
-          versions_env_file="$(dirname "${runtime_env_file}")/.hr-web-client.versions"
+          versions_env_file="${deploy_dir}/.hr-web-client.versions"
           compose_args=(-p hr-prod --env-file "${runtime_env_file}")
           if [ -f "${versions_env_file}" ]; then
             compose_args+=(--env-file "${versions_env_file}")

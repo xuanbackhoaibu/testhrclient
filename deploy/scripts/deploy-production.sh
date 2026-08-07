@@ -35,11 +35,10 @@ PROJECT_NAME="${COMPOSE_PROJECT_NAME:-hr-prod}"
 COMMON_ENV_FILE="${COMMON_ENV_FILE:-${SERVER_RUNTIME_ENV_FILE}}"
 SERVICE_ENV_FILE="${SERVICE_ENV_FILE:-${SERVER_RUNTIME_ENV_FILE}}"
 if [ -z "${VERSIONS_ENV_FILE:-}" ]; then
-  if [ -n "${SERVER_RUNTIME_ENV_FILE:-}" ]; then
-    VERSIONS_ENV_FILE="$(dirname "${SERVER_RUNTIME_ENV_FILE}")/.hr-web-client.versions"
-  else
-    VERSIONS_ENV_FILE="env/.env.versions"
-  fi
+  # Runtime env directories are commonly root-owned. Keep the mutable image
+  # version marker beside the release bundle, which is owned by the deploy
+  # user and is synchronized for every release.
+  VERSIONS_ENV_FILE="${PWD}/.hr-web-client.versions"
 fi
 COMPOSE_FILE="${COMPOSE_FILE:-deploy/compose/production.yml}"
 SERVICE_NAME="${RUNTIME_SERVICE:-hr-web-client}"
