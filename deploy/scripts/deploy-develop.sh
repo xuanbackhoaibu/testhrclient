@@ -36,11 +36,7 @@ COMMON_ENV_FILE="${COMMON_ENV_FILE:-${SERVER_RUNTIME_ENV_FILE}}"
 SERVICE_ENV_FILE="${SERVICE_ENV_FILE:-${SERVER_RUNTIME_ENV_FILE}}"
 INCOMING_HR_API_HEALTH_URL="${HR_API_HEALTH_URL:-}"
 if [ -z "${VERSIONS_ENV_FILE:-}" ]; then
-  if [ -n "${SERVER_RUNTIME_ENV_FILE:-}" ]; then
-    VERSIONS_ENV_FILE="$(dirname "${SERVER_RUNTIME_ENV_FILE}")/.hr-web-client.versions"
-  else
-    VERSIONS_ENV_FILE="env/.env.versions"
-  fi
+  VERSIONS_ENV_FILE="${PWD}/.hr-web-client.versions"
 fi
 COMPOSE_FILE="${COMPOSE_FILE:-deploy/compose/develop.yml}"
 SERVICE_NAME="${RUNTIME_SERVICE:-hr-web-client}"

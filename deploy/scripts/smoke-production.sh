@@ -7,11 +7,7 @@ cd "${ROOT_DIR}"
 PROJECT_NAME="${COMPOSE_PROJECT_NAME:-hr-prod}"
 COMMON_ENV_FILE="${COMMON_ENV_FILE:-${SERVER_RUNTIME_ENV_FILE:-env/.env.hr-web.production}}"
 if [ -z "${VERSIONS_ENV_FILE:-}" ]; then
-  if [ -n "${SERVER_RUNTIME_ENV_FILE:-}" ]; then
-    VERSIONS_ENV_FILE="$(dirname "${SERVER_RUNTIME_ENV_FILE}")/.hr-web-client.versions"
-  else
-    VERSIONS_ENV_FILE="env/.env.versions"
-  fi
+  VERSIONS_ENV_FILE="${PWD}/.hr-web-client.versions"
 fi
 COMPOSE_FILE="${COMPOSE_FILE:-deploy/compose/production.yml}"
 
