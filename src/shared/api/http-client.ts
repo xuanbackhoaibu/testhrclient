@@ -10,6 +10,7 @@ import {
 import { useAuthStore } from '../../features/auth/authStore';
 import { ApiError, type ApiEnvelope } from './api.types';
 import { handleAxiosResponseError } from './errorHandler';
+import { isDefinitiveAuthRefreshFailure } from './authRefreshFailure';
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -106,14 +107,17 @@ async function handle401AndRetry(
       setSessionUser(null);
       return Promise.reject(error);
     }
+    if (isDefinitiveAuthRefreshFailure(error)) {
+      clearSession();
+      window.location.assign('/login');
+      return Promise.reject(new Error('Session refresh rejected'));
+    }
     if (axios.isAxiosError(error) && error.response?.status === 403) {
-      setSessionUser(null);
       useAuthStore.getState().setError('Tài khoản đã xác thực nhưng không còn quyền truy cập HRM.');
       return Promise.reject(error);
     }
-    clearSession();
-    window.location.assign('/login');
-    return Promise.reject(new Error('Session refresh failed'));
+    useAuthStore.getState().setError('Session refresh is temporarily unavailable. Please try again.');
+    return Promise.reject(error);
   } finally {
     refreshPromise = null;
   }
@@ -134,13 +138,18 @@ axiosInstance.interceptors.request.use((config) => {
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as AxiosRequestConfig & {
+      _retry?: boolean;
+      _skipUnauthenticatedRedirect?: boolean;
+    };
 
     // If this request already went through a 401 retry, don't loop
     if (originalRequest._retry) {
       return handleAxiosResponseError(error, () => {
-        clearSession();
-        window.location.assign('/login');
+        if (!originalRequest._skipUnauthenticatedRedirect) {
+          clearSession();
+          window.location.assign('/login');
+        }
       });
     }
 
