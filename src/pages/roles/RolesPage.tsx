@@ -320,7 +320,7 @@ export function RolesPage() {
         </Stack>
       </Modal>
 
-      {/* Detail drawer */}
+      {/* Ngăn kéo chi tiết */}
       <Drawer
         opened={detailOpened}
         onClose={() => { closeDetail(); setDetailRoleId(null); }}
