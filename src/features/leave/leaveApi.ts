@@ -5,7 +5,7 @@ import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockLeaveRequests } from '../../shared/mocks/mockWorkflows';
 import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../shared/types/api';
-import type { LeaveApprovalStep, LeaveRequest, LeaveRequestPayload } from './leaveTypes';
+import type { LeaveApprovalStep, LeavePolicyType, LeaveRequest, LeaveRequestPayload } from './leaveTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
 const mockApprovalSteps = [
@@ -14,6 +14,27 @@ const mockApprovalSteps = [
   { stepOrder: 3, stepCode: 'OFFICE_CHIEF', stepName: 'Chanh van phong' },
   { stepOrder: 4, stepCode: 'BOARD', stepName: 'Ban TGD' },
 ] as const;
+const mockLeavePolicyTypes: LeavePolicyType[] = [
+  { id: 'lpt-work-full', code: 'WORK_FULL', name: 'Lam viec ca ngay', displaySymbol: '+', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+  { id: 'lpt-work-half', code: 'WORK_HALF', name: 'Lam viec nua ngay', displaySymbol: '-', deductsAnnualLeave: false, paid: true, dayValue: 0.5, requiresAttachment: false, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+  { id: 'lpt-annual', code: 'ANNUAL', name: 'Nghi phep nam', displaySymbol: 'P', deductsAnnualLeave: true, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'ANNUAL_BALANCE', hrRuleStatus: 'CONFIRMED', note: 'Chi ky hieu P tru quy phep nam.', status: 'ACTIVE' },
+  { id: 'lpt-paid-personal', code: 'PAID_PERSONAL', name: 'Nghi viec rieng co luong', displaySymbol: 'CL', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'PER_EVENT', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+  { id: 'lpt-unpaid', code: 'UNPAID', name: 'Nghi khong luong', displaySymbol: 'KL', deductsAnnualLeave: false, paid: false, dayValue: 0, requiresAttachment: false, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+  { id: 'lpt-sick', code: 'SICK', name: 'Nghi om', displaySymbol: 'Ô', deductsAnnualLeave: false, paid: null, dayValue: null, requiresAttachment: true, attachmentMinDays: 3, quotaMode: 'INSURANCE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+  { id: 'lpt-child-sick', code: 'CHILD_SICK', name: 'Nghi con om', displaySymbol: 'Cô', deductsAnnualLeave: false, paid: null, dayValue: null, requiresAttachment: true, quotaMode: 'INSURANCE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+  { id: 'lpt-maternity', code: 'MATERNITY', name: 'Thai san', displaySymbol: 'TS', deductsAnnualLeave: false, paid: null, dayValue: null, requiresAttachment: true, quotaMode: 'INSURANCE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+  { id: 'lpt-work-accident', code: 'WORK_ACCIDENT', name: 'Tai nan lao dong', displaySymbol: 'TN', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: true, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+  { id: 'lpt-compensatory', code: 'COMPENSATORY', name: 'Nghi bu', displaySymbol: 'NB', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'COMPENSATORY_BALANCE', hrRuleStatus: 'PENDING_HR_RULE', note: 'Ty le quy doi va han su dung con treo D3.', status: 'ACTIVE' },
+  { id: 'lpt-holiday', code: 'HOLIDAY', name: 'Le Tet', displaySymbol: 'L', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+  { id: 'lpt-company-trip', code: 'COMPANY_TRIP', name: 'Du lich', displaySymbol: 'DL', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+  { id: 'lpt-work-stop', code: 'WORK_STOP', name: 'Nghi ngung viec', displaySymbol: 'N', deductsAnnualLeave: false, paid: null, dayValue: 0, requiresAttachment: false, quotaMode: 'PENDING_HR_RULE', hrRuleStatus: 'PENDING_HR_RULE', status: 'ACTIVE' },
+  { id: 'lpt-business-trip', code: 'BUSINESS_TRIP', name: 'Cong tac', displaySymbol: 'CT', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+  { id: 'lpt-secondment', code: 'SECONDMENT', name: 'Cong tac biet phai', displaySymbol: 'BP', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+  { id: 'lpt-office-duty', code: 'OFFICE_DUTY', name: 'Truc VP', displaySymbol: 'Tr', deductsAnnualLeave: false, paid: true, dayValue: null, requiresAttachment: false, quotaMode: 'PENDING_HR_RULE', hrRuleStatus: 'PENDING_HR_RULE', note: 'Tinh theo gio; doi HR chot D2.', status: 'ACTIVE' },
+  { id: 'lpt-meeting', code: 'MEETING', name: 'Hoi hop', displaySymbol: 'H', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+  { id: 'lpt-compulsory-labor', code: 'COMPULSORY_LABOR', name: 'Lao dong nghia vu', displaySymbol: 'Lđ', deductsAnnualLeave: false, paid: true, dayValue: 0, requiresAttachment: false, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+  { id: 'lpt-online-work', code: 'ONLINE_WORK', name: 'Lam viec online', displaySymbol: 'O', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+];
 
 function buildMockApprovalSteps(leaveRequestId: string): LeaveApprovalStep[] {
   return mockApprovalSteps.map((step) => ({
@@ -54,6 +75,15 @@ export async function listLeaveRequests(params: ListQueryParams = {}): Promise<P
 
   const response = await api.get<PaginatedData<LeaveRequest>>('/leave/requests', { params });
   return normalizePaginatedResponse<LeaveRequest>(response, params);
+}
+
+export async function listLeaveTypes(): Promise<LeavePolicyType[]> {
+  if (isMockMode) {
+    await mockDelay();
+    return mockLeavePolicyTypes;
+  }
+
+  return api.get<LeavePolicyType[]>('/leave/types');
 }
 
 export async function createLeaveRequest(payload: LeaveRequestPayload): Promise<LeaveRequest> {

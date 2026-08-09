@@ -6,7 +6,7 @@ import dayjs from 'dayjs';
 
 import { approveLeaveRequest, cancelLeaveRequest, createLeaveRequest, rejectLeaveRequest, submitLeaveRequest } from '../../features/leave/leaveApi';
 import type { LeaveRequestPayload } from '../../features/leave/leaveTypes';
-import { useLeaveRequests } from '../../features/leave/useLeaveRequests';
+import { useLeaveRequests, useLeaveTypes } from '../../features/leave/useLeaveRequests';
 import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { LEAVE_TYPE_OPTIONS } from '../../shared/constants/statuses';
 import { ErrorState } from '../../shared/components/ErrorState';
@@ -24,6 +24,7 @@ export function LeavePage() {
   const [open, setOpen] = useState(false);
   const [params, setParams] = useState({ page: 1, pageSize: 10, employeeId: undefined as string | undefined, leaveType: undefined as string | undefined, status: undefined as string | undefined });
   const { data, isLoading, error, refetch } = useLeaveRequests(params);
+  const { data: leaveTypes = [], isLoading: isLeaveTypesLoading } = useLeaveTypes();
 
   const createMutation = useMutation({
     mutationFn: createLeaveRequest,
@@ -121,6 +122,40 @@ export function LeavePage() {
             ]}
           />
         </Space>
+      </Card>
+
+      <Card className="page-card" style={{ marginTop: 16 }}>
+        <Table
+          rowKey="id"
+          dataSource={leaveTypes}
+          loading={isLeaveTypesLoading}
+          pagination={{ pageSize: 10 }}
+          columns={[
+            { title: 'Symbol', dataIndex: 'displaySymbol', width: 90 },
+            { title: 'Code', dataIndex: 'code', width: 180 },
+            { title: 'Name', dataIndex: 'name' },
+            {
+              title: 'Day value',
+              render: (_, record) => record.dayValue ?? '-',
+              width: 110,
+            },
+            {
+              title: 'Quota',
+              dataIndex: 'quotaMode',
+              width: 190,
+            },
+            {
+              title: 'Status',
+              render: (_, record) => <StatusTag status={record.hrRuleStatus} />,
+              width: 170,
+            },
+            {
+              title: 'Annual leave',
+              render: (_, record) => (record.deductsAnnualLeave ? 'Yes' : 'No'),
+              width: 130,
+            },
+          ]}
+        />
       </Card>
 
       <Drawer title="Create leave request" open={open} width={500} destroyOnClose onClose={() => { setOpen(false); form.resetFields(); }} extra={<Button type="primary" loading={createMutation.isPending} onClick={() => void form.submit()}>Save</Button>}>

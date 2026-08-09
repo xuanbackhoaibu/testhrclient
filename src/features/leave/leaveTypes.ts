@@ -28,6 +28,23 @@ export interface LeaveApprovalStep {
   note?: string | null;
 }
 
+export interface LeavePolicyType {
+  id: string;
+  code: string;
+  name: string;
+  displaySymbol: string;
+  deductsAnnualLeave: boolean;
+  paid?: boolean | null;
+  dayValue?: number | null;
+  requiresAttachment: boolean;
+  attachmentMinDays?: number | null;
+  quotaMode: string;
+  maxDaysPerEvent?: number | null;
+  hrRuleStatus: string;
+  note?: string | null;
+  status: string;
+}
+
 export interface LeaveRequestPayload {
   employeeId: string;
   leaveType: string;
