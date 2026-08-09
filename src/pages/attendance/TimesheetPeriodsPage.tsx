@@ -15,6 +15,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconCalendarPlus,
+  IconDownload,
   IconLock,
   IconLockOpen,
   IconRefresh,
@@ -22,6 +23,7 @@ import {
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
+import { downloadTimesheetPeriodExport } from "../../features/attendance/timesheetApi";
 import {
   useCloseTimesheetPeriod,
   useOpenTimesheetPeriod,
@@ -92,6 +94,7 @@ function confirmationCounts(
 export function TimesheetPeriodsPage() {
   const { can } = useAuth();
   const canEdit = can(HR_PERMISSIONS.ATTENDANCE_UPDATE);
+  const canExport = can(HR_PERMISSIONS.ATTENDANCE_EXPORT);
 
   const [year, setYear] = useState(now.getFullYear());
   const [openModal, setOpenModal] = useState(false);
@@ -102,6 +105,7 @@ export function TimesheetPeriodsPage() {
   const [newUnitId, setNewUnitId] = useState<string | null>(null);
   const [confirmDeadline, setConfirmDeadline] = useState("");
   const [reopenReason, setReopenReason] = useState("");
+  const [exportingPeriodId, setExportingPeriodId] = useState<string | null>(null);
 
   const periodsQuery = useTimesheetPeriods(year);
   const confirmationsQuery = useTimesheetConfirmations(selectedPeriod?.id ?? null);
@@ -193,6 +197,21 @@ export function TimesheetPeriodsPage() {
     }
   }
 
+  async function handleExportPeriod(period: TimesheetPeriod) {
+    setExportingPeriodId(period.id);
+    try {
+      await downloadTimesheetPeriodExport(period);
+    } catch {
+      notifications.show({
+        color: "red",
+        title: "Không xuất được Excel",
+        message: "Kiểm tra quyền xuất dữ liệu chấm công hoặc thử tải lại trang.",
+      });
+    } finally {
+      setExportingPeriodId(null);
+    }
+  }
+
   const periods = periodsQuery.data ?? [];
   const confirmations = confirmationsQuery.data ?? [];
   const counts = confirmationCounts(confirmations);
@@ -280,6 +299,17 @@ export function TimesheetPeriodsPage() {
                     >
                       Xác nhận
                     </Button>
+                    {canExport ? (
+                      <Button
+                        size="xs"
+                        variant="light"
+                        leftSection={<IconDownload size={14} />}
+                        loading={exportingPeriodId === period.id}
+                        onClick={() => void handleExportPeriod(period)}
+                      >
+                        Excel
+                      </Button>
+                    ) : null}
                     {canEdit && period.status !== "CLOSED" ? (
                       <Button
                         size="xs"

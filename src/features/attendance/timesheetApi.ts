@@ -43,6 +43,13 @@ export async function listTimesheetConfirmations(
   return api.get<TimesheetConfirmation[]>(`${PERIOD_BASE}/${periodId}/confirmations`);
 }
 
+export async function downloadTimesheetPeriodExport(period: TimesheetPeriod): Promise<void> {
+  await api.download(
+    `${PERIOD_BASE}/${period.id}/export`,
+    `timesheet-confirmations-${period.year}-${String(period.month).padStart(2, '0')}.xlsx`,
+  );
+}
+
 export async function openTimesheetPeriod(
   payload: OpenTimesheetPeriodPayload,
 ): Promise<TimesheetPeriod> {
