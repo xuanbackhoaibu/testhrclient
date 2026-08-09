@@ -1,7 +1,13 @@
 import { api } from "../../shared/api/httpClient";
 import { getMockDashboardSummary } from "../../shared/mocks/mockDashboard";
 import { mockDelay } from "../../shared/mocks/mockHelpers";
-import type { DashboardMetric, DashboardSummary } from "./dashboardTypes";
+import type {
+  DashboardAttendanceRate,
+  DashboardLateEmployee,
+  DashboardMetric,
+  DashboardPayrollHandoff,
+  DashboardSummary,
+} from "./dashboardTypes";
 
 interface DashboardSummaryApiMetric {
   unitId?: string;
@@ -21,8 +27,19 @@ interface DashboardSummaryApiResponse {
   pendingMovements?: number;
   onboardingInProgress?: number;
   offboardingInProgress?: number;
+  pendingAttendanceExplanations?: number;
   employeesByUnit?: DashboardSummaryApiMetric[];
   employeesByEmploymentStatus?: DashboardSummaryApiMetric[];
+  attendanceThisMonth?: {
+    month?: number;
+    year?: number;
+    topLateEmployees?: DashboardLateEmployee[];
+    byUnit?: DashboardAttendanceRate[];
+    byDepartment?: DashboardAttendanceRate[];
+    annualLeaveDaysUsed?: number;
+    leaveBalanceMode?: string;
+  };
+  payrollHandoff?: DashboardPayrollHandoff;
 }
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === "true";
@@ -59,13 +76,34 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     pendingMovements: toCount(response.pendingMovements),
     onboardingInProgress: toCount(response.onboardingInProgress),
     offboardingInProgress: toCount(response.offboardingInProgress),
+    pendingAttendanceExplanations: toCount(
+      response.pendingAttendanceExplanations,
+    ),
     employeesByUnit: (response.employeesByUnit ?? []).map((metric, index) =>
-      toDashboardMetric(metric, `Đơn vị ${index + 1}`),
+      toDashboardMetric(metric, `Don vi ${index + 1}`),
     ),
     employeesByEmploymentStatus: (
       response.employeesByEmploymentStatus ?? []
     ).map((metric, index) =>
-      toDashboardMetric(metric, `Trạng thái ${index + 1}`),
+      toDashboardMetric(metric, `Trang thai ${index + 1}`),
     ),
+    attendanceThisMonth: {
+      month: toCount(response.attendanceThisMonth?.month),
+      year: toCount(response.attendanceThisMonth?.year),
+      topLateEmployees: response.attendanceThisMonth?.topLateEmployees ?? [],
+      byUnit: response.attendanceThisMonth?.byUnit ?? [],
+      byDepartment: response.attendanceThisMonth?.byDepartment ?? [],
+      annualLeaveDaysUsed: toCount(
+        response.attendanceThisMonth?.annualLeaveDaysUsed,
+      ),
+      leaveBalanceMode:
+        response.attendanceThisMonth?.leaveBalanceMode ??
+        "PENDING_HR_CSV_RECONCILIATION",
+    },
+    payrollHandoff: response.payrollHandoff ?? {
+      closedPeriods: 0,
+      latestClosedPeriod: null,
+      formatStatus: "PENDING_PAYROLL_FORMAT_CONFIRMATION",
+    },
   };
 }
