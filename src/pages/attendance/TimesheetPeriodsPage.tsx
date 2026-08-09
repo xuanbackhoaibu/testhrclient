@@ -5,6 +5,7 @@ import {
   Button,
   Group,
   Modal,
+  ScrollArea,
   Select,
   Stack,
   Table,
@@ -258,95 +259,97 @@ export function TimesheetPeriodsPage() {
           </Button>
         </Group>
 
-        <Table striped highlightOnHover withTableBorder>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Kỳ</Table.Th>
-              <Table.Th>Phạm vi</Table.Th>
-              <Table.Th>Trạng thái</Table.Th>
-              <Table.Th>Hạn xác nhận</Table.Th>
-              <Table.Th>Số nhân viên</Table.Th>
-              <Table.Th style={{ textAlign: "right" }}>Thao tác</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {periods.map((period) => (
-              <Table.Tr key={period.id}>
-                <Table.Td>
-                  <Text fw={600}>
-                    Tháng {period.month}/{period.year}
-                  </Text>
-                  {period.openedAt ? (
-                    <Text size="xs" c="dimmed">
-                      Mở: {toDateOnly(period.openedAt)}
-                    </Text>
-                  ) : null}
-                </Table.Td>
-                <Table.Td>{period.unit?.name ?? "Toàn công ty"}</Table.Td>
-                <Table.Td>
-                  <Badge color={periodStatusColor[period.status]} variant="light">
-                    {periodStatusLabel[period.status]}
-                  </Badge>
-                </Table.Td>
-                <Table.Td>{toDateOnly(period.confirmDeadline)}</Table.Td>
-                <Table.Td>{period._count?.confirmations ?? 0}</Table.Td>
-                <Table.Td>
-                  <Group justify="flex-end" gap="xs">
-                    <Button
-                      size="xs"
-                      variant="default"
-                      onClick={() => setSelectedPeriod(period)}
-                    >
-                      Xác nhận
-                    </Button>
-                    {canExport ? (
-                      <Button
-                        size="xs"
-                        variant="light"
-                        leftSection={<IconDownload size={14} />}
-                        loading={exportingPeriodId === period.id}
-                        onClick={() => void handleExportPeriod(period)}
-                      >
-                        Excel
-                      </Button>
-                    ) : null}
-                    {canEdit && period.status !== "CLOSED" ? (
-                      <Button
-                        size="xs"
-                        color="green"
-                        leftSection={<IconLock size={14} />}
-                        loading={closePeriod.isPending}
-                        onClick={() => void handleClosePeriod(period)}
-                      >
-                        Chốt
-                      </Button>
-                    ) : null}
-                    {canEdit && period.status === "CLOSED" ? (
-                      <Button
-                        size="xs"
-                        color="orange"
-                        variant="light"
-                        leftSection={<IconLockOpen size={14} />}
-                        onClick={() => setReopenTarget(period)}
-                      >
-                        Mở khóa
-                      </Button>
-                    ) : null}
-                  </Group>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-            {!periodsQuery.isLoading && periods.length === 0 ? (
+        <ScrollArea type="auto">
+          <Table striped highlightOnHover withTableBorder miw={760}>
+            <Table.Thead>
               <Table.Tr>
-                <Table.Td colSpan={6}>
-                  <Text c="dimmed" ta="center" py="xl">
-                    Chưa có kỳ công nào trong năm này.
-                  </Text>
-                </Table.Td>
+                <Table.Th>Kỳ</Table.Th>
+                <Table.Th>Phạm vi</Table.Th>
+                <Table.Th>Trạng thái</Table.Th>
+                <Table.Th>Hạn xác nhận</Table.Th>
+                <Table.Th>Số nhân viên</Table.Th>
+                <Table.Th style={{ textAlign: "right" }}>Thao tác</Table.Th>
               </Table.Tr>
-            ) : null}
-          </Table.Tbody>
-        </Table>
+            </Table.Thead>
+            <Table.Tbody>
+              {periods.map((period) => (
+                <Table.Tr key={period.id}>
+                  <Table.Td>
+                    <Text fw={600}>
+                      Tháng {period.month}/{period.year}
+                    </Text>
+                    {period.openedAt ? (
+                      <Text size="xs" c="dimmed">
+                        Mở: {toDateOnly(period.openedAt)}
+                      </Text>
+                    ) : null}
+                  </Table.Td>
+                  <Table.Td>{period.unit?.name ?? "Toàn công ty"}</Table.Td>
+                  <Table.Td>
+                    <Badge color={periodStatusColor[period.status]} variant="light">
+                      {periodStatusLabel[period.status]}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>{toDateOnly(period.confirmDeadline)}</Table.Td>
+                  <Table.Td>{period._count?.confirmations ?? 0}</Table.Td>
+                  <Table.Td>
+                    <Group justify="flex-end" gap="xs" wrap="nowrap">
+                      <Button
+                        size="xs"
+                        variant="default"
+                        onClick={() => setSelectedPeriod(period)}
+                      >
+                        Xác nhận
+                      </Button>
+                      {canExport ? (
+                        <Button
+                          size="xs"
+                          variant="light"
+                          leftSection={<IconDownload size={14} />}
+                          loading={exportingPeriodId === period.id}
+                          onClick={() => void handleExportPeriod(period)}
+                        >
+                          Excel
+                        </Button>
+                      ) : null}
+                      {canEdit && period.status !== "CLOSED" ? (
+                        <Button
+                          size="xs"
+                          color="green"
+                          leftSection={<IconLock size={14} />}
+                          loading={closePeriod.isPending}
+                          onClick={() => void handleClosePeriod(period)}
+                        >
+                          Chốt
+                        </Button>
+                      ) : null}
+                      {canEdit && period.status === "CLOSED" ? (
+                        <Button
+                          size="xs"
+                          color="orange"
+                          variant="light"
+                          leftSection={<IconLockOpen size={14} />}
+                          onClick={() => setReopenTarget(period)}
+                        >
+                          Mở khóa
+                        </Button>
+                      ) : null}
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+              {!periodsQuery.isLoading && periods.length === 0 ? (
+                <Table.Tr>
+                  <Table.Td colSpan={6}>
+                    <Text c="dimmed" ta="center" py="xl">
+                      Chưa có kỳ công nào trong năm này.
+                    </Text>
+                  </Table.Td>
+                </Table.Tr>
+              ) : null}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
       </Stack>
 
       <Modal
@@ -415,49 +418,51 @@ export function TimesheetPeriodsPage() {
             <Badge color="green">Đã xác nhận: {counts.CONFIRMED}</Badge>
             <Badge color="orange">Khiếu nại: {counts.DISPUTED}</Badge>
           </Group>
-          <Table striped withTableBorder>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Nhân viên</Table.Th>
-                <Table.Th>Trạng thái</Table.Th>
-                <Table.Th>Ghi chú</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {confirmations.map((confirmation) => (
-                <Table.Tr key={confirmation.id}>
-                  <Table.Td>
-                    <Text fw={600}>{confirmation.employee?.fullName ?? confirmation.employeeId}</Text>
-                    <Text size="xs" c="dimmed">
-                      {confirmation.employee?.employeeCode ?? "-"}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Badge color={confirmationStatusColor[confirmation.status]} variant="light">
-                      {confirmationStatusLabel[confirmation.status]}
-                    </Badge>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text size="sm">
-                      {confirmation.disputeNote ??
-                        (confirmation.confirmedAt
-                          ? `Xác nhận ${toDateOnly(confirmation.confirmedAt)}`
-                          : "-")}
-                    </Text>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-              {!confirmationsQuery.isLoading && confirmations.length === 0 ? (
+          <ScrollArea type="auto">
+            <Table striped withTableBorder miw={560}>
+              <Table.Thead>
                 <Table.Tr>
-                  <Table.Td colSpan={3}>
-                    <Text c="dimmed" ta="center" py="md">
-                      Chưa có dòng xác nhận nào.
-                    </Text>
-                  </Table.Td>
+                  <Table.Th>Nhân viên</Table.Th>
+                  <Table.Th>Trạng thái</Table.Th>
+                  <Table.Th>Ghi chú</Table.Th>
                 </Table.Tr>
-              ) : null}
-            </Table.Tbody>
-          </Table>
+              </Table.Thead>
+              <Table.Tbody>
+                {confirmations.map((confirmation) => (
+                  <Table.Tr key={confirmation.id}>
+                    <Table.Td>
+                      <Text fw={600}>{confirmation.employee?.fullName ?? confirmation.employeeId}</Text>
+                      <Text size="xs" c="dimmed">
+                        {confirmation.employee?.employeeCode ?? "-"}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge color={confirmationStatusColor[confirmation.status]} variant="light">
+                        {confirmationStatusLabel[confirmation.status]}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm">
+                        {confirmation.disputeNote ??
+                          (confirmation.confirmedAt
+                            ? `Xác nhận ${toDateOnly(confirmation.confirmedAt)}`
+                            : "-")}
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+                {!confirmationsQuery.isLoading && confirmations.length === 0 ? (
+                  <Table.Tr>
+                    <Table.Td colSpan={3}>
+                      <Text c="dimmed" ta="center" py="md">
+                        Chưa có dòng xác nhận nào.
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                ) : null}
+              </Table.Tbody>
+            </Table>
+          </ScrollArea>
         </Stack>
       </Modal>
 
