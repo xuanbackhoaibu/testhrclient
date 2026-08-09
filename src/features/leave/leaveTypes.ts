@@ -10,11 +10,16 @@ export interface LeaveRequest {
   leaveType: string;
   startDate: string;
   endDate: string;
+  startHalfDaySession?: LeaveHalfDaySession;
+  endHalfDaySession?: LeaveHalfDaySession;
   totalDays: number;
   reason: string;
+  attachmentUrl?: string | null;
   status: string;
   approvalSteps?: LeaveApprovalStep[];
 }
+
+export type LeaveHalfDaySession = 'FULL_DAY' | 'MORNING' | 'AFTERNOON';
 
 export interface LeaveApprovalStep {
   id: string;
@@ -50,7 +55,10 @@ export interface LeaveRequestPayload {
   leaveType: string;
   startDate: string;
   endDate: string;
+  startHalfDaySession?: LeaveHalfDaySession;
+  endHalfDaySession?: LeaveHalfDaySession;
   totalDays: number;
   reason: string;
+  attachmentUrl?: string;
 }
 

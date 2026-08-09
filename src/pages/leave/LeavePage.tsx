@@ -17,6 +17,12 @@ import { formatDate } from '../../shared/utils/date';
 import { useAuth } from '../../features/auth/useAuth';
 import { HR_PERMISSIONS } from '../../features/auth/permissions';
 
+const HALF_DAY_SESSION_OPTIONS = [
+  { value: 'FULL_DAY', label: 'Full day' },
+  { value: 'MORNING', label: 'Morning' },
+  { value: 'AFTERNOON', label: 'Afternoon' },
+] as const;
+
 export function LeavePage() {
   const queryClient = useQueryClient();
   const { can } = useAuth();
@@ -64,6 +70,8 @@ export function LeavePage() {
 
   const currentApprovalStep = (record: { status: string; approvalSteps?: Array<{ stepOrder: number; stepName: string; status: string }> }) =>
     record.status === 'SUBMITTED' ? (record.approvalSteps?.find((step) => step.status === 'SUBMITTED') ?? null) : null;
+  const sessionLabel = (value?: string | null) =>
+    HALF_DAY_SESSION_OPTIONS.find((item) => item.value === value)?.label ?? 'Full day';
 
   return (
     <>
@@ -99,6 +107,10 @@ export function LeavePage() {
               { title: 'Type', dataIndex: 'leaveType' },
               { title: 'Start date', render: (_, record) => formatDate(record.startDate) },
               { title: 'End date', render: (_, record) => formatDate(record.endDate) },
+              {
+                title: 'Session',
+                render: (_, record) => `${sessionLabel(record.startHalfDaySession)} - ${sessionLabel(record.endHalfDaySession)}`,
+              },
               { title: 'Total days', dataIndex: 'totalDays' },
               { title: 'Status', render: (_, record) => <StatusTag status={record.status} /> },
               {
@@ -187,11 +199,26 @@ export function LeavePage() {
           >
             <Input type="date" />
           </Form.Item>
-          <Form.Item name="totalDays" label="Total days" rules={[{ required: true, type: 'number', min: 1 }]}>
-            <InputNumber min={1} style={{ width: '100%' }} />
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item name="startHalfDaySession" label="Start session" initialValue="FULL_DAY">
+                <Select options={HALF_DAY_SESSION_OPTIONS.map((item) => ({ value: item.value, label: item.label }))} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="endHalfDaySession" label="End session" initialValue="FULL_DAY">
+                <Select options={HALF_DAY_SESSION_OPTIONS.map((item) => ({ value: item.value, label: item.label }))} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="totalDays" label="Total days" rules={[{ required: true, type: 'number', min: 0.5 }]}>
+            <InputNumber min={0.5} step={0.5} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="reason" label="Reason" rules={[{ required: true }]}>
             <Input.TextArea rows={3} />
+          </Form.Item>
+          <Form.Item name="attachmentUrl" label="Attachment URL">
+            <Input placeholder="Required for sick leave from 3 days" />
           </Form.Item>
         </Form>
       </Drawer>
