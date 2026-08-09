@@ -6,7 +6,7 @@ import dayjs from 'dayjs';
 
 import { approveLeaveRequest, cancelLeaveRequest, createLeaveRequest, rejectLeaveRequest, submitLeaveRequest } from '../../features/leave/leaveApi';
 import type { LeaveRequestPayload } from '../../features/leave/leaveTypes';
-import { useLeaveRequests } from '../../features/leave/useLeaveRequests';
+import { useLeaveRequests, useLeaveTypes } from '../../features/leave/useLeaveRequests';
 import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { LEAVE_TYPE_OPTIONS } from '../../shared/constants/statuses';
 import { ErrorState } from '../../shared/components/ErrorState';
@@ -17,6 +17,12 @@ import { formatDate } from '../../shared/utils/date';
 import { useAuth } from '../../features/auth/useAuth';
 import { HR_PERMISSIONS } from '../../features/auth/permissions';
 
+const HALF_DAY_SESSION_OPTIONS = [
+  { value: 'FULL_DAY', label: 'Full day' },
+  { value: 'MORNING', label: 'Morning' },
+  { value: 'AFTERNOON', label: 'Afternoon' },
+] as const;
+
 export function LeavePage() {
   const queryClient = useQueryClient();
   const { can } = useAuth();
@@ -24,6 +30,7 @@ export function LeavePage() {
   const [open, setOpen] = useState(false);
   const [params, setParams] = useState({ page: 1, pageSize: 10, employeeId: undefined as string | undefined, leaveType: undefined as string | undefined, status: undefined as string | undefined });
   const { data, isLoading, error, refetch } = useLeaveRequests(params);
+  const { data: leaveTypes = [], isLoading: isLeaveTypesLoading } = useLeaveTypes();
 
   const createMutation = useMutation({
     mutationFn: createLeaveRequest,
@@ -61,6 +68,11 @@ export function LeavePage() {
     return <ErrorState onRetry={() => void refetch()} />;
   }
 
+  const currentApprovalStep = (record: { status: string; approvalSteps?: Array<{ stepOrder: number; stepName: string; status: string }> }) =>
+    record.status === 'SUBMITTED' ? (record.approvalSteps?.find((step) => step.status === 'SUBMITTED') ?? null) : null;
+  const sessionLabel = (value?: string | null) =>
+    HALF_DAY_SESSION_OPTIONS.find((item) => item.value === value)?.label ?? 'Full day';
+
   return (
     <>
       <PageHeader title="Leave" subtitle="Leave workflow" actions={can(HR_PERMISSIONS.LEAVE_CREATE) ? <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Create</Button> : undefined} />
@@ -88,12 +100,33 @@ export function LeavePage() {
               onChange: (page, pageSize) => setParams((current) => ({ ...current, page, pageSize })),
             }}
             columns={[
-              { title: 'Employee', dataIndex: 'employeeName' },
+              {
+                title: 'Employee',
+                render: (_, record) => record.employeeName ?? record.employee?.fullName ?? record.employeeId,
+              },
               { title: 'Type', dataIndex: 'leaveType' },
               { title: 'Start date', render: (_, record) => formatDate(record.startDate) },
               { title: 'End date', render: (_, record) => formatDate(record.endDate) },
+              {
+                title: 'Session',
+                render: (_, record) => `${sessionLabel(record.startHalfDaySession)} - ${sessionLabel(record.endHalfDaySession)}`,
+              },
               { title: 'Total days', dataIndex: 'totalDays' },
+              {
+                title: 'Notice',
+                render: (_, record) =>
+                  record.lateSubmission
+                    ? `Late (${record.noticeActualDays ?? '-'} / ${record.noticeRequiredDays ?? '-'})`
+                    : `${record.noticeActualDays ?? '-'} / ${record.noticeRequiredDays ?? '-'}`,
+              },
               { title: 'Status', render: (_, record) => <StatusTag status={record.status} /> },
+              {
+                title: 'Approval',
+                render: (_, record) => {
+                  const step = currentApprovalStep(record);
+                  return step ? `Cap ${step.stepOrder}: ${step.stepName}` : '-';
+                },
+              },
               {
                 title: 'Actions',
                 render: (_, record) => (
@@ -108,6 +141,40 @@ export function LeavePage() {
             ]}
           />
         </Space>
+      </Card>
+
+      <Card className="page-card" style={{ marginTop: 16 }}>
+        <Table
+          rowKey="id"
+          dataSource={leaveTypes}
+          loading={isLeaveTypesLoading}
+          pagination={{ pageSize: 10 }}
+          columns={[
+            { title: 'Symbol', dataIndex: 'displaySymbol', width: 90 },
+            { title: 'Code', dataIndex: 'code', width: 180 },
+            { title: 'Name', dataIndex: 'name' },
+            {
+              title: 'Day value',
+              render: (_, record) => record.dayValue ?? '-',
+              width: 110,
+            },
+            {
+              title: 'Quota',
+              dataIndex: 'quotaMode',
+              width: 190,
+            },
+            {
+              title: 'Status',
+              render: (_, record) => <StatusTag status={record.hrRuleStatus} />,
+              width: 170,
+            },
+            {
+              title: 'Annual leave',
+              render: (_, record) => (record.deductsAnnualLeave ? 'Yes' : 'No'),
+              width: 130,
+            },
+          ]}
+        />
       </Card>
 
       <Drawer title="Create leave request" open={open} width={500} destroyOnClose onClose={() => { setOpen(false); form.resetFields(); }} extra={<Button type="primary" loading={createMutation.isPending} onClick={() => void form.submit()}>Save</Button>}>
@@ -139,11 +206,26 @@ export function LeavePage() {
           >
             <Input type="date" />
           </Form.Item>
-          <Form.Item name="totalDays" label="Total days" rules={[{ required: true, type: 'number', min: 1 }]}>
-            <InputNumber min={1} style={{ width: '100%' }} />
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item name="startHalfDaySession" label="Start session" initialValue="FULL_DAY">
+                <Select options={HALF_DAY_SESSION_OPTIONS.map((item) => ({ value: item.value, label: item.label }))} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="endHalfDaySession" label="End session" initialValue="FULL_DAY">
+                <Select options={HALF_DAY_SESSION_OPTIONS.map((item) => ({ value: item.value, label: item.label }))} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="totalDays" label="Total days" rules={[{ required: true, type: 'number', min: 0.5 }]}>
+            <InputNumber min={0.5} step={0.5} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="reason" label="Reason" rules={[{ required: true }]}>
             <Input.TextArea rows={3} />
+          </Form.Item>
+          <Form.Item name="attachmentUrl" label="Attachment URL">
+            <Input placeholder="Required for sick leave from 3 days" />
           </Form.Item>
         </Form>
       </Drawer>
