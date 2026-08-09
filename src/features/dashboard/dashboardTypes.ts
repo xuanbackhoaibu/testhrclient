@@ -42,6 +42,18 @@ export interface DashboardPayrollHandoff {
   formatStatus: string;
 }
 
+export interface DashboardLeaveExpiryRisks {
+  status: string;
+  items: Array<{
+    employeeId: string;
+    employeeCode?: string | null;
+    fullName?: string | null;
+    remainingDays: number;
+    expiresAt: string;
+  }>;
+  message?: string;
+}
+
 export interface DashboardSummary {
   totalEmployees: number;
   activeEmployees: number;
@@ -56,4 +68,5 @@ export interface DashboardSummary {
   employeesByEmploymentStatus: DashboardMetric[];
   attendanceThisMonth: DashboardAttendanceThisMonth;
   payrollHandoff: DashboardPayrollHandoff;
+  leaveExpiryRisks: DashboardLeaveExpiryRisks;
 }

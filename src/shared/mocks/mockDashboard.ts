@@ -45,5 +45,10 @@ export function getMockDashboardSummary(): DashboardSummary {
       latestClosedPeriod: { id: 'period-1', month: 7, year: 2026, status: 'CLOSED' },
       formatStatus: 'PENDING_PAYROLL_FORMAT_CONFIRMATION',
     },
+    leaveExpiryRisks: {
+      status: 'PENDING_HR_CSV_RECONCILIATION',
+      items: [],
+      message: 'Chua hien thi phep sap het han cho toi khi HR doi chieu xong quy phep Excel/CSV.',
+    },
   };
 }

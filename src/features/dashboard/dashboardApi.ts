@@ -4,6 +4,7 @@ import { mockDelay } from "../../shared/mocks/mockHelpers";
 import type {
   DashboardAttendanceRate,
   DashboardLateEmployee,
+  DashboardLeaveExpiryRisks,
   DashboardMetric,
   DashboardPayrollHandoff,
   DashboardSummary,
@@ -40,6 +41,7 @@ interface DashboardSummaryApiResponse {
     leaveBalanceMode?: string;
   };
   payrollHandoff?: DashboardPayrollHandoff;
+  leaveExpiryRisks?: DashboardLeaveExpiryRisks;
 }
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === "true";
@@ -104,6 +106,12 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
       closedPeriods: 0,
       latestClosedPeriod: null,
       formatStatus: "PENDING_PAYROLL_FORMAT_CONFIRMATION",
+    },
+    leaveExpiryRisks: response.leaveExpiryRisks ?? {
+      status: "PENDING_HR_CSV_RECONCILIATION",
+      items: [],
+      message:
+        "Chua hien thi phep sap het han cho toi khi HR doi chieu xong quy phep Excel/CSV.",
     },
   };
 }

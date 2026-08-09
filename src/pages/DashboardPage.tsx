@@ -278,6 +278,20 @@ export function DashboardPage() {
                   Dang doi chieu CSV
                 </Badge>
               </Group>
+              <Group justify="space-between" align="flex-start">
+                <Stack gap={0}>
+                  <Text size="sm" c="dimmed">
+                    Phep sap het han
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {data.leaveExpiryRisks.message ??
+                      "Dang cho du lieu quy phep."}
+                  </Text>
+                </Stack>
+                <Badge color="yellow" variant="light">
+                  {data.leaveExpiryRisks.items.length.toLocaleString("vi-VN")}
+                </Badge>
+              </Group>
             </Stack>
           </Paper>
         </SimpleGrid>
