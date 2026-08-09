@@ -74,6 +74,64 @@ export interface RecomputeResult {
   skippedAdjusted: number;
 }
 
+export type TimesheetPeriodStatus =
+  | 'DRAFT'
+  | 'PENDING_EMPLOYEE'
+  | 'PENDING_HR'
+  | 'CLOSED';
+
+export type TimesheetConfirmationStatus = 'PENDING' | 'CONFIRMED' | 'DISPUTED';
+
+export interface TimesheetPeriod {
+  id: string;
+  month: number;
+  year: number;
+  unitId: string | null;
+  status: TimesheetPeriodStatus;
+  confirmDeadline: string | null;
+  openedAt: string | null;
+  openedBy: string | null;
+  closedAt: string | null;
+  closedBy: string | null;
+  reopenedAt: string | null;
+  reopenedBy: string | null;
+  reopenReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  unit?: { id: string; name: string } | null;
+  _count?: { confirmations: number };
+}
+
+export interface TimesheetConfirmation {
+  id: string;
+  periodId: string;
+  employeeId: string;
+  status: TimesheetConfirmationStatus;
+  confirmedAt: string | null;
+  disputeNote: string | null;
+  disputedAt: string | null;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+  resolveNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+  employee?: {
+    employeeCode: string;
+    fullName: string;
+  };
+}
+
+export interface OpenTimesheetPeriodPayload {
+  month: number;
+  year: number;
+  unitId?: string;
+  confirmDeadline?: string;
+}
+
+export interface ReopenTimesheetPeriodPayload {
+  reason: string;
+}
+
 /**
  * Bảng ký hiệu cho dropdown sửa tay. Phải khớp bảng backend —
  * `Tr` bị loại vì tính theo giờ, backend chặn (Đ2 còn treo).

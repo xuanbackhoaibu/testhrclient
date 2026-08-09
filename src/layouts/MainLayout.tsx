@@ -31,6 +31,7 @@ import {
   IconTransfer,
   IconUserCheck,
   IconUsers,
+  IconCalendarStats,
 } from "@tabler/icons-react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
@@ -55,6 +56,7 @@ const mainItems: NavItem[] = [
   { label: "Chấm công", path: ROUTES.attendance, icon: IconClipboardList },
   { label: "Xử lý mapping", path: ROUTES.attendanceMapping, icon: IconLink },
   { label: "Bảng công tháng", path: ROUTES.timesheetGrid, icon: IconTable },
+  { label: "Kỳ công", path: ROUTES.timesheetPeriods, icon: IconCalendarStats },
   { label: "Ca làm việc", path: ROUTES.workShifts, icon: IconClock },
   { label: "Ngày lễ", path: ROUTES.holidays, icon: IconCalendarCheck },
   { label: "Phân ca", path: ROUTES.shiftAssignments, icon: IconCalendarTime },
@@ -93,6 +95,7 @@ const routeTitles: Record<string, string> = {
   [ROUTES.attendance]: "Chấm công",
   [ROUTES.attendanceMapping]: "Xử lý mapping",
   [ROUTES.timesheetGrid]: "Bảng công tháng",
+  [ROUTES.timesheetPeriods]: "Kỳ công",
   [ROUTES.workShifts]: "Ca làm việc",
   [ROUTES.holidays]: "Ngày lễ",
   [ROUTES.shiftAssignments]: "Phân ca",

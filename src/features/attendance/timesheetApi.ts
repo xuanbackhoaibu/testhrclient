@@ -3,11 +3,16 @@ import type {
   AdjustTimesheetDayPayload,
   RecomputePayload,
   RecomputeResult,
+  OpenTimesheetPeriodPayload,
+  ReopenTimesheetPeriodPayload,
   TimesheetGrid,
   TimesheetGridQuery,
+  TimesheetConfirmation,
+  TimesheetPeriod,
 } from './timesheetTypes';
 
 const BASE = '/attendance/timesheet';
+const PERIOD_BASE = '/timesheet/periods';
 
 export async function getTimesheetGrid(
   query: TimesheetGridQuery,
@@ -26,4 +31,31 @@ export async function recomputeTimesheet(
   payload: RecomputePayload,
 ): Promise<RecomputeResult> {
   return api.post<RecomputeResult>(`${BASE}/recompute`, payload);
+}
+
+export async function listTimesheetPeriods(year: number): Promise<TimesheetPeriod[]> {
+  return api.get<TimesheetPeriod[]>(PERIOD_BASE, { params: { year } });
+}
+
+export async function listTimesheetConfirmations(
+  periodId: string,
+): Promise<TimesheetConfirmation[]> {
+  return api.get<TimesheetConfirmation[]>(`${PERIOD_BASE}/${periodId}/confirmations`);
+}
+
+export async function openTimesheetPeriod(
+  payload: OpenTimesheetPeriodPayload,
+): Promise<TimesheetPeriod> {
+  return api.post<TimesheetPeriod>(`${PERIOD_BASE}/open`, payload);
+}
+
+export async function closeTimesheetPeriod(id: string): Promise<TimesheetPeriod> {
+  return api.post<TimesheetPeriod>(`${PERIOD_BASE}/${id}/close`);
+}
+
+export async function reopenTimesheetPeriod(
+  id: string,
+  payload: ReopenTimesheetPeriodPayload,
+): Promise<TimesheetPeriod> {
+  return api.post<TimesheetPeriod>(`${PERIOD_BASE}/${id}/reopen`, payload);
 }

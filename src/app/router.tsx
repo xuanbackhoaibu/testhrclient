@@ -7,6 +7,7 @@ import { MainLayout } from '../layouts/MainLayout';
 import { AttendancePage } from '../pages/attendance/AttendancePage';
 import { AttendanceMappingPage } from '../pages/attendance/AttendanceMappingPage';
 import { TimesheetGridPage } from '../pages/attendance/TimesheetGridPage';
+import { TimesheetPeriodsPage } from '../pages/attendance/TimesheetPeriodsPage';
 import { WorkShiftsPage } from '../pages/attendance/WorkShiftsPage';
 import { HolidaysPage } from '../pages/attendance/HolidaysPage';
 import { ShiftAssignmentsPage } from '../pages/attendance/ShiftAssignmentsPage';
@@ -131,6 +132,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute route={ROUTES.timesheetGrid}>
             <TimesheetGridPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.timesheetPeriods,
+        element: (
+          <ProtectedRoute route={ROUTES.timesheetPeriods}>
+            <TimesheetPeriodsPage />
           </ProtectedRoute>
         ),
       },
