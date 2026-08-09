@@ -112,6 +112,13 @@ export function LeavePage() {
                 render: (_, record) => `${sessionLabel(record.startHalfDaySession)} - ${sessionLabel(record.endHalfDaySession)}`,
               },
               { title: 'Total days', dataIndex: 'totalDays' },
+              {
+                title: 'Notice',
+                render: (_, record) =>
+                  record.lateSubmission
+                    ? `Late (${record.noticeActualDays ?? '-'} / ${record.noticeRequiredDays ?? '-'})`
+                    : `${record.noticeActualDays ?? '-'} / ${record.noticeRequiredDays ?? '-'}`,
+              },
               { title: 'Status', render: (_, record) => <StatusTag status={record.status} /> },
               {
                 title: 'Approval',

@@ -15,6 +15,9 @@ export interface LeaveRequest {
   totalDays: number;
   reason: string;
   attachmentUrl?: string | null;
+  noticeRequiredDays?: number | null;
+  noticeActualDays?: number | null;
+  lateSubmission?: boolean;
   status: string;
   approvalSteps?: LeaveApprovalStep[];
 }

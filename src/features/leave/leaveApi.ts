@@ -14,6 +14,7 @@ const mockApprovalSteps = [
   { stepOrder: 3, stepCode: 'OFFICE_CHIEF', stepName: 'Chanh van phong' },
   { stepOrder: 4, stepCode: 'BOARD', stepName: 'Ban TGD' },
 ] as const;
+const millisecondsPerDay = 24 * 60 * 60 * 1000;
 const mockLeavePolicyTypes: LeavePolicyType[] = [
   { id: 'lpt-work-full', code: 'WORK_FULL', name: 'Lam viec ca ngay', displaySymbol: '+', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
   { id: 'lpt-work-half', code: 'WORK_HALF', name: 'Lam viec nua ngay', displaySymbol: '-', deductsAnnualLeave: false, paid: true, dayValue: 0.5, requiresAttachment: false, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
@@ -55,10 +56,35 @@ function ensureMockApprovalSteps(leave: LeaveRequest) {
   return leave.approvalSteps;
 }
 
+function dateOnlyUtc(value: Date) {
+  return Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate());
+}
+
+function buildMockNotice(startDate: string, totalDays: number) {
+  const start = new Date(startDate);
+  const today = new Date();
+  const noticeRequiredDays = totalDays <= 3 ? 1 : totalDays <= 10 ? 3 : 7;
+  const noticeActualDays = Math.floor((dateOnlyUtc(start) - dateOnlyUtc(today)) / millisecondsPerDay);
+  return {
+    noticeRequiredDays,
+    noticeActualDays,
+    lateSubmission: noticeActualDays < noticeRequiredDays,
+  };
+}
+
+function ensureMockNotice(leave: LeaveRequest) {
+  if (leave.noticeRequiredDays === undefined || leave.noticeActualDays === undefined) {
+    Object.assign(leave, buildMockNotice(leave.startDate, leave.totalDays));
+  }
+}
+
 export async function listLeaveRequests(params: ListQueryParams = {}): Promise<PaginatedResponse<LeaveRequest>> {
   if (isMockMode) {
     await mockDelay();
-    mockLeaveRequests.forEach(ensureMockApprovalSteps);
+    mockLeaveRequests.forEach((item) => {
+      ensureMockApprovalSteps(item);
+      ensureMockNotice(item);
+    });
     const filtered = mockLeaveRequests
       .filter((item) => (params.employeeId ? item.employeeId === params.employeeId : true))
       .filter((item) => (params.leaveType ? item.leaveType === params.leaveType : true))
@@ -94,6 +120,7 @@ export async function createLeaveRequest(payload: LeaveRequestPayload): Promise<
       id: generateId('lv'),
       employeeName: employee?.fullName ?? payload.employeeId,
       ...payload,
+      ...buildMockNotice(payload.startDate, payload.totalDays),
       status: 'DRAFT',
     };
     leaveRequest.approvalSteps = buildMockApprovalSteps(leaveRequest.id);
