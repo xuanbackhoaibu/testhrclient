@@ -6,6 +6,7 @@ import { AuthLayout } from '../layouts/AuthLayout';
 import { MainLayout } from '../layouts/MainLayout';
 import { AttendancePage } from '../pages/attendance/AttendancePage';
 import { AttendanceMappingPage } from '../pages/attendance/AttendanceMappingPage';
+import { TimesheetGridPage } from '../pages/attendance/TimesheetGridPage';
 import { WorkShiftsPage } from '../pages/attendance/WorkShiftsPage';
 import { HolidaysPage } from '../pages/attendance/HolidaysPage';
 import { ShiftAssignmentsPage } from '../pages/attendance/ShiftAssignmentsPage';
@@ -122,6 +123,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute route={ROUTES.attendanceMapping}>
             <AttendanceMappingPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.timesheetGrid,
+        element: (
+          <ProtectedRoute route={ROUTES.timesheetGrid}>
+            <TimesheetGridPage />
           </ProtectedRoute>
         ),
       },

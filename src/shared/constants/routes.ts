@@ -13,6 +13,7 @@ export const ROUTES = {
   leave: '/leave',
   attendance: '/attendance',
   attendanceMapping: '/attendance/mapping',
+  timesheetGrid: '/attendance/timesheet',
   workShifts: '/attendance/shifts',
   holidays: '/attendance/holidays',
   shiftAssignments: '/attendance/assignments',
