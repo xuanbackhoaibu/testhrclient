@@ -61,6 +61,9 @@ export function LeavePage() {
     return <ErrorState onRetry={() => void refetch()} />;
   }
 
+  const currentApprovalStep = (record: { status: string; approvalSteps?: Array<{ stepOrder: number; stepName: string; status: string }> }) =>
+    record.status === 'SUBMITTED' ? (record.approvalSteps?.find((step) => step.status === 'SUBMITTED') ?? null) : null;
+
   return (
     <>
       <PageHeader title="Leave" subtitle="Leave workflow" actions={can(HR_PERMISSIONS.LEAVE_CREATE) ? <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Create</Button> : undefined} />
@@ -88,12 +91,22 @@ export function LeavePage() {
               onChange: (page, pageSize) => setParams((current) => ({ ...current, page, pageSize })),
             }}
             columns={[
-              { title: 'Employee', dataIndex: 'employeeName' },
+              {
+                title: 'Employee',
+                render: (_, record) => record.employeeName ?? record.employee?.fullName ?? record.employeeId,
+              },
               { title: 'Type', dataIndex: 'leaveType' },
               { title: 'Start date', render: (_, record) => formatDate(record.startDate) },
               { title: 'End date', render: (_, record) => formatDate(record.endDate) },
               { title: 'Total days', dataIndex: 'totalDays' },
               { title: 'Status', render: (_, record) => <StatusTag status={record.status} /> },
+              {
+                title: 'Approval',
+                render: (_, record) => {
+                  const step = currentApprovalStep(record);
+                  return step ? `Cap ${step.stepOrder}: ${step.stepName}` : '-';
+                },
+              },
               {
                 title: 'Actions',
                 render: (_, record) => (
