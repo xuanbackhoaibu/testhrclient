@@ -299,7 +299,7 @@ export function PermissionGroupsPage() {
         </Stack>
       </Modal>
 
-      {/* Detail drawer */}
+      {/* Ngăn kéo chi tiết */}
       <Drawer
         opened={detailOpened}
         onClose={() => { closeDetail(); setDetailGroupId(null); setEditGroup(null); }}

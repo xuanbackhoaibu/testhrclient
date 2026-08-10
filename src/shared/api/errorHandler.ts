@@ -173,7 +173,7 @@ export async function handleAxiosResponseError(
   ) {
     showError(
       appendRequestId(
-        'Tai khoan cua ban chua duoc lien ket voi ho so nhan su. Vui long lien he quan tri vien de duoc cap ho so nhan su truoc khi su dung lich.',
+        'Tài khoản của bạn chưa được liên kết với hồ sơ nhân sự. Vui lòng liên hệ quản trị viên để được cấp hồ sơ nhân sự trước khi sử dụng lịch.',
         apiError.requestId,
       ),
     );

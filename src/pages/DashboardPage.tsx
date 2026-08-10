@@ -75,7 +75,7 @@ function AttendanceRateList({
         <Text fw={650}>{title}</Text>
         {items.length === 0 ? (
           <Text size="sm" c="dimmed">
-            Chua co du lieu cong thang nay.
+            Chưa có dữ liệu công tháng này.
           </Text>
         ) : (
           items.slice(0, 6).map((item) => (
@@ -88,7 +88,7 @@ function AttendanceRateList({
                 <Text size="sm">{item[labelKey] ?? "-"}</Text>
                 <Text size="xs" c="dimmed">
                   {item.attendedDays.toLocaleString("vi-VN")}/
-                  {item.workDays.toLocaleString("vi-VN")} ngay
+                  {item.workDays.toLocaleString("vi-VN")} ngày
                 </Text>
               </Stack>
               <Badge
@@ -121,19 +121,19 @@ function TopLateTable({
   return (
     <Paper p="md" radius="md">
       <Stack gap="sm">
-        <Text fw={650}>Nhan su di muon nhieu nhat</Text>
+        <Text fw={650}>Nhân sự đi muộn nhiều nhất</Text>
         {items.length === 0 ? (
           <Text size="sm" c="dimmed">
-            Chua ghi nhan lan di muon trong thang nay.
+            Chưa ghi nhận lần đi muộn trong tháng này.
           </Text>
         ) : (
           <Table striped highlightOnHover withTableBorder>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Nhan su</Table.Th>
-                <Table.Th>Don vi</Table.Th>
-                <Table.Th ta="right">Lan</Table.Th>
-                <Table.Th ta="right">Phut</Table.Th>
+                <Table.Th>Nhân sự</Table.Th>
+                <Table.Th>Đơn vị</Table.Th>
+                <Table.Th ta="right">Lần</Table.Th>
+                <Table.Th ta="right">Phút</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -189,25 +189,25 @@ export function DashboardPage() {
   }
 
   const metrics = [
-    { title: "Tong nhan su", value: data.totalEmployees },
-    { title: "Dang lam viec", value: data.activeEmployees },
-    { title: "Tuyen moi thang nay", value: data.newHiresThisMonth },
-    { title: "Nghi viec thang nay", value: data.terminatedThisMonth },
-    { title: "Don nghi phep cho duyet", value: data.pendingLeaveRequests },
+    { title: "Tổng nhân sự", value: data.totalEmployees },
+    { title: "Đang làm việc", value: data.activeEmployees },
+    { title: "Tuyển mới tháng này", value: data.newHiresThisMonth },
+    { title: "Nghỉ việc tháng này", value: data.terminatedThisMonth },
+    { title: "Đơn nghỉ phép chờ duyệt", value: data.pendingLeaveRequests },
     {
-      title: "Giai trinh cham cong cho duyet",
+      title: "Giải trình chấm công chờ duyệt",
       value: data.pendingAttendanceExplanations,
     },
-    { title: "Dieu chuyen cho xu ly", value: data.pendingMovements },
-    { title: "Onboarding dang chay", value: data.onboardingInProgress },
-    { title: "Offboarding dang chay", value: data.offboardingInProgress },
+    { title: "Điều chuyển chờ xử lý", value: data.pendingMovements },
+    { title: "Onboarding đang chạy", value: data.onboardingInProgress },
+    { title: "Offboarding đang chạy", value: data.offboardingInProgress },
   ];
 
   return (
     <>
       <PageHeader
         title="Dashboard"
-        subtitle="Tong quan van hanh HRM, cham cong, nghi phep va du lieu ban giao luong."
+        subtitle="Tổng quan vận hành HRM, chấm công, nghỉ phép và dữ liệu bàn giao lương."
       />
 
       <Stack gap="md">
@@ -222,9 +222,9 @@ export function DashboardPage() {
         </SimpleGrid>
 
         <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
-          <BreakdownList title="Nhan su theo don vi" items={data.employeesByUnit} />
+          <BreakdownList title="Nhân sự theo đơn vị" items={data.employeesByUnit} />
           <BreakdownList
-            title="Nhan su theo trang thai"
+            title="Nhân sự theo trạng thái"
             items={data.employeesByEmploymentStatus}
           />
         </SimpleGrid>
@@ -233,10 +233,10 @@ export function DashboardPage() {
           <TopLateTable items={data.attendanceThisMonth.topLateEmployees} />
           <Paper p="md" radius="md">
             <Stack gap="sm">
-              <Text fw={650}>Chuan bi ban giao luong</Text>
+              <Text fw={650}>Chuẩn bị bàn giao lương</Text>
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">
-                  Ky cong da chot
+                  Kỳ công đã chốt
                 </Text>
                 <Text size="sm" fw={650}>
                   {data.payrollHandoff.closedPeriods.toLocaleString("vi-VN")}
@@ -244,7 +244,7 @@ export function DashboardPage() {
               </Group>
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">
-                  Ky moi nhat
+                  Kỳ mới nhất
                 </Text>
                 <Text size="sm" fw={650}>
                   {data.payrollHandoff.latestClosedPeriod
@@ -254,15 +254,15 @@ export function DashboardPage() {
               </Group>
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">
-                  Dinh dang luong
+                  Định dạng lương
                 </Text>
                 <Badge color="yellow" variant="light">
-                  Cho chot
+                  Chờ chốt
                 </Badge>
               </Group>
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">
-                  Phep nam da dung thang nay
+                  Phép năm đã dùng tháng này
                 </Text>
                 <Text size="sm" fw={650}>
                   {data.attendanceThisMonth.annualLeaveDaysUsed.toLocaleString(
@@ -272,20 +272,20 @@ export function DashboardPage() {
               </Group>
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">
-                  Quy phep
+                  Quỹ phép
                 </Text>
                 <Badge color="yellow" variant="light">
-                  Dang doi chieu CSV
+                  Đang đối chiếu CSV
                 </Badge>
               </Group>
               <Group justify="space-between" align="flex-start">
                 <Stack gap={0}>
                   <Text size="sm" c="dimmed">
-                    Phep sap het han
+                    Phép sắp hết hạn
                   </Text>
                   <Text size="xs" c="dimmed">
                     {data.leaveExpiryRisks.message ??
-                      "Dang cho du lieu quy phep."}
+                      "Đang chờ dữ liệu quỹ phép."}
                   </Text>
                 </Stack>
                 <Badge color="yellow" variant="light">
@@ -298,12 +298,12 @@ export function DashboardPage() {
 
         <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
           <AttendanceRateList
-            title="Chuyen can theo don vi"
+            title="Chuyên cần theo đơn vị"
             items={data.attendanceThisMonth.byUnit}
             labelKey="unitName"
           />
           <AttendanceRateList
-            title="Chuyen can theo phong ban"
+            title="Chuyên cần theo phòng ban"
             items={data.attendanceThisMonth.byDepartment}
             labelKey="departmentName"
           />

@@ -18,8 +18,13 @@ function files(directory) {
   });
 }
 
+function shouldSkip(file) {
+  return /(?:^|[\\/])(?:__tests__|test|tests)[\\/]/i.test(file) || /\.test\.[cm]?[tj]sx?$/i.test(file);
+}
+
+const sourceFiles = files(root).filter((file) => !shouldSkip(file));
 const rows = [];
-for (const file of files(root)) {
+for (const file of sourceFiles) {
   const content = fs.readFileSync(file, 'utf8');
   const lines = content.split(/\r?\n/);
   for (const [offset, line] of lines.entries()) {
@@ -35,7 +40,7 @@ const markdown = [
   '# HR web client text inventory',
   '',
   `Generated: ${new Date().toISOString()}`,
-  `Files scanned: ${files(root).length}`,
+  `Files scanned: ${sourceFiles.length}`,
   `Findings: ${rows.length}`,
   '',
   '| File | Dòng | Text hiện tại | Text đề xuất | Loại lỗi | Trạng thái |',
@@ -45,4 +50,4 @@ const markdown = [
   'Các mã quyền, enum API, route, URL và object key không nằm trong phạm vi thay thế tự động.',
 ].join('\n');
 fs.writeFileSync(output, `${markdown}\n`);
-console.log(JSON.stringify({ filesScanned: files(root).length, findings: rows.length, output: path.relative(process.cwd(), output) }, null, 2));
+console.log(JSON.stringify({ filesScanned: sourceFiles.length, findings: rows.length, output: path.relative(process.cwd(), output) }, null, 2));
