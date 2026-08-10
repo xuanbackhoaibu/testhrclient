@@ -82,12 +82,12 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
       response.pendingAttendanceExplanations,
     ),
     employeesByUnit: (response.employeesByUnit ?? []).map((metric, index) =>
-      toDashboardMetric(metric, `Don vi ${index + 1}`),
+      toDashboardMetric(metric, `Đơn vị ${index + 1}`),
     ),
     employeesByEmploymentStatus: (
       response.employeesByEmploymentStatus ?? []
     ).map((metric, index) =>
-      toDashboardMetric(metric, `Trang thai ${index + 1}`),
+      toDashboardMetric(metric, `Trạng thái ${index + 1}`),
     ),
     attendanceThisMonth: {
       month: toCount(response.attendanceThisMonth?.month),
