@@ -173,7 +173,7 @@ export async function handleAxiosResponseError(
   ) {
     showError(
       appendRequestId(
-        'Tai khoan cua ban chua duoc lien ket voi ho so nhan su. Vui long lien he quan tri vien de duoc cap ho so nhan su truoc khi su dung lich.',
+        'Tài khoản của bạn chưa được liên kết với hồ sơ nhân sự. Vui lòng liên hệ quản trị viên để được cấp hồ sơ nhân sự trước khi sử dụng lịch.',
         apiError.requestId,
       ),
     );
@@ -181,6 +181,20 @@ export async function handleAxiosResponseError(
   }
 
   if (apiError.statusCode === 409) {
+    if (apiError.errorCode === 'HR_PROJECTION_NOT_READY') {
+      showError(appendRequestId(
+        'Dữ liệu nhân sự đang được đồng bộ sang hệ thống tài khoản. Vui lòng thử lại sau ít phút.',
+        apiError.requestId,
+      ));
+      return Promise.reject(apiError);
+    }
+    if (apiError.errorCode === 'IDENTITY_CONFLICT') {
+      showError(appendRequestId(
+        'Dữ liệu định danh nhân sự đang bị trùng. Vui lòng liên hệ quản trị viên xử lý.',
+        apiError.requestId,
+      ));
+      return Promise.reject(apiError);
+    }
     showError(appendRequestId(
       AUTHORIZATION_MESSAGES[apiError.errorCode]
         || `${apiError.message || STATUS_MESSAGES[409]} Vui lòng tải lại dữ liệu trước khi thử lại.`,

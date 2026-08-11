@@ -26,7 +26,7 @@ export function ContractsPage() {
   const createMutation = useMutation({
     mutationFn: createContract,
     onSuccess: async () => {
-      message.success('Đã tạo contract.');
+      message.success('Đã tạo hợp đồng.');
       setOpen(false);
       form.resetFields();
       await queryClient.invalidateQueries({ queryKey: ['contracts'] });
@@ -36,7 +36,7 @@ export function ContractsPage() {
   const terminateMutation = useMutation({
     mutationFn: ({ id, endDate }: { id: string; endDate: string }) => terminateContract(id, { endDate }),
     onSuccess: async () => {
-      message.success('Đã terminate contract.');
+      message.success('Đã chấm dứt hợp đồng.');
       setTerminateId(null);
       terminateForm.resetFields();
       await queryClient.invalidateQueries({ queryKey: ['contracts'] });
@@ -53,15 +53,15 @@ export function ContractsPage() {
 
   return (
     <>
-      <PageHeader title="Contracts" subtitle="Contract metadata demo cho HRM phase 1." actions={<Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Create</Button>} />
+      <PageHeader title="Hợp đồng" subtitle="Demo metadata hợp đồng cho HRM phase 1." actions={<Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Tạo mới</Button>} />
       <Card className="page-card">
         <Space orientation="vertical" size={16} style={{ width: '100%' }}>
           <Row gutter={12}>
             <Col xs={24} md={10}>
-              <Select allowClear placeholder="Employee" style={{ width: '100%' }} options={mockEmployees.map((item) => ({ value: item.id, label: item.fullName }))} onChange={(value) => setParams((current) => ({ ...current, employeeId: value }))} />
+              <Select allowClear placeholder="Nhân viên" style={{ width: '100%' }} options={mockEmployees.map((item) => ({ value: item.id, label: item.fullName }))} onChange={(value) => setParams((current) => ({ ...current, employeeId: value }))} />
             </Col>
             <Col xs={24} md={6}>
-              <Select allowClear placeholder="Status" style={{ width: '100%' }} options={['ACTIVE', 'COMPLETED', 'TERMINATED'].map((item) => ({ value: item, label: item }))} onChange={(value) => setParams((current) => ({ ...current, status: value }))} />
+              <Select allowClear placeholder="Trạng thái" style={{ width: '100%' }} options={['ACTIVE', 'COMPLETED', 'TERMINATED'].map((item) => ({ value: item, label: item }))} onChange={(value) => setParams((current) => ({ ...current, status: value }))} />
             </Col>
           </Row>
 
@@ -75,16 +75,16 @@ export function ContractsPage() {
               onChange: (page, pageSize) => setParams((current) => ({ ...current, page, pageSize })),
             }}
             columns={[
-              { title: 'Employee', dataIndex: 'employeeName' },
-              { title: 'Contract no', dataIndex: 'contractNo' },
-              { title: 'Type', dataIndex: 'contractType' },
-              { title: 'Start date', render: (_, record) => formatDate(record.startDate) },
-              { title: 'End date', render: (_, record) => formatDate(record.endDate) },
-              { title: 'Status', render: (_, record) => <StatusTag status={record.status} /> },
+              { title: 'Nhân viên', dataIndex: 'employeeName' },
+              { title: 'Số hợp đồng', dataIndex: 'contractNo' },
+              { title: 'Loại', dataIndex: 'contractType' },
+              { title: 'Ngày bắt đầu', render: (_, record) => formatDate(record.startDate) },
+              { title: 'Ngày kết thúc', render: (_, record) => formatDate(record.endDate) },
+              { title: 'Trạng thái', render: (_, record) => <StatusTag status={record.status} /> },
               {
-                title: 'Actions',
+                title: 'Thao tác',
                 render: (_, record) => (
-                  record.status !== 'TERMINATED' ? <Button onClick={() => setTerminateId(record.id)}>Terminate</Button> : null
+                  record.status !== 'TERMINATED' ? <Button onClick={() => setTerminateId(record.id)}>Chấm dứt</Button> : null
                 ),
               },
             ]}
@@ -92,32 +92,32 @@ export function ContractsPage() {
         </Space>
       </Card>
 
-      <Drawer title="Create contract" open={open} width={460} destroyOnClose onClose={() => { setOpen(false); form.resetFields(); }} extra={<Button type="primary" loading={createMutation.isPending} onClick={() => void form.submit()}>Save</Button>}>
+      <Drawer title="Tạo hợp đồng" open={open} width={460} destroyOnClose onClose={() => { setOpen(false); form.resetFields(); }} extra={<Button type="primary" loading={createMutation.isPending} onClick={() => void form.submit()}>Lưu</Button>}>
         <Form form={form} layout="vertical" onFinish={(values) => createMutation.mutate(values)} initialValues={{ status: 'ACTIVE' }}>
-          <Form.Item name="employeeId" label="Employee" rules={[{ required: true }]}>
+          <Form.Item name="employeeId" label="Nhân viên" rules={[{ required: true }]}>
             <Select options={mockEmployees.map((item) => ({ value: item.id, label: item.fullName }))} />
           </Form.Item>
-          <Form.Item name="contractNo" label="Contract no" rules={[{ required: true }]}>
+          <Form.Item name="contractNo" label="Số hợp đồng" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="contractType" label="Contract type" rules={[{ required: true }]}>
+          <Form.Item name="contractType" label="Loại hợp đồng" rules={[{ required: true }]}>
             <Select options={CONTRACT_TYPE_OPTIONS.map((item) => ({ value: item, label: item }))} />
           </Form.Item>
-          <Form.Item name="startDate" label="Start date" rules={[{ required: true }]}>
+          <Form.Item name="startDate" label="Ngày bắt đầu" rules={[{ required: true }]}>
             <Input type="date" />
           </Form.Item>
-          <Form.Item name="endDate" label="End date">
+          <Form.Item name="endDate" label="Ngày kết thúc">
             <Input type="date" />
           </Form.Item>
-          <Form.Item name="status" label="Status" rules={[{ required: true }]}>
+          <Form.Item name="status" label="Trạng thái" rules={[{ required: true }]}>
             <Select options={['ACTIVE', 'COMPLETED'].map((item) => ({ value: item, label: item }))} />
           </Form.Item>
         </Form>
       </Drawer>
 
-      <Modal open={Boolean(terminateId)} title="Terminate contract" onCancel={() => setTerminateId(null)} onOk={() => void terminateForm.submit()} confirmLoading={terminateMutation.isPending}>
+      <Modal open={Boolean(terminateId)} title="Chấm dứt hợp đồng" onCancel={() => setTerminateId(null)} onOk={() => void terminateForm.submit()} confirmLoading={terminateMutation.isPending}>
         <Form form={terminateForm} layout="vertical" onFinish={(values) => terminateId && terminateMutation.mutate({ id: terminateId, endDate: values.endDate })}>
-          <Form.Item name="endDate" label="End date" rules={[{ required: true }]}>
+          <Form.Item name="endDate" label="Ngày kết thúc" rules={[{ required: true }]}>
             <Input type="date" />
           </Form.Item>
         </Form>

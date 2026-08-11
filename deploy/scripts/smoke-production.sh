@@ -7,11 +7,7 @@ cd "${ROOT_DIR}"
 PROJECT_NAME="${COMPOSE_PROJECT_NAME:-hr-prod}"
 COMMON_ENV_FILE="${COMMON_ENV_FILE:-${SERVER_RUNTIME_ENV_FILE:-env/.env.hr-web.production}}"
 if [ -z "${VERSIONS_ENV_FILE:-}" ]; then
-  if [ -n "${SERVER_RUNTIME_ENV_FILE:-}" ]; then
-    VERSIONS_ENV_FILE="$(dirname "${SERVER_RUNTIME_ENV_FILE}")/.hr-web-client.versions"
-  else
-    VERSIONS_ENV_FILE="env/.env.versions"
-  fi
+  VERSIONS_ENV_FILE="${PWD}/.hr-web-client.versions"
 fi
 COMPOSE_FILE="${COMPOSE_FILE:-deploy/compose/production.yml}"
 
@@ -92,6 +88,15 @@ fi
 if [ "${CONTAINER_STATUS}" = "unknown" ]; then
   echo "ERROR: Could not determine container status for ${HR_WEB_CONTAINER}" >&2
   exit 64
+fi
+
+if [ -n "${EXPECTED_IMAGE_REF:-}" ]; then
+  ACTUAL_IMAGE_REF="$(docker inspect "${HR_WEB_CONTAINER}" --format '{{.Config.Image}}')"
+  if [ "${ACTUAL_IMAGE_REF}" != "${EXPECTED_IMAGE_REF}" ]; then
+    echo "ERROR: HR Web container image mismatch: expected=${EXPECTED_IMAGE_REF} actual=${ACTUAL_IMAGE_REF}" >&2
+    exit 64
+  fi
+  echo "HR Web running image verified: ${ACTUAL_IMAGE_REF}"
 fi
 
 echo ""

@@ -13,7 +13,7 @@ import {
   TextInput,
   Tooltip,
 } from "@mantine/core";
-import { useDebouncedValue, useDisclosure } from "@mantine/hooks";
+import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,
@@ -45,6 +45,9 @@ import {
   type DataTableColumn,
 } from "../../shared/components/DataTable";
 import { PageHeader } from "../../shared/components/PageHeader";
+import { useImeSafeSearch } from "../../shared/hooks/useImeSafeSearch";
+import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
+import { sortByCode } from "../../shared/utils/sort";
 
 const PAGE_SIZE = 20;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -108,6 +111,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 export function PendingHrLinkAccountsPage() {
+  const selectSearch = useImeSafeSelectFilter();
   const queryClient = useQueryClient();
   const { can } = useAuth();
 
@@ -119,7 +123,13 @@ export function PendingHrLinkAccountsPage() {
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [debouncedSearch] = useDebouncedValue(search, 300);
+  const pendingSearch = useImeSafeSearch({
+    value: search,
+    onSearch: (value) => {
+      setSearch(value);
+      setPage(1);
+    },
+  });
 
   const [claimUser, setClaimUser] = useState<AuthAdminUser | null>(null);
   const [claimForm, setClaimForm] = useState<ClaimFormState>({
@@ -143,21 +153,21 @@ export function PendingHrLinkAccountsPage() {
     useDisclosure(false);
   const [disableOpened, { open: openDisable, close: closeDisable }] =
     useDisclosure(false);
-  const [debouncedEmployeeSearch] = useDebouncedValue(
-    linkForm.employeeSearch,
-    300,
-  );
+  const employeeSearch = useImeSafeSearch({
+    value: linkForm.employeeSearch,
+    onSearch: (value) => setLinkForm((current) => ({ ...current, employeeSearch: value })),
+  });
 
   const pendingQuery = useQuery({
     queryKey: [
       "admin",
       "users",
       "pending-hr-link",
-      { search: debouncedSearch, page },
+      { search, page },
     ],
     queryFn: () =>
       getPendingHrLinkUsers({
-        search: debouncedSearch || undefined,
+        search: search || undefined,
         page,
         pageSize: PAGE_SIZE,
       }),
@@ -165,18 +175,20 @@ export function PendingHrLinkAccountsPage() {
   });
 
   const employeeQuery = useQuery({
-    queryKey: ["employees", "pending-hr-link-search", debouncedEmployeeSearch],
+    queryKey: ["employees", "pending-hr-link-search", linkForm.employeeSearch],
     queryFn: () =>
       listEmployees({
-        search: debouncedEmployeeSearch || undefined,
+        search: linkForm.employeeSearch || undefined,
         page: 1,
         pageSize: 10,
       }),
     enabled: linkOpened,
   });
 
+  // This endpoint is paginated. Sort only the returned candidates here; the
+  // canonical global employee order must be supplied by the backend.
   const employees = useMemo(
-    () => employeeQuery.data?.items ?? employeeQuery.data?.data ?? [],
+    () => sortByCode(employeeQuery.data?.items ?? employeeQuery.data?.data, (employee) => employee.employeeCode),
     [employeeQuery.data],
   );
   const selectedEmployee = useMemo(
@@ -472,17 +484,12 @@ export function PendingHrLinkAccountsPage() {
         Chỉ liên kết khi đã chọn đúng hồ sơ nhân sự từ HRM và xác nhận lại thông tin.
       </Alert>
 
-      <Group gap="sm" className="list-filter-panel">
+      <Group gap="sm">
         <TextInput
-          label="Tìm kiếm"
           placeholder="Tìm theo email, mã nhân sự claim, username..."
           leftSection={<IconSearch size={16} />}
-          value={search}
-          onChange={(event) => {
-            setSearch(event.currentTarget.value);
-            setPage(1);
-          }}
-          className="list-filter-search"
+          {...pendingSearch.inputProps}
+          w={380}
         />
         <Button
           variant="default"
@@ -538,7 +545,7 @@ export function PendingHrLinkAccountsPage() {
               onChange={(event) =>
                 setClaimForm((current) => ({
                   ...current,
-                  claimedEmployeeCode: event.currentTarget.value.trimStart().toUpperCase(),
+                  claimedEmployeeCode: event.currentTarget.value,
                 }))
               }
             />
@@ -548,7 +555,7 @@ export function PendingHrLinkAccountsPage() {
               onChange={(event) =>
                 setClaimForm((current) => ({
                   ...current,
-                  claimedEmail: event.currentTarget.value.trimStart(),
+                  claimedEmail: event.currentTarget.value,
                 }))
               }
             />
@@ -605,17 +612,12 @@ export function PendingHrLinkAccountsPage() {
               label="Tìm hồ sơ nhân sự HRM"
               placeholder="Nhập mã nhân sự, email hoặc họ tên"
               leftSection={<IconSearch size={16} />}
-              value={linkForm.employeeSearch}
-              onChange={(event) =>
-                setLinkForm((current) => ({
-                  ...current,
-                  employeeSearch: event.currentTarget.value,
-                }))
-              }
+              {...employeeSearch.inputProps}
             />
             <Select
               label="Hồ sơ nhân sự chính thức"
               searchable
+              {...selectSearch}
               clearable
               placeholder={
                 employeeQuery.isFetching

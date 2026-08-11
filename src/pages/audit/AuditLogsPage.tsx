@@ -33,21 +33,21 @@ export function AuditLogsPage() {
 
   return (
     <>
-      <PageHeader title="Audit Logs" subtitle="Theo dõi ai thay đổi entity nào và trước/sau ra sao." />
+      <PageHeader title="Nhật ký audit" subtitle="Theo dõi ai thay đổi thực thể nào và trước/sau ra sao." />
       <Card className="page-card">
-        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
           <Row gutter={12}>
             <Col xs={24} md={6}>
-              <Select allowClear placeholder="Entity type" style={{ width: '100%' }} options={['EMPLOYEE', 'LEAVE_REQUEST', 'DEPARTMENT', 'UNIT', 'CONTRACT', 'IMPORT_BATCH'].map((item) => ({ value: item, label: item }))} onChange={(value) => setParams((current) => ({ ...current, entityType: value }))} />
+              <Select allowClear placeholder="Loại thực thể" style={{ width: '100%' }} options={['EMPLOYEE', 'LEAVE_REQUEST', 'DEPARTMENT', 'UNIT', 'CONTRACT', 'IMPORT_BATCH'].map((item) => ({ value: item, label: item }))} onChange={(value) => setParams((current) => ({ ...current, entityType: value }))} />
             </Col>
             <Col xs={24} md={4}>
-              <Input placeholder="Entity ID" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, entityId: value })); }} />
+              <Input placeholder="ID thực thể" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, entityId: value })); }} />
             </Col>
             <Col xs={24} md={4}>
-              <Input placeholder="Action" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, action: value })); }} />
+              <Input placeholder="Hành động" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, action: value })); }} />
             </Col>
             <Col xs={24} md={4}>
-              <Input placeholder="Actor user ID" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, actorUserId: value })); }} />
+              <Input placeholder="ID người thao tác" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, actorUserId: value })); }} />
             </Col>
             <Col xs={24} md={3}>
               <Input type="date" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, fromDate: value })); }} />
@@ -57,7 +57,7 @@ export function AuditLogsPage() {
             </Col>
           </Row>
 
-          <Input.Search placeholder="Search entity type, actor, entity ID" allowClear onSearch={(search) => setParams((current) => ({ ...current, search }))} />
+          <Input.Search placeholder="Tìm loại thực thể, người thao tác, ID thực thể" allowClear onSearch={(search) => setParams((current) => ({ ...current, search }))} />
 
           <Table
             rowKey="id"
@@ -69,25 +69,25 @@ export function AuditLogsPage() {
               onChange: (page, pageSize) => setParams((current) => ({ ...current, page, pageSize })),
             }}
             columns={[
-              { title: 'Entity type', dataIndex: 'entityType' },
-              { title: 'Entity ID', dataIndex: 'entityId' },
-              { title: 'Action', dataIndex: 'action' },
-              { title: 'Actor', dataIndex: 'actorName' },
-              { title: 'Created at', render: (_, record) => formatDateTime(record.createdAt) },
-              { title: 'Actions', render: (_, record) => <Button onClick={() => setSelected(record)}>Detail</Button> },
+              { title: 'Loại thực thể', dataIndex: 'entityType' },
+              { title: 'ID thực thể', dataIndex: 'entityId' },
+              { title: 'Hành động', dataIndex: 'action' },
+              { title: 'Người thao tác', dataIndex: 'actorName' },
+              { title: 'Thời điểm tạo', render: (_, record) => formatDateTime(record.createdAt) },
+              { title: 'Thao tác', render: (_, record) => <Button onClick={() => setSelected(record)}>Chi tiết</Button> },
             ]}
           />
         </Space>
       </Card>
 
-      <Modal open={Boolean(selected)} title="Audit log detail" footer={null} width={900} onCancel={() => setSelected(null)}>
-        <Space orientation="vertical" style={{ width: '100%' }}>
+      <Modal open={Boolean(selected)} title="Chi tiết nhật ký audit" footer={null} width={900} onCancel={() => setSelected(null)}>
+        <Space direction="vertical" style={{ width: '100%' }}>
           <div>
-            <strong>Before</strong>
+            <strong>Trước</strong>
             <pre className="json-block">{JSON.stringify(selected?.beforeJson ?? {}, null, 2)}</pre>
           </div>
           <div>
-            <strong>After</strong>
+            <strong>Sau</strong>
             <pre className="json-block">{JSON.stringify(selected?.afterJson ?? {}, null, 2)}</pre>
           </div>
         </Space>

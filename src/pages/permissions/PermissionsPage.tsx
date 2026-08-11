@@ -16,7 +16,7 @@ import {
   TextInput,
   Tooltip,
 } from '@mantine/core';
-import { useDebouncedValue, useDisclosure } from '@mantine/hooks';
+import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconEdit, IconPlus } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -55,7 +55,6 @@ export function PermissionsPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'all' | 'active' | 'disabled'>('all');
   const [sensitivity, setSensitivity] = useState<'all' | 'sensitive' | 'standard'>('all');
-  const [debouncedSearch] = useDebouncedValue(search, 350);
   const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);
   const [editPerm, setEditPerm] = useState<PermissionDefinition | null>(null);
   const [editOpened, { open: openEdit, close: closeEdit }] = useDisclosure(false);
@@ -122,10 +121,10 @@ export function PermissionsPage() {
         const matchesStatus = status === 'all' || p.status === status;
         const matchesSensitivity = sensitivity === 'all'
           || (sensitivity === 'sensitive' ? p.isSensitive : !p.isSensitive);
-        return includesNormalizedSearch(searchableText, debouncedSearch) && matchesStatus && matchesSensitivity;
+        return includesNormalizedSearch(searchableText, search) && matchesStatus && matchesSensitivity;
       }),
     }))
-    .filter((sys) => sys.permissions.length > 0), [data?.systems, debouncedSearch, sensitivity, status]);
+    .filter((sys) => sys.permissions.length > 0), [data?.systems, search, sensitivity, status]);
 
   const total = data?.total ?? 0;
 

@@ -33,6 +33,7 @@ import { useAvailableRoles } from '../../../features/auth-admin/useAvailableRole
 import { WorkReportAuthorizationSummary } from '../../../features/work-report-authorizations/WorkReportAuthorizationSummary';
 import { AUTH_ADMIN_PERMISSIONS } from '../../../features/auth/permissions';
 import { useAuth } from '../../../features/auth/useAuth';
+import { useImeSafeSelectFilter } from '../../../shared/hooks/useImeSafeSelectFilter';
 import type { Employee } from '../../../features/employees/employeeTypes';
 import { ErrorState } from '../../../shared/components/ErrorState';
 import { LoadingState } from '../../../shared/components/LoadingState';
@@ -42,6 +43,7 @@ interface Props {
 }
 
 export function AccessTab({ employee }: Props) {
+  const selectSearch = useImeSafeSelectFilter();
   const queryClient = useQueryClient();
   const { can, user, refreshCurrentUser } = useAuth();
   const [roleModalOpen, setRoleModalOpen] = useState(false);
@@ -299,6 +301,7 @@ export function AccessTab({ employee }: Props) {
             value={selectedRoles}
             onChange={setSelectedRoles}
             searchable
+            {...selectSearch}
             clearable
           />
           <Group justify="flex-end" mt="sm">
@@ -328,6 +331,7 @@ export function AccessTab({ employee }: Props) {
             value={selectedPerms}
             onChange={setSelectedPerms}
             searchable
+            {...selectSearch}
             clearable
           />
           <Group justify="flex-end" mt="sm">

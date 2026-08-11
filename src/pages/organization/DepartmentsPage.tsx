@@ -12,7 +12,7 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconEdit, IconPlus, IconSearch, IconX } from "@tabler/icons-react";
+import { IconEdit, IconPlus, IconX } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
@@ -40,6 +40,8 @@ import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
 import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
+import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
+import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
 
 type DepartmentFormValues = {
   code: string;
@@ -55,6 +57,7 @@ const statusOptions = [
 ];
 
 export function DepartmentsPage() {
+  const selectSearch = useImeSafeSelectFilter();
   const { can, permissions, roles } = useAuth();
   const canCreateDepartment = can(HR_PERMISSIONS.DEPARTMENT_CREATE);
   const canEditDepartment = can(HR_PERMISSIONS.DEPARTMENT_UPDATE);
@@ -359,13 +362,11 @@ export function DepartmentsPage() {
       />
 
       <Stack gap="md">
-        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm" className="list-filter-panel">
-          <TextInput
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+          <NormalizedSearchInput
             placeholder="Tìm mã hoặc tên"
-            leftSection={<IconSearch size={17} />}
             value={params.search}
-            onChange={(event) => {
-              const value = event.currentTarget.value;
+            onChange={(value) => {
               setParams((current) => ({
                 ...current,
                 search: value,
@@ -427,7 +428,6 @@ export function DepartmentsPage() {
         title={editing ? "Chỉnh sửa phòng ban" : "Tạo phòng ban"}
         position="right"
         size="lg"
-        className="entity-drawer"
       >
         <form onSubmit={form.onSubmit((values) => mutation.mutate(values))}>
           <Stack gap="sm">
@@ -441,6 +441,7 @@ export function DepartmentsPage() {
               data={unitOptions}
               withAsterisk
               searchable
+              {...selectSearch}
               {...form.getInputProps("unitId")}
             />
             <TextInput

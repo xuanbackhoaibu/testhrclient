@@ -1,44 +1,27 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useDebouncedValue, useLocalStorage } from "@mantine/hooks";
+import { useCallback, useMemo, useState } from "react";
 import {
   Badge,
-  Box,
   Button,
-  Checkbox,
   Drawer,
   Group,
-  Menu,
-  Paper,
   Select,
-  SegmentedControl,
   SimpleGrid,
   Stack,
   Text,
   TextInput,
-  ThemeIcon,
   Tooltip,
-  UnstyledButton,
-  Alert,
-  Divider,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import {
-  IconArrowsSort,
-  IconAlertCircle,
-  IconChevronDown,
-  IconChevronUp,
-  IconColumns3,
   IconEdit,
   IconEye,
-  IconFilterOff,
-  IconIdBadge2,
   IconPlus,
-  IconSearch,
   IconUserCheck,
+  IconUsers,
 } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { AUTH_ADMIN_PERMISSIONS, HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
@@ -76,7 +59,9 @@ import { usePositionsSelect } from "../../features/organization/usePositions";
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { ApiError } from "../../shared/api/api.types";
 import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
-import { compareCode } from "../../shared/utils/sort";
+import { sortByCode } from "../../shared/utils/sort";
+import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
+import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
 
 const employmentStatusOptions = [
   { value: "ACTIVE", label: "Đang làm việc" },
@@ -87,8 +72,6 @@ const employmentStatusOptions = [
 ];
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const citizenIdPattern = /^(\d{9}|\d{12})$/;
-const bioTimeCodePattern = /^[0-9A-Za-z_-]+$/;
 
 // Canonical account-status vocabulary returned by the HR API. Kept separate
 // from the shared StatusTag (whose ACTIVE label means "Đang làm việc") so the
@@ -115,132 +98,8 @@ const ACCOUNT_STATUS_FALLBACK_LABELS: Record<string, string> = {
   UNKNOWN: "Không rõ trạng thái",
 };
 
-type EmployeeQuickFilter =
-  | "all"
-  | "missingAccount"
-  | "missingBioTime"
-  | "probation"
-  | "incompleteProfile";
-type EmployeeSortKey =
-  | "employeeCode"
-  | "biotimeEmployeeCode"
-  | "fullName";
-type SortDirection = "asc" | "desc";
-type EmployeeColumnKey =
-  | "employeeCode"
-  | "biotimeEmployeeCode"
-  | "fullName"
-  | "companyEmail"
-  | "phone"
-  | "employmentStatus"
-  | "accountStatus"
-  | "department"
-  | "jobTitle"
-  | "account_actions"
-  | "actions";
-
-const DEFAULT_PAGE_SIZE = 10;
-const DEFAULT_SORT_KEY: EmployeeSortKey = "biotimeEmployeeCode";
-const DEFAULT_SORT_DIRECTION: SortDirection = "asc";
-const fixedEmployeeColumnKeys = new Set<EmployeeColumnKey>([
-  "employeeCode",
-  "fullName",
-  "actions",
-]);
-const defaultVisibleEmployeeColumns: EmployeeColumnKey[] = [
-  "biotimeEmployeeCode",
-  "companyEmail",
-  "phone",
-  "employmentStatus",
-  "accountStatus",
-  "department",
-  "jobTitle",
-  "account_actions",
-];
-const employeeColumnOptions: Array<{ key: EmployeeColumnKey; label: string }> = [
-  { key: "biotimeEmployeeCode", label: "Mã chấm công" },
-  { key: "companyEmail", label: "Email" },
-  { key: "phone", label: "SĐT" },
-  { key: "employmentStatus", label: "TT nhân sự" },
-  { key: "accountStatus", label: "TT tài khoản" },
-  { key: "department", label: "Phòng ban" },
-  { key: "jobTitle", label: "Chức danh" },
-  { key: "account_actions", label: "Tài khoản" },
-];
-const employeeQuickFilters = new Set<EmployeeQuickFilter>([
-  "all",
-  "missingAccount",
-  "missingBioTime",
-  "probation",
-  "incompleteProfile",
-]);
-const employeeSortKeys = new Set<EmployeeSortKey>([
-  "employeeCode",
-  "biotimeEmployeeCode",
-  "fullName",
-]);
-
-function parsePositiveInteger(value: string | null, fallback: number) {
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function parseQuickFilter(value: string | null): EmployeeQuickFilter {
-  return employeeQuickFilters.has(value as EmployeeQuickFilter)
-    ? (value as EmployeeQuickFilter)
-    : "all";
-}
-
-function parseSortKey(value: string | null): EmployeeSortKey {
-  return employeeSortKeys.has(value as EmployeeSortKey)
-    ? (value as EmployeeSortKey)
-    : DEFAULT_SORT_KEY;
-}
-
-function parseSortDirection(value: string | null): SortDirection {
-  return value === "desc" ? "desc" : DEFAULT_SORT_DIRECTION;
-}
-
 function employeeHasAccount(record: Employee): boolean {
   return record.hasAccount ?? Boolean(record.authUserId);
-}
-
-function isEmployeeProfileIncomplete(record: Employee): boolean {
-  return (
-    !record.companyEmail ||
-    !record.phone ||
-    !record.currentEmployeeAssignment?.departmentId ||
-    !record.currentEmployeeAssignment?.positionId
-  );
-}
-
-function getEmployeeSortValue(employee: Employee, key: EmployeeSortKey) {
-  switch (key) {
-    case "employeeCode":
-      return employee.employeeCode;
-    case "biotimeEmployeeCode":
-      return employee.biotimeEmployeeCode;
-    case "fullName":
-      return employee.fullName;
-    default:
-      return "";
-  }
-}
-
-function compareEmployeeBySort(
-  left: Employee,
-  right: Employee,
-  key: EmployeeSortKey,
-) {
-  if (key === "employeeCode" || key === "biotimeEmployeeCode") {
-    return compareCode(getEmployeeSortValue(left, key), getEmployeeSortValue(right, key));
-  }
-
-  return String(getEmployeeSortValue(left, key) ?? "").localeCompare(
-    String(getEmployeeSortValue(right, key) ?? ""),
-    "vi",
-    { sensitivity: "base" },
-  );
 }
 
 function AccountStatusBadge({ record }: { record: Employee }) {
@@ -327,16 +186,6 @@ function getApiErrorMessage(error: unknown) {
   return "Vui lòng kiểm tra dữ liệu và thử lại.";
 }
 
-function getBiotimeEmployeeCodeError(value: string): string | null {
-  const code = trimOptional(value);
-  if (!code) {
-    return null;
-  }
-  return bioTimeCodePattern.test(code)
-    ? null
-    : "Mã chấm công chỉ gồm chữ, số, dấu gạch ngang hoặc gạch dưới.";
-}
-
 const emptyEmployeeFormValues: EmployeePayload = {
   employeeCode: "",
   fullName: "",
@@ -354,8 +203,8 @@ const emptyEmployeeFormValues: EmployeePayload = {
 };
 
 export function EmployeesPage() {
+  const selectSearch = useImeSafeSelectFilter();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const { can, permissions, roles } = useAuth();
   const mayCreateEmployee = can(HR_PERMISSIONS.EMPLOYEE_CREATE);
   const mayEditEmployee = can(HR_PERMISSIONS.EMPLOYEE_UPDATE);
@@ -379,55 +228,27 @@ export function EmployeesPage() {
   const [nextCodeError, setNextCodeError] = useState<string | null>(null);
   const [suggestedCode, setSuggestedCode] = useState("");
   const [biotimeEmployeeCode, setBiotimeEmployeeCode] = useState("");
-  const [searchInput, setSearchInput] = useState(
-    () => searchParams.get("search") ?? "",
-  );
-  const [debouncedSearch] = useDebouncedValue(searchInput, 300);
-  const [quickFilter, setQuickFilter] = useState<EmployeeQuickFilter>(() =>
-    parseQuickFilter(searchParams.get("quick")),
-  );
-  const [sortKey, setSortKey] = useState<EmployeeSortKey>(() =>
-    parseSortKey(searchParams.get("sort")),
-  );
-  const [sortDirection, setSortDirection] = useState<SortDirection>(() =>
-    parseSortDirection(searchParams.get("dir")),
-  );
-  const [visibleColumnKeys, setVisibleColumnKeys] = useLocalStorage<EmployeeColumnKey[]>({
-    key: "hr-web-client.employee.visible-columns",
-    defaultValue: defaultVisibleEmployeeColumns,
+  const [searchInput, setSearchInput] = useState("");
+  const [params, setParams] = useState({
+    page: 1,
+    pageSize: 10,
+    employmentStatus: undefined as string | undefined,
+    unitId: undefined as string | undefined,
+    departmentId: undefined as string | undefined,
   });
-  const [params, setParams] = useState(() => ({
-    page: parsePositiveInteger(searchParams.get("page"), 1),
-    pageSize: parsePositiveInteger(searchParams.get("pageSize"), DEFAULT_PAGE_SIZE),
-    employmentStatus: searchParams.get("status") ?? undefined,
-    unitId: searchParams.get("unitId") ?? undefined,
-    departmentId: searchParams.get("departmentId") ?? undefined,
-  }));
 
   const form = useForm<EmployeePayload>({
     initialValues: emptyEmployeeFormValues,
     validate: {
-      employeeCode: (value) => {
-        const employeeCode = trimOptional(value);
-        return employeeCode && !/^[A-Za-z0-9_-]+$/.test(employeeCode)
-          ? "Mã nhân sự chỉ gồm chữ, số, dấu gạch ngang hoặc gạch dưới."
-          : null;
-      },
       fullName: (value) => (value.trim() ? null : "Nhập họ tên."),
       hireDate: (value) => (value ? null : "Chọn ngày vào làm."),
-      employmentStatus: (value) => (value ? null : "Chọn trạng thái nhân sự."),
       unitId: (value) => (value ? null : "Vui lòng chọn đơn vị."),
       departmentId: (value) => (value ? null : "Vui lòng chọn phòng ban."),
       positionId: (value) => (value ? null : "Vui lòng chọn chức danh."),
-      phone: (value) => {
-        const phone = trimOptional(value);
-        if (!phone) {
-          return "Nhập số điện thoại.";
-        }
-        return /^0[0-9]{9}$/.test(phone)
-          ? null
-          : "Số điện thoại không đúng định dạng (VD: 0901234567).";
-      },
+      phone: (value) =>
+        trimOptional(value) && !/^0[0-9]{9}$/.test(trimOptional(value))
+          ? "Số điện thoại không đúng định dạng (VD: 0901234567)."
+          : null,
       companyEmail: (value) => {
         const companyEmail = trimOptional(value);
         return companyEmail && !emailPattern.test(companyEmail)
@@ -440,12 +261,6 @@ export function EmployeesPage() {
           ? "Email không đúng định dạng."
           : null;
       },
-      citizenId: (value) => {
-        const citizenId = trimOptional(value);
-        return citizenId && !citizenIdPattern.test(citizenId)
-          ? "CCCD/CMND phải gồm 9 hoặc 12 số."
-          : null;
-      },
     },
   });
 
@@ -456,7 +271,7 @@ export function EmployeesPage() {
     employmentStatus: params.employmentStatus,
     unitId: params.unitId,
     departmentId: params.departmentId,
-    search: debouncedSearch,
+    search: searchInput,
   });
   const unitsSelect = useUnitsSelect();
   const filterDepartmentsSelect = useDepartmentsSelect(params.unitId);
@@ -488,7 +303,7 @@ export function EmployeesPage() {
   }));
 
   const exportMutation = useMutation({
-    mutationFn: () => downloadEmployeesExport({ ...params, search: debouncedSearch }),
+    mutationFn: () => downloadEmployeesExport({ ...params, search: searchInput }),
     onError: () => {
       notifications.show({
         color: "red",
@@ -680,16 +495,6 @@ export function EmployeesPage() {
   }
 
   function submitEmployee(values: EmployeePayload) {
-    const biotimeError = getBiotimeEmployeeCodeError(biotimeEmployeeCode);
-    if (biotimeError) {
-      notifications.show({
-        color: "red",
-        title: "Cần kiểm tra lại thông tin",
-        message: biotimeError,
-      });
-      return;
-    }
-
     const requiredPermission = editing
       ? HR_PERMISSIONS.EMPLOYEE_UPDATE
       : HR_PERMISSIONS.EMPLOYEE_CREATE;
@@ -777,87 +582,22 @@ export function EmployeesPage() {
     });
   }
 
-  function handleEmployeeFormValidationFailure() {
-    notifications.show({
-      color: "red",
-      title: "Cần kiểm tra lại thông tin",
-      message: "Một số trường bắt buộc hoặc định dạng dữ liệu chưa hợp lệ.",
-    });
-  }
-
-  // Mặc định sắp theo Mã chấm công; người dùng có thể đổi sort trên header.
+  // Sắp xếp nhân sự theo Mã chấm công (BioTime) tăng dần từ 1 tới lớn nhất.
+  // Nhân sự chưa có mã chấm công sẽ dồn xuống cuối danh sách.
   const sortedEmployees = useMemo(
-    () =>
-      [...(allEmployees ?? [])].sort((left, right) => {
-        const result = compareEmployeeBySort(left, right, sortKey);
-        return sortDirection === "asc" ? result : -result;
-      }),
-    [allEmployees, sortDirection, sortKey],
+    () => sortByCode(allEmployees, (emp) => emp.biotimeEmployeeCode),
+    [allEmployees],
   );
 
-  const employeeSummary = useMemo(() => {
-    const employees = sortedEmployees;
-    return {
-      probation: employees.filter((employee) => employee.employmentStatus === "PROBATION").length,
-      missingAccount: employees.filter((employee) => !employeeHasAccount(employee)).length,
-      missingBioTime: employees.filter((employee) => !employee.biotimeEmployeeCode).length,
-      incompleteProfile: employees.filter(isEmployeeProfileIncomplete).length,
-    };
-  }, [sortedEmployees]);
-
-  const visibleEmployees = useMemo(() => {
-    switch (quickFilter) {
-      case "missingAccount":
-        return sortedEmployees.filter((employee) => !employeeHasAccount(employee));
-      case "missingBioTime":
-        return sortedEmployees.filter((employee) => !employee.biotimeEmployeeCode);
-      case "probation":
-        return sortedEmployees.filter((employee) => employee.employmentStatus === "PROBATION");
-      case "incompleteProfile":
-        return sortedEmployees.filter(isEmployeeProfileIncomplete);
-      case "all":
-      default:
-        return sortedEmployees;
-    }
-  }, [quickFilter, sortedEmployees]);
-
   // Phân trang ở client trên danh sách đã sắp xếp.
-  const totalCount = visibleEmployees.length;
+  const totalCount = sortedEmployees.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / params.pageSize));
   const currentPage = Math.min(params.page, totalPages);
 
-  useEffect(() => {
-    const next = new URLSearchParams();
-    const search = debouncedSearch.trim();
-    if (search) next.set("search", search);
-    if (params.employmentStatus) next.set("status", params.employmentStatus);
-    if (params.unitId) next.set("unitId", params.unitId);
-    if (params.departmentId) next.set("departmentId", params.departmentId);
-    if (quickFilter !== "all") next.set("quick", quickFilter);
-    if (sortKey !== DEFAULT_SORT_KEY) next.set("sort", sortKey);
-    if (sortDirection !== DEFAULT_SORT_DIRECTION) next.set("dir", sortDirection);
-    if (currentPage > 1) next.set("page", String(currentPage));
-    if (params.pageSize !== DEFAULT_PAGE_SIZE) {
-      next.set("pageSize", String(params.pageSize));
-    }
-    setSearchParams(next, { replace: true });
-  }, [
-    currentPage,
-    debouncedSearch,
-    params.departmentId,
-    params.employmentStatus,
-    params.pageSize,
-    params.unitId,
-    quickFilter,
-    setSearchParams,
-    sortDirection,
-    sortKey,
-  ]);
-
   const pagedEmployees = useMemo(() => {
     const start = (currentPage - 1) * params.pageSize;
-    return visibleEmployees.slice(start, start + params.pageSize);
-  }, [visibleEmployees, currentPage, params.pageSize]);
+    return sortedEmployees.slice(start, start + params.pageSize);
+  }, [sortedEmployees, currentPage, params.pageSize]);
 
   const pagedMeta = useMemo<PaginationMeta>(
     () => ({
@@ -872,97 +612,21 @@ export function EmployeesPage() {
   );
 
   const selectedEmployees = useMemo(
-    () => visibleEmployees.filter((emp) => selectedIds.has(emp.id)),
-    [visibleEmployees, selectedIds],
+    () => sortedEmployees.filter((emp) => selectedIds.has(emp.id)),
+    [sortedEmployees, selectedIds],
   );
 
-  const activeFilterCount = [
-    debouncedSearch,
-    params.employmentStatus,
-    params.unitId,
-    params.departmentId,
-    quickFilter !== "all" ? quickFilter : undefined,
-    sortKey !== DEFAULT_SORT_KEY ? sortKey : undefined,
-    sortDirection !== DEFAULT_SORT_DIRECTION ? sortDirection : undefined,
-  ].filter(Boolean).length;
-
-  function clearListFilters() {
-    setSearchInput("");
-    setQuickFilter("all");
-    setSortKey(DEFAULT_SORT_KEY);
-    setSortDirection(DEFAULT_SORT_DIRECTION);
-    setSelectedIds(new Set());
-    setParams((current) => ({
-      ...current,
-      page: 1,
-      employmentStatus: undefined,
-      unitId: undefined,
-      departmentId: undefined,
-    }));
-  }
-
-  const updateSort = useCallback((nextKey: EmployeeSortKey) => {
-    setSelectedIds(new Set());
-    setParams((current) => ({ ...current, page: 1 }));
-    if (sortKey === nextKey) {
-      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
-      return;
-    }
-    setSortKey(nextKey);
-    setSortDirection("asc");
-  }, [setParams, setSelectedIds, setSortDirection, setSortKey, sortKey]);
-
-  const renderSortableHeader = useCallback((label: string, key: EmployeeSortKey) => {
-    const active = sortKey === key;
-    const Icon = active
-      ? sortDirection === "asc"
-        ? IconChevronUp
-        : IconChevronDown
-      : IconArrowsSort;
-
-    return (
-      <UnstyledButton
-        className="employee-sort-header"
-        data-active={active}
-        onClick={() => updateSort(key)}
-      >
-        <Group gap={4} wrap="nowrap">
-          <span>{label}</span>
-          <Icon size={14} />
-        </Group>
-      </UnstyledButton>
-    );
-  }, [sortDirection, sortKey, updateSort]);
-
-  function toggleColumn(key: EmployeeColumnKey) {
-    setVisibleColumnKeys((current) => {
-      if (current.includes(key)) {
-        return current.filter((item) => item !== key);
-      }
-      return [...current, key];
-    });
-  }
-
-  function resetColumns() {
-    setVisibleColumnKeys(defaultVisibleEmployeeColumns);
-  }
-
-  const visibleColumnSet = useMemo(
-    () => new Set<EmployeeColumnKey>(visibleColumnKeys),
-    [visibleColumnKeys],
-  );
-
-  const allColumns = useMemo<DataTableColumn<Employee>[]>(
+  const columns = useMemo<DataTableColumn<Employee>[]>(
     () => [
       {
         key: "employeeCode",
-        header: renderSortableHeader("Mã NS", "employeeCode"),
+        header: "Mã NS",
         width: 110,
         render: (record) => record.employeeCode,
       },
       {
         key: "biotimeEmployeeCode",
-        header: renderSortableHeader("Mã chấm công", "biotimeEmployeeCode"),
+        header: "Mã chấm công",
         width: 100,
         align: "center",
         render: (record) => (
@@ -973,7 +637,7 @@ export function EmployeesPage() {
       },
       {
         key: "fullName",
-        header: renderSortableHeader("Họ tên", "fullName"),
+        header: "Họ tên",
         render: (record) => <TruncatedCell value={record.fullName} />,
       },
       {
@@ -1093,24 +757,10 @@ export function EmployeesPage() {
       mayProvisionAccounts,
       navigate,
       openEditDrawer,
-      renderSortableHeader,
       setAccountDetailTarget,
       setProvisionTarget,
     ],
   );
-
-  const columns = useMemo(
-    () =>
-      allColumns.filter((column) => {
-        const key = column.key as EmployeeColumnKey;
-        return fixedEmployeeColumnKeys.has(key) || visibleColumnSet.has(key);
-      }),
-    [allColumns, visibleColumnSet],
-  );
-  const formErrorMessages = Object.values(form.errors)
-    .map((error) => String(error))
-    .filter(Boolean);
-  const biotimeEmployeeCodeError = getBiotimeEmployeeCodeError(biotimeEmployeeCode);
 
   return (
     <>
@@ -1118,7 +768,7 @@ export function EmployeesPage() {
         title="Nhân sự"
         subtitle="Quản lý hồ sơ nhân sự, trạng thái làm việc và phân công hiện tại."
         actions={
-          <Group gap="xs" wrap="wrap" className="employee-page-actions">
+          <>
             <ImportExportToolbar
               onDownloadTemplate={templateDownload.downloadTemplate}
               onImport={
@@ -1130,6 +780,16 @@ export function EmployeesPage() {
               canImport={mayImportEmployees}
               canExport={mayExportEmployees}
             />
+            {mayProvisionAccounts && selectedIds.size > 0 && (
+              <Button
+                leftSection={<IconUsers size={18} />}
+                variant="light"
+                color="teal"
+                onClick={() => setBulkProvisionOpen(true)}
+              >
+                Cấp TK hàng loạt ({selectedIds.size})
+              </Button>
+            )}
             {mayCreateEmployee ? (
               <Button
                 leftSection={<IconPlus size={18} />}
@@ -1138,66 +798,17 @@ export function EmployeesPage() {
                 Tạo nhân sự
               </Button>
             ) : null}
-          </Group>
+          </>
         }
       />
 
       <Stack gap="md">
-        <Paper p="md" withBorder className="employee-filter-panel">
-          <Stack gap="sm">
-            <Group justify="space-between" align="center" className="employee-filter-header">
-              <Stack gap={2}>
-                <Text fw={700}>Bộ lọc danh sách</Text>
-                <Text size="sm" c="dimmed">
-                  Đang hiển thị {totalCount} nhân sự theo điều kiện hiện tại
-                </Text>
-              </Stack>
-              <Group gap="xs" className="employee-filter-actions">
-                <Menu position="bottom-end" width={220} closeOnItemClick={false}>
-                  <Menu.Target>
-                    <Button
-                      variant="default"
-                      leftSection={<IconColumns3 size={16} />}
-                    >
-                      Cột
-                    </Button>
-                  </Menu.Target>
-                  <Menu.Dropdown>
-                    <Menu.Label>Hiển thị</Menu.Label>
-                    {employeeColumnOptions.map((item) => (
-                      <Menu.Item key={item.key} onClick={() => toggleColumn(item.key)}>
-                        <Checkbox
-                          checked={visibleColumnSet.has(item.key)}
-                          label={item.label}
-                          readOnly
-                          size="xs"
-                        />
-                      </Menu.Item>
-                    ))}
-                    <Menu.Divider />
-                    <Menu.Item onClick={resetColumns}>Mặc định</Menu.Item>
-                  </Menu.Dropdown>
-                </Menu>
-                <Button
-                  variant="subtle"
-                  color="gray"
-                  leftSection={<IconFilterOff size={16} />}
-                  disabled={activeFilterCount === 0}
-                  onClick={clearListFilters}
-                >
-                  Xóa lọc
-                </Button>
-              </Group>
-            </Group>
-
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm">
-          <TextInput
+          <NormalizedSearchInput
             placeholder="Tìm tên, email, SĐT"
-            leftSection={<IconSearch size={17} />}
             value={searchInput}
-            onChange={(event) => {
-              setSearchInput(event.currentTarget.value);
-              setSelectedIds(new Set());
+            onChange={(value) => {
+              setSearchInput(value);
               setParams((current) => ({ ...current, page: 1 }));
             }}
           />
@@ -1206,14 +817,13 @@ export function EmployeesPage() {
             clearable
             data={employmentStatusOptions}
             value={params.employmentStatus ?? null}
-            onChange={(value) => {
-              setSelectedIds(new Set());
+            onChange={(value) =>
               setParams((current) => ({
                 ...current,
                 employmentStatus: value ?? undefined,
                 page: 1,
-              }));
-            }}
+              }))
+            }
           />
           <Select
             placeholder="Đơn vị"
@@ -1222,15 +832,14 @@ export function EmployeesPage() {
             disabled={unitsSelect.isLoading || unitsSelect.isError}
             nothingFoundMessage="Không có đơn vị active"
             value={params.unitId ?? null}
-            onChange={(value) => {
-              setSelectedIds(new Set());
+            onChange={(value) =>
               setParams((current) => ({
                 ...current,
                 unitId: value ?? undefined,
                 departmentId: undefined,
                 page: 1,
-              }));
-            }}
+              }))
+            }
           />
           <Select
             placeholder="Phòng ban"
@@ -1242,84 +851,15 @@ export function EmployeesPage() {
             }
             nothingFoundMessage="Không có phòng ban active"
             value={params.departmentId ?? null}
-            onChange={(value) => {
-              setSelectedIds(new Set());
+            onChange={(value) =>
               setParams((current) => ({
                 ...current,
                 departmentId: value ?? undefined,
                 page: 1,
-              }));
-            }}
+              }))
+            }
           />
         </SimpleGrid>
-
-            <Box className="employee-quick-filter-scroll">
-              <SegmentedControl
-                value={quickFilter}
-                onChange={(value) => {
-                  setQuickFilter(value as EmployeeQuickFilter);
-                  setSelectedIds(new Set());
-                  setParams((current) => ({ ...current, page: 1 }));
-                }}
-                data={[
-                  { value: "all", label: "Tất cả" },
-                  {
-                    value: "missingAccount",
-                    label: `Chưa có TK (${employeeSummary.missingAccount})`,
-                  },
-                  {
-                    value: "missingBioTime",
-                    label: `Thiếu mã CC (${employeeSummary.missingBioTime})`,
-                  },
-                  {
-                    value: "probation",
-                    label: `Thử việc (${employeeSummary.probation})`,
-                  },
-                  {
-                    value: "incompleteProfile",
-                    label: `Thiếu hồ sơ (${employeeSummary.incompleteProfile})`,
-                  },
-                ]}
-                className="employee-quick-filter"
-                fullWidth
-              />
-            </Box>
-
-            {selectedIds.size > 0 ? (
-              <Group justify="space-between" className="employee-selection-bar">
-                <Group gap="xs">
-                  <ThemeIcon color="teal" variant="light" size="sm">
-                    <IconIdBadge2 size={15} />
-                  </ThemeIcon>
-                  <Text size="sm" fw={600}>
-                    Đã chọn {selectedIds.size} nhân sự
-                  </Text>
-                </Group>
-                <Group gap="xs">
-                  {mayProvisionAccounts ? (
-                    <Button
-                      size="xs"
-                      color="teal"
-                      variant="light"
-                      leftSection={<IconUserCheck size={14} />}
-                      onClick={() => setBulkProvisionOpen(true)}
-                    >
-                      Cấp tài khoản
-                    </Button>
-                  ) : null}
-                  <Button
-                    size="xs"
-                    variant="subtle"
-                    color="gray"
-                    onClick={() => setSelectedIds(new Set())}
-                  >
-                    Bỏ chọn
-                  </Button>
-                </Group>
-              </Group>
-            ) : null}
-          </Stack>
-        </Paper>
 
         <DataTable
           data={pagedEmployees}
@@ -1335,7 +875,7 @@ export function EmployeesPage() {
           }
           selectedIds={mayProvisionAccounts ? selectedIds : undefined}
           onSelectionChange={mayProvisionAccounts ? setSelectedIds : undefined}
-          emptyTitle={activeFilterCount > 0 ? "Không có nhân sự phù hợp" : "Chưa có nhân sự"}
+          emptyTitle="Chưa có nhân sự"
           emptyDescription="Không tìm thấy nhân sự phù hợp với bộ lọc hiện tại."
         />
       </Stack>
@@ -1346,31 +886,9 @@ export function EmployeesPage() {
         title={editing ? "Sửa nhân sự" : "Tạo nhân sự"}
         position="right"
         size="lg"
-        className="entity-drawer"
       >
-        <form onSubmit={form.onSubmit(submitEmployee, handleEmployeeFormValidationFailure)}>
+        <form onSubmit={form.onSubmit(submitEmployee)}>
           <Stack gap="sm">
-            {formErrorMessages.length > 0 || biotimeEmployeeCodeError ? (
-              <Alert
-                color="red"
-                variant="light"
-                icon={<IconAlertCircle size={18} />}
-                title="Cần kiểm tra lại thông tin"
-              >
-                <Stack gap={4}>
-                  {[...formErrorMessages, biotimeEmployeeCodeError]
-                    .filter(Boolean)
-                    .slice(0, 4)
-                    .map((message) => (
-                      <Text key={message} size="sm">
-                        {message}
-                      </Text>
-                    ))}
-                </Stack>
-              </Alert>
-            ) : null}
-
-            <Divider label="Thông tin định danh" labelPosition="left" />
             {editing ? (
               <TextInput
                 label="Mã nhân sự"
@@ -1381,6 +899,7 @@ export function EmployeesPage() {
             ) : (
               <TextInput
                 label="Mã nhân sự"
+                description="Hệ thống tự sinh nếu để trống. Nhập để đặt mã thủ công (VD: HN000001)."
                 placeholder={isLoadingNextCode ? "Đang lấy mã gợi ý..." : "HN000001"}
                 disabled={isLoadingNextCode}
                 error={form.errors.employeeCode ?? nextCodeError}
@@ -1389,12 +908,11 @@ export function EmployeesPage() {
             )}
             <TextInput
               label="Mã chấm công BioTime/ZKTeco"
+              description="Dùng để map dữ liệu chấm công từ BioTime. Ví dụ: 108, 1500. Không bắt buộc."
               placeholder="108"
               value={biotimeEmployeeCode}
-              error={biotimeEmployeeCodeError}
               onChange={(e) => setBiotimeEmployeeCode(e.currentTarget.value)}
             />
-            <Divider label="Thông tin cá nhân" labelPosition="left" />
             <TextInput
               label="Họ tên"
               withAsterisk
@@ -1402,17 +920,14 @@ export function EmployeesPage() {
             />
             <TextInput
               label="Email công ty"
-              placeholder="ten@hacom.vn"
               {...form.getInputProps("companyEmail")}
             />
             <TextInput
               label="Email cá nhân"
-              placeholder="ten@example.com"
               {...form.getInputProps("personalEmail")}
             />
             <TextInput
               label="Số điện thoại"
-              placeholder="0901234567"
               withAsterisk
               {...form.getInputProps("phone")}
             />
@@ -1437,12 +952,6 @@ export function EmployeesPage() {
               withAsterisk
               {...form.getInputProps("hireDate")}
             />
-            <TextInput
-              label="CCCD/CMND"
-              placeholder="001234567890"
-              {...form.getInputProps("citizenId")}
-            />
-            <Divider label="Phân công hiện tại" labelPosition="left" />
             <Select
               label="Đơn vị"
               placeholder={
@@ -1450,6 +959,7 @@ export function EmployeesPage() {
               }
               withAsterisk
               searchable
+              {...selectSearch}
               data={unitOptions}
               disabled={unitsSelect.isLoading || unitsSelect.isError}
               nothingFoundMessage="Không có đơn vị active"
@@ -1493,6 +1003,7 @@ export function EmployeesPage() {
               }
               withAsterisk
               searchable
+              {...selectSearch}
               data={formDepartmentOptions}
               disabled={
                 !form.values.unitId ||
@@ -1515,6 +1026,7 @@ export function EmployeesPage() {
               }
               withAsterisk
               searchable
+              {...selectSearch}
               data={positionOptions}
               disabled={positionsSelect.isLoading || positionsSelect.isError}
               nothingFoundMessage="Không có chức danh active"
@@ -1530,6 +1042,7 @@ export function EmployeesPage() {
               data={employmentStatusOptions}
               {...form.getInputProps("employmentStatus")}
             />
+            <TextInput label="CCCD" {...form.getInputProps("citizenId")} />
             <Group justify="flex-end" mt="md">
               <Button variant="default" onClick={closeEmployeeDrawer}>
                 Hủy

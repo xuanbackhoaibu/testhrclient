@@ -13,12 +13,13 @@ import {
   Text,
   TextInput,
   Textarea,
+  Title,
   Tooltip,
   Select,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconEdit, IconEye, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconEye, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../features/auth/useAuth';
@@ -35,12 +36,14 @@ import type {
   CreatePermissionGroupInput,
   PermissionGroupDefinition,
 } from '../../features/auth-admin/authAdminTypes';
-import { PageHeader } from '../../shared/components/PageHeader';
+import { NormalizedSearchInput } from '../../shared/components/NormalizedSearchInput';
+import { useImeSafeSelectFilter } from '../../shared/hooks/useImeSafeSelectFilter';
 
 const STATUS_LABEL: Record<string, string> = { active: 'Đang dùng', inactive: 'Vô hiệu' };
 const STATUS_COLOR: Record<string, string> = { active: 'green', inactive: 'gray' };
 
 export function PermissionGroupsPage() {
+  const selectSearch = useImeSafeSelectFilter();
   const { can } = useAuth();
   const queryClient = useQueryClient();
   const canManage = can('auth.permission_group.manage');
@@ -142,44 +145,36 @@ export function PermissionGroupsPage() {
 
   return (
     <Box>
-      <PageHeader
-        title="Nhóm quyền"
-        subtitle="Quản lý các nhóm permission dùng để gán nhanh cho vai trò và tài khoản."
-        breadcrumbs={['Phân quyền', 'Nhóm quyền']}
-        actions={
-          canManage ? (
+      <Group justify="space-between" mb="md">
+        <Title order={3}>Nhóm quyền</Title>
+        {canManage && (
           <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>
             Tạo nhóm quyền
           </Button>
-          ) : undefined
-        }
-      />
+        )}
+      </Group>
 
-      <Group mb="md" className="list-filter-panel">
-        <TextInput
-          label="Tìm kiếm"
+      <Group mb="md">
+        <NormalizedSearchInput
           placeholder="Tìm theo tên, key..."
-          leftSection={<IconSearch size={16} />}
           value={search}
-          onChange={(e) => setSearch(e.currentTarget.value)}
-          className="list-filter-search"
+          onChange={setSearch}
+          style={{ flex: 1 }}
         />
         <Select
-          label="Hệ thống"
           placeholder="Lọc hệ thống"
           data={systemOptions}
           value={systemFilter}
           onChange={setSystemFilter}
           clearable
-          className="list-filter-control"
+          w={160}
         />
       </Group>
 
       {isLoading ? (
         <Group justify="center" py="xl"><Loader /></Group>
       ) : (
-        <Box className="data-table-shell">
-        <Table striped highlightOnHover>
+        <Table striped highlightOnHover withTableBorder>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Key</Table.Th>
@@ -231,7 +226,6 @@ export function PermissionGroupsPage() {
             )}
           </Table.Tbody>
         </Table>
-        </Box>
       )}
 
       {/* Create modal */}
@@ -240,7 +234,6 @@ export function PermissionGroupsPage() {
         onClose={closeCreate}
         title="Tạo nhóm quyền"
         size="md"
-        className="entity-modal"
       >
         <Stack>
           <TextInput
@@ -306,14 +299,13 @@ export function PermissionGroupsPage() {
         </Stack>
       </Modal>
 
-      {/* Detail drawer */}
+      {/* Ngăn kéo chi tiết */}
       <Drawer
         opened={detailOpened}
         onClose={() => { closeDetail(); setDetailGroupId(null); setEditGroup(null); }}
         title={detail ? `Nhóm: ${detail.name}` : 'Nhóm quyền'}
         position="right"
         size="lg"
-        className="entity-drawer"
       >
         {detailLoading || !detail ? (
           <Group justify="center" py="xl"><Loader /></Group>
@@ -379,6 +371,7 @@ export function PermissionGroupsPage() {
                   value={addPermKey}
                   onChange={(v) => setAddPermKey(v ?? '')}
                   searchable
+                  {...selectSearch}
                   style={{ flex: 1 }}
                 />
                 <Button
@@ -394,7 +387,7 @@ export function PermissionGroupsPage() {
 
             <Stack gap="xs">
               {(detail.permissions ?? []).map((perm) => (
-                <Group key={perm.id} justify="space-between" p="xs" className="resource-list-row">
+                <Group key={perm.id} justify="space-between" p="xs" style={{ border: '1px solid #eee', borderRadius: 6 }}>
                   <Stack gap={2}>
                     <Text size="xs" ff="monospace" c="blue">{perm.key}</Text>
                     {perm.description && <Text size="xs" c="dimmed">{perm.description}</Text>}
