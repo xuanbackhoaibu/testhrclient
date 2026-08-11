@@ -1082,7 +1082,8 @@ Chi tiết UI:
 
 Ghi chú:
 
-- API hiện tại `useDashboardSummary` chưa nhận params thời gian/phòng ban, nên phần lọc đang áp dụng trực quan ở UI với dữ liệu đã có. Khi backend hỗ trợ query params, có thể nối trực tiếp vào query key/API.
+- `useDashboardSummary` đã nhận tham số `period` và đưa vào query key/API params để gọi lại `/dashboard/summary`.
+- Bộ lọc đơn vị vẫn đang áp dụng trực quan ở UI với dữ liệu đã có vì payload chart hiện chưa có id đơn vị đầy đủ.
 
 ### 20.4. Widget hành động
 
@@ -1150,3 +1151,30 @@ Kết quả:
 ```text
 http://127.0.0.1:5173/
 ```
+
+### 20.9. Bổ sung micro-interaction, responsive và a11y cho Dashboard
+
+Đã nâng cấp:
+
+- Donut chart có transition `stroke-dasharray` để lát biểu đồ vào mượt hơn khi dữ liệu render.
+- Bar chart ngang và cột dọc có transition theo `width`/`height`, giữ hiệu ứng hover mềm.
+- Track nền của donut, bar và stacked bar đã chuyển sang CSS variable của Mantine:
+  - Light mode: `var(--mantine-color-gray-1)`
+  - Dark mode: `var(--mantine-color-dark-5)`
+- Donut chart trên mobile dưới `768px` chuyển layout thành cột, legend rớt xuống dưới biểu đồ để tránh tràn lề.
+- Lát donut có `tabIndex`, `role="button"`, `aria-label` và hỗ trợ phím `Enter`/`Space` để click bằng bàn phím.
+- Widget `Nhân sự đi muộn nhiều nhất` có nút `Xem tất cả`, dẫn sang trang chấm công để HR xem danh sách đầy đủ thay vì chỉ 8 dòng preview.
+
+### 20.10. Kết nối filter thời gian và skeleton theo từng chart
+
+Đã nâng cấp:
+
+- Đưa `SegmentedControl` thời gian lên góc phải `PageHeader` với 3 lựa chọn:
+  - Tháng này
+  - Quý này
+  - Năm nay
+- Truyền `period` vào `useDashboardSummary({ period })`, query key tách theo từng khoảng thời gian.
+- API `/dashboard/summary` nhận query params để backend trả số liệu đúng kỳ.
+- Donut chart khi click lát cắt sẽ điều hướng sang danh sách nhân sự với URL params `dashboardSlice=unit` và `search=<tên đơn vị>`.
+- Bar trạng thái nhân sự điều hướng với URL params `dashboardSlice=employmentStatus` và `status=<trạng thái>`.
+- Thêm `ChartSkeleton` dùng `styles.chartPanel` và Mantine `Skeleton` để giả lập layout chart khi dashboard đang tải.

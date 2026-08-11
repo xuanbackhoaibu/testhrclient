@@ -12,7 +12,6 @@ import {
   Skeleton,
   Stack,
   Text,
-  TextInput,
   ThemeIcon,
   Tooltip,
 } from "@mantine/core";
@@ -29,6 +28,7 @@ import {
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
+import { type DashboardSummaryPeriod } from "../features/dashboard/dashboardApi";
 import { useDashboardSummary } from "../features/dashboard/useDashboardSummary";
 import type {
   DashboardAttendanceRate,
@@ -42,7 +42,7 @@ import { ROUTES } from "../shared/constants/routes";
 import styles from "./DashboardPage.module.css";
 
 type MetricTone = "blue" | "green" | "teal" | "red" | "yellow" | "orange" | "indigo" | "gray";
-type TimeRange = "month" | "quarter" | "year" | "custom";
+type TimeRange = DashboardSummaryPeriod;
 
 const chartPalette = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#64748b"];
 const lateThreshold = 3;
@@ -58,6 +58,14 @@ function percent(value: number, total: number): number {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function employeeListUrl(params: Record<string, string>): string {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) searchParams.set(key, value);
+  });
+  return `${ROUTES.employees}?${searchParams.toString()}`;
 }
 
 function MetricCard({
@@ -96,21 +104,50 @@ function MetricCard({
   );
 }
 
+function ChartSkeleton({ dense = false }: { dense?: boolean }) {
+  return (
+    <Paper className={styles.chartPanel} p="md" aria-label="Đang tải biểu đồ">
+      <Group justify="space-between" mb="sm">
+        <Stack gap={6}>
+          <Skeleton height={18} width={220} radius="sm" />
+          <Skeleton height={12} width={280} radius="sm" />
+        </Stack>
+        <Skeleton height={24} width={92} radius="xl" />
+      </Group>
+      <Stack gap="sm">
+        <Skeleton height={dense ? 34 : 178} radius="md" />
+        <Skeleton height={dense ? 34 : 46} radius="md" />
+        <Skeleton height={dense ? 34 : 46} radius="md" />
+        <Skeleton height={dense ? 34 : 46} radius="md" />
+      </Stack>
+    </Paper>
+  );
+}
+
 function DashboardSkeleton() {
   return (
     <Stack gap="md">
-      <Group justify="space-between">
-        <Skeleton height={74} width={360} radius="md" />
-        <Skeleton height={36} width={420} radius="md" />
-      </Group>
+      <Paper p="md" className={styles.filterPanel}>
+        <Group justify="space-between" align="flex-end" gap="md">
+          <Stack gap={6}>
+            <Skeleton height={18} width={160} radius="sm" />
+            <Skeleton height={12} width={320} radius="sm" />
+          </Stack>
+          <Skeleton height={36} width={260} radius="md" />
+        </Group>
+      </Paper>
       <SimpleGrid cols={{ base: 1, sm: 2, xl: 5 }} spacing="md">
         {Array.from({ length: 5 }).map((_, index) => (
           <Skeleton key={index} height={152} radius="md" />
         ))}
       </SimpleGrid>
       <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
-        <Skeleton height={360} radius="md" />
-        <Skeleton height={360} radius="md" />
+        <ChartSkeleton />
+        <ChartSkeleton dense />
+      </SimpleGrid>
+      <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
+        <ChartSkeleton />
+        <ChartSkeleton dense />
       </SimpleGrid>
       <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="md">
         <Skeleton height={300} radius="md" />
@@ -195,7 +232,16 @@ function DonutChart({
                     stroke={segment.color}
                     strokeDasharray={segment.dasharray}
                     strokeDashoffset={segment.dashoffset}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`${segment.item.label}: ${formatNumber(segment.item.value)} nhân sự, ${percent(segment.item.value, total)} phần trăm`}
                     onClick={() => onSliceClick?.(segment.item)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onSliceClick?.(segment.item);
+                      }
+                    }}
                   />
                 </Tooltip>
               ))}
@@ -225,7 +271,7 @@ function DonutChart({
   );
 }
 
-function TopLateBarChart({ items }: { items: DashboardLateEmployee[] }) {
+function TopLateBarChart({ items, onViewAll }: { items: DashboardLateEmployee[]; onViewAll: () => void }) {
   const maxLate = Math.max(...items.map((item) => item.lateCount), 1);
 
   return (
@@ -235,7 +281,14 @@ function TopLateBarChart({ items }: { items: DashboardLateEmployee[] }) {
           <Text fw={750}>Nhân sự đi muộn nhiều nhất</Text>
           <Text size="xs" c="dimmed">Ngưỡng cảnh báo: từ {lateThreshold} lần/tháng.</Text>
         </Stack>
-        <Badge color={items.length ? "red" : "green"} variant="light">{items.length ? `${items.length} nhân sự` : "Không phát sinh"}</Badge>
+        <Group gap="xs">
+          <Badge color={items.length ? "red" : "green"} variant="light">{items.length ? `${items.length} nhân sự` : "Không phát sinh"}</Badge>
+          {items.length > 0 ? (
+            <Button variant="subtle" size="xs" onClick={onViewAll}>
+              Xem tất cả
+            </Button>
+          ) : null}
+        </Group>
       </Group>
       {items.length === 0 ? (
         <Stack align="center" py="xl">
@@ -511,11 +564,10 @@ async function exportDashboardAsPng(target: HTMLElement | null) {
 export function DashboardPage() {
   const navigate = useNavigate();
   const dashboardRef = useRef<HTMLDivElement>(null);
-  const { data, isLoading, error, refetch, isFetching } = useDashboardSummary();
   const [timeRange, setTimeRange] = useState<TimeRange>("month");
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
   const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
+  const dashboardParams = useMemo(() => ({ period: timeRange }), [timeRange]);
+  const { data, isLoading, error, refetch, isFetching } = useDashboardSummary(dashboardParams);
 
   const filteredUnits = useMemo(() => {
     if (!data) return [];
@@ -529,10 +581,42 @@ export function DashboardPage() {
     [data],
   );
 
+  const timeRangeControl = (
+    <SegmentedControl
+      value={timeRange}
+      onChange={(value) => setTimeRange(value as TimeRange)}
+      data={[
+        { value: "month", label: "Tháng này" },
+        { value: "quarter", label: "Quý này" },
+        { value: "year", label: "Năm nay" },
+      ]}
+    />
+  );
+
+  const headerActions = (
+    <Group gap="xs">
+      {timeRangeControl}
+      <Button variant="default" leftSection={<IconFileImport size={16} />} onClick={() => navigate(ROUTES.imports)}>Import Excel</Button>
+      <Menu shadow="md" width={190}>
+        <Menu.Target>
+          <Button leftSection={<IconDownload size={16} />}>Xuất báo cáo</Button>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Item onClick={() => void exportDashboardAsPng(dashboardRef.current)}>Tải PNG</Menu.Item>
+          <Menu.Item onClick={() => window.print()}>In / lưu PDF</Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
+    </Group>
+  );
+
   if (isLoading) {
     return (
       <>
-        <PageHeader title="Dashboard" subtitle="Tổng quan vận hành HRM, chấm công, nghỉ phép và dữ liệu bàn giao lương." />
+        <PageHeader
+          title="Dashboard"
+          subtitle="Tổng quan vận hành HRM, chấm công, nghỉ phép và dữ liệu bàn giao lương."
+          actions={headerActions}
+        />
         <DashboardSkeleton />
       </>
     );
@@ -551,8 +635,7 @@ export function DashboardPage() {
   const timeRangeLabel =
     timeRange === "month" ? "Tháng này" :
     timeRange === "quarter" ? "Quý này" :
-    timeRange === "year" ? "Năm nay" :
-    customFrom && customTo ? `${customFrom} → ${customTo}` : "Tùy chỉnh";
+    "Năm nay";
 
   const metrics = [
     {
@@ -600,7 +683,7 @@ export function DashboardPage() {
       ),
     },
     {
-      title: "Tuyển mới tháng này",
+      title: "Tuyển mới trong kỳ",
       value: data.newHiresThisMonth,
       meta: "Phát sinh trong kỳ",
       tone: "teal" as const,
@@ -608,7 +691,7 @@ export function DashboardPage() {
       detail: <Text size="xs" c="dimmed" className={styles.metricDetailText}>Hồ sơ mới trong kỳ hiện tại</Text>,
     },
     {
-      title: "Nghỉ việc tháng này",
+      title: "Nghỉ việc trong kỳ",
       value: data.terminatedThisMonth,
       meta: "Biến động rời công ty",
       tone: "red" as const,
@@ -622,20 +705,7 @@ export function DashboardPage() {
       <PageHeader
         title="Dashboard"
         subtitle="Tổng quan vận hành HRM, chấm công, nghỉ phép và dữ liệu bàn giao lương."
-        actions={
-          <Group gap="xs">
-            <Button variant="default" leftSection={<IconFileImport size={16} />} onClick={() => navigate(ROUTES.imports)}>Import Excel</Button>
-            <Menu shadow="md" width={190}>
-              <Menu.Target>
-                <Button leftSection={<IconDownload size={16} />}>Xuất báo cáo</Button>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item onClick={() => void exportDashboardAsPng(dashboardRef.current)}>Tải PNG</Menu.Item>
-                <Menu.Item onClick={() => window.print()}>In / lưu PDF</Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          </Group>
-        }
+        actions={headerActions}
       />
 
       <Stack gap="md" ref={dashboardRef} className={styles.dashboardSurface}>
@@ -646,22 +716,6 @@ export function DashboardPage() {
               <Text size="xs" c="dimmed">Các biểu đồ cập nhật theo khoảng thời gian và đơn vị được chọn.</Text>
             </Stack>
             <Group align="flex-end" gap="sm" className={styles.filterControls}>
-              <SegmentedControl
-                value={timeRange}
-                onChange={(value) => setTimeRange(value as TimeRange)}
-                data={[
-                  { value: "month", label: "Tháng này" },
-                  { value: "quarter", label: "Quý này" },
-                  { value: "year", label: "Năm nay" },
-                  { value: "custom", label: "Tùy chỉnh" },
-                ]}
-              />
-              {timeRange === "custom" ? (
-                <>
-                  <TextInput type="date" value={customFrom} onChange={(event) => setCustomFrom(event.currentTarget.value)} />
-                  <TextInput type="date" value={customTo} onChange={(event) => setCustomTo(event.currentTarget.value)} />
-                </>
-              ) : null}
               <MultiSelect
                 searchable
                 clearable
@@ -691,7 +745,10 @@ export function DashboardPage() {
             title="Cơ cấu nhân sự theo đơn vị"
             items={filteredUnits}
             centerLabel="Tổng"
-            onSliceClick={(item) => navigate(`${ROUTES.employees}?search=${encodeURIComponent(item.label)}`)}
+            onSliceClick={(item) => navigate(employeeListUrl({
+              dashboardSlice: "unit",
+              search: item.label,
+            }))}
           />
           <AttendanceStackedBars items={data.attendanceThisMonth.byDepartment} />
         </SimpleGrid>
@@ -700,9 +757,15 @@ export function DashboardPage() {
           <MetricVerticalBarChart
             title="Nhân sự theo trạng thái"
             items={data.employeesByEmploymentStatus}
-            onBarClick={(item) => navigate(`${ROUTES.employees}?status=${encodeURIComponent(item.label)}`)}
+            onBarClick={(item) => navigate(employeeListUrl({
+              dashboardSlice: "employmentStatus",
+              status: item.label,
+            }))}
           />
-          <TopLateBarChart items={data.attendanceThisMonth.topLateEmployees} />
+          <TopLateBarChart
+            items={data.attendanceThisMonth.topLateEmployees}
+            onViewAll={() => navigate(ROUTES.attendance)}
+          />
         </SimpleGrid>
 
         <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="md">

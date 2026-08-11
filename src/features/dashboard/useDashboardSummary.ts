@@ -1,11 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { getDashboardSummary } from './dashboardApi';
+import { getDashboardSummary, type DashboardSummaryParams } from './dashboardApi';
 
-export function useDashboardSummary() {
+export function useDashboardSummary(params: DashboardSummaryParams) {
   return useQuery({
-    queryKey: ['dashboard-summary'],
-    queryFn: getDashboardSummary,
+    queryKey: ['dashboard-summary', params],
+    queryFn: () => getDashboardSummary(params),
   });
 }
-

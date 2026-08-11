@@ -44,6 +44,12 @@ interface DashboardSummaryApiResponse {
   leaveExpiryRisks?: DashboardLeaveExpiryRisks;
 }
 
+export type DashboardSummaryPeriod = "month" | "quarter" | "year";
+
+export interface DashboardSummaryParams {
+  period: DashboardSummaryPeriod;
+}
+
 const isMockMode = import.meta.env.VITE_USE_MOCKS === "true";
 
 function toCount(value: number | undefined): number {
@@ -60,14 +66,16 @@ function toDashboardMetric(
   };
 }
 
-export async function getDashboardSummary(): Promise<DashboardSummary> {
+export async function getDashboardSummary(params: DashboardSummaryParams): Promise<DashboardSummary> {
   if (isMockMode) {
     await mockDelay();
     return getMockDashboardSummary();
   }
 
   const response =
-    await api.get<DashboardSummaryApiResponse>("/dashboard/summary");
+    await api.get<DashboardSummaryApiResponse>("/dashboard/summary", {
+      params,
+    });
 
   return {
     totalEmployees: toCount(response.totalEmployees),

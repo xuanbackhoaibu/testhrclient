@@ -169,7 +169,7 @@
 
 .donutTrack {
   fill: none;
-  stroke: var(--hrm-border-soft);
+  stroke: var(--mantine-color-gray-1);
   stroke-width: 8;
 }
 
@@ -177,13 +177,19 @@
   cursor: pointer;
   fill: none;
   stroke-width: 8;
-  transition: opacity 180ms ease, stroke-width 180ms ease, filter 180ms ease;
+  transition:
+    stroke-dasharray 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 180ms ease,
+    stroke-width 180ms ease,
+    filter 180ms ease;
 }
 
-.donutSegment:hover {
+.donutSegment:hover,
+.donutSegment:focus-visible {
   filter: drop-shadow(0 3px 7px rgba(15, 23, 42, 0.18));
   opacity: 0.9;
   stroke-width: 9.6;
+  outline: none;
 }
 
 .donutCenter {
@@ -285,14 +291,17 @@
   height: 168px;
   overflow: hidden;
   border-radius: 10px 10px 6px 6px;
-  background: var(--hrm-border-soft);
+  background: var(--mantine-color-gray-1);
 }
 
 .verticalBarFill {
   width: 100%;
   border-radius: inherit;
   animation: barGrow 520ms ease both;
-  transition: filter 180ms ease, transform 180ms ease;
+  transition:
+    height 0.6s ease-out,
+    filter 180ms ease,
+    transform 180ms ease;
   transform-origin: bottom;
 }
 
@@ -318,7 +327,7 @@
 .stackedTrack {
   overflow: hidden;
   border-radius: 999px;
-  background: var(--hrm-border-soft);
+  background: var(--mantine-color-gray-1);
 }
 
 .barTrack {
@@ -330,7 +339,10 @@
   border-radius: inherit;
   animation: widthGrow 520ms ease both;
   transform-origin: left;
-  transition: filter 180ms ease, transform 180ms ease;
+  transition:
+    width 0.6s ease-out,
+    filter 180ms ease,
+    transform 180ms ease;
 }
 
 .barFill_normal {
@@ -462,8 +474,8 @@
 :global([data-mantine-color-scheme='dark']) .stackedTrack,
 :global([data-mantine-color-scheme='dark']) .donutTrack,
 :global([data-mantine-color-scheme='dark']) .verticalBarTrack {
-  background: #253244;
-  stroke: #253244;
+  background: var(--mantine-color-dark-5);
+  stroke: var(--mantine-color-dark-5);
 }
 
 @media (max-width: 900px) {
@@ -471,14 +483,22 @@
     width: 100%;
   }
 
-  .donutLayout {
-    justify-content: center;
-  }
-
   .donutWrap {
     width: 190px;
     height: 190px;
     flex-basis: 190px;
+  }
+}
+
+@media (max-width: 768px) {
+  .donutLayout {
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .legend {
+    width: 100%;
+    min-width: 0;
   }
 }
 
