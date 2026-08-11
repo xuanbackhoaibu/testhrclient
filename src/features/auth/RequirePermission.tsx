@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Alert } from 'antd';
+import { Alert } from '@mantine/core';
 
 import { useAuth } from './useAuth';
 
@@ -13,7 +13,7 @@ interface RequirePermissionProps {
 export function RequirePermission({
   permission,
   mode = 'any',
-  fallback = <Alert type="warning" message="Bạn không có quyền truy cập nội dung này." showIcon />,
+  fallback = <Alert color="yellow" title="Không có quyền">Bạn không có quyền truy cập nội dung này.</Alert>,
   children,
 }: RequirePermissionProps) {
   const { can, canAll, canAny } = useAuth();

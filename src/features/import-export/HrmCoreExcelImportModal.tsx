@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Button, Checkbox, Input, Space, Table, message } from 'antd';
+import { Button, Checkbox, Group, Stack, TextInput } from '@mantine/core';
+import { message } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { BaseTable } from '../../shared/ui';
 import {
   commitHrmCoreImport,
   listHrmCoreRows,
@@ -41,7 +43,7 @@ function renderSuggestedCodes(
   showUnit = false,
 ) {
   return (
-    <Table
+    <BaseTable
       rowKey="key"
       size="small"
       dataSource={items}
@@ -60,9 +62,9 @@ function renderSuggestedCodes(
         {
           title: 'Mã đề xuất',
           render: (_, record) => (
-            <Input
+            <TextInput
               value={drafts[record.key] ?? record.code}
-              onChange={(event) => setDrafts({ ...drafts, [record.key]: event.target.value })}
+              onChange={(event) => setDrafts({ ...drafts, [record.key]: event.currentTarget.value })}
             />
           ),
         },
@@ -173,7 +175,7 @@ export function HrmCoreExcelImportModal({
   );
 
   const rowsTable = (
-    <Table
+    <BaseTable
       rowKey="id"
       size="small"
       dataSource={rows}
@@ -224,33 +226,32 @@ export function HrmCoreExcelImportModal({
           : []
       }
       previewContent={
-        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+        <Stack gap="md">
           <Checkbox
+            label="Chấp nhận cảnh báo"
             checked={allowWarnings}
             disabled={!hasWarnings}
-            onChange={(event) => setAllowWarnings(event.target.checked)}
-          >
-            Chấp nhận cảnh báo
-          </Checkbox>
+            onChange={(event) => setAllowWarnings(event.currentTarget.checked)}
+          />
           {preview ? (
             <>
               {renderSuggestedCodes(preview.suggestedCodes.units, unitCodeDrafts, setUnitCodeDrafts)}
               {renderSuggestedCodes(preview.suggestedCodes.departments, departmentCodeDrafts, setDepartmentCodeDrafts, true)}
-              <Space>
+              <Group>
                 <Button
                   loading={updateCodesMutation.isPending}
                   onClick={() => updateCodesMutation.mutate()}
                 >
                   Lưu mã đề xuất
                 </Button>
-              </Space>
+              </Group>
             </>
           ) : null}
           {rowsTable}
-        </Space>
+        </Stack>
       }
       errorsContent={
-        <Table
+        <BaseTable
           rowKey="id"
           size="small"
           dataSource={rows.filter((row) => row.validationStatus === 'ERROR')}
@@ -262,7 +263,7 @@ export function HrmCoreExcelImportModal({
         />
       }
       warningsContent={
-        <Table
+        <BaseTable
           rowKey="id"
           size="small"
           dataSource={rows.filter((row) => row.validationStatus === 'WARNING')}

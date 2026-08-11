@@ -1,159 +1,66 @@
 import { useState } from 'react';
-import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  PlusOutlined,
-  SendOutlined,
-  StopOutlined,
-} from '@ant-design/icons';
-import type { TableColumnsType } from 'antd';
-import {
-  Button,
-  Card,
-  Col,
-  Drawer,
-  Form,
-  Input,
-  InputNumber,
-  Row,
-  Select,
-  Space,
-  Table,
-  Typography,
-  message,
-} from 'antd';
+import { Button, Card, Drawer, Group, NumberInput, Select, SimpleGrid, Stack, Textarea, TextInput } from '@mantine/core';
+import { useForm } from '@mantine/form';
+import { notifications } from '@mantine/notifications';
+import { IconPlus } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import dayjs from 'dayjs';
+import { z } from 'zod';
 
-import {
-  approveLeaveRequest,
-  cancelLeaveRequest,
-  createLeaveRequest,
-  rejectLeaveRequest,
-  submitLeaveRequest,
-} from '../../features/leave/leaveApi';
-import type {
-  LeaveApprovalStep,
-  LeavePolicyType,
-  LeaveRequest,
-  LeaveRequestPayload,
-} from '../../features/leave/leaveTypes';
-import { useLeaveRequests, useLeaveTypes } from '../../features/leave/useLeaveRequests';
-import { HR_PERMISSIONS } from '../../features/auth/permissions';
-import { useAuth } from '../../features/auth/useAuth';
+import { approveLeaveRequest, cancelLeaveRequest, createLeaveRequest, rejectLeaveRequest, submitLeaveRequest } from '../../features/leave/leaveApi';
+import type { LeaveRequestPayload } from '../../features/leave/leaveTypes';
+import { useLeaveRequests } from '../../features/leave/useLeaveRequests';
+import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { LEAVE_TYPE_OPTIONS } from '../../shared/constants/statuses';
 import { ErrorState } from '../../shared/components/ErrorState';
 import { LoadingState } from '../../shared/components/LoadingState';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
-import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { formatDate } from '../../shared/utils/date';
+import { useAuth } from '../../features/auth/useAuth';
+import { HR_PERMISSIONS } from '../../features/auth/permissions';
+import { BaseModal, BaseTable } from '../../shared/ui';
+import { focusFirstFormError, zodMantineValidate } from '../../shared/forms/zodMantine';
 
-const { Text } = Typography;
+type LeaveAction = 'submit' | 'approve' | 'reject' | 'cancel';
+type ReviewDraft = { id: string; action: LeaveAction } | null;
 
-const HALF_DAY_SESSION_OPTIONS = [
-  { value: 'FULL_DAY', label: 'Cả ngày' },
-  { value: 'MORNING', label: 'Buổi sáng' },
-  { value: 'AFTERNOON', label: 'Buổi chiều' },
-] as const;
+const leaveSchema = z.object({
+  employeeId: z.string().min(1, 'Chọn nhân sự.'),
+  leaveType: z.string().min(1, 'Chọn loại nghỉ.'),
+  startDate: z.string().min(1, 'Chọn ngày bắt đầu.'),
+  endDate: z.string().min(1, 'Chọn ngày kết thúc.'),
+  totalDays: z.number().min(1, 'Số ngày nghỉ phải lớn hơn 0.'),
+  reason: z.string().trim().min(1, 'Nhập lý do nghỉ.'),
+}).refine(
+  (values) => !values.startDate || !values.endDate || values.endDate >= values.startDate,
+  { path: ['endDate'], message: 'Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.' },
+) satisfies z.ZodType<LeaveRequestPayload>;
 
-const LEAVE_TYPE_LABELS: Record<string, string> = {
-  ANNUAL: 'Nghỉ phép năm',
-  SICK: 'Nghỉ ốm',
-  UNPAID: 'Nghỉ không lương',
-  MARRIAGE: 'Nghỉ kết hôn',
-  MATERNITY: 'Thai sản',
-  OTHER: 'Nghỉ khác',
-  WORK_FULL: 'Làm việc cả ngày',
-  WORK_HALF: 'Làm việc nửa ngày',
-  PAID_PERSONAL: 'Nghỉ việc riêng có lương',
-  CHILD_SICK: 'Nghỉ con ốm',
-  WORK_ACCIDENT: 'Tai nạn lao động',
-  COMPENSATORY: 'Nghỉ bù',
-  HOLIDAY: 'Lễ Tết',
-  COMPANY_TRIP: 'Du lịch',
-  WORK_STOP: 'Nghỉ ngừng việc',
-  BUSINESS_TRIP: 'Công tác',
-  SECONDMENT: 'Công tác biệt phái',
-  OFFICE_DUTY: 'Trực văn phòng',
-  MEETING: 'Hội họp',
-  COMPULSORY_LABOR: 'Lao động nghĩa vụ',
-  ONLINE_WORK: 'Làm việc online',
+const reviewSchema = z.object({
+  note: z.string().trim().max(500, 'Ghi chú tối đa 500 ký tự.'),
+});
+
+const emptyLeaveValues: LeaveRequestPayload = {
+  employeeId: '',
+  leaveType: '',
+  startDate: '',
+  endDate: '',
+  totalDays: 1,
+  reason: '',
 };
 
-const REQUEST_STATUS_OPTIONS = ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'CANCELLED'] as const;
-
-const REQUEST_STATUS_LABELS: Record<string, string> = {
-  DRAFT: 'Nháp',
-  SUBMITTED: 'Đang trình duyệt',
-  APPROVED: 'Đã duyệt',
-  REJECTED: 'Từ chối',
-  CANCELLED: 'Đã hủy',
+const actionLabels: Record<LeaveAction, string> = {
+  submit: 'Submit',
+  approve: 'Approve',
+  reject: 'Reject',
+  cancel: 'Cancel',
 };
-
-const QUOTA_MODE_LABELS: Record<string, string> = {
-  NONE: 'Không trừ quỹ',
-  ANNUAL_BALANCE: 'Trừ phép năm',
-  PER_EVENT: 'Theo từng sự kiện',
-  INSURANCE: 'Chế độ BHXH',
-  COMPENSATORY_BALANCE: 'Quỹ nghỉ bù',
-  PENDING_HR_RULE: 'Chờ HR chốt quy tắc',
-};
-
-const APPROVAL_STEP_LABELS: Record<string, string> = {
-  ATTENDANCE_TRACKER: 'Người theo dõi chấm công',
-  DEPARTMENT_MANAGER: 'Trưởng bộ phận',
-  OFFICE_CHIEF: 'Chánh văn phòng',
-  BOARD: 'Ban Tổng giám đốc',
-};
-
-function labelFrom(map: Record<string, string>, value?: string | null) {
-  return value ? map[value] ?? value : '-';
-}
-
-function sessionLabel(value?: string | null) {
-  return HALF_DAY_SESSION_OPTIONS.find((item) => item.value === value)?.label ?? 'Cả ngày';
-}
-
-function sessionRangeLabel(record: LeaveRequest) {
-  const start = sessionLabel(record.startHalfDaySession);
-  const end = sessionLabel(record.endHalfDaySession);
-  return start === end ? start : `${start} - ${end}`;
-}
-
-function noticeLabel(record: LeaveRequest) {
-  const actual = record.noticeActualDays ?? '-';
-  const required = record.noticeRequiredDays ?? '-';
-  return record.lateSubmission ? `Trễ hạn (${actual}/${required})` : `${actual}/${required}`;
-}
-
-function approvalLabel(step: LeaveApprovalStep | null) {
-  if (!step) {
-    return '-';
-  }
-
-  return `Cấp ${step.stepOrder}: ${labelFrom(APPROVAL_STEP_LABELS, step.stepCode) || step.stepName}`;
-}
-
-function policyName(record: LeavePolicyType) {
-  return labelFrom(LEAVE_TYPE_LABELS, record.code) || record.name;
-}
-
-const leaveTypeOptions = LEAVE_TYPE_OPTIONS.map((item) => ({
-  value: item,
-  label: labelFrom(LEAVE_TYPE_LABELS, item),
-}));
-
-const statusOptions = REQUEST_STATUS_OPTIONS.map((item) => ({
-  value: item,
-  label: labelFrom(REQUEST_STATUS_LABELS, item),
-}));
 
 export function LeavePage() {
   const queryClient = useQueryClient();
   const { can } = useAuth();
-  const [form] = Form.useForm<LeaveRequestPayload>();
   const [open, setOpen] = useState(false);
+  const [reviewDraft, setReviewDraft] = useState<ReviewDraft>(null);
   const [params, setParams] = useState({
     page: 1,
     pageSize: 10,
@@ -162,23 +69,35 @@ export function LeavePage() {
     status: undefined as string | undefined,
   });
   const { data, isLoading, error, refetch } = useLeaveRequests(params);
-  const { data: leaveTypes = [], isLoading: isLeaveTypesLoading } = useLeaveTypes();
+
+  const form = useForm<LeaveRequestPayload>({
+    initialValues: emptyLeaveValues,
+    validate: zodMantineValidate(leaveSchema),
+    validateInputOnChange: true,
+  });
+  const reviewForm = useForm<{ note: string }>({
+    initialValues: { note: '' },
+    validate: zodMantineValidate(reviewSchema),
+    validateInputOnChange: true,
+  });
+
+  const employeeOptions = mockEmployees.map((item) => ({ value: item.id, label: item.fullName }));
+  const leaveTypeOptions = LEAVE_TYPE_OPTIONS.map((item) => ({ value: item, label: item }));
+  const statusOptions = ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'CANCELLED'].map((item) => ({ value: item, label: item }));
 
   const createMutation = useMutation({
     mutationFn: createLeaveRequest,
     onSuccess: async () => {
-      message.success('Đã tạo đơn nghỉ phép.');
+      notifications.show({ color: 'green', title: 'Đã tạo đơn nghỉ', message: 'Đơn nghỉ đã được lưu.' });
       setOpen(false);
-      form.resetFields();
+      form.setValues(emptyLeaveValues);
+      form.resetDirty(emptyLeaveValues);
       await queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
-    },
-    onError: () => {
-      message.error('Không tạo được đơn nghỉ phép. Kiểm tra lại thông tin và thử lại.');
     },
   });
 
   const statusMutation = useMutation({
-    mutationFn: async ({ id, action }: { id: string; action: 'submit' | 'approve' | 'reject' | 'cancel' }) => {
+    mutationFn: async ({ id, action }: { id: string; action: LeaveAction }) => {
       switch (action) {
         case 'submit':
           return submitLeaveRequest(id);
@@ -191,13 +110,34 @@ export function LeavePage() {
       }
     },
     onSuccess: async () => {
-      message.success('Đã cập nhật trạng thái đơn nghỉ phép.');
+      notifications.show({ color: 'green', title: 'Đã cập nhật đơn nghỉ', message: 'Trạng thái đơn nghỉ đã được cập nhật.' });
+      setReviewDraft(null);
+      reviewForm.setValues({ note: '' });
+      reviewForm.resetDirty({ note: '' });
       await queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
     },
-    onError: () => {
-      message.error('Không cập nhật được trạng thái đơn.');
-    },
   });
+
+  function closeDrawer() {
+    setOpen(false);
+    form.setValues(emptyLeaveValues);
+    form.resetDirty(emptyLeaveValues);
+  }
+
+  function openReview(id: string, action: LeaveAction) {
+    reviewForm.setValues({ note: '' });
+    reviewForm.resetDirty({ note: '' });
+    setReviewDraft({ id, action });
+  }
+
+  function handleInvalid(errors: typeof form.errors) {
+    focusFirstFormError(errors);
+    notifications.show({
+      color: 'red',
+      title: 'Cần kiểm tra lại đơn nghỉ',
+      message: 'Một số trường bắt buộc hoặc mốc thời gian chưa hợp lệ.',
+    });
+  }
 
   if (isLoading) {
     return <LoadingState />;
@@ -207,273 +147,130 @@ export function LeavePage() {
     return <ErrorState onRetry={() => void refetch()} />;
   }
 
-  const currentApprovalStep = (record: LeaveRequest) =>
-    record.status === 'SUBMITTED'
-      ? (record.approvalSteps?.find((step) => step.status === 'SUBMITTED') ?? null)
-      : null;
-
-  const requestColumns: TableColumnsType<LeaveRequest> = [
-    {
-      title: 'Nhân viên',
-      width: 220,
-      render: (_, record) => (
-        <Space orientation="vertical" size={0}>
-          <Text strong>{record.employeeName ?? record.employee?.fullName ?? record.employeeId}</Text>
-          <Text type="secondary">{record.employee?.employeeCode ?? record.employeeId}</Text>
-        </Space>
-      ),
-    },
-    {
-      title: 'Loại nghỉ',
-      dataIndex: 'leaveType',
-      width: 170,
-      render: (value: string) => labelFrom(LEAVE_TYPE_LABELS, value),
-    },
-    { title: 'Từ ngày', width: 120, render: (_, record) => formatDate(record.startDate) },
-    { title: 'Đến ngày', width: 120, render: (_, record) => formatDate(record.endDate) },
-    { title: 'Buổi nghỉ', width: 170, render: (_, record) => sessionRangeLabel(record) },
-    { title: 'Số ngày', dataIndex: 'totalDays', width: 95 },
-    { title: 'Báo trước', width: 130, render: (_, record) => noticeLabel(record) },
-    { title: 'Trạng thái', width: 150, render: (_, record) => <StatusTag status={record.status} /> },
-    { title: 'Luồng duyệt', width: 220, render: (_, record) => approvalLabel(currentApprovalStep(record)) },
-    {
-      title: 'Thao tác',
-      width: 280,
-      render: (_, record) => (
-        <Space wrap size={[8, 8]}>
-          {record.status === 'DRAFT' && can(HR_PERMISSIONS.LEAVE_SUBMIT) ? (
-            <Button
-              size="small"
-              icon={<SendOutlined />}
-              loading={statusMutation.isPending}
-              onClick={() => statusMutation.mutate({ id: record.id, action: 'submit' })}
-            >
-              Trình duyệt
-            </Button>
-          ) : null}
-          {record.status === 'SUBMITTED' && can(HR_PERMISSIONS.LEAVE_APPROVE) ? (
-            <Button
-              size="small"
-              type="primary"
-              icon={<CheckCircleOutlined />}
-              loading={statusMutation.isPending}
-              onClick={() => statusMutation.mutate({ id: record.id, action: 'approve' })}
-            >
-              Duyệt
-            </Button>
-          ) : null}
-          {record.status === 'SUBMITTED' && can(HR_PERMISSIONS.LEAVE_REJECT) ? (
-            <Button
-              size="small"
-              danger
-              icon={<CloseCircleOutlined />}
-              loading={statusMutation.isPending}
-              onClick={() => statusMutation.mutate({ id: record.id, action: 'reject' })}
-            >
-              Từ chối
-            </Button>
-          ) : null}
-          {['DRAFT', 'SUBMITTED'].includes(record.status) && can(HR_PERMISSIONS.LEAVE_CANCEL) ? (
-            <Button
-              size="small"
-              icon={<StopOutlined />}
-              loading={statusMutation.isPending}
-              onClick={() => statusMutation.mutate({ id: record.id, action: 'cancel' })}
-            >
-              Hủy
-            </Button>
-          ) : null}
-        </Space>
-      ),
-    },
-  ];
-
-  const catalogColumns: TableColumnsType<LeavePolicyType> = [
-    {
-      title: 'Ký hiệu',
-      dataIndex: 'displaySymbol',
-      width: 90,
-      render: (value: string) => <Text strong>{value}</Text>,
-    },
-    { title: 'Mã', dataIndex: 'code', width: 160 },
-    {
-      title: 'Tên ký hiệu',
-      width: 260,
-      render: (_, record) => (
-        <Space orientation="vertical" size={0}>
-          <Text>{policyName(record)}</Text>
-          {record.note ? <Text type="secondary">{record.note}</Text> : null}
-        </Space>
-      ),
-    },
-    { title: 'Giá trị ngày', width: 120, render: (_, record) => record.dayValue ?? '-' },
-    {
-      title: 'Quỹ phép',
-      dataIndex: 'quotaMode',
-      width: 190,
-      render: (value: string) => labelFrom(QUOTA_MODE_LABELS, value),
-    },
-    { title: 'Quy tắc HR', width: 160, render: (_, record) => <StatusTag status={record.hrRuleStatus} /> },
-    { title: 'Trừ phép năm', width: 140, render: (_, record) => (record.deductsAnnualLeave ? 'Có' : 'Không') },
-    { title: 'Chứng từ', width: 130, render: (_, record) => (record.requiresAttachment ? 'Bắt buộc' : 'Không') },
-  ];
-
   return (
     <>
       <PageHeader
-        title="Quản lý nghỉ phép"
-        subtitle="Tạo đơn, trình duyệt và theo dõi quy tắc ký hiệu nghỉ phép trước khi đối chiếu bảng công."
-        actions={
-          can(HR_PERMISSIONS.LEAVE_CREATE) ? (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
-              Tạo đơn
-            </Button>
-          ) : undefined
-        }
+        title="Leave"
+        subtitle="Leave workflow"
+        actions={can(HR_PERMISSIONS.LEAVE_CREATE) ? <Button leftSection={<IconPlus size={16} />} onClick={() => setOpen(true)}>Create</Button> : undefined}
       />
+      <Card className="page-card">
+        <Stack gap="md">
+          <SimpleGrid cols={{ base: 1, md: 3 }} spacing="sm">
+            <Select
+              clearable
+              searchable
+              placeholder="Employee"
+              data={employeeOptions}
+              value={params.employeeId ?? null}
+              onChange={(value) => setParams((current) => ({ ...current, page: 1, employeeId: value ?? undefined }))}
+            />
+            <Select
+              clearable
+              placeholder="Leave type"
+              data={leaveTypeOptions}
+              value={params.leaveType ?? null}
+              onChange={(value) => setParams((current) => ({ ...current, page: 1, leaveType: value ?? undefined }))}
+            />
+            <Select
+              clearable
+              placeholder="Status"
+              data={statusOptions}
+              value={params.status ?? null}
+              onChange={(value) => setParams((current) => ({ ...current, page: 1, status: value ?? undefined }))}
+            />
+          </SimpleGrid>
 
-      <Card className="page-card leave-page-card" title="Danh sách đơn nghỉ phép">
-        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
-          <Row gutter={[12, 12]}>
-            <Col xs={24} md={8}>
-              <Select
-                allowClear
-                showSearch
-                placeholder="Nhân viên"
-                style={{ width: '100%' }}
-                optionFilterProp="label"
-                options={mockEmployees.map((item) => ({ value: item.id, label: item.fullName }))}
-                onChange={(value) => setParams((current) => ({ ...current, page: 1, employeeId: value }))}
-              />
-            </Col>
-            <Col xs={24} md={8}>
-              <Select
-                allowClear
-                placeholder="Loại nghỉ"
-                style={{ width: '100%' }}
-                options={leaveTypeOptions}
-                onChange={(value) => setParams((current) => ({ ...current, page: 1, leaveType: value }))}
-              />
-            </Col>
-            <Col xs={24} md={8}>
-              <Select
-                allowClear
-                placeholder="Trạng thái"
-                style={{ width: '100%' }}
-                options={statusOptions}
-                onChange={(value) => setParams((current) => ({ ...current, page: 1, status: value }))}
-              />
-            </Col>
-          </Row>
-
-          <Table
+          <BaseTable
             rowKey="id"
             dataSource={data.items}
-            columns={requestColumns}
-            scroll={{ x: 1650 }}
-            locale={{ emptyText: 'Chưa có đơn nghỉ phép' }}
             pagination={{
               current: data.pagination.page,
               pageSize: data.pagination.pageSize,
               total: data.pagination.total,
-              showSizeChanger: true,
               onChange: (page, pageSize) => setParams((current) => ({ ...current, page, pageSize })),
             }}
+            columns={[
+              { title: 'Employee', dataIndex: 'employeeName' },
+              { title: 'Type', dataIndex: 'leaveType' },
+              { title: 'Start date', render: (_, record) => formatDate(record.startDate) },
+              { title: 'End date', render: (_, record) => formatDate(record.endDate) },
+              { title: 'Total days', dataIndex: 'totalDays' },
+              { title: 'Status', render: (_, record) => <StatusTag status={record.status} /> },
+              {
+                title: 'Actions',
+                render: (_, record) => (
+                  <Group gap="xs">
+                    {record.status === 'DRAFT' && can(HR_PERMISSIONS.LEAVE_SUBMIT) ? <Button size="xs" variant="default" onClick={() => openReview(record.id, 'submit')}>Submit</Button> : null}
+                    {record.status === 'SUBMITTED' && can(HR_PERMISSIONS.LEAVE_APPROVE) ? <Button size="xs" onClick={() => openReview(record.id, 'approve')}>Approve</Button> : null}
+                    {record.status === 'SUBMITTED' && can(HR_PERMISSIONS.LEAVE_REJECT) ? <Button size="xs" color="red" variant="light" onClick={() => openReview(record.id, 'reject')}>Reject</Button> : null}
+                    {['DRAFT', 'SUBMITTED'].includes(record.status) && can(HR_PERMISSIONS.LEAVE_CANCEL) ? <Button size="xs" variant="default" onClick={() => openReview(record.id, 'cancel')}>Cancel</Button> : null}
+                  </Group>
+                ),
+              },
+            ]}
           />
-        </Space>
-      </Card>
-
-      <Card className="page-card leave-page-card" title="Danh mục ký hiệu nghỉ phép" style={{ marginTop: 16 }}>
-        <Table
-          rowKey="id"
-          dataSource={leaveTypes}
-          loading={isLeaveTypesLoading}
-          columns={catalogColumns}
-          scroll={{ x: 1250 }}
-          locale={{ emptyText: 'Chưa có ký hiệu nghỉ phép' }}
-          pagination={{ pageSize: 10, showSizeChanger: false }}
-        />
+        </Stack>
       </Card>
 
       <Drawer
-        title="Tạo đơn nghỉ phép"
-        open={open}
-        size="large"
-        destroyOnClose
-        onClose={() => {
-          setOpen(false);
-          form.resetFields();
-        }}
-        extra={
-          <Space>
-            <Button onClick={() => setOpen(false)}>Hủy</Button>
-            <Button type="primary" loading={createMutation.isPending} onClick={() => void form.submit()}>
-              Lưu đơn
-            </Button>
-          </Space>
-        }
+        title="Create leave request"
+        opened={open}
+        size={500}
+        position="right"
+        onClose={closeDrawer}
       >
-        <Form form={form} layout="vertical" onFinish={(values) => createMutation.mutate(values)}>
-          <Form.Item name="employeeId" label="Nhân viên" rules={[{ required: true, message: 'Chọn nhân viên.' }]}>
-            <Select
-              showSearch
-              optionFilterProp="label"
-              options={mockEmployees.map((item) => ({ value: item.id, label: item.fullName }))}
-            />
-          </Form.Item>
-          <Form.Item name="leaveType" label="Loại nghỉ" rules={[{ required: true, message: 'Chọn loại nghỉ.' }]}>
-            <Select options={leaveTypeOptions} />
-          </Form.Item>
-          <Row gutter={[12, 0]}>
-            <Col xs={24} sm={12}>
-              <Form.Item name="startDate" label="Từ ngày" rules={[{ required: true, message: 'Nhập ngày bắt đầu.' }]}>
-                <Input type="date" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item
-                name="endDate"
-                label="Đến ngày"
-                rules={[
-                  { required: true, message: 'Nhập ngày kết thúc.' },
-                  ({ getFieldValue }) => ({
-                    validator(_, value) {
-                      const startDate = getFieldValue('startDate');
-                      if (!startDate || !value || !dayjs(value).isBefore(dayjs(startDate), 'day')) {
-                        return Promise.resolve();
-                      }
-                      return Promise.reject(new Error('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.'));
-                    },
-                  }),
-                ]}
-              >
-                <Input type="date" />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={[12, 0]}>
-            <Col xs={24} sm={12}>
-              <Form.Item name="startHalfDaySession" label="Buổi bắt đầu" initialValue="FULL_DAY">
-                <Select options={HALF_DAY_SESSION_OPTIONS.map((item) => ({ value: item.value, label: item.label }))} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item name="endHalfDaySession" label="Buổi kết thúc" initialValue="FULL_DAY">
-                <Select options={HALF_DAY_SESSION_OPTIONS.map((item) => ({ value: item.value, label: item.label }))} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Form.Item name="totalDays" label="Tổng số ngày" rules={[{ required: true, type: 'number', min: 0.5, message: 'Tổng số ngày tối thiểu là 0.5.' }]}>
-            <InputNumber min={0.5} step={0.5} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item name="reason" label="Lý do" rules={[{ required: true, message: 'Nhập lý do nghỉ phép.' }]}>
-            <Input.TextArea rows={3} placeholder="Nhập lý do để lưu vết phê duyệt" />
-          </Form.Item>
-          <Form.Item name="attachmentUrl" label="Link chứng từ">
-            <Input placeholder="Bắt buộc với nghỉ ốm từ 3 ngày theo quy tắc hiện tại" />
-          </Form.Item>
-        </Form>
+        <form onSubmit={form.onSubmit((values) => createMutation.mutate(values), handleInvalid)}>
+          <Stack gap="sm">
+            <Select label="Employee" data={employeeOptions} searchable {...form.getInputProps('employeeId')} />
+            <Select label="Leave type" data={leaveTypeOptions} {...form.getInputProps('leaveType')} />
+            <TextInput label="Start date" type="date" {...form.getInputProps('startDate')} />
+            <TextInput label="End date" type="date" {...form.getInputProps('endDate')} />
+            <NumberInput label="Total days" min={1} {...form.getInputProps('totalDays')} />
+            <Textarea label="Reason" rows={3} {...form.getInputProps('reason')} />
+            <Group justify="flex-end" mt="md">
+              <Button variant="default" onClick={closeDrawer}>Cancel</Button>
+              <Button type="submit" loading={createMutation.isPending}>Save</Button>
+            </Group>
+          </Stack>
+        </form>
       </Drawer>
+
+      <BaseModal
+        opened={Boolean(reviewDraft)}
+        title={reviewDraft ? `${actionLabels[reviewDraft.action]} leave request` : 'Review leave request'}
+        onClose={() => setReviewDraft(null)}
+      >
+        <form
+          onSubmit={reviewForm.onSubmit(
+            () => {
+              if (reviewDraft) {
+                statusMutation.mutate(reviewDraft);
+              }
+            },
+            (errors) => focusFirstFormError(errors),
+          )}
+        >
+          <Stack gap="md">
+            <Textarea
+              label="Internal note"
+              description="Ghi chú này hỗ trợ người duyệt kiểm tra trước khi xác nhận thao tác."
+              rows={3}
+              {...reviewForm.getInputProps('note')}
+            />
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setReviewDraft(null)}>Cancel</Button>
+              <Button
+                type="submit"
+                color={reviewDraft?.action === 'reject' ? 'red' : undefined}
+                loading={statusMutation.isPending}
+              >
+                Confirm
+              </Button>
+            </Group>
+          </Stack>
+        </form>
+      </BaseModal>
     </>
   );
 }

@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { Button, Card, Col, Drawer, Form, Input, Modal, Row, Select, Space, Table, message } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { Button, Card, Drawer, Group, Select, SimpleGrid, Stack, TextInput } from '@mantine/core';
+import { useForm } from '@mantine/form';
+import { notifications } from '@mantine/notifications';
+import { IconPlus } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { z } from 'zod';
 
 import { createContract, terminateContract } from '../../features/contracts/contractsApi';
 import type { ContractPayload } from '../../features/contracts/contractTypes';
@@ -13,22 +16,67 @@ import { LoadingState } from '../../shared/components/LoadingState';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
 import { formatDate } from '../../shared/utils/date';
+import { BaseModal, BaseTable } from '../../shared/ui';
+import { focusFirstFormError, zodMantineValidate } from '../../shared/forms/zodMantine';
+
+const contractSchema = z.object({
+  employeeId: z.string().min(1, 'Chọn nhân sự.'),
+  contractNo: z.string().trim().min(1, 'Nhập số hợp đồng.'),
+  contractType: z.string().min(1, 'Chọn loại hợp đồng.'),
+  startDate: z.string().min(1, 'Chọn ngày bắt đầu.'),
+  endDate: z.string(),
+  status: z.string().min(1, 'Chọn trạng thái.'),
+}).refine(
+  (values) => !values.endDate || !values.startDate || values.endDate >= values.startDate,
+  { path: ['endDate'], message: 'Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.' },
+) satisfies z.ZodType<ContractPayload>;
+
+const terminateSchema = z.object({
+  endDate: z.string().min(1, 'Chọn ngày kết thúc.'),
+});
+
+const emptyContractValues: ContractPayload = {
+  employeeId: '',
+  contractNo: '',
+  contractType: '',
+  startDate: '',
+  endDate: '',
+  status: 'ACTIVE',
+};
 
 export function ContractsPage() {
   const queryClient = useQueryClient();
-  const [form] = Form.useForm<ContractPayload>();
-  const [terminateForm] = Form.useForm<{ endDate: string }>();
   const [open, setOpen] = useState(false);
   const [terminateId, setTerminateId] = useState<string | null>(null);
-  const [params, setParams] = useState({ page: 1, pageSize: 10, employeeId: undefined as string | undefined, status: undefined as string | undefined });
+  const [params, setParams] = useState({
+    page: 1,
+    pageSize: 10,
+    employeeId: undefined as string | undefined,
+    status: undefined as string | undefined,
+  });
   const { data, isLoading, error, refetch } = useContracts(params);
+
+  const form = useForm<ContractPayload>({
+    initialValues: emptyContractValues,
+    validate: zodMantineValidate(contractSchema),
+    validateInputOnChange: true,
+  });
+  const terminateForm = useForm<{ endDate: string }>({
+    initialValues: { endDate: '' },
+    validate: zodMantineValidate(terminateSchema),
+    validateInputOnChange: true,
+  });
+
+  const employeeOptions = mockEmployees.map((item) => ({ value: item.id, label: item.fullName }));
+  const statusOptions = ['ACTIVE', 'COMPLETED', 'TERMINATED'].map((item) => ({ value: item, label: item }));
 
   const createMutation = useMutation({
     mutationFn: createContract,
     onSuccess: async () => {
-      message.success('Đã tạo hợp đồng.');
+      notifications.show({ color: 'green', title: 'Đã tạo hợp đồng', message: 'Hợp đồng mới đã được lưu.' });
       setOpen(false);
-      form.resetFields();
+      form.setValues(emptyContractValues);
+      form.resetDirty(emptyContractValues);
       await queryClient.invalidateQueries({ queryKey: ['contracts'] });
     },
   });
@@ -36,12 +84,28 @@ export function ContractsPage() {
   const terminateMutation = useMutation({
     mutationFn: ({ id, endDate }: { id: string; endDate: string }) => terminateContract(id, { endDate }),
     onSuccess: async () => {
-      message.success('Đã chấm dứt hợp đồng.');
+      notifications.show({ color: 'green', title: 'Đã kết thúc hợp đồng', message: 'Trạng thái hợp đồng đã được cập nhật.' });
       setTerminateId(null);
-      terminateForm.resetFields();
+      terminateForm.setValues({ endDate: '' });
+      terminateForm.resetDirty({ endDate: '' });
       await queryClient.invalidateQueries({ queryKey: ['contracts'] });
     },
   });
+
+  function closeDrawer() {
+    setOpen(false);
+    form.setValues(emptyContractValues);
+    form.resetDirty(emptyContractValues);
+  }
+
+  function handleInvalid(errors: typeof form.errors) {
+    focusFirstFormError(errors);
+    notifications.show({
+      color: 'red',
+      title: 'Cần kiểm tra lại hợp đồng',
+      message: 'Một số trường bắt buộc hoặc mốc thời gian chưa hợp lệ.',
+    });
+  }
 
   if (isLoading) {
     return <LoadingState />;
@@ -53,19 +117,32 @@ export function ContractsPage() {
 
   return (
     <>
-      <PageHeader title="Hợp đồng" subtitle="Demo metadata hợp đồng cho HRM phase 1." actions={<Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Tạo mới</Button>} />
+      <PageHeader
+        title="Contracts"
+        subtitle="Contract metadata demo cho HRM phase 1."
+        actions={<Button leftSection={<IconPlus size={16} />} onClick={() => setOpen(true)}>Create</Button>}
+      />
       <Card className="page-card">
-        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
-          <Row gutter={12}>
-            <Col xs={24} md={10}>
-              <Select allowClear placeholder="Nhân viên" style={{ width: '100%' }} options={mockEmployees.map((item) => ({ value: item.id, label: item.fullName }))} onChange={(value) => setParams((current) => ({ ...current, employeeId: value }))} />
-            </Col>
-            <Col xs={24} md={6}>
-              <Select allowClear placeholder="Trạng thái" style={{ width: '100%' }} options={['ACTIVE', 'COMPLETED', 'TERMINATED'].map((item) => ({ value: item, label: item }))} onChange={(value) => setParams((current) => ({ ...current, status: value }))} />
-            </Col>
-          </Row>
+        <Stack gap="md">
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="sm">
+            <Select
+              clearable
+              searchable
+              placeholder="Employee"
+              data={employeeOptions}
+              value={params.employeeId ?? null}
+              onChange={(value) => setParams((current) => ({ ...current, page: 1, employeeId: value ?? undefined }))}
+            />
+            <Select
+              clearable
+              placeholder="Status"
+              data={statusOptions}
+              value={params.status ?? null}
+              onChange={(value) => setParams((current) => ({ ...current, page: 1, status: value ?? undefined }))}
+            />
+          </SimpleGrid>
 
-          <Table
+          <BaseTable
             rowKey="id"
             dataSource={data.items}
             pagination={{
@@ -75,53 +152,70 @@ export function ContractsPage() {
               onChange: (page, pageSize) => setParams((current) => ({ ...current, page, pageSize })),
             }}
             columns={[
-              { title: 'Nhân viên', dataIndex: 'employeeName' },
-              { title: 'Số hợp đồng', dataIndex: 'contractNo' },
-              { title: 'Loại', dataIndex: 'contractType' },
-              { title: 'Ngày bắt đầu', render: (_, record) => formatDate(record.startDate) },
-              { title: 'Ngày kết thúc', render: (_, record) => formatDate(record.endDate) },
-              { title: 'Trạng thái', render: (_, record) => <StatusTag status={record.status} /> },
+              { title: 'Employee', dataIndex: 'employeeName' },
+              { title: 'Contract no', dataIndex: 'contractNo' },
+              { title: 'Type', dataIndex: 'contractType' },
+              { title: 'Start date', render: (_, record) => formatDate(record.startDate) },
+              { title: 'End date', render: (_, record) => formatDate(record.endDate) },
+              { title: 'Status', render: (_, record) => <StatusTag status={record.status} /> },
               {
-                title: 'Thao tác',
+                title: 'Actions',
                 render: (_, record) => (
-                  record.status !== 'TERMINATED' ? <Button onClick={() => setTerminateId(record.id)}>Chấm dứt</Button> : null
+                  record.status !== 'TERMINATED' ? <Button variant="default" size="xs" onClick={() => setTerminateId(record.id)}>Terminate</Button> : null
                 ),
               },
             ]}
           />
-        </Space>
+        </Stack>
       </Card>
 
-      <Drawer title="Tạo hợp đồng" open={open} width={460} destroyOnClose onClose={() => { setOpen(false); form.resetFields(); }} extra={<Button type="primary" loading={createMutation.isPending} onClick={() => void form.submit()}>Lưu</Button>}>
-        <Form form={form} layout="vertical" onFinish={(values) => createMutation.mutate(values)} initialValues={{ status: 'ACTIVE' }}>
-          <Form.Item name="employeeId" label="Nhân viên" rules={[{ required: true }]}>
-            <Select options={mockEmployees.map((item) => ({ value: item.id, label: item.fullName }))} />
-          </Form.Item>
-          <Form.Item name="contractNo" label="Số hợp đồng" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="contractType" label="Loại hợp đồng" rules={[{ required: true }]}>
-            <Select options={CONTRACT_TYPE_OPTIONS.map((item) => ({ value: item, label: item }))} />
-          </Form.Item>
-          <Form.Item name="startDate" label="Ngày bắt đầu" rules={[{ required: true }]}>
-            <Input type="date" />
-          </Form.Item>
-          <Form.Item name="endDate" label="Ngày kết thúc">
-            <Input type="date" />
-          </Form.Item>
-          <Form.Item name="status" label="Trạng thái" rules={[{ required: true }]}>
-            <Select options={['ACTIVE', 'COMPLETED'].map((item) => ({ value: item, label: item }))} />
-          </Form.Item>
-        </Form>
+      <Drawer
+        title="Create contract"
+        opened={open}
+        size={460}
+        position="right"
+        onClose={closeDrawer}
+      >
+        <form onSubmit={form.onSubmit((values) => createMutation.mutate(values), handleInvalid)}>
+          <Stack gap="sm">
+            <Select label="Employee" data={employeeOptions} searchable {...form.getInputProps('employeeId')} />
+            <TextInput label="Contract no" {...form.getInputProps('contractNo')} />
+            <Select label="Contract type" data={CONTRACT_TYPE_OPTIONS.map((item) => ({ value: item, label: item }))} {...form.getInputProps('contractType')} />
+            <TextInput label="Start date" type="date" {...form.getInputProps('startDate')} />
+            <TextInput label="End date" type="date" {...form.getInputProps('endDate')} />
+            <Select label="Status" data={['ACTIVE', 'COMPLETED'].map((item) => ({ value: item, label: item }))} {...form.getInputProps('status')} />
+            <Group justify="flex-end" mt="md">
+              <Button variant="default" onClick={closeDrawer}>Cancel</Button>
+              <Button type="submit" loading={createMutation.isPending}>Save</Button>
+            </Group>
+          </Stack>
+        </form>
       </Drawer>
 
-      <Modal open={Boolean(terminateId)} title="Chấm dứt hợp đồng" onCancel={() => setTerminateId(null)} onOk={() => void terminateForm.submit()} confirmLoading={terminateMutation.isPending}>
-        <Form form={terminateForm} layout="vertical" onFinish={(values) => terminateId && terminateMutation.mutate({ id: terminateId, endDate: values.endDate })}>
-          <Form.Item name="endDate" label="Ngày kết thúc" rules={[{ required: true }]}>
-            <Input type="date" />
-          </Form.Item>
-        </Form>
-      </Modal>
+      <BaseModal
+        opened={Boolean(terminateId)}
+        title="Terminate contract"
+        onClose={() => setTerminateId(null)}
+      >
+        <form
+          onSubmit={terminateForm.onSubmit(
+            (values) => {
+              if (terminateId) {
+                terminateMutation.mutate({ id: terminateId, endDate: values.endDate });
+              }
+            },
+            (errors) => focusFirstFormError(errors),
+          )}
+        >
+          <Stack gap="md">
+            <TextInput label="End date" type="date" {...terminateForm.getInputProps('endDate')} />
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setTerminateId(null)}>Cancel</Button>
+              <Button type="submit" loading={terminateMutation.isPending}>Confirm</Button>
+            </Group>
+          </Stack>
+        </form>
+      </BaseModal>
     </>
   );
 }

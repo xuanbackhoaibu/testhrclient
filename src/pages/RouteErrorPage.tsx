@@ -1,4 +1,5 @@
-import { Button, Result, Typography } from 'antd';
+import { Button, Text } from '@mantine/core';
+import { Result } from 'antd';
 import { isRouteErrorResponse, useRouteError } from 'react-router-dom';
 
 function getErrorMessage(error: unknown) {
@@ -23,15 +24,15 @@ export function RouteErrorPage() {
       title="Không thể tải trang"
       subTitle="Ung dung gap loi khi hien thi man hinh hien tai."
       extra={[
-        <Button type="primary" key="reload" onClick={() => window.location.reload()}>
+        <Button key="reload" onClick={() => window.location.reload()}>
           Tải lại
         </Button>,
-        <Button key="home" onClick={() => window.location.assign('/')}>
+        <Button key="home" variant="default" onClick={() => window.location.assign('/')}>
           Ve trang chinh
         </Button>,
       ]}
     >
-      <Typography.Text type="secondary">{message}</Typography.Text>
+      <Text c="dimmed">{message}</Text>
     </Result>
   );
 }

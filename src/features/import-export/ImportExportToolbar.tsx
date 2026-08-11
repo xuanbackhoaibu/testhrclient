@@ -1,5 +1,5 @@
-import { Button, Space } from 'antd';
-import { DownloadOutlined, FileExcelOutlined, UploadOutlined } from '@ant-design/icons';
+import { Button, Group } from '@mantine/core';
+import { IconDownload, IconFileSpreadsheet, IconUpload } from '@tabler/icons-react';
 
 interface ImportExportToolbarProps {
   title?: string;
@@ -31,32 +31,34 @@ export function ImportExportToolbar({
   const showExport = canExport && Boolean(onExport);
 
   return (
-    <Space wrap aria-label={title ?? 'Thao tác Excel'}>
+    <Group gap="xs" wrap="wrap" aria-label={title ?? 'Thao tác Excel'}>
       {showTemplate ? (
         <Button
-          icon={<DownloadOutlined />}
+          leftSection={<IconDownload size={16} />}
           loading={isDownloadingTemplate}
           disabled={isDownloadingTemplate}
           onClick={() => void onDownloadTemplate?.()}
+          variant="default"
         >
           Tải mẫu Excel
         </Button>
       ) : null}
       {showImport ? (
-        <Button icon={<UploadOutlined />} onClick={onImport}>
+        <Button leftSection={<IconUpload size={16} />} onClick={onImport} variant="default">
           Import Excel
         </Button>
       ) : null}
       {showExport ? (
         <Button
-          icon={<FileExcelOutlined />}
+          leftSection={<IconFileSpreadsheet size={16} />}
           loading={isExporting}
           disabled={isExporting}
           onClick={() => void onExport?.()}
+          variant="default"
         >
           Xuất Excel
         </Button>
       ) : null}
-    </Space>
+    </Group>
   );
 }

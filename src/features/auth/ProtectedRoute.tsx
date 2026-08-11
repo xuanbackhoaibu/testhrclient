@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Button, Result } from 'antd';
+import { Button } from '@mantine/core';
+import { Result } from 'antd';
 import { Navigate, useLocation } from 'react-router-dom';
 
 import { ROUTES } from '../../shared/constants/routes';

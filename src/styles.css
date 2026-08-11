@@ -72,6 +72,15 @@ body {
   font-weight: 650;
 }
 
+.ant-btn {
+  font-weight: 650;
+  box-shadow: none;
+}
+
+.ant-btn:active {
+  transform: translateY(1px);
+}
+
 .mantine-Button-root:active,
 .mantine-ActionIcon-root:active {
   transform: translateY(1px);
@@ -189,6 +198,19 @@ body {
 
 .metric-card .ant-statistic {
   width: 100%;
+}
+
+.base-table-skeleton {
+  border-color: var(--hrm-border);
+}
+
+.base-table-skeleton-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.excel-import-row-error > td {
+  background: #fff1f0 !important;
 }
 
 .app-nav-link {

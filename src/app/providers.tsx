@@ -1,8 +1,10 @@
 import type { PropsWithChildren } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { MantineProvider, createTheme } from '@mantine/core';
+import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
+import { ConfigProvider } from 'antd';
 
+import { antdTheme, mantineTheme } from './theme';
 import { queryClient } from './queryClient';
 import { getCurrentUser } from '../features/auth/authApi';
 import { clearSession, getAccessToken, setSessionUser } from '../features/auth/authClient';
@@ -15,57 +17,6 @@ function readHttpStatus(error: unknown): number | undefined {
     (error as { response?: { status?: number } })?.response?.status
   );
 }
-
-const theme = createTheme({
-  primaryColor: 'blue',
-  defaultRadius: 'md',
-  fontFamily:
-    'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-  headings: {
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    fontWeight: '650',
-  },
-  components: {
-    Button: {
-      defaultProps: {
-        radius: 'md',
-      },
-    },
-    ActionIcon: {
-      defaultProps: {
-        radius: 'md',
-      },
-    },
-    TextInput: {
-      defaultProps: {
-        radius: 'md',
-      },
-    },
-    PasswordInput: {
-      defaultProps: {
-        radius: 'md',
-      },
-    },
-    Select: {
-      defaultProps: {
-        radius: 'md',
-      },
-    },
-    Paper: {
-      defaultProps: {
-        withBorder: true,
-        shadow: 'none',
-      },
-    },
-    Table: {
-      defaultProps: {
-        verticalSpacing: 'sm',
-        horizontalSpacing: 'md',
-      },
-    },
-  },
-});
 
 function AuthBootstrap({ children }: PropsWithChildren) {
   const [ready, setReady] = useState(false);
@@ -148,11 +99,13 @@ function AuthBootstrap({ children }: PropsWithChildren) {
 
 export function AppProviders({ children }: PropsWithChildren) {
   return (
-    <MantineProvider theme={theme}>
-      <Notifications position="top-right" zIndex={4000} />
+    <ConfigProvider theme={antdTheme}>
+      <MantineProvider theme={mantineTheme}>
+        <Notifications position="top-right" zIndex={4000} />
         <QueryClientProvider client={queryClient}>
           <AuthBootstrap>{children}</AuthBootstrap>
         </QueryClientProvider>
-    </MantineProvider>
+      </MantineProvider>
+    </ConfigProvider>
   );
 }

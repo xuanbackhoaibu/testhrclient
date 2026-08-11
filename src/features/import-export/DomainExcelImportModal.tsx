@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Table, message } from 'antd';
+import { message } from 'antd';
 import { useMutation } from '@tanstack/react-query';
 
+import { BaseTable } from '../../shared/ui';
 import { showDownloadError } from './downloadError';
 import {
   downloadImportErrorReport,
@@ -215,7 +216,7 @@ export function DomainExcelImportModal({
       onResetPreview={hasPreview ? handleResetPreview : undefined}
       summary={summary}
       previewContent={
-        <Table
+        <BaseTable
           rowKey="id"
           size="small"
           pagination={{ pageSize: 8 }}
@@ -224,7 +225,7 @@ export function DomainExcelImportModal({
         />
       }
       errorsContent={
-        <Table
+        <BaseTable
           rowKey="id"
           size="small"
           pagination={{ pageSize: 8 }}
@@ -233,7 +234,7 @@ export function DomainExcelImportModal({
         />
       }
       warningsContent={
-        <Table
+        <BaseTable
           rowKey="id"
           size="small"
           pagination={{ pageSize: 8 }}

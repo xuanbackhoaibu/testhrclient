@@ -731,3 +731,287 @@ Không ưu tiên nâng cấp dashboard trong phạm vi này vì phần dashboard
 ```text
 Kiểm tra UI thực tế trên trình duyệt ở mobile/desktop.
 ```
+
+## 18. Chuẩn hóa UI library và theme dùng chung
+
+Thời gian ghi nhận:
+
+```text
+2026-08-11 18:38 +07
+```
+
+### 18.1. Phân định vai trò Ant Design và Mantine UI
+
+Đã bắt đầu chuẩn hóa lại ranh giới sử dụng 2 thư viện UI:
+
+- Ant Design giữ vai trò cho các component dữ liệu phức tạp như `Table`, `Descriptions`, các pattern dạng bảng/phân tích dữ liệu.
+- Mantine UI dùng cho các component UX cơ bản như `Button`, `Input`, `Checkbox`, `Modal`, form controls, notification và các thao tác tương tác thường ngày.
+
+Các điểm đã thay đổi:
+
+- Chuyển một số `Button`, `Input`, `Checkbox`, `Alert` cơ bản từ AntD sang Mantine ở các vùng shared/import/auth.
+- Giữ AntD `Result` ở các trang trạng thái lỗi/phân quyền vì đây là component hiển thị trạng thái tổng hợp, nhưng action button bên trong đã chuyển sang Mantine.
+- Các màn CRUD lớn còn dùng AntD `Form/Input/Button` trực tiếp sẽ cần migration tiếp theo theo từng module để tránh phá logic form hiện tại.
+
+### 18.2. Tạo wrapper component dùng chung
+
+Đã tạo thư mục:
+
+```text
+src/shared/ui/
+```
+
+Các component đã thêm:
+
+- `BaseTable`: bọc AntD `Table`, tích hợp skeleton loading khi API đang tải và chưa có dữ liệu.
+- `BaseSelect`: bọc Mantine `Select`, bật searchable mặc định và thêm icon tìm kiếm.
+- `BaseModal`: bọc Mantine `Modal`, chuẩn hóa title, radius, overlay và trạng thái centered.
+
+File export chung:
+
+```text
+src/shared/ui/index.ts
+```
+
+Các bảng import Excel đã được chuyển sang dùng `BaseTable` để giảm import trực tiếp AntD `Table` rải rác.
+
+### 18.3. Đồng bộ theme toàn app
+
+Đã tạo file:
+
+```text
+src/app/theme.ts
+```
+
+Nội dung chính:
+
+- Tạo bộ token chung `hrmThemeTokens`.
+- Đồng bộ màu thương hiệu HACOM:
+
+```text
+#0b5ed7
+```
+
+- Đồng bộ radius mặc định:
+
+```text
+8px
+```
+
+- Đồng bộ font:
+
+```text
+Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif
+```
+
+- Tạo `mantineTheme` cho `MantineProvider`.
+- Tạo `antdTheme` cho AntD `ConfigProvider`.
+
+Đã cập nhật:
+
+```text
+src/app/providers.tsx
+```
+
+App hiện được bọc theo thứ tự:
+
+```text
+ConfigProvider
+MantineProvider
+Notifications
+QueryClientProvider
+AuthBootstrap
+```
+
+### 18.4. Global style cho hai thư viện
+
+Đã cập nhật:
+
+```text
+src/styles.css
+```
+
+Các điểm chính:
+
+- Chuẩn hóa font weight của Mantine button và AntD button.
+- Bỏ shadow mặc định của AntD button để gần với Mantine.
+- Thêm active state `translateY(1px)` cho cảm giác bấm nhất quán.
+- Thêm style skeleton cho `BaseTable`.
+
+### 18.5. File đã thay đổi trong đợt này
+
+```text
+src/app/theme.ts
+src/app/providers.tsx
+src/shared/ui/BaseTable.tsx
+src/shared/ui/BaseSelect.tsx
+src/shared/ui/BaseModal.tsx
+src/shared/ui/index.ts
+src/styles.css
+src/features/import-export/ImportExportToolbar.tsx
+src/features/import-export/DomainExcelImportModal.tsx
+src/features/import-export/HrmCoreExcelImportModal.tsx
+src/features/auth/ProtectedRoute.tsx
+src/features/auth/RequirePermission.tsx
+src/pages/RouteErrorPage.tsx
+```
+
+### 18.6. Kiểm tra đã thực hiện
+
+Đã chạy:
+
+```bash
+npm run typecheck
+npm run lint
+npm run build
+```
+
+Kết quả:
+
+- `npm run typecheck`: pass.
+- `npm run lint`: pass.
+- `npm run build`: pass.
+- Build còn warning bundle lớn của Vite, không chặn build và không phát sinh từ lỗi TypeScript/lint.
+
+### 18.7. Trạng thái sau nâng cấp
+
+- Web vẫn chạy được bằng Vite dev server tại:
+
+```text
+http://127.0.0.1:5173/
+```
+
+- Các thay đổi hiện chỉ nằm ở local theo yêu cầu tiếp tục phát triển web, chưa push lên GitHub mới.
+- Hướng tiếp theo nên làm là migrate dần từng module legacy còn dùng AntD `Form/Input/Button` sang Mantine, ưu tiên các màn ít rủi ro trước khi chuyển các form CRUD lớn.
+
+## 19. Sprint 2 - Nâng cấp trải nghiệm nhập liệu Form & Excel
+
+Thời gian ghi nhận:
+
+```text
+2026-08-11 18:47 +07
+```
+
+### 19.1. Tích hợp Mantine Form + Zod
+
+Đã thêm helper dùng chung:
+
+```text
+src/shared/forms/zodMantine.ts
+```
+
+Helper này gồm:
+
+- `zodMantineValidate`: chuyển schema Zod thành validate function cho Mantine Form.
+- `focusFirstFormError`: tự động scroll và focus vào field lỗi đầu tiên khi submit không hợp lệ.
+
+### 19.2. Form Nhân sự
+
+Đã nâng cấp:
+
+```text
+src/pages/employees/EmployeesPage.tsx
+```
+
+Thay đổi chính:
+
+- Form tạo/sửa nhân sự dùng Zod schema thay cho validate object thủ công.
+- Bật `validateInputOnChange` để báo lỗi realtime khi HR nhập sai email, số điện thoại, CCCD/CMND, mã nhân sự.
+- Khi bấm lưu và còn lỗi, UI tự scroll/focus vào ô lỗi đầu tiên.
+- Giữ logic nghiệp vụ hiện có như lấy mã nhân sự gợi ý, cập nhật mã chấm công BioTime, phân quyền tạo/sửa.
+
+### 19.3. Form Hợp đồng
+
+Đã rewrite:
+
+```text
+src/pages/contracts/ContractsPage.tsx
+```
+
+Thay đổi chính:
+
+- Thay AntD Form/Input/Button bằng Mantine Form, Select, TextInput, Drawer, Modal, Button.
+- Dùng Zod validate realtime các trường bắt buộc.
+- Validate ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.
+- Form kết thúc hợp đồng cũng dùng Mantine Form + Zod.
+- Bảng danh sách hợp đồng chuyển sang `BaseTable` để đi qua wrapper AntD Table chuẩn hóa.
+
+### 19.4. Form Đơn nghỉ và duyệt đơn
+
+Đã rewrite:
+
+```text
+src/pages/leave/LeavePage.tsx
+```
+
+Thay đổi chính:
+
+- Form tạo đơn nghỉ chuyển từ AntD Form sang Mantine Form + Zod.
+- Validate realtime nhân sự, loại nghỉ, ngày bắt đầu/kết thúc, số ngày nghỉ và lý do.
+- Validate ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.
+- Các thao tác submit/approve/reject/cancel đi qua modal xác nhận dùng Mantine Form.
+- Modal duyệt có ô ghi chú nội bộ để HR kiểm tra trước khi xác nhận thao tác.
+- Bảng danh sách đơn nghỉ chuyển sang `BaseTable`.
+
+### 19.5. Nâng cấp Import Excel
+
+Đã cập nhật:
+
+```text
+src/features/import-export/ExcelImportModal.tsx
+```
+
+Thay đổi chính:
+
+- Thêm bước client-side preflight trước khi gửi file lên server.
+- Dùng `read-excel-file/browser` để parse file Excel ngay trên trình duyệt.
+- Thêm progress bar trong lúc parse file để user biết web đang xử lý, tránh cảm giác bị đơ với file lớn.
+- Sau khi parse, dữ liệu được đưa vào bảng preview editable.
+- Highlight dòng lỗi bằng màu đỏ.
+- Kiểm tra lỗi cơ bản ở client:
+  - Ô dữ liệu bị bỏ trống.
+  - Cột có tên giống ngày/date nhưng giá trị sai định dạng ngày.
+- HR có thể sửa trực tiếp từng ô trên UI.
+- Chỉ khi hết lỗi client-side mới cho bấm `Kiểm tra file`.
+- Dùng `write-excel-file/browser` để tạo lại file Excel đã chỉnh, rồi mới gửi file đã sửa sang API preview hiện có.
+- Import `read-excel-file` và `write-excel-file` bằng dynamic import để không kéo thư viện Excel vào bundle chính.
+
+Style bổ sung:
+
+```text
+src/styles.css
+```
+
+- Thêm class `excel-import-row-error` để tô nền đỏ nhạt cho dòng preview có lỗi.
+
+### 19.6. Kiểm tra đã thực hiện
+
+Đã chạy:
+
+```bash
+npm run typecheck
+npm run lint
+npm run build
+```
+
+Kết quả:
+
+- `npm run typecheck`: pass.
+- `npm run lint`: pass.
+- `npm run build`: pass.
+- Build còn warning bundle lớn chung của Vite, không chặn build.
+- Warning import tĩnh `write-excel-file` đã được xử lý bằng dynamic import.
+
+### 19.7. Trạng thái sau Sprint 2
+
+- Các nâng cấp Sprint 2 đang ở local, chưa push GitHub mới.
+- Web dev server vẫn có thể chạy tại:
+
+```text
+http://127.0.0.1:5173/
+```
+
+- Hướng tiếp theo nên làm:
+  - Kiểm tra thực tế flow import Excel với file mẫu lớn.
+  - Bổ sung rule preflight theo từng template cụ thể, ví dụ mã nhân viên bắt buộc, email đúng định dạng, ngày vào làm bắt buộc.
+  - Tiếp tục migrate các form CRUD legacy còn lại sang Mantine Form + Zod.
