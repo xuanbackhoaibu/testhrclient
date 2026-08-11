@@ -181,6 +181,141 @@ body {
   letter-spacing: 0;
 }
 
+.employee-row-quick-actions {
+  opacity: 0;
+  transform: translateX(6px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.data-table tbody tr:hover .employee-row-quick-actions,
+.employee-row-quick-actions:focus-within {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.employee-selection-bar-floating {
+  position: fixed;
+  z-index: 25;
+  right: 24px;
+  bottom: 24px;
+  left: calc(280px + 24px);
+  padding: 12px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.18);
+  backdrop-filter: blur(14px) saturate(1.1);
+  animation: bulkActionSlideUp 220ms ease both;
+}
+
+:root[data-mantine-color-scheme='dark'] .employee-selection-bar-floating {
+  border-color: rgba(71, 85, 105, 0.58);
+  background: rgba(15, 23, 42, 0.78);
+}
+
+.leave-calendar-day {
+  background: var(--hrm-surface);
+}
+
+.leave-calendar-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--hrm-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--hrm-text);
+  cursor: pointer;
+  padding: 8px 10px;
+  text-align: left;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.leave-calendar-item:hover,
+.leave-calendar-item:focus-visible {
+  border-color: var(--mantine-color-blue-4);
+  background: var(--mantine-color-blue-light);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.timesheet-cell {
+  transition: background 140ms ease, box-shadow 140ms ease;
+}
+
+.timesheet-cell_ok {
+  background: color-mix(in srgb, var(--mantine-color-green-1), transparent 28%);
+}
+
+.timesheet-cell_absent {
+  background: color-mix(in srgb, var(--mantine-color-red-1), transparent 18%);
+}
+
+.timesheet-cell_warning {
+  background: color-mix(in srgb, var(--mantine-color-yellow-1), transparent 8%);
+}
+
+.timesheet-cell_leave {
+  background: var(--mantine-color-gray-1);
+}
+
+.timesheet-cell:hover {
+  box-shadow: inset 0 0 0 1px var(--mantine-color-blue-4);
+}
+
+:root[data-mantine-color-scheme='dark'] .timesheet-cell_ok {
+  background: color-mix(in srgb, var(--mantine-color-green-9), transparent 55%);
+}
+
+:root[data-mantine-color-scheme='dark'] .timesheet-cell_absent {
+  background: color-mix(in srgb, var(--mantine-color-red-9), transparent 48%);
+}
+
+:root[data-mantine-color-scheme='dark'] .timesheet-cell_warning {
+  background: color-mix(in srgb, var(--mantine-color-yellow-9), transparent 52%);
+}
+
+:root[data-mantine-color-scheme='dark'] .timesheet-cell_leave {
+  background: var(--mantine-color-dark-5);
+}
+
+.contract-expiry-critical {
+  animation: contractPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes contractPulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+
+  50% {
+    filter: brightness(1.14);
+  }
+}
+
+@keyframes bulkActionSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 900px) {
+  .employee-selection-bar-floating {
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+  }
+}
+
 .json-block {
   background: #0f172a;
   color: #e2e8f0;

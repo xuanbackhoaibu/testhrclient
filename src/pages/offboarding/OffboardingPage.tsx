@@ -2,9 +2,11 @@ import { useState } from "react";
 import {
   Button,
   Card,
+  Checkbox,
   Drawer,
   Form,
   Modal,
+  Progress,
   Select,
   Space,
   Table,
@@ -23,6 +25,7 @@ import type {
   OffboardingInstance,
   OffboardingInstancePayload,
 } from "../../features/offboarding/offboardingTypes";
+import type { WorkflowItem } from "../../features/onboarding/onboardingTypes";
 import { useOffboarding } from "../../features/offboarding/useOffboarding";
 import { mockEmployees } from "../../shared/mocks/mockEmployees";
 import { ErrorState } from "../../shared/components/ErrorState";
@@ -67,6 +70,16 @@ export function OffboardingPage() {
     },
   });
 
+  function progressPercent(instance: OffboardingInstance): number {
+    if (!instance.items.length) return instance.status === "COMPLETED" ? 100 : 0;
+    const completed = instance.items.filter((item) => item.status === "COMPLETED").length;
+    return Math.round((completed / instance.items.length) * 100);
+  }
+
+  function toggleChecklistItem(item: WorkflowItem, checked: boolean) {
+    itemMutation.mutate({ id: item.id, status: checked ? "COMPLETED" : "IN_PROGRESS" });
+  }
+
   if (isLoading) {
     return <LoadingState />;
   }
@@ -107,6 +120,13 @@ export function OffboardingPage() {
                     {
                       title: "Ngày bắt đầu",
                       render: (_, record) => formatDate(record.startDate),
+                    },
+                    {
+                      title: "Tiến độ",
+                      width: 110,
+                      render: (_, record) => (
+                        <Progress type="circle" percent={progressPercent(record)} size={52} strokeColor="#f97316" />
+                      ),
                     },
                     {
                       title: "Trạng thái",
@@ -232,23 +252,15 @@ export function OffboardingPage() {
               { title: "Mục", dataIndex: "title" },
               { title: "Phụ trách", dataIndex: "owner" },
               {
-                title: "Trạng thái",
-                render: (_, record) => <StatusTag status={record.status} />,
-              },
-              {
-                title: "Thao tác",
+                title: "Checklist",
                 render: (_, record) => (
-                  <Select
-                    size="small"
-                    style={{ width: 150 }}
-                    value={record.status}
-                    options={["DRAFT", "IN_PROGRESS", "COMPLETED"].map(
-                      (item) => ({ value: item, label: item }),
-                    )}
-                    onChange={(value) =>
-                      itemMutation.mutate({ id: record.id, status: value })
-                    }
-                  />
+                  <Space>
+                    <Checkbox
+                      checked={record.status === "COMPLETED"}
+                      onChange={(event) => toggleChecklistItem(record, event.target.checked)}
+                    />
+                    <StatusTag status={record.status} />
+                  </Space>
                 ),
               },
             ]}

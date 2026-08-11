@@ -1178,3 +1178,63 @@ http://127.0.0.1:5173/
 - Donut chart khi click lát cắt sẽ điều hướng sang danh sách nhân sự với URL params `dashboardSlice=unit` và `search=<tên đơn vị>`.
 - Bar trạng thái nhân sự điều hướng với URL params `dashboardSlice=employmentStatus` và `status=<trạng thái>`.
 - Thêm `ChartSkeleton` dùng `styles.chartPanel` và Mantine `Skeleton` để giả lập layout chart khi dashboard đang tải.
+
+## 21. Sprint nâng cấp workflow HRM
+
+### 21.1. EmployeesPage
+
+Đã nâng cấp:
+
+- Bulk Action Bar dạng floating glassmorphism trượt từ đáy màn hình khi tick chọn nhân sự.
+- Action hàng loạt gồm:
+  - Xuất file danh sách nhân sự đang chọn.
+  - Gửi email thông báo chung bằng `mailto`.
+  - Cấp tài khoản hàng loạt theo modal hiện có.
+  - Nút trạng thái hàng loạt, sẵn UI chờ backend cung cấp endpoint đổi trạng thái.
+- Quick Row Actions ở cuối dòng nhân sự, chỉ hiện rõ khi hover/focus:
+  - Gửi Email.
+  - Gia hạn hợp đồng.
+  - Xem bảng công.
+- URL filter đồng bộ thêm alias `dept` cho phòng ban để link chia sẻ dễ đọc hơn, vẫn giữ `departmentId` để tương thích code cũ.
+
+### 21.2. LeavePage và MovementsPage
+
+Đã nâng cấp:
+
+- LeavePage có toggle `List / Calendar` trên PageHeader.
+- Calendar view gom đơn nghỉ theo ngày bắt đầu, badge đỏ khi một ngày có nhiều đơn.
+- Drawer timeline cho đơn nghỉ, ưu tiên dữ liệu `approvalSteps` nếu backend trả về.
+- MovementsPage có timeline trạng thái trong modal chi tiết:
+  - Nhân viên gửi.
+  - Quản lý duyệt.
+  - HR cập nhật.
+
+### 21.3. TimesheetGridPage
+
+Đã nâng cấp:
+
+- Conditional formatting cho ô bảng công:
+  - Xanh: đủ công/có ký hiệu hợp lệ.
+  - Đỏ: vắng hoặc cần giải trình.
+  - Vàng: đi muộn/về sớm.
+  - Xám: ngày nghỉ/nghỉ phép.
+- Tooltip ô chấm công hiển thị check-in, check-out, ký hiệu, muộn/về sớm, trạng thái chờ giải trình, sửa tay và khóa kỳ.
+
+### 21.4. ContractsPage
+
+Đã nâng cấp:
+
+- Thêm widget cảnh báo ở đầu trang khi có hợp đồng active hết hạn trong 7 ngày tới.
+- Thêm cột `Tình trạng` với badge động:
+  - Đỏ nhấp nháy nhẹ: quá hạn hoặc còn dưới 15 ngày.
+  - Vàng: còn dưới 30 ngày.
+  - Xanh: còn hiệu lực dài.
+  - Xám/Xanh dương: đã kết thúc hoặc không thời hạn.
+
+### 21.5. Onboarding và Offboarding
+
+Đã nâng cấp:
+
+- Thêm progress circle theo từng đợt onboarding/offboarding dựa trên số checklist item đã hoàn thành.
+- Checklist trong modal chi tiết có checkbox tick trực tiếp để đổi trạng thái.
+- Onboarding có modal nhập thông tin cấp laptop khi hoàn thành bước liên quan đến laptop, gồm serial máy và ngày cấp.

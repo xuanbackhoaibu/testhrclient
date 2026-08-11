@@ -1,13 +1,13 @@
-import { useState } from 'react';
-import { Button, Card, Drawer, Group, NumberInput, Select, SimpleGrid, Stack, Textarea, TextInput } from '@mantine/core';
+import { useMemo, useState } from 'react';
+import { Badge, Button, Card, Drawer, Group, NumberInput, Paper, SegmentedControl, Select, SimpleGrid, Stack, Text, Textarea, TextInput, Timeline } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconPlus } from '@tabler/icons-react';
+import { IconCalendarMonth, IconListDetails, IconPlus } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 
 import { approveLeaveRequest, cancelLeaveRequest, createLeaveRequest, rejectLeaveRequest, submitLeaveRequest } from '../../features/leave/leaveApi';
-import type { LeaveRequestPayload } from '../../features/leave/leaveTypes';
+import type { LeaveRequest, LeaveRequestPayload } from '../../features/leave/leaveTypes';
 import { useLeaveRequests } from '../../features/leave/useLeaveRequests';
 import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { LEAVE_TYPE_OPTIONS } from '../../shared/constants/statuses';
@@ -23,6 +23,7 @@ import { focusFirstFormError, zodMantineValidate } from '../../shared/forms/zodM
 
 type LeaveAction = 'submit' | 'approve' | 'reject' | 'cancel';
 type ReviewDraft = { id: string; action: LeaveAction } | null;
+type LeaveViewMode = 'list' | 'calendar';
 
 const leaveSchema = z.object({
   employeeId: z.string().min(1, 'Chọn nhân sự.'),
@@ -60,6 +61,8 @@ export function LeavePage() {
   const queryClient = useQueryClient();
   const { can } = useAuth();
   const [open, setOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<LeaveViewMode>('list');
+  const [selectedLeave, setSelectedLeave] = useState<LeaveRequest | null>(null);
   const [reviewDraft, setReviewDraft] = useState<ReviewDraft>(null);
   const [params, setParams] = useState({
     page: 1,
@@ -84,6 +87,17 @@ export function LeavePage() {
   const employeeOptions = mockEmployees.map((item) => ({ value: item.id, label: item.fullName }));
   const leaveTypeOptions = LEAVE_TYPE_OPTIONS.map((item) => ({ value: item, label: item }));
   const statusOptions = ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'CANCELLED'].map((item) => ({ value: item, label: item }));
+  const leavesByStartDate = useMemo(
+    () =>
+      Object.entries(
+        (data?.items ?? []).reduce<Record<string, LeaveRequest[]>>((acc, item) => {
+          const key = item.startDate;
+          acc[key] = [...(acc[key] ?? []), item];
+          return acc;
+        }, {}),
+      ).sort(([left], [right]) => left.localeCompare(right)),
+    [data?.items],
+  );
 
   const createMutation = useMutation({
     mutationFn: createLeaveRequest,
@@ -152,7 +166,19 @@ export function LeavePage() {
       <PageHeader
         title="Leave"
         subtitle="Leave workflow"
-        actions={can(HR_PERMISSIONS.LEAVE_CREATE) ? <Button leftSection={<IconPlus size={16} />} onClick={() => setOpen(true)}>Create</Button> : undefined}
+        actions={
+          <Group gap="xs">
+            <SegmentedControl
+              value={viewMode}
+              onChange={(value) => setViewMode(value as LeaveViewMode)}
+              data={[
+                { value: 'list', label: 'List' },
+                { value: 'calendar', label: 'Calendar' },
+              ]}
+            />
+            {can(HR_PERMISSIONS.LEAVE_CREATE) ? <Button leftSection={<IconPlus size={16} />} onClick={() => setOpen(true)}>Create</Button> : null}
+          </Group>
+        }
       />
       <Card className="page-card">
         <Stack gap="md">
@@ -181,35 +207,60 @@ export function LeavePage() {
             />
           </SimpleGrid>
 
-          <BaseTable
-            rowKey="id"
-            dataSource={data.items}
-            pagination={{
-              current: data.pagination.page,
-              pageSize: data.pagination.pageSize,
-              total: data.pagination.total,
-              onChange: (page, pageSize) => setParams((current) => ({ ...current, page, pageSize })),
-            }}
-            columns={[
-              { title: 'Employee', dataIndex: 'employeeName' },
-              { title: 'Type', dataIndex: 'leaveType' },
-              { title: 'Start date', render: (_, record) => formatDate(record.startDate) },
-              { title: 'End date', render: (_, record) => formatDate(record.endDate) },
-              { title: 'Total days', dataIndex: 'totalDays' },
-              { title: 'Status', render: (_, record) => <StatusTag status={record.status} /> },
-              {
-                title: 'Actions',
-                render: (_, record) => (
-                  <Group gap="xs">
-                    {record.status === 'DRAFT' && can(HR_PERMISSIONS.LEAVE_SUBMIT) ? <Button size="xs" variant="default" onClick={() => openReview(record.id, 'submit')}>Submit</Button> : null}
-                    {record.status === 'SUBMITTED' && can(HR_PERMISSIONS.LEAVE_APPROVE) ? <Button size="xs" onClick={() => openReview(record.id, 'approve')}>Approve</Button> : null}
-                    {record.status === 'SUBMITTED' && can(HR_PERMISSIONS.LEAVE_REJECT) ? <Button size="xs" color="red" variant="light" onClick={() => openReview(record.id, 'reject')}>Reject</Button> : null}
-                    {['DRAFT', 'SUBMITTED'].includes(record.status) && can(HR_PERMISSIONS.LEAVE_CANCEL) ? <Button size="xs" variant="default" onClick={() => openReview(record.id, 'cancel')}>Cancel</Button> : null}
+          {viewMode === 'list' ? (
+            <BaseTable
+              rowKey="id"
+              dataSource={data.items}
+              pagination={{
+                current: data.pagination.page,
+                pageSize: data.pagination.pageSize,
+                total: data.pagination.total,
+                onChange: (page, pageSize) => setParams((current) => ({ ...current, page, pageSize })),
+              }}
+              columns={[
+                { title: 'Employee', dataIndex: 'employeeName' },
+                { title: 'Type', dataIndex: 'leaveType' },
+                { title: 'Start date', render: (_, record) => formatDate(record.startDate) },
+                { title: 'End date', render: (_, record) => formatDate(record.endDate) },
+                { title: 'Total days', dataIndex: 'totalDays' },
+                { title: 'Status', render: (_, record) => <StatusTag status={record.status} /> },
+                {
+                  title: 'Actions',
+                  render: (_, record) => (
+                    <Group gap="xs">
+                      <Button size="xs" variant="default" onClick={() => setSelectedLeave(record)}>Timeline</Button>
+                      {record.status === 'DRAFT' && can(HR_PERMISSIONS.LEAVE_SUBMIT) ? <Button size="xs" variant="default" onClick={() => openReview(record.id, 'submit')}>Submit</Button> : null}
+                      {record.status === 'SUBMITTED' && can(HR_PERMISSIONS.LEAVE_APPROVE) ? <Button size="xs" onClick={() => openReview(record.id, 'approve')}>Approve</Button> : null}
+                      {record.status === 'SUBMITTED' && can(HR_PERMISSIONS.LEAVE_REJECT) ? <Button size="xs" color="red" variant="light" onClick={() => openReview(record.id, 'reject')}>Reject</Button> : null}
+                      {['DRAFT', 'SUBMITTED'].includes(record.status) && can(HR_PERMISSIONS.LEAVE_CANCEL) ? <Button size="xs" variant="default" onClick={() => openReview(record.id, 'cancel')}>Cancel</Button> : null}
+                    </Group>
+                  ),
+                },
+              ]}
+            />
+          ) : (
+            <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }} spacing="sm">
+              {leavesByStartDate.map(([date, items]) => (
+                <Paper key={date} withBorder p="sm" radius="md" className="leave-calendar-day">
+                  <Group justify="space-between" mb="xs">
+                    <Group gap={6}>
+                      <IconCalendarMonth size={16} />
+                      <Text fw={700}>{formatDate(date)}</Text>
+                    </Group>
+                    <Badge color={items.length >= 3 ? 'red' : 'blue'} variant="light">{items.length} đơn</Badge>
                   </Group>
-                ),
-              },
-            ]}
-          />
+                  <Stack gap={6}>
+                    {items.map((item) => (
+                      <button key={item.id} type="button" className="leave-calendar-item" onClick={() => setSelectedLeave(item)}>
+                        <span>{item.employeeName ?? item.employee?.fullName ?? item.employeeId}</span>
+                        <StatusTag status={item.status} />
+                      </button>
+                    ))}
+                  </Stack>
+                </Paper>
+              ))}
+            </SimpleGrid>
+          )}
         </Stack>
       </Card>
 
@@ -271,6 +322,40 @@ export function LeavePage() {
           </Stack>
         </form>
       </BaseModal>
+
+      <Drawer
+        opened={Boolean(selectedLeave)}
+        title="Dòng thời gian đơn nghỉ"
+        position="right"
+        size={460}
+        onClose={() => setSelectedLeave(null)}
+      >
+        {selectedLeave ? (
+          <Stack gap="md">
+            <Paper withBorder p="sm" radius="md">
+              <Text fw={750}>{selectedLeave.employeeName ?? selectedLeave.employee?.fullName ?? selectedLeave.employeeId}</Text>
+              <Text size="sm" c="dimmed">
+                {selectedLeave.leaveType} · {formatDate(selectedLeave.startDate)} - {formatDate(selectedLeave.endDate)}
+              </Text>
+            </Paper>
+            <Timeline active={selectedLeave.status === 'APPROVED' ? 2 : selectedLeave.status === 'SUBMITTED' ? 1 : 0} bulletSize={24} lineWidth={2}>
+              <Timeline.Item bullet={<IconListDetails size={14} />} title="Nhân viên gửi đơn">
+                <Text size="sm" c="dimmed">{selectedLeave.status === 'DRAFT' ? 'Đang soạn, chưa gửi duyệt.' : 'Đã gửi vào quy trình duyệt.'}</Text>
+              </Timeline.Item>
+              <Timeline.Item title="Trưởng phòng duyệt">
+                <Text size="sm" c="dimmed">
+                  {selectedLeave.approvalSteps?.[0]?.reviewedAt ? formatDate(selectedLeave.approvalSteps[0].reviewedAt) : selectedLeave.status === 'SUBMITTED' ? 'Đang chờ trưởng phòng hoặc HR xử lý.' : 'Chưa tới bước này.'}
+                </Text>
+              </Timeline.Item>
+              <Timeline.Item title="HR xác nhận">
+                <Text size="sm" c="dimmed">
+                  {selectedLeave.status === 'APPROVED' ? 'Đơn đã hoàn tất.' : selectedLeave.status === 'REJECTED' ? 'Đơn đã bị từ chối.' : 'Đang chờ hoàn tất.'}
+                </Text>
+              </Timeline.Item>
+            </Timeline>
+          </Stack>
+        ) : null}
+      </Drawer>
     </>
   );
 }

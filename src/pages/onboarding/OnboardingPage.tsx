@@ -2,13 +2,17 @@ import { useState } from "react";
 import {
   Button,
   Card,
+  Checkbox,
   Drawer,
   Form,
+  Input,
   Modal,
+  Progress,
   Select,
   Space,
   Table,
   Tabs,
+  Typography,
   message,
 } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
@@ -22,6 +26,7 @@ import {
 import type {
   OnboardingInstance,
   OnboardingInstancePayload,
+  WorkflowItem,
 } from "../../features/onboarding/onboardingTypes";
 import { useOnboarding } from "../../features/onboarding/useOnboarding";
 import { mockEmployees } from "../../shared/mocks/mockEmployees";
@@ -36,6 +41,8 @@ export function OnboardingPage() {
   const [form] = Form.useForm<OnboardingInstancePayload>();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<OnboardingInstance | null>(null);
+  const [assetItem, setAssetItem] = useState<WorkflowItem | null>(null);
+  const [assetForm] = Form.useForm<{ serial: string; issuedAt: string }>();
   const { data, isLoading, error, refetch } = useOnboarding({
     page: 1,
     pageSize: 50,
@@ -66,6 +73,21 @@ export function OnboardingPage() {
       setSelected(null);
     },
   });
+
+  function progressPercent(instance: OnboardingInstance): number {
+    if (!instance.items.length) return instance.status === "COMPLETED" ? 100 : 0;
+    const completed = instance.items.filter((item) => item.status === "COMPLETED").length;
+    return Math.round((completed / instance.items.length) * 100);
+  }
+
+  function toggleChecklistItem(item: WorkflowItem, checked: boolean) {
+    if (checked && item.title.toLowerCase().includes("laptop")) {
+      setAssetItem(item);
+      assetForm.setFieldsValue({ serial: "", issuedAt: new Date().toISOString().slice(0, 10) });
+      return;
+    }
+    itemMutation.mutate({ id: item.id, status: checked ? "COMPLETED" : "IN_PROGRESS" });
+  }
 
   if (isLoading) {
     return <LoadingState />;
@@ -107,6 +129,13 @@ export function OnboardingPage() {
                     {
                       title: "Ngày bắt đầu",
                       render: (_, record) => formatDate(record.startDate),
+                    },
+                    {
+                      title: "Tiến độ",
+                      width: 110,
+                      render: (_, record) => (
+                        <Progress type="circle" percent={progressPercent(record)} size={52} strokeColor="#10b981" />
+                      ),
                     },
                     {
                       title: "Trạng thái",
@@ -232,23 +261,15 @@ export function OnboardingPage() {
               { title: "Mục", dataIndex: "title" },
               { title: "Phụ trách", dataIndex: "owner" },
               {
-                title: "Trạng thái",
-                render: (_, record) => <StatusTag status={record.status} />,
-              },
-              {
-                title: "Thao tác",
+                title: "Checklist",
                 render: (_, record) => (
-                  <Select
-                    size="small"
-                    style={{ width: 150 }}
-                    value={record.status}
-                    options={["DRAFT", "IN_PROGRESS", "COMPLETED"].map(
-                      (item) => ({ value: item, label: item }),
-                    )}
-                    onChange={(value) =>
-                      itemMutation.mutate({ id: record.id, status: value })
-                    }
-                  />
+                  <Space>
+                    <Checkbox
+                      checked={record.status === "COMPLETED"}
+                      onChange={(event) => toggleChecklistItem(record, event.target.checked)}
+                    />
+                    <StatusTag status={record.status} />
+                  </Space>
                 ),
               },
             ]}
@@ -262,6 +283,32 @@ export function OnboardingPage() {
             </Button>
           ) : null}
         </Space>
+      </Modal>
+
+      <Modal
+        open={Boolean(assetItem)}
+        title="Cấp thiết bị onboarding"
+        okText="Lưu và hoàn thành"
+        cancelText="Hủy"
+        onCancel={() => setAssetItem(null)}
+        onOk={() => void assetForm.validateFields().then(() => {
+          if (assetItem) {
+            itemMutation.mutate({ id: assetItem.id, status: "COMPLETED" });
+          }
+          setAssetItem(null);
+        })}
+      >
+        <Typography.Paragraph type="secondary">
+          Nhập thông tin cấp phát trước khi hoàn thành bước này.
+        </Typography.Paragraph>
+        <Form form={assetForm} layout="vertical">
+          <Form.Item name="serial" label="Serial máy" rules={[{ required: true, message: "Nhập serial máy." }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="issuedAt" label="Ngày cấp" rules={[{ required: true, message: "Chọn ngày cấp." }]}>
+            <Input type="date" />
+          </Form.Item>
+        </Form>
       </Modal>
     </>
   );

@@ -10,7 +10,9 @@ import {
   Row,
   Select,
   Space,
+  Steps,
   Table,
+  Typography,
   message,
 } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
@@ -52,6 +54,13 @@ export function MovementsPage() {
     status: undefined as string | undefined,
   });
   const { data, isLoading, error, refetch } = useMovements(params);
+
+  function movementStep(record: Movement): number {
+    if (record.status === "APPROVED") return 2;
+    if (record.status === "SUBMITTED") return 1;
+    if (record.status === "REJECTED" || record.status === "CANCELLED") return 1;
+    return 0;
+  }
 
   const createMutation = useMutation({
     mutationFn: createMovement,
@@ -336,11 +345,35 @@ export function MovementsPage() {
         open={Boolean(selected)}
         title="Chi tiết điều chuyển"
         footer={null}
+        width={680}
         onCancel={() => setSelected(null)}
       >
-        <pre className="json-block">
-          {JSON.stringify(selected?.afterJson ?? {}, null, 2)}
-        </pre>
+        <Space orientation="vertical" size={16} style={{ width: "100%" }}>
+          <Steps
+            current={selected ? movementStep(selected) : 0}
+            status={selected?.status === "REJECTED" || selected?.status === "CANCELLED" ? "error" : "process"}
+            items={[
+              {
+                title: "Nhân viên gửi",
+                description: selected?.status === "DRAFT" ? "Đang soạn nháp" : "Đã ghi nhận yêu cầu",
+              },
+              {
+                title: "Quản lý duyệt",
+                description: selected?.status === "SUBMITTED" ? "Đang chờ xử lý" : selected?.status === "REJECTED" ? "Đã từ chối" : "Đã qua bước",
+              },
+              {
+                title: "HR cập nhật",
+                description: selected?.status === "APPROVED" ? "Đã sẵn sàng áp dụng" : "Chưa hoàn tất",
+              },
+            ]}
+          />
+          <Typography.Text type="secondary">
+            Dữ liệu thay đổi sau duyệt
+          </Typography.Text>
+          <pre className="json-block">
+            {JSON.stringify(selected?.afterJson ?? {}, null, 2)}
+          </pre>
+        </Space>
       </Modal>
     </>
   );

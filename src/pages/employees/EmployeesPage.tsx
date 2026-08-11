@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDebouncedValue, useLocalStorage } from "@mantine/hooks";
 import {
+  ActionIcon,
   Badge,
   Box,
   Button,
@@ -26,15 +27,19 @@ import { notifications } from "@mantine/notifications";
 import {
   IconArrowsSort,
   IconAlertCircle,
+  IconCalendarTime,
   IconChevronDown,
   IconChevronUp,
   IconColumns3,
+  IconFileExport,
   IconEdit,
   IconEye,
   IconFilterOff,
   IconIdBadge2,
+  IconMail,
   IconPlus,
   IconSearch,
+  IconSignature,
   IconUserCheck,
 } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -69,6 +74,7 @@ import {
   type DataTableColumn,
 } from "../../shared/components/DataTable";
 import { PageHeader } from "../../shared/components/PageHeader";
+import { ROUTES } from "../../shared/constants/routes";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 import { EllipsisText } from "../../shared/components/EllipsisText";
@@ -437,7 +443,7 @@ export function EmployeesPage() {
     pageSize: parsePositiveInteger(searchParams.get("pageSize"), DEFAULT_PAGE_SIZE),
     employmentStatus: searchParams.get("status") ?? undefined,
     unitId: searchParams.get("unitId") ?? undefined,
-    departmentId: searchParams.get("departmentId") ?? undefined,
+    departmentId: searchParams.get("departmentId") ?? searchParams.get("dept") ?? undefined,
   }));
 
   const form = useForm<EmployeePayload>({
@@ -830,7 +836,10 @@ export function EmployeesPage() {
     if (search) next.set("search", search);
     if (params.employmentStatus) next.set("status", params.employmentStatus);
     if (params.unitId) next.set("unitId", params.unitId);
-    if (params.departmentId) next.set("departmentId", params.departmentId);
+    if (params.departmentId) {
+      next.set("departmentId", params.departmentId);
+      next.set("dept", params.departmentId);
+    }
     if (quickFilter !== "all") next.set("quick", quickFilter);
     if (sortKey !== DEFAULT_SORT_KEY) next.set("sort", sortKey);
     if (sortDirection !== DEFAULT_SORT_DIRECTION) next.set("dir", sortDirection);
@@ -873,6 +882,47 @@ export function EmployeesPage() {
     () => visibleEmployees.filter((emp) => selectedIds.has(emp.id)),
     [visibleEmployees, selectedIds],
   );
+
+  const selectedEmails = selectedEmployees
+    .map((employee) => employee.companyEmail)
+    .filter((email): email is string => Boolean(email));
+
+  function exportSelectedEmployees() {
+    if (!selectedEmployees.length) return;
+    const headers = ["Mã NS", "Họ tên", "Email", "SĐT", "Trạng thái", "Phòng ban"];
+    const rows = selectedEmployees.map((employee) => [
+      employee.employeeCode,
+      employee.fullName,
+      employee.companyEmail ?? "",
+      employee.phone ?? "",
+      employee.employmentStatus,
+      employee.currentEmployeeAssignment?.departmentName ?? "",
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) =>
+        row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","),
+      )
+      .join("\n");
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `nhan-su-da-chon-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function mailSelectedEmployees() {
+    if (!selectedEmails.length) {
+      notifications.show({
+        color: "yellow",
+        title: "Chưa có email",
+        message: "Các nhân sự đang chọn chưa có email công ty để gửi thông báo.",
+      });
+      return;
+    }
+    window.location.href = `mailto:${selectedEmails.join(",")}?subject=${encodeURIComponent("Thông báo từ HR")}`;
+  }
 
   const activeFilterCount = [
     debouncedSearch,
@@ -1061,27 +1111,70 @@ export function EmployeesPage() {
       {
         key: "actions",
         header: "",
-        width: 60,
+        width: 168,
         align: "right",
         render: (record) => (
-          <TableActionsMenu
-            actions={[
-              {
-                label: "Xem chi tiết",
-                icon: <IconEye size={16} />,
-                onClick: () => navigate(`/employees/${record.id}`),
-              },
-              ...(mayEditEmployee
-                ? [
-                    {
-                      label: "Sửa nhân sự",
-                      icon: <IconEdit size={16} />,
-                      onClick: () => void openEditDrawer(record.id),
-                    },
-                  ]
-                : []),
-            ]}
-          />
+          <Group justify="flex-end" gap={4} wrap="nowrap">
+            <Group gap={2} wrap="nowrap" className="employee-row-quick-actions">
+              <Tooltip label="Gửi Email">
+                <ActionIcon
+                  component="a"
+                  href={record.companyEmail ? `mailto:${record.companyEmail}` : undefined}
+                  aria-label="Gửi Email"
+                  variant="subtle"
+                  color="gray"
+                  disabled={!record.companyEmail}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <IconMail size={16} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label="Gia hạn hợp đồng">
+                <ActionIcon
+                  aria-label="Gia hạn hợp đồng"
+                  variant="subtle"
+                  color="gray"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    navigate(`${ROUTES.contracts}?employeeId=${encodeURIComponent(record.id)}`);
+                  }}
+                >
+                  <IconSignature size={16} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label="Xem bảng công">
+                <ActionIcon
+                  aria-label="Xem bảng công"
+                  variant="subtle"
+                  color="gray"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    navigate(`${ROUTES.timesheetGrid}?employeeId=${encodeURIComponent(record.id)}`);
+                  }}
+                >
+                  <IconCalendarTime size={16} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
+            <TableActionsMenu
+              actions={[
+                {
+                  label: "Xem chi tiết",
+                  icon: <IconEye size={16} />,
+                  onClick: () => navigate(`/employees/${record.id}`),
+                },
+                ...(mayEditEmployee
+                  ? [
+                      {
+                        label: "Sửa nhân sự",
+                        icon: <IconEdit size={16} />,
+                        onClick: () => void openEditDrawer(record.id),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          </Group>
         ),
       },
     ],
@@ -1283,39 +1376,6 @@ export function EmployeesPage() {
               />
             </Box>
 
-            {selectedIds.size > 0 ? (
-              <Group justify="space-between" className="employee-selection-bar">
-                <Group gap="xs">
-                  <ThemeIcon color="teal" variant="light" size="sm">
-                    <IconIdBadge2 size={15} />
-                  </ThemeIcon>
-                  <Text size="sm" fw={600}>
-                    Đã chọn {selectedIds.size} nhân sự
-                  </Text>
-                </Group>
-                <Group gap="xs">
-                  {mayProvisionAccounts ? (
-                    <Button
-                      size="xs"
-                      color="teal"
-                      variant="light"
-                      leftSection={<IconUserCheck size={14} />}
-                      onClick={() => setBulkProvisionOpen(true)}
-                    >
-                      Cấp tài khoản
-                    </Button>
-                  ) : null}
-                  <Button
-                    size="xs"
-                    variant="subtle"
-                    color="gray"
-                    onClick={() => setSelectedIds(new Set())}
-                  >
-                    Bỏ chọn
-                  </Button>
-                </Group>
-              </Group>
-            ) : null}
           </Stack>
         </Paper>
 
@@ -1337,6 +1397,68 @@ export function EmployeesPage() {
           emptyDescription="Không tìm thấy nhân sự phù hợp với bộ lọc hiện tại."
         />
       </Stack>
+
+      {selectedIds.size > 0 ? (
+        <Group justify="space-between" className="employee-selection-bar employee-selection-bar-floating">
+          <Group gap="xs">
+            <ThemeIcon color="teal" variant="light" size="sm">
+              <IconIdBadge2 size={15} />
+            </ThemeIcon>
+            <Text size="sm" fw={700}>
+              Đã chọn {selectedIds.size} nhân sự
+            </Text>
+            <Text size="xs" c="dimmed">
+              {selectedEmails.length} có email công ty
+            </Text>
+          </Group>
+          <Group gap="xs">
+            <Button
+              size="xs"
+              variant="light"
+              leftSection={<IconFileExport size={14} />}
+              onClick={exportSelectedEmployees}
+            >
+              Xuất Excel danh sách này
+            </Button>
+            <Button
+              size="xs"
+              variant="light"
+              leftSection={<IconMail size={14} />}
+              onClick={mailSelectedEmployees}
+            >
+              Gửi Email thông báo chung
+            </Button>
+            {mayProvisionAccounts ? (
+              <Button
+                size="xs"
+                color="teal"
+                variant="light"
+                leftSection={<IconUserCheck size={14} />}
+                onClick={() => setBulkProvisionOpen(true)}
+              >
+                Cấp tài khoản
+              </Button>
+            ) : null}
+            <Button
+              size="xs"
+              color="red"
+              variant="light"
+              onClick={() => {
+                notifications.show({
+                  color: "blue",
+                  title: "Đổi trạng thái hàng loạt",
+                  message: "Đã sẵn sàng UI chọn nhiều dòng; API đổi trạng thái hàng loạt cần backend cung cấp endpoint.",
+                });
+              }}
+            >
+              Chuyển sang đã nghỉ việc
+            </Button>
+            <Button size="xs" variant="subtle" color="gray" onClick={() => setSelectedIds(new Set())}>
+              Bỏ chọn
+            </Button>
+          </Group>
+        </Group>
+      ) : null}
 
       <Drawer
         opened={open}

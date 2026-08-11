@@ -52,6 +52,22 @@ function lastDayOfMonth(year: number, month: number): string {
   return new Date(Date.UTC(year, month, 0)).toISOString().split("T")[0];
 }
 
+function getTimesheetCellClass(day: TimesheetGridDay): string {
+  if (!day.isWorkingDay || day.displaySymbol.toLowerCase().includes("p")) {
+    return "timesheet-cell timesheet-cell_leave";
+  }
+  if (day.needsExplanation || day.displaySymbol.toLowerCase().includes("v")) {
+    return "timesheet-cell timesheet-cell_absent";
+  }
+  if (day.lateMinutes > 0 || day.earlyLeaveMinutes > 0) {
+    return "timesheet-cell timesheet-cell_warning";
+  }
+  if (day.paidDays >= 1 || day.displaySymbol) {
+    return "timesheet-cell timesheet-cell_ok";
+  }
+  return "timesheet-cell";
+}
+
 export function TimesheetGridPage() {
   const { can } = useAuth();
   const canEdit = can(HR_PERMISSIONS.ATTENDANCE_UPDATE);
@@ -271,9 +287,10 @@ export function TimesheetGridPage() {
                         const label = day.displaySymbol || "";
                         const tooltip = [
                           day.holidayName,
-                          day.firstPunch && day.lastPunch
-                            ? `${day.firstPunch}–${day.lastPunch}`
+                          day.firstPunch || day.lastPunch
+                            ? `Check-in: ${day.firstPunch ?? "—"}, Check-out: ${day.lastPunch ?? "—"}`
                             : null,
+                          label ? `Ký hiệu: ${label}` : null,
                           day.lateMinutes > 0 ? `Muộn ${day.lateMinutes}'` : null,
                           day.earlyLeaveMinutes > 0
                             ? `Về sớm ${day.earlyLeaveMinutes}'`
@@ -288,12 +305,10 @@ export function TimesheetGridPage() {
                         return (
                           <Table.Td
                             key={dayNumber}
+                            className={getTimesheetCellClass(day)}
                             style={{
                               textAlign: "center",
                               cursor: canEdit && !day.isLocked ? "pointer" : "default",
-                              background: !day.isWorkingDay
-                                ? "var(--mantine-color-gray-1)"
-                                : undefined,
                             }}
                             onClick={() => openCell(row, day)}
                           >

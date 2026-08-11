@@ -1,13 +1,13 @@
-import { useState } from 'react';
-import { Button, Card, Drawer, Group, Select, SimpleGrid, Stack, TextInput } from '@mantine/core';
+import { useMemo, useState } from 'react';
+import { Alert, Badge, Button, Card, Drawer, Group, Select, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconPlus } from '@tabler/icons-react';
+import { IconAlertTriangle, IconPlus } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 
 import { createContract, terminateContract } from '../../features/contracts/contractsApi';
-import type { ContractPayload } from '../../features/contracts/contractTypes';
+import type { Contract, ContractPayload } from '../../features/contracts/contractTypes';
 import { useContracts } from '../../features/contracts/useContracts';
 import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { CONTRACT_TYPE_OPTIONS } from '../../shared/constants/statuses';
@@ -44,6 +44,35 @@ const emptyContractValues: ContractPayload = {
   status: 'ACTIVE',
 };
 
+function daysUntil(date?: string): number | null {
+  if (!date) return null;
+  const target = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(target.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.ceil((target.getTime() - today.getTime()) / 86_400_000);
+}
+
+function ContractExpiryBadge({ record }: { record: Contract }) {
+  if (record.status === 'TERMINATED') {
+    return <Badge color="gray" variant="light">Đã kết thúc</Badge>;
+  }
+  const days = daysUntil(record.endDate);
+  if (days === null) {
+    return <Badge color="blue" variant="light">Không thời hạn</Badge>;
+  }
+  if (days < 0) {
+    return <Badge color="red" variant="filled" className="contract-expiry-critical">Quá hạn {Math.abs(days)} ngày</Badge>;
+  }
+  if (days <= 15) {
+    return <Badge color="red" variant="filled" className="contract-expiry-critical">Còn {days} ngày</Badge>;
+  }
+  if (days <= 30) {
+    return <Badge color="yellow" variant="light">Còn {days} ngày</Badge>;
+  }
+  return <Badge color="green" variant="light">Còn hiệu lực dài</Badge>;
+}
+
 export function ContractsPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -69,6 +98,13 @@ export function ContractsPage() {
 
   const employeeOptions = mockEmployees.map((item) => ({ value: item.id, label: item.fullName }));
   const statusOptions = ['ACTIVE', 'COMPLETED', 'TERMINATED'].map((item) => ({ value: item, label: item }));
+  const expiringNextWeek = useMemo(
+    () => (data?.items ?? []).filter((item) => {
+      const days = daysUntil(item.endDate);
+      return item.status === 'ACTIVE' && days !== null && days >= 0 && days <= 7;
+    }),
+    [data?.items],
+  );
 
   const createMutation = useMutation({
     mutationFn: createContract,
@@ -124,6 +160,18 @@ export function ContractsPage() {
       />
       <Card className="page-card">
         <Stack gap="md">
+          {expiringNextWeek.length > 0 ? (
+            <Alert color="red" variant="light" icon={<IconAlertTriangle size={18} />}>
+              <Group justify="space-between" gap="sm">
+                <Text fw={700}>
+                  Có {expiringNextWeek.length} hợp đồng kết thúc trong 7 ngày tới.
+                </Text>
+                <Button size="xs" color="red" variant="light" onClick={() => setParams((current) => ({ ...current, status: 'ACTIVE', page: 1 }))}>
+                  Đánh giá ngay
+                </Button>
+              </Group>
+            </Alert>
+          ) : null}
           <SimpleGrid cols={{ base: 1, md: 2 }} spacing="sm">
             <Select
               clearable
@@ -157,6 +205,7 @@ export function ContractsPage() {
               { title: 'Type', dataIndex: 'contractType' },
               { title: 'Start date', render: (_, record) => formatDate(record.startDate) },
               { title: 'End date', render: (_, record) => formatDate(record.endDate) },
+              { title: 'Tình trạng', render: (_, record) => <ContractExpiryBadge record={record} /> },
               { title: 'Status', render: (_, record) => <StatusTag status={record.status} /> },
               {
                 title: 'Actions',
