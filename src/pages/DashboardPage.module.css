@@ -127,6 +127,29 @@
   border-radius: var(--hrm-radius);
 }
 
+.chartPanel {
+  animation: chartReveal 420ms ease both;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.chartPanel:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+@keyframes chartReveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .donutLayout {
   min-height: 230px;
 }
@@ -154,12 +177,13 @@
   cursor: pointer;
   fill: none;
   stroke-width: 8;
-  transition: opacity 140ms ease, stroke-width 140ms ease;
+  transition: opacity 180ms ease, stroke-width 180ms ease, filter 180ms ease;
 }
 
 .donutSegment:hover {
-  opacity: 0.82;
-  stroke-width: 9.4;
+  filter: drop-shadow(0 3px 7px rgba(15, 23, 42, 0.18));
+  opacity: 0.9;
+  stroke-width: 9.6;
 }
 
 .donutCenter {
@@ -249,8 +273,8 @@
 }
 
 .verticalBarItem:hover .verticalBarFill {
-  filter: saturate(1.08);
-  transform: scaleY(1.02);
+  filter: brightness(1.05) saturate(1.08);
+  transform: scaleY(1.04);
 }
 
 .verticalBarTrack {
@@ -267,7 +291,8 @@
 .verticalBarFill {
   width: 100%;
   border-radius: inherit;
-  transition: filter 140ms ease, transform 140ms ease;
+  animation: barGrow 520ms ease both;
+  transition: filter 180ms ease, transform 180ms ease;
   transform-origin: bottom;
 }
 
@@ -303,14 +328,22 @@
 .barFill {
   height: 100%;
   border-radius: inherit;
+  animation: widthGrow 520ms ease both;
+  transform-origin: left;
+  transition: filter 180ms ease, transform 180ms ease;
 }
 
 .barFill_normal {
-  background: linear-gradient(90deg, #d8c764, #b8aa55);
+  background: linear-gradient(90deg, #60a5fa, #3b82f6);
 }
 
 .barFill_danger {
-  background: linear-gradient(90deg, #f08a8f, #d71920);
+  background: linear-gradient(90deg, #fb7185, #ef4444);
+}
+
+.barRow:hover .barFill {
+  filter: brightness(1.05) saturate(1.08);
+  transform: scaleX(1.01);
 }
 
 .stackedRow {
@@ -324,11 +357,18 @@
 }
 
 .stackedAttend {
-  background: #d8c764;
+  background: #10b981;
+  transition: filter 180ms ease;
 }
 
 .stackedAbsent {
-  background: #d71920;
+  background: #ef4444;
+  transition: filter 180ms ease;
+}
+
+.stackedRow:hover .stackedAttend,
+.stackedRow:hover .stackedAbsent {
+  filter: brightness(1.06) saturate(1.08);
 }
 
 .todoRow {
@@ -366,14 +406,14 @@
 
 .emptyIllustration rect,
 .emptyIllustration circle {
-  fill: #fbfaf1;
-  stroke: #d8c764;
+  fill: #eff6ff;
+  stroke: #3b82f6;
   stroke-width: 2;
 }
 
 .emptyIllustration path {
   fill: none;
-  stroke: #d71920;
+  stroke: #10b981;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 5;
@@ -386,6 +426,11 @@
   border-color: #253244;
   background: #111827;
   box-shadow: none;
+}
+
+:global([data-mantine-color-scheme='dark']) .chartPanel:hover {
+  border-color: #334155;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
 }
 
 :global([data-mantine-color-scheme='dark']) .metricCard_blue,
@@ -463,6 +508,35 @@
 
   .metricDetail {
     min-height: auto;
+  }
+}
+
+@keyframes barGrow {
+  from {
+    transform: scaleY(0.1);
+  }
+
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes widthGrow {
+  from {
+    transform: scaleX(0.1);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chartPanel,
+  .verticalBarFill,
+  .barFill {
+    animation: none;
+    transition: none;
   }
 }
 
