@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import {
-  Badge,
   Button,
+  Divider,
   Drawer,
   Group,
   Modal,
@@ -14,7 +14,7 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconAlertTriangle, IconFileText, IconFileOff, IconPlus } from "@tabler/icons-react";
+import { IconFileText, IconFileOff, IconPlus } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 
@@ -41,6 +41,22 @@ const CONTRACT_TYPE_LABELS: Record<string, string> = {
 
 /** Hợp đồng còn dưới 30 ngày là sắp hết hạn, cần cảnh báo trên UI. */
 const EXPIRY_WARNING_DAYS = 30;
+
+/** Chấm tròn nhỏ trong badge cảnh báo hết hạn, đồng bộ phong cách với StatusTag. */
+function ExpiryDot({ color }: { color: "red" | "orange" }) {
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        width: 5,
+        height: 5,
+        borderRadius: "50%",
+        backgroundColor: `var(--mantine-color-${color}-6)`,
+        flexShrink: 0,
+      }}
+    />
+  );
+}
 
 function getExpiryTone(contract: Contract): "danger" | "warning" | null {
   if (!contract.endDate || contract.status === "TERMINATED") return null;
@@ -124,22 +140,25 @@ export function ContractsPage() {
     {
       key: "range",
       header: "Hiệu lực",
+      minWidth: 260,
       render: (record) => {
         const tone = getExpiryTone(record);
+        const toneColor = tone === "danger" ? "red.6" : "orange.6";
         return (
-          <Group gap={6} wrap="nowrap">
-            <Text size="sm">
+          <Group gap={10} wrap="nowrap" align="center">
+            <Text size="sm" c="#1f2937" style={{ whiteSpace: "nowrap" }}>
               {formatDate(record.startDate)} → {record.endDate ? formatDate(record.endDate) : "Không xác định"}
             </Text>
-            {tone === "danger" ? (
-              <Badge color="red" variant="light" leftSection={<IconAlertTriangle size={12} />}>
-                Đã hết hạn
-              </Badge>
-            ) : null}
-            {tone === "warning" ? (
-              <Badge color="orange" variant="light" leftSection={<IconAlertTriangle size={12} />}>
-                Sắp hết hạn
-              </Badge>
+            {tone ? (
+              <>
+                <Divider orientation="vertical" color="#e2e8f0" h={14} />
+                <Group gap={6} wrap="nowrap" align="center">
+                  <ExpiryDot color={tone === "danger" ? "red" : "orange"} />
+                  <Text size="xs" fw={600} c={toneColor} style={{ whiteSpace: "nowrap" }}>
+                    {tone === "danger" ? "Hết hạn" : "Sắp hết hạn"}
+                  </Text>
+                </Group>
+              </>
             ) : null}
           </Group>
         );
