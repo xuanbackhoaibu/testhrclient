@@ -17,7 +17,7 @@
 
 .metricCard {
   position: relative;
-  min-height: 152px;
+  min-height: 128px;
   overflow: hidden;
   border-radius: var(--hrm-radius);
 }
@@ -56,9 +56,14 @@
 
 .metricValue {
   color: var(--hrm-text);
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 800;
   line-height: 1;
+}
+
+.metricMeta {
+  max-width: 92px;
+  line-height: 1.25;
 }
 
 .metricIcon {
@@ -66,8 +71,11 @@
 }
 
 .metricDetail {
-  margin-top: 14px;
-  min-height: 24px;
+  min-height: 18px;
+}
+
+.metricDetailText {
+  line-height: 1.25;
 }
 
 .kpiProgressWrap {
@@ -88,6 +96,29 @@
   height: 100%;
   border-radius: inherit;
   background: #10b981;
+}
+
+.miniStatGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.miniStatGrid span {
+  overflow: hidden;
+  border-radius: 6px;
+  background: rgba(245, 159, 0, 0.1);
+  color: #92400e;
+  font-size: 11px;
+  line-height: 1.2;
+  padding: 5px 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.miniStatGrid strong {
+  margin-left: 3px;
+  font-size: 12px;
 }
 
 .chartPanel,
@@ -319,6 +350,11 @@
   background: #172033;
 }
 
+:global([data-mantine-color-scheme='dark']) .miniStatGrid span {
+  background: rgba(245, 159, 0, 0.18);
+  color: #fbbf24;
+}
+
 :global([data-mantine-color-scheme='dark']) .barTrack,
 :global([data-mantine-color-scheme='dark']) .stackedTrack,
 :global([data-mantine-color-scheme='dark']) .donutTrack {
@@ -347,6 +383,10 @@
   .chartPanel,
   .actionPanel {
     min-height: auto;
+  }
+
+  .miniStatGrid {
+    grid-template-columns: 1fr;
   }
 
   .barRow {

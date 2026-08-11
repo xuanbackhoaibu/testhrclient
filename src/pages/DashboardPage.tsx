@@ -79,21 +79,21 @@ function MetricCard({
 }) {
   return (
     <Paper className={`${styles.metricCard} ${styles[`metricCard_${tone}`]}`} p="md">
-      <Group justify="space-between" align="flex-start" wrap="nowrap">
-        <Stack gap={6}>
+      <Stack gap="xs" h="100%" justify="space-between">
+        <Group justify="space-between" align="flex-start" wrap="nowrap">
           <Text size="xs" fw={750} c="dimmed" className={styles.metricLabel}>
             {title}
           </Text>
+          <ThemeIcon className={styles.metricIcon} color={tone} variant="light" size={30}>
+            {icon}
+          </ThemeIcon>
+        </Group>
+        <Group align="flex-end" justify="space-between" gap="xs" wrap="nowrap">
           <Text className={styles.metricValue}>{formatNumber(value)}</Text>
-          <Text size="xs" c="dimmed" lineClamp={2}>
-            {meta}
-          </Text>
-        </Stack>
-        <ThemeIcon className={styles.metricIcon} color={tone} variant="light" size={38}>
-          {icon}
-        </ThemeIcon>
-      </Group>
+          <Text size="xs" c="dimmed" ta="right" className={styles.metricMeta}>{meta}</Text>
+        </Group>
       {detail ? <div className={styles.metricDetail}>{detail}</div> : null}
+      </Stack>
     </Paper>
   );
 }
@@ -508,11 +508,9 @@ export function DashboardPage() {
       tone: "blue" as const,
       icon: <IconUsers size={20} />,
       detail: (
-        <Group gap={6}>
-          <Badge size="sm" variant="light" color="blue">
-            {selectedUnits.length ? `${selectedUnits.length} đơn vị` : "Toàn hệ thống"}
-          </Badge>
-        </Group>
+        <Text size="xs" c="dimmed" className={styles.metricDetailText}>
+          {selectedUnits.length ? `${selectedUnits.length} đơn vị đang lọc` : "Toàn hệ thống"}
+        </Text>
       ),
     },
     {
@@ -540,11 +538,11 @@ export function DashboardPage() {
       tone: "orange" as const,
       icon: <IconClockHour4 size={20} />,
       detail: (
-        <Group gap={6}>
-          <Badge size="sm" color="orange" variant="light">Nghỉ {formatNumber(data.pendingLeaveRequests)}</Badge>
-          <Badge size="sm" color="yellow" variant="light">Công {formatNumber(data.pendingAttendanceExplanations)}</Badge>
-          <Badge size="sm" color="indigo" variant="light">Điều chuyển {formatNumber(data.pendingMovements)}</Badge>
-        </Group>
+        <div className={styles.miniStatGrid}>
+          <span>Nghỉ <strong>{formatNumber(data.pendingLeaveRequests)}</strong></span>
+          <span>Công <strong>{formatNumber(data.pendingAttendanceExplanations)}</strong></span>
+          <span>Điều chuyển <strong>{formatNumber(data.pendingMovements)}</strong></span>
+        </div>
       ),
     },
     {
@@ -553,7 +551,7 @@ export function DashboardPage() {
       meta: "Phát sinh trong kỳ",
       tone: "teal" as const,
       icon: <IconBriefcase size={20} />,
-      detail: <Badge size="sm" color="teal" variant="light">Hồ sơ mới</Badge>,
+      detail: <Text size="xs" c="dimmed" className={styles.metricDetailText}>Hồ sơ mới trong kỳ hiện tại</Text>,
     },
     {
       title: "Nghỉ việc tháng này",
@@ -561,7 +559,7 @@ export function DashboardPage() {
       meta: "Biến động rời công ty",
       tone: "red" as const,
       icon: <IconUserMinus size={20} />,
-      detail: <Badge size="sm" color="red" variant="light">Cần theo dõi bàn giao</Badge>,
+      detail: <Text size="xs" c="dimmed" className={styles.metricDetailText}>Cần theo dõi bàn giao</Text>,
     },
   ];
 
