@@ -272,6 +272,62 @@ function TopLateBarChart({ items }: { items: DashboardLateEmployee[] }) {
   );
 }
 
+function MetricVerticalBarChart({
+  title,
+  items,
+  onBarClick,
+}: {
+  title: string;
+  items: DashboardMetric[];
+  onBarClick?: (item: DashboardMetric) => void;
+}) {
+  const maxValue = Math.max(...items.map((item) => item.value), 1);
+
+  return (
+    <Paper className={styles.chartPanel} p="md">
+      <Group justify="space-between" mb="sm">
+        <Stack gap={2}>
+          <Text fw={750}>{title}</Text>
+          <Text size="xs" c="dimmed">So sánh nhanh số lượng hồ sơ theo từng trạng thái.</Text>
+        </Stack>
+        <Badge variant="light">{formatNumber(items.reduce((sum, item) => sum + item.value, 0))} hồ sơ</Badge>
+      </Group>
+      {items.length === 0 ? (
+        <Stack align="center" py="xl">
+          <EmptyIllustration />
+          <Text size="sm" c="dimmed">Chưa có dữ liệu trạng thái nhân sự.</Text>
+        </Stack>
+      ) : (
+        <div className={styles.verticalBarChart}>
+          {items.map((item, index) => {
+            const height = clamp((item.value / maxValue) * 100, 8, 100);
+            const color = chartPalette[index % chartPalette.length];
+            return (
+              <Tooltip
+                key={item.label}
+                label={`${item.label}: ${formatNumber(item.value)} (${percent(item.value, items.reduce((sum, current) => sum + current.value, 0))}%)`}
+                withArrow
+              >
+                <button
+                  className={styles.verticalBarItem}
+                  type="button"
+                  onClick={() => onBarClick?.(item)}
+                >
+                  <div className={styles.verticalBarTrack}>
+                    <div className={styles.verticalBarFill} style={{ height: `${height}%`, backgroundColor: color }} />
+                  </div>
+                  <Text size="sm" fw={750} className={styles.verticalBarValue}>{formatNumber(item.value)}</Text>
+                  <Text size="xs" c="dimmed" className={styles.verticalBarLabel}>{item.label}</Text>
+                </button>
+              </Tooltip>
+            );
+          })}
+        </div>
+      )}
+    </Paper>
+  );
+}
+
 function AttendanceStackedBars({ items }: { items: DashboardAttendanceRate[] }) {
   return (
     <Paper className={styles.chartPanel} p="md">
@@ -641,11 +697,10 @@ export function DashboardPage() {
         </SimpleGrid>
 
         <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
-          <DonutChart
-            title="Cơ cấu nhân sự theo trạng thái"
+          <MetricVerticalBarChart
+            title="Nhân sự theo trạng thái"
             items={data.employeesByEmploymentStatus}
-            centerLabel="Hồ sơ"
-            onSliceClick={(item) => navigate(`${ROUTES.employees}?status=${encodeURIComponent(item.label)}`)}
+            onBarClick={(item) => navigate(`${ROUTES.employees}?status=${encodeURIComponent(item.label)}`)}
           />
           <TopLateBarChart items={data.attendanceThisMonth.topLateEmployees} />
         </SimpleGrid>

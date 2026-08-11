@@ -225,6 +225,64 @@
   gap: 10px;
 }
 
+.verticalBarChart {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  align-items: end;
+  min-height: 230px;
+  gap: 12px;
+  padding-top: 12px;
+}
+
+.verticalBarItem {
+  display: grid;
+  grid-template-rows: 1fr auto auto;
+  align-items: end;
+  height: 230px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+}
+
+.verticalBarItem:hover .verticalBarFill {
+  filter: saturate(1.08);
+  transform: scaleY(1.02);
+}
+
+.verticalBarTrack {
+  display: flex;
+  align-items: end;
+  justify-self: center;
+  width: min(46px, 72%);
+  height: 168px;
+  overflow: hidden;
+  border-radius: 10px 10px 6px 6px;
+  background: var(--hrm-border-soft);
+}
+
+.verticalBarFill {
+  width: 100%;
+  border-radius: inherit;
+  transition: filter 140ms ease, transform 140ms ease;
+  transform-origin: bottom;
+}
+
+.verticalBarValue,
+.verticalBarLabel {
+  text-align: center;
+}
+
+.verticalBarLabel {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .barLabel {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -357,7 +415,8 @@
 
 :global([data-mantine-color-scheme='dark']) .barTrack,
 :global([data-mantine-color-scheme='dark']) .stackedTrack,
-:global([data-mantine-color-scheme='dark']) .donutTrack {
+:global([data-mantine-color-scheme='dark']) .donutTrack,
+:global([data-mantine-color-scheme='dark']) .verticalBarTrack {
   background: #253244;
   stroke: #253244;
 }
@@ -391,6 +450,10 @@
 
   .barRow {
     grid-template-columns: 1fr 42px;
+  }
+
+  .verticalBarChart {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .barTrack {

@@ -1037,6 +1037,7 @@ Thay đổi chính:
 
 - Thay danh sách text "Nhân sự theo đơn vị" bằng Donut Chart.
 - Thay danh sách text "Nhân sự theo trạng thái" bằng Donut Chart.
+- Sau phản hồi UI, đã đổi "Nhân sự theo trạng thái" từ Donut Chart sang biểu đồ cột dọc để Dashboard không bị lặp hai biểu đồ tròn.
 - Ở giữa Donut Chart hiển thị tổng số nhân sự/hồ sơ.
 - Thêm legend có số lượng và tỷ lệ phần trăm.
 - Tooltip khi hover từng phần hiển thị tên nhóm, số lượng và tỷ lệ.
