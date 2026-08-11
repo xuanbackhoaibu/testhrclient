@@ -12,121 +12,110 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import {
-  IconBriefcase,
-  IconBuildingBank,
-  IconCalendar,
-  IconCalendarCheck,
-  IconCalendarTime,
-  IconChevronDown,
-  IconClipboardList,
-  IconClock,
-  IconDashboard,
-  IconFileAnalytics,
-  IconFileImport,
-  IconFolderOpen,
-  IconKey,
-  IconLink,
-  IconLogout,
-  IconSettings,
-  IconShield,
-  IconSitemap,
-  IconTable,
-  IconTransfer,
-  IconUserCheck,
-  IconUsers,
-  IconCalendarStats,
-} from "@tabler/icons-react";
+import { IconChevronDown, IconLogout } from "@tabler/icons-react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../features/auth/useAuth";
 import { canAccessRoute } from "../features/auth/routePolicies";
 import { NotificationBell } from "../features/notifications/NotificationBell";
 import { BrandLogo } from "../shared/components/BrandLogo";
-import { ROUTES } from "../shared/constants/routes";
+import {
+  bottomLevelItems,
+  filterNavGroups,
+  isActive,
+  navGroups,
+  routeTitles,
+  topLevelItems,
+  type NavGroup,
+  type NavItem,
+  type NavSection,
+} from "./navigation";
 
-interface NavItem {
-  label: string;
-  path: string;
-  icon: typeof IconDashboard;
+function NavItemLink({
+  item,
+  pathname,
+  goTo,
+  size = 18,
+}: {
+  item: NavItem;
+  pathname: string;
+  goTo: (path: string) => void;
+  size?: number;
+}) {
+  const Icon = item.icon;
+  return (
+    <NavLink
+      label={item.label}
+      leftSection={<Icon size={size} />}
+      active={isActive(pathname, item.path)}
+      onClick={() => goTo(item.path)}
+      className="app-nav-link"
+    />
+  );
 }
 
-const mainItems: NavItem[] = [
-  { label: "Dashboard", path: ROUTES.dashboard, icon: IconDashboard },
-  // "Lịch của tôi" dùng chung route/quyền 'authenticated' như Cài đặt (mọi
-  // vai trò đăng nhập đều truy cập được) — trước đây route đã đăng ký và
-  // employee còn được điều hướng thẳng vào đây sau khi login, nhưng mục
-  // sidebar bị thiếu nên rời trang là không còn cách quay lại.
-  { label: "Lịch của tôi", path: ROUTES.calendar, icon: IconCalendar },
-  { label: "Nhân sự", path: ROUTES.employees, icon: IconUsers },
-  { label: "Điều chuyển", path: ROUTES.movements, icon: IconTransfer },
-  { label: "Hợp đồng", path: ROUTES.contracts, icon: IconBriefcase },
-  { label: "Nghỉ phép", path: ROUTES.leave, icon: IconCalendarCheck },
-  { label: "Chấm công", path: ROUTES.attendance, icon: IconClipboardList },
-  { label: "Xử lý mapping", path: ROUTES.attendanceMapping, icon: IconLink },
-  { label: "Bảng công tháng", path: ROUTES.timesheetGrid, icon: IconTable },
-  { label: "Kỳ công", path: ROUTES.timesheetPeriods, icon: IconCalendarStats },
-  { label: "Ca làm việc", path: ROUTES.workShifts, icon: IconClock },
-  { label: "Ngày lễ", path: ROUTES.holidays, icon: IconCalendarCheck },
-  { label: "Phân ca", path: ROUTES.shiftAssignments, icon: IconCalendarTime },
-  { label: "Onboarding", path: ROUTES.onboarding, icon: IconFolderOpen },
-  { label: "Offboarding", path: ROUTES.offboarding, icon: IconFileImport },
-  { label: "Audit logs", path: ROUTES.auditLogs, icon: IconFileAnalytics },
-  { label: "Cài đặt", path: ROUTES.settings, icon: IconSettings },
-];
+function NavItems({
+  items,
+  pathname,
+  goTo,
+}: {
+  items: NavItem[];
+  pathname: string;
+  goTo: (path: string) => void;
+}) {
+  return (
+    <>
+      {items.map((item) => (
+        <NavItemLink key={item.path} item={item} pathname={pathname} goTo={goTo} size={17} />
+      ))}
+    </>
+  );
+}
 
-const orgItems: NavItem[] = [
-  { label: "Lĩnh vực", path: ROUTES.businessSectors, icon: IconBuildingBank },
-  { label: "Đơn vị", path: ROUTES.units, icon: IconBuildingBank },
-  { label: "Phòng ban", path: ROUTES.departments, icon: IconSitemap },
-  { label: "Chức danh", path: ROUTES.positions, icon: IconBriefcase },
-];
+function isSectionActive(section: NavSection, pathname: string) {
+  return section.items.some((item) => isActive(pathname, item.path));
+}
 
-const iamItems: NavItem[] = [
-  { label: "Danh sách tài khoản", path: ROUTES.accounts, icon: IconUserCheck },
-  { label: "Tài khoản chờ liên kết", path: ROUTES.pendingHrLinkAccounts, icon: IconLink },
-  { label: "Vai trò", path: ROUTES.roles, icon: IconShield },
-  { label: "Nhóm quyền", path: ROUTES.permissionGroups, icon: IconShield },
-  { label: "Danh mục quyền", path: ROUTES.permissions, icon: IconKey },
-  { label: "Phân quyền báo cáo công việc", path: ROUTES.workReportAuthorizations, icon: IconClipboardList },
-];
+/** Renders one collapsible nav group. A section with no `label` renders its
+ *  items directly (no extra nesting); a labeled section renders as its own
+ *  nested expandable NavLink — used for groups with sub-categories. */
+function NavGroupMenu({
+  group,
+  pathname,
+  goTo,
+}: {
+  group: NavGroup;
+  pathname: string;
+  goTo: (path: string) => void;
+}) {
+  const Icon = group.icon;
+  const isGroupActive = group.sections.some((section) => isSectionActive(section, pathname));
 
-const routeTitles: Record<string, string> = {
-  [ROUTES.dashboard]: "Dashboard",
-  [ROUTES.calendar]: "Lịch của tôi",
-  [ROUTES.employees]: "Nhân sự",
-  [ROUTES.businessSectors]: "Lĩnh vực",
-  [ROUTES.units]: "Đơn vị",
-  [ROUTES.departments]: "Phòng ban",
-  [ROUTES.positions]: "Chức danh",
-  [ROUTES.movements]: "Điều chuyển",
-  [ROUTES.contracts]: "Hợp đồng",
-  [ROUTES.leave]: "Nghỉ phép",
-  [ROUTES.attendance]: "Chấm công",
-  [ROUTES.attendanceMapping]: "Xử lý mapping",
-  [ROUTES.timesheetGrid]: "Bảng công tháng",
-  [ROUTES.timesheetPeriods]: "Kỳ công",
-  [ROUTES.workShifts]: "Ca làm việc",
-  [ROUTES.holidays]: "Ngày lễ",
-  [ROUTES.shiftAssignments]: "Phân ca",
-  [ROUTES.onboarding]: "Onboarding",
-  [ROUTES.offboarding]: "Offboarding",
-  [ROUTES.imports]: "Imports",
-  [ROUTES.auditLogs]: "Audit logs",
-  [ROUTES.settings]: "Cài đặt",
-  [ROUTES.accounts]: "Tài khoản",
-  [ROUTES.pendingHrLinkAccounts]: "Tài khoản chờ liên kết nhân sự",
-  [ROUTES.roles]: "Vai trò",
-  [ROUTES.permissionGroups]: "Nhóm quyền",
-  [ROUTES.permissions]: "Danh mục quyền",
-  [ROUTES.workReportAuthorizations]: "Phân quyền báo cáo công việc",
-};
-
-function isActive(pathname: string, path: string) {
-  if (path === ROUTES.employees) {
-    return pathname === path || pathname.startsWith("/employees/");
-  }
-  return pathname === path;
+  return (
+    <NavLink
+      label={group.label}
+      leftSection={<Icon size={18} />}
+      defaultOpened={isGroupActive}
+      className="app-nav-link"
+    >
+      {group.sections.map((section, index) =>
+        section.label ? (
+          <NavLink
+            key={section.label}
+            label={section.label}
+            defaultOpened={isSectionActive(section, pathname)}
+          >
+            {section.items.map((item) => (
+              <NavItemLink key={item.path} item={item} pathname={pathname} goTo={goTo} size={17} />
+            ))}
+          </NavLink>
+        ) : (
+          // Unlabeled sections are stable per group definition, so index is a safe key here.
+          <NavItems key={index} items={section.items} pathname={pathname} goTo={goTo} />
+        ),
+      )}
+    </NavLink>
+  );
 }
 
 export function MainLayout() {
@@ -135,15 +124,13 @@ export function MainLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const visibleMainItems = mainItems.filter((item) => canAccessRoute(user, item.path));
-  const visibleOrgItems = orgItems.filter((item) => canAccessRoute(user, item.path));
-  const visibleIamItems = iamItems.filter((item) => canAccessRoute(user, item.path));
+  const canAccess = (path: string) => canAccessRoute(user, path);
+  const visibleTopLevelItems = topLevelItems.filter((item) => canAccess(item.path));
+  const visibleBottomLevelItems = bottomLevelItems.filter((item) => canAccess(item.path));
+  const visibleGroups = filterNavGroups(navGroups, canAccess);
 
-  const showOrganizationMenu = visibleOrgItems.length > 0;
-  const showIamMenu = visibleIamItems.length > 0;
-  const isIamRoute = visibleIamItems.some((item) => isActive(location.pathname, item.path));
   const selectedPath = location.pathname.startsWith("/employees/")
-    ? ROUTES.employees
+    ? "/employees"
     : location.pathname;
 
   function goTo(path: string) {
@@ -219,82 +206,17 @@ export function MainLayout() {
 
           <ScrollArea flex={1}>
             <Stack gap={4}>
-              {visibleMainItems.slice(0, 2).map((item) => {
-                const Icon = item.icon;
-                return (
-                  <NavLink
-                    key={item.path}
-                    label={item.label}
-                    leftSection={<Icon size={18} />}
-                    active={isActive(location.pathname, item.path)}
-                    onClick={() => goTo(item.path)}
-                    className="app-nav-link"
-                  />
-                );
-              })}
+              {visibleTopLevelItems.map((item) => (
+                <NavItemLink key={item.path} item={item} pathname={location.pathname} goTo={goTo} />
+              ))}
 
-              {showOrganizationMenu ? (
-                <NavLink
-                  label="Tổ chức"
-                  leftSection={<IconBuildingBank size={18} />}
-                  defaultOpened
-                  className="app-nav-link"
-                >
-                  {visibleOrgItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <NavLink
-                        key={item.path}
-                        label={item.label}
-                        leftSection={<Icon size={17} />}
-                        active={isActive(location.pathname, item.path)}
-                        onClick={() => goTo(item.path)}
-                        className="app-nav-link"
-                      />
-                    );
-                  })}
-                </NavLink>
-              ) : null}
+              {visibleGroups.map((group) => (
+                <NavGroupMenu key={group.label} group={group} pathname={location.pathname} goTo={goTo} />
+              ))}
 
-              {showIamMenu ? (
-                <NavLink
-                  label="Phân quyền"
-                  leftSection={<IconShield size={18} />}
-                  defaultOpened={isIamRoute}
-                  className="app-nav-link"
-                >
-                  <NavLink label="Người dùng và tài khoản" defaultOpened={visibleIamItems.slice(0, 2).some((item) => isActive(location.pathname, item.path))}>
-                    {visibleIamItems.slice(0, 2).map((item) => {
-                      const Icon = item.icon;
-                      return <NavLink key={item.path} label={item.label} leftSection={<Icon size={17} />} active={isActive(location.pathname, item.path)} onClick={() => goTo(item.path)} className="app-nav-link" />;
-                    })}
-                  </NavLink>
-                  <NavLink label="Vai trò và quyền" defaultOpened={visibleIamItems.slice(2, 5).some((item) => isActive(location.pathname, item.path))}>
-                    {visibleIamItems.slice(2, 5).map((item) => {
-                      const Icon = item.icon;
-                      return <NavLink key={item.path} label={item.label} leftSection={<Icon size={17} />} active={isActive(location.pathname, item.path)} onClick={() => goTo(item.path)} className="app-nav-link" />;
-                    })}
-                  </NavLink>
-                  {visibleIamItems.slice(5).map((item) => {
-                    const Icon = item.icon;
-                    return <NavLink key={item.path} label="Báo cáo công việc" leftSection={<Icon size={17} />} active={isActive(location.pathname, item.path)} onClick={() => goTo(item.path)} className="app-nav-link" />;
-                  })}
-                </NavLink>
-              ) : null}
-
-              {visibleMainItems.slice(2).map((item) => {
-                const Icon = item.icon;
-                return (
-                  <NavLink
-                    key={item.path}
-                    label={item.label}
-                    leftSection={<Icon size={18} />}
-                    active={isActive(location.pathname, item.path)}
-                    onClick={() => goTo(item.path)}
-                    className="app-nav-link"
-                  />
-                );
-              })}
+              {visibleBottomLevelItems.map((item) => (
+                <NavItemLink key={item.path} item={item} pathname={location.pathname} goTo={goTo} />
+              ))}
             </Stack>
           </ScrollArea>
         </Stack>
