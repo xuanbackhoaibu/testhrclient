@@ -141,7 +141,7 @@ export function MainLayout() {
   return (
     <AppShell
       header={{ height: 64 }}
-      navbar={{ width: 260, breakpoint: "md", collapsed: { mobile: !opened } }}
+      navbar={{ width: 288, breakpoint: "md", collapsed: { mobile: !opened } }}
       padding="lg"
       bg="#f6f8fb"
       className="app-shell"

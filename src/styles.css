@@ -116,6 +116,20 @@ body {
   background: #f1f5f9;
 }
 
+.app-nav-link {
+  padding-inline: 10px;
+  font-size: 13.5px;
+}
+
+.app-nav-link .mantine-NavLink-body,
+.app-nav-link .mantine-NavLink-label,
+.app-nav-link .mantine-NavLink-description {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .brand-logo-image {
   flex: 0 0 auto;
 }
