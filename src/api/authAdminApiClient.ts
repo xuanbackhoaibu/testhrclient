@@ -9,6 +9,7 @@ import {
 import { useAuthStore } from '../features/auth/authStore';
 import { unwrapApiEnvelope } from '../shared/api/httpClient';
 import { handleAxiosResponseError } from '../shared/api/errorHandler';
+import { isDefinitiveAuthRefreshFailure } from '../shared/api/authRefreshFailure';
 
 function resolveAuthApiBaseUrl(): string {
   if (import.meta.env.VITE_AUTH_API_BASE_URL) {
@@ -68,14 +69,17 @@ async function handleAuthService401AndRetry(
       setSessionUser(null);
       return Promise.reject(error);
     }
+    if (isDefinitiveAuthRefreshFailure(error)) {
+      clearSession();
+      window.location.assign('/login');
+      return Promise.reject(new Error('Auth service refresh rejected'));
+    }
     if (axios.isAxiosError(error) && error.response?.status === 403) {
-      setSessionUser(null);
       useAuthStore.getState().setError('Tài khoản đã xác thực nhưng không còn quyền truy cập HRM.');
       return Promise.reject(error);
     }
-    clearSession();
-    window.location.assign('/login');
-    return Promise.reject(new Error('Auth service refresh failed'));
+    useAuthStore.getState().setError('Session refresh is temporarily unavailable. Please try again.');
+    return Promise.reject(error);
   } finally {
     authRefreshPromise = null;
   }
@@ -100,7 +104,7 @@ authAdminApiClient.interceptors.response.use(
     // config (network error, request bị hủy...). Phải guard trước khi đọc
     // _retry, tránh "Cannot read properties of undefined (reading '_retry')".
     const originalRequest = error.config as
-      | (AxiosRequestConfig & { _retry?: boolean })
+      | (AxiosRequestConfig & { _retry?: boolean; _skipUnauthenticatedRedirect?: boolean })
       | undefined;
 
     if (!originalRequest) {
@@ -112,8 +116,10 @@ authAdminApiClient.interceptors.response.use(
 
     if (originalRequest._retry) {
       return handleAxiosResponseError(error, () => {
-        clearSession();
-        window.location.assign('/login');
+        if (!originalRequest._skipUnauthenticatedRedirect) {
+          clearSession();
+          window.location.assign('/login');
+        }
       });
     }
 

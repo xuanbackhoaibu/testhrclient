@@ -199,7 +199,7 @@ export function AttendanceFilterBar({
           comboboxProps={{ withinPortal: true }}
         />
 
-        {/* Actions */}
+        {/* Nhóm thao tác */}
         <Group gap="xs" wrap="nowrap" className={styles.actions}>
           {maySync && (
             <Button

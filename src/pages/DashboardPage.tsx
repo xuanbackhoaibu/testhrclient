@@ -7,6 +7,7 @@ import {
   Progress,
   SimpleGrid,
   Stack,
+  Table,
   Text,
   ThemeIcon,
 } from "@mantine/core";
@@ -180,6 +181,125 @@ function DistributionCard({
   );
 }
 
+function AttendanceRateList({
+  title,
+  items,
+  labelKey,
+}: {
+  title: string;
+  items: Array<{
+    unitName?: string;
+    departmentName?: string;
+    workDays: number;
+    attendedDays: number;
+    attendanceRate: number;
+  }>;
+  labelKey: "unitName" | "departmentName";
+}) {
+  return (
+    <Paper p="md" radius="md">
+      <Stack gap="sm">
+        <Text fw={650}>{title}</Text>
+        {items.length === 0 ? (
+          <Text size="sm" c="dimmed">
+            Chưa có dữ liệu công tháng này.
+          </Text>
+        ) : (
+          items.slice(0, 6).map((item) => (
+            <Group
+              key={item[labelKey] ?? "unknown"}
+              justify="space-between"
+              gap="md"
+            >
+              <Stack gap={0}>
+                <Text size="sm">{item[labelKey] ?? "-"}</Text>
+                <Text size="xs" c="dimmed">
+                  {item.attendedDays.toLocaleString("vi-VN")}/
+                  {item.workDays.toLocaleString("vi-VN")} ngày
+                </Text>
+              </Stack>
+              <Badge
+                color={item.attendanceRate >= 95 ? "green" : "yellow"}
+                variant="light"
+              >
+                {item.attendanceRate.toLocaleString("vi-VN")}%
+              </Badge>
+            </Group>
+          ))
+        )}
+      </Stack>
+    </Paper>
+  );
+}
+
+function TopLateTable({
+  items,
+}: {
+  items: Array<{
+    employeeId: string;
+    employeeCode?: string | null;
+    fullName?: string | null;
+    unitName?: string | null;
+    departmentName?: string | null;
+    lateCount: number;
+    totalLateMinutes: number;
+  }>;
+}) {
+  return (
+    <Paper p="md" radius="md">
+      <Stack gap="sm">
+        <Text fw={650}>Nhân sự đi muộn nhiều nhất</Text>
+        {items.length === 0 ? (
+          <Text size="sm" c="dimmed">
+            Chưa ghi nhận lần đi muộn trong tháng này.
+          </Text>
+        ) : (
+          <Table striped highlightOnHover withTableBorder>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Nhân sự</Table.Th>
+                <Table.Th>Đơn vị</Table.Th>
+                <Table.Th ta="right">Lần</Table.Th>
+                <Table.Th ta="right">Phút</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {items.map((item) => (
+                <Table.Tr key={item.employeeId}>
+                  <Table.Td>
+                    <Stack gap={0}>
+                      <Text size="sm" fw={600}>
+                        {item.fullName ?? item.employeeId}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        {item.employeeCode ?? "-"}
+                      </Text>
+                    </Stack>
+                  </Table.Td>
+                  <Table.Td>
+                    <Stack gap={0}>
+                      <Text size="sm">{item.unitName ?? "-"}</Text>
+                      <Text size="xs" c="dimmed">
+                        {item.departmentName ?? "-"}
+                      </Text>
+                    </Stack>
+                  </Table.Td>
+                  <Table.Td ta="right">
+                    {item.lateCount.toLocaleString("vi-VN")}
+                  </Table.Td>
+                  <Table.Td ta="right">
+                    {item.totalLateMinutes.toLocaleString("vi-VN")}
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        )}
+      </Stack>
+    </Paper>
+  );
+}
+
 export function DashboardPage() {
   const { data, isLoading, error, refetch } = useDashboardSummary();
   const navigate = useNavigate();
@@ -260,6 +380,13 @@ export function DashboardPage() {
       icon: IconBriefcase,
       onClick: () => navigate(ROUTES.offboarding),
     },
+    {
+      label: "Giải trình chấm công chờ duyệt",
+      description: "Yêu cầu giải trình chấm công đang chờ xử lý",
+      count: data.pendingAttendanceExplanations,
+      icon: IconCalendarTime,
+      onClick: () => navigate(ROUTES.attendanceMapping),
+    },
   ];
   const actionItems = allActionItems.filter((item) => item.count > 0);
 
@@ -291,6 +418,7 @@ export function DashboardPage() {
 
       <Stack gap="md">
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
+
           {metrics.map((metric) => (
             <MetricCard key={metric.title} {...metric} />
           ))}
@@ -332,6 +460,86 @@ export function DashboardPage() {
             subtitle="Cập nhật theo hồ sơ làm việc"
             items={data.employeesByEmploymentStatus}
             status
+          />
+        </SimpleGrid>
+
+        <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
+          <TopLateTable items={data.attendanceThisMonth.topLateEmployees} />
+          <Paper p="md" radius="md">
+            <Stack gap="sm">
+              <Text fw={650}>Chuẩn bị bàn giao lương</Text>
+              <Group justify="space-between">
+                <Text size="sm" c="dimmed">
+                  Kỳ công đã chốt
+                </Text>
+                <Text size="sm" fw={650}>
+                  {data.payrollHandoff.closedPeriods.toLocaleString("vi-VN")}
+                </Text>
+              </Group>
+              <Group justify="space-between">
+                <Text size="sm" c="dimmed">
+                  Kỳ mới nhất
+                </Text>
+                <Text size="sm" fw={650}>
+                  {data.payrollHandoff.latestClosedPeriod
+                    ? `${data.payrollHandoff.latestClosedPeriod.month}/${data.payrollHandoff.latestClosedPeriod.year}`
+                    : "-"}
+                </Text>
+              </Group>
+              <Group justify="space-between">
+                <Text size="sm" c="dimmed">
+                  Định dạng lương
+                </Text>
+                <Badge color="yellow" variant="light">
+                  Chờ chốt
+                </Badge>
+              </Group>
+              <Group justify="space-between">
+                <Text size="sm" c="dimmed">
+                  Phép năm đã dùng tháng này
+                </Text>
+                <Text size="sm" fw={650}>
+                  {data.attendanceThisMonth.annualLeaveDaysUsed.toLocaleString(
+                    "vi-VN",
+                  )}
+                </Text>
+              </Group>
+              <Group justify="space-between">
+                <Text size="sm" c="dimmed">
+                  Quỹ phép
+                </Text>
+                <Badge color="yellow" variant="light">
+                  Đang đối chiếu CSV
+                </Badge>
+              </Group>
+              <Group justify="space-between" align="flex-start">
+                <Stack gap={0}>
+                  <Text size="sm" c="dimmed">
+                    Phép sắp hết hạn
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {data.leaveExpiryRisks.message ??
+                      "Đang chờ dữ liệu quỹ phép."}
+                  </Text>
+                </Stack>
+                <Badge color="yellow" variant="light">
+                  {data.leaveExpiryRisks.items.length.toLocaleString("vi-VN")}
+                </Badge>
+              </Group>
+            </Stack>
+          </Paper>
+        </SimpleGrid>
+
+        <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
+          <AttendanceRateList
+            title="Chuyên cần theo đơn vị"
+            items={data.attendanceThisMonth.byUnit}
+            labelKey="unitName"
+          />
+          <AttendanceRateList
+            title="Chuyên cần theo phòng ban"
+            items={data.attendanceThisMonth.byDepartment}
+            labelKey="departmentName"
           />
         </SimpleGrid>
       </Stack>
