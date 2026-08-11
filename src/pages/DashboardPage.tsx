@@ -19,11 +19,9 @@ import {
 import {
   IconAlertTriangle,
   IconBriefcase,
-  IconCalendarDue,
   IconClockHour4,
   IconDownload,
   IconFileImport,
-  IconPlus,
   IconRefresh,
   IconUserCheck,
   IconUserMinus,
@@ -570,8 +568,6 @@ export function DashboardPage() {
         subtitle="Tổng quan vận hành HRM, chấm công, nghỉ phép và dữ liệu bàn giao lương."
         actions={
           <Group gap="xs">
-            <Button variant="default" leftSection={<IconPlus size={16} />} onClick={() => navigate(ROUTES.employees)}>Thêm nhân viên</Button>
-            <Button variant="default" leftSection={<IconCalendarDue size={16} />} onClick={() => navigate(ROUTES.leave)}>Tạo đơn nghỉ</Button>
             <Button variant="default" leftSection={<IconFileImport size={16} />} onClick={() => navigate(ROUTES.imports)}>Import Excel</Button>
             <Menu shadow="md" width={190}>
               <Menu.Target>
