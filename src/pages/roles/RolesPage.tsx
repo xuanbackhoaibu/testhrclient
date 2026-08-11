@@ -17,7 +17,7 @@ import {
   TextInput,
   Tooltip,
 } from '@mantine/core';
-import { useDebouncedValue, useDisclosure } from '@mantine/hooks';
+import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconEdit, IconEye, IconPlus, IconShield, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -45,17 +45,18 @@ import type {
 import { NormalizedSearchInput } from '../../shared/components/NormalizedSearchInput';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { includesNormalizedSearch } from '../../shared/utils/normalizeSearchText';
+import { useImeSafeSelectFilter } from '../../shared/hooks/useImeSafeSelectFilter';
 
 const STATUS_COLOR: Record<string, string> = { active: 'green', disabled: 'gray' };
 const STATUS_LABEL: Record<string, string> = { active: 'Đang dùng', disabled: 'Vô hiệu' };
 
 export function RolesPage() {
+  const selectSearch = useImeSafeSelectFilter();
   const { canManageRoles: canManage, canReadTechnicalCatalog } = useAuthorizationCapabilities();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const search = searchParams.get('search') ?? '';
   const status = searchParams.get('status') ?? 'all';
-  const [debouncedSearch] = useDebouncedValue(search, 350);
   const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);
   const [detailRoleId, setDetailRoleId] = useState<string | null>(null);
   const [detailOpened, { open: openDetail, close: closeDetail }] = useDisclosure(false);
@@ -93,8 +94,8 @@ export function RolesPage() {
     queryFn: () => getRoles({ status: status === 'all' ? undefined : status }),
   });
   const visibleRoles = useMemo(
-    () => roles.filter((role) => includesNormalizedSearch([role.name, role.key, role.description].join(' '), debouncedSearch)),
-    [debouncedSearch, roles],
+    () => roles.filter((role) => includesNormalizedSearch([role.name, role.key, role.description].join(' '), search)),
+    [search, roles],
   );
 
   const { data: detail, isLoading: detailLoading } = useQuery<RoleDetail>({
@@ -323,7 +324,7 @@ export function RolesPage() {
         </Stack>
       </Modal>
 
-      {/* Detail drawer */}
+      {/* Ngăn kéo chi tiết */}
       <Drawer
         opened={detailOpened}
         onClose={() => { closeDetail(); setDetailRoleId(null); }}
@@ -399,6 +400,7 @@ export function RolesPage() {
                       value={addGroupId}
                       onChange={(v) => setAddGroupId(v ?? '')}
                       searchable
+                      {...selectSearch}
                       style={{ flex: 1 }}
                     />
                     <Button size="xs" disabled={!addGroupId} loading={addGroupMutation.isPending}
@@ -438,6 +440,7 @@ export function RolesPage() {
                       value={addPermKey}
                       onChange={(v) => setAddPermKey(v ?? '')}
                       searchable
+                      {...selectSearch}
                       style={{ flex: 1 }}
                     />
                     <Button size="xs" disabled={!addPermKey} loading={addPermMutation.isPending}

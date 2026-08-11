@@ -24,10 +24,6 @@ import type {
 } from '../auth-admin/authAdminTypes';
 import type { Employee } from './employeeTypes';
 import { api } from '../../shared/api/httpClient';
-import {
-  DEFAULT_EMPLOYEE_PASSWORD,
-  FORCE_CHANGE_PASSWORD_NOTICE,
-} from '../../shared/constants/account';
 
 interface Props {
   employees: Employee[];
@@ -77,13 +73,8 @@ export function BulkProvisionModal({ employees, opened, onClose, onSuccess }: Pr
     mutationFn: () =>
       bulkProvisionFromEmployees({
         employees: valid.map((emp) => ({
-          employeeId: emp.id,
-          employeeCode: emp.employeeCode,
-          fullName: emp.fullName,
-          email: emp.companyEmail ?? emp.personalEmail ?? null,
-          unitName: emp.unitName ?? undefined,
-          departmentName: emp.departmentName ?? undefined,
-          positionName: emp.positionName ?? undefined,
+          hrmEmployeeId: emp.id,
+          expectedEmployeeCode: emp.employeeCode,
         })),
         sendOtp,
         skipExisting: true,
@@ -138,8 +129,7 @@ export function BulkProvisionModal({ employees, opened, onClose, onSuccess }: Pr
         <Stack gap="md">
           {result.created > 0 && (
             <Alert color="green" variant="light" title="Tài khoản mới đã được tạo">
-              {result.created} tài khoản mới được tạo với mật khẩu mặc định{' '}
-              <strong>{DEFAULT_EMPLOYEE_PASSWORD}</strong>. {FORCE_CHANGE_PASSWORD_NOTICE}
+              {result.created} tài khoản mới đã được tạo. Mật khẩu khởi tạo là duy nhất cho từng tài khoản và không được hiển thị lại trong bulk flow.
             </Alert>
           )}
           <Group gap="xl">
@@ -297,8 +287,7 @@ export function BulkProvisionModal({ employees, opened, onClose, onSuccess }: Pr
 
         <Alert color="blue" variant="light">
           Tài khoản đăng nhập là <strong>mã nhân viên</strong>; email không bắt buộc — nhân sự chưa có email vẫn được cấp tài khoản.
-          Tài khoản mới ở trạng thái <strong>Hoạt động</strong> với mật khẩu mặc định{' '}
-          <strong>{DEFAULT_EMPLOYEE_PASSWORD}</strong>. {FORCE_CHANGE_PASSWORD_NOTICE}{' '}
+          Tài khoản mới ở trạng thái <strong>Hoạt động</strong> với mật khẩu khởi tạo riêng cho từng nhân sự; dùng provision từng nhân sự khi cần bàn giao credential một lần.{' '}
           Nhân sự đã có tài khoản sẽ được bỏ qua tự động (không tạo trùng, không đặt lại mật khẩu).
         </Alert>
 

@@ -13,7 +13,7 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconEdit, IconPlus, IconSearch, IconX } from "@tabler/icons-react";
+import { IconEdit, IconPlus, IconX } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
@@ -43,6 +43,8 @@ import {
 import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
 import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
+import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
+import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 
 type UnitFormValues = {
@@ -73,6 +75,7 @@ function TruncatedCell({ value }: { value?: string | null }) {
 }
 
 export function UnitsPage() {
+  const selectSearch = useImeSafeSelectFilter();
   const { can, permissions, roles } = useAuth();
   const canCreateUnit = can(HR_PERMISSIONS.UNIT_CREATE);
   const canEditUnit = can(HR_PERMISSIONS.UNIT_UPDATE);
@@ -449,13 +452,11 @@ export function UnitsPage() {
       />
 
       <Stack gap="md">
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" className="list-filter-panel">
-          <TextInput
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+          <NormalizedSearchInput
             placeholder="Tìm mã hoặc tên"
-            leftSection={<IconSearch size={17} />}
             value={params.search}
-            onChange={(event) => {
-              const value = event.currentTarget.value;
+            onChange={(value) => {
               setParams((current) => ({
                 ...current,
                 search: value,
@@ -500,7 +501,6 @@ export function UnitsPage() {
         title={editing ? "Chỉnh sửa đơn vị" : "Tạo đơn vị"}
         position="right"
         size="lg"
-        className="entity-drawer"
       >
         <form onSubmit={form.onSubmit((values) => mutation.mutate(values))}>
           <Stack gap="sm">
@@ -528,6 +528,7 @@ export function UnitsPage() {
               label="Lĩnh vực"
               withAsterisk
               searchable
+              {...selectSearch}
               data={sectorOptions}
               disabled={sectorsQuery.isLoading}
               {...form.getInputProps("sectorId")}

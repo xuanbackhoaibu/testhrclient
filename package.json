@@ -9,13 +9,15 @@
     "typecheck": "tsc --noEmit",
     "audit:ui-text": "node scripts/audit-ui-text.mjs",
     "test:authorization": "node --experimental-strip-types --test src/features/auth/*.test.ts src/features/authorization/*.test.ts src/features/work-report-authorizations/*.test.ts",
+    "test:ime-search": "vitest run src/shared/hooks/useImeSafeSearch.test.tsx src/shared/hooks/useImeSafeSelectFilter.test.tsx",
+    "test:search-utils": "node --experimental-strip-types --test src/shared/utils/sort.test.ts src/shared/utils/filterSelectOptions.test.ts",
     "test:permission-assignment": "node --experimental-strip-types --test src/features/auth-admin/permissionAssignmentPolicy.test.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@hacom/chat-shared-types": "file:../chat-shared-types",
     "@ant-design/icons": "^6.1.1",
+    "@hacom/chat-shared-types": "file:../chat-shared-types",
     "@mantine/core": "^9.2.1",
     "@mantine/dates": "^9.2.1",
     "@mantine/form": "^9.2.1",
@@ -36,6 +38,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -44,8 +48,10 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.5.0",
+    "jsdom": "^27.4.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
-    "vite": "^8.0.10"
+    "vite": "^8.0.10",
+    "vitest": "^4.1.10"
   }
 }

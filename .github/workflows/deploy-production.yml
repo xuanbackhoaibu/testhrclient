@@ -75,7 +75,7 @@ jobs:
             hr-web-client/package-lock.json
             chat-shared-types/package-lock.json
 
-      - name: Install dependencies, typecheck, lint, build
+      - name: Install dependencies, typecheck, and lint
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.image_tag != '') }}
         shell: bash
         run: |
@@ -101,7 +101,6 @@ jobs:
           npm ls @hacom/chat-shared-types
           npm run typecheck
           npm run lint
-          npm run build
 
       - name: Skip build for rollback
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag != '' }}
@@ -206,6 +205,8 @@ jobs:
           docker buildx build \
             --file ./hr-web-client/Dockerfile \
             --target production \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
             --platform linux/amd64 \
             --progress plain \
             --push \
@@ -451,7 +452,7 @@ jobs:
           deploy_dir="$1"
           runtime_env_file="$2"
           cd "${deploy_dir}" || exit 0
-          versions_env_file="$(dirname "${runtime_env_file}")/.hr-web-client.versions"
+          versions_env_file="${deploy_dir}/.hr-web-client.versions"
           compose_args=(-p hr-prod --env-file "${runtime_env_file}")
           if [ -f "${versions_env_file}" ]; then
             compose_args+=(--env-file "${versions_env_file}")
@@ -503,4 +504,4 @@ jobs:
         run: |
           set -Eeuo pipefail
           ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
-            "cd '${DEPLOY_DIR}' && SERVER_RUNTIME_ENV_FILE='${SERVER_RUNTIME_ENV_FILE}' COMPOSE_FILE='deploy/compose/production.yml' deploy/scripts/smoke-production.sh"
+            "cd '${DEPLOY_DIR}' && SERVER_RUNTIME_ENV_FILE='${SERVER_RUNTIME_ENV_FILE}' COMPOSE_FILE='deploy/compose/production.yml' EXPECTED_IMAGE_REF='${IMAGE_REPOSITORY}:${IMAGE_TAG}' deploy/scripts/smoke-production.sh"

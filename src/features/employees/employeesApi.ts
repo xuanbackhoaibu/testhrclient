@@ -330,7 +330,7 @@ export async function createEmployee(payload: EmployeePayload): Promise<Employee
     const position = mockPositions.find((item) => item.id === payload.positionId);
     const employeeCodePreview = previewMockEmployeeCode(payload.unitId);
     if (!employeeCodePreview.employeeCode) {
-      throw new Error('Chua xac dinh duoc linh vuc cua don vi de sinh ma nhan su.');
+      throw new Error('Chưa xác định được lĩnh vực của đơn vị để sinh mã nhân sự.');
     }
     const employee: Employee = {
       id: generateId('emp'),

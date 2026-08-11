@@ -35,10 +35,6 @@ import {
 } from '../auth-admin/authAdminTypes';
 import { AUTH_ADMIN_PERMISSIONS } from '../auth/permissions';
 import { useAuth } from '../auth/useAuth';
-import {
-  DEFAULT_EMPLOYEE_PASSWORD,
-  FORCE_CHANGE_PASSWORD_NOTICE,
-} from '../../shared/constants/account';
 import { formatDateTime } from '../../shared/utils/date';
 import type { Employee } from './employeeTypes';
 
@@ -115,8 +111,11 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
   const resetPasswordMutation = useMutation({
     mutationFn: () =>
       resetPassword(authUser!.authUserId, {
-        autoGenerate: false,
-        password: DEFAULT_EMPLOYEE_PASSWORD,
+        // QUY ƯỚC NGHIỆP VỤ — KHÔNG ĐỔI SANG autoGenerate:
+        // nút này phải trả tài khoản về mật khẩu mặc định của công ty, không
+        // phải mật khẩu ngẫu nhiên. Giá trị mặc định do backend giữ, frontend
+        // không hardcode. Chỉ màn quản trị /accounts mới cho phép sinh ngẫu nhiên.
+        useDefaultPassword: true,
         mustChangePassword: true,
         notifyUser: false,
         reason: 'HR admin reset to default password',
@@ -126,8 +125,8 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
       setResetResult(data);
       notifications.show({
         color: 'green',
-        title: 'Da reset mat khau',
-        message: FORCE_CHANGE_PASSWORD_NOTICE,
+        title: 'Đã reset mật khẩu',
+        message: 'Nhân sự bắt buộc đổi mật khẩu khi đăng nhập lần đầu.',
       });
       await invalidate();
     },
@@ -135,7 +134,7 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
       notifications.show({
         color: 'red',
         message:
-          (err as { message?: string })?.message ?? 'Loi reset mat khau.',
+          (err as { message?: string })?.message ?? 'Lỗi reset mật khẩu.',
       });
     },
   });
@@ -143,13 +142,13 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
   const sendActivationMutation = useMutation({
     mutationFn: () => sendActivation(authUser!.authUserId),
     onSuccess: async () => {
-      notifications.show({ color: 'green', message: 'Da gui email kich hoat.' });
+      notifications.show({ color: 'green', message: 'Đã gửi email kích hoạt.' });
       await invalidate();
     },
     onError: (err: unknown) => {
       notifications.show({
         color: 'red',
-        message: (err as { message?: string })?.message ?? 'Loi gui email.',
+        message: (err as { message?: string })?.message ?? 'Lỗi gửi email.',
       });
     },
   });
@@ -157,14 +156,14 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
   const lockMutation = useMutation({
     mutationFn: () => lockAccount(authUser!.authUserId, 'HR admin locked'),
     onSuccess: async () => {
-      notifications.show({ color: 'green', message: 'Da khoa tai khoan.' });
+      notifications.show({ color: 'green', message: 'Đã khóa tài khoản.' });
       await invalidate();
     },
     onError: (err: unknown) => {
       notifications.show({
         color: 'red',
         message:
-          (err as { message?: string })?.message ?? 'Loi khoa tai khoan.',
+          (err as { message?: string })?.message ?? 'Lỗi khóa tài khoản.',
       });
     },
   });
@@ -172,13 +171,13 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
   const activateMutation = useMutation({
     mutationFn: () => activateAccount(authUser!.authUserId, 'HR admin activated'),
     onSuccess: async () => {
-      notifications.show({ color: 'green', message: 'Da kich hoat tai khoan.' });
+      notifications.show({ color: 'green', message: 'Đã kích hoạt tài khoản.' });
       await invalidate();
     },
     onError: (err: unknown) => {
       notifications.show({
         color: 'red',
-        message: (err as { message?: string })?.message ?? 'Loi kich hoat.',
+        message: (err as { message?: string })?.message ?? 'Lỗi kích hoạt.',
       });
     },
   });
@@ -188,7 +187,7 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
     onSuccess: async () => {
       notifications.show({
         color: 'green',
-        message: 'Da thu hoi tat ca phien dang nhap.',
+        message: 'Đã thu hồi tất cả phiên đăng nhập.',
       });
       await invalidate();
     },
@@ -196,7 +195,7 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
       notifications.show({
         color: 'red',
         message:
-          (err as { message?: string })?.message ?? 'Loi thu hoi sessions.',
+          (err as { message?: string })?.message ?? 'Lỗi thu hồi session.',
       });
     },
   });
@@ -225,13 +224,13 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
           setResetResult(null);
           onClose();
         }}
-        title={`Tai khoan - ${employee.fullName}`}
+        title={`Tài khoản - ${employee.fullName}`}
         position="right"
         size="md"
       >
         {!canRead ? (
           <Alert color="blue">
-            Ban khong co quyen xem thong tin tai khoan.
+            Bạn không có quyền xem thông tin tài khoản.
           </Alert>
         ) : isLoading ? (
           <Group justify="center" py="xl">
@@ -239,18 +238,18 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
           </Group>
         ) : error || !authUser ? (
           <Stack gap="sm">
-            <Alert color="red" title="Khong tai duoc thong tin tai khoan">
-              Khong ket noi duoc auth service.
+            <Alert color="red" title="Không tải được thông tin tài khoản">
+              Không kết nối được auth service.
             </Alert>
             <Button variant="light" onClick={() => void refetch()}>
-              Thu lai
+              Thử lại
             </Button>
           </Stack>
         ) : (
           <Stack gap="lg">
             <Stack gap={6}>
               <Title order={6} c="dimmed">
-                Thong tin tai khoan
+                Thông tin tài khoản
               </Title>
 
               <InfoRow label="Auth User ID">
@@ -258,7 +257,7 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
                   <Code>{authUser.authUserId}</Code>
                   <CopyButton value={authUser.authUserId}>
                     {({ copied, copy }) => (
-                      <Tooltip label={copied ? 'Da copy' : 'Copy'}>
+                      <Tooltip label={copied ? 'Đã sao chép' : 'Sao chép'}>
                         <Button size="xs" variant="subtle" p={2} onClick={copy}>
                           {copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
                         </Button>
@@ -271,21 +270,21 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
               {authUser.username ? (
                 <InfoRow label="Username">{authUser.username}</InfoRow>
               ) : null}
-              <InfoRow label="Email dang nhap">{authUser.email}</InfoRow>
-              <InfoRow label="Trang thai">
+              <InfoRow label="Email đăng nhập">{authUser.email}</InfoRow>
+              <InfoRow label="Trạng thái">
                 <Badge color={statusColor(authUser.accountStatus)}>
                   {ACCOUNT_STATUS_LABELS[authUser.accountStatus] ??
                     authUser.accountStatus}
                 </Badge>
               </InfoRow>
-              <InfoRow label="Bat buoc doi mat khau">
+              <InfoRow label="Bắt buộc đổi mật khẩu">
                 {authUser.mustChangePassword ? (
                   <Badge color="orange" variant="light">
-                    Bat buoc doi
+                    Bắt buộc đổi
                   </Badge>
                 ) : (
                   <Text size="sm" c="dimmed">
-                    Khong
+                    Không
                   </Text>
                 )}
               </InfoRow>
@@ -295,16 +294,16 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
               <InfoRow label="Token version">
                 {String(authUser.tokenVersion ?? '-')}
               </InfoRow>
-              <InfoRow label="Lan dang nhap gan nhat">
+              <InfoRow label="Lần đăng nhập gần nhất">
                 {authUser.lastLoginAt
                   ? formatDateTime(authUser.lastLoginAt)
-                  : 'Chua dang nhap'}
+                  : 'Chưa đăng nhập'}
               </InfoRow>
-              <InfoRow label="Hoat dong gan nhat">
+              <InfoRow label="Hoạt động gần nhất">
                 {authUser.lastSeen ? formatDateTime(authUser.lastSeen) : '-'}
               </InfoRow>
               {authUser.createdAt ? (
-                <InfoRow label="Ngay tao tai khoan">
+                <InfoRow label="Ngày tạo tài khoản">
                   {formatDateTime(authUser.createdAt)}
                 </InfoRow>
               ) : null}
@@ -324,7 +323,7 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
                     disabled={anyBusy}
                     onClick={confirmReset.open}
                   >
-                    Reset mat khau
+                    Reset mật khẩu
                   </Button>
                 ) : null}
 
@@ -349,7 +348,7 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
                     disabled={anyBusy}
                     onClick={() => lockMutation.mutate()}
                   >
-                    Khoa tai khoan
+                    Khóa tài khoản
                   </Button>
                 ) : null}
 
@@ -387,20 +386,21 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
       <Modal
         opened={confirmResetOpened}
         onClose={confirmReset.close}
-        title="Xac nhan reset mat khau"
+        title="Xác nhận reset mật khẩu"
         size="sm"
       >
         <Stack>
           <Text size="sm">
-            Ban co chac muon reset mat khau cua tai khoan{' '}
+            Bạn có chắc muốn reset mật khẩu của tài khoản{' '}
             <Text span fw={600}>
               {employee.fullName}
             </Text>{' '}
             ve mac dinh?
           </Text>
           <Alert color="orange" variant="light">
-            {FORCE_CHANGE_PASSWORD_NOTICE} Mat khau moi se hien thi sau khi reset
-            de ban giao cho nguoi dung.
+            Tài khoản sẽ được đưa về mật khẩu mặc định của công ty và bị thu hồi
+            toàn bộ phiên đăng nhập. Nhân sự bắt buộc đổi mật khẩu khi đăng nhập
+            lần tới. Mật khẩu sẽ hiển thị sau khi reset để bàn giao.
           </Alert>
           <Group justify="flex-end">
             <Button
@@ -415,7 +415,7 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
               loading={resetPasswordMutation.isPending}
               onClick={() => resetPasswordMutation.mutate()}
             >
-              Reset mat khau
+              Reset mật khẩu
             </Button>
           </Group>
         </Stack>
@@ -424,13 +424,20 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
       <Modal
         opened={Boolean(resetResult)}
         onClose={() => setResetResult(null)}
-        title="Mat khau moi"
+        title="Mật khẩu mới"
         size="sm"
       >
         {resetResult ? (
           <Stack>
-            <Alert color="orange" title="Mat khau chi hien thi mot lan">
-              Ban giao ngay cho nguoi dung qua kenh an toan.
+            <Alert
+              color="orange"
+              title={
+                resetResult.usedDefaultPassword
+                  ? 'Đã về mật khẩu mặc định'
+                  : 'Mật khẩu chỉ hiển thị một lần'
+              }
+            >
+              Bàn giao ngay cho người dùng qua kênh an toàn.
             </Alert>
 
             <TextInput
@@ -453,7 +460,7 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
                     color={copied ? 'teal' : 'blue'}
                     onClick={copy}
                   >
-                    {copied ? 'Da copy' : 'Copy mat khau'}
+                    {copied ? 'Đã sao chép' : 'Sao chép mật khẩu'}
                   </Button>
                 )}
               </CopyButton>
@@ -461,11 +468,11 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
 
             <Text size="sm" c="dimmed">
               {resetResult.mustChangePassword
-                ? 'Nguoi dung se phai doi mat khau khi dang nhap bang mat khau nay.'
-                : 'Nguoi dung co the su dung ngay mat khau nay de vao he thong.'}
+                ? 'Người dùng sẽ phải đổi mật khẩu khi đăng nhập bằng mật khẩu này.'
+                : 'Người dùng có thể sử dụng ngay mật khẩu này để vào hệ thống.'}
             </Text>
 
-            <Button onClick={() => setResetResult(null)}>Dong</Button>
+            <Button onClick={() => setResetResult(null)}>Đóng</Button>
           </Stack>
         ) : null}
       </Modal>

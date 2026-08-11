@@ -6,6 +6,11 @@ import { AuthLayout } from '../layouts/AuthLayout';
 import { MainLayout } from '../layouts/MainLayout';
 import { AttendancePage } from '../pages/attendance/AttendancePage';
 import { AttendanceMappingPage } from '../pages/attendance/AttendanceMappingPage';
+import { TimesheetGridPage } from '../pages/attendance/TimesheetGridPage';
+import { TimesheetPeriodsPage } from '../pages/attendance/TimesheetPeriodsPage';
+import { WorkShiftsPage } from '../pages/attendance/WorkShiftsPage';
+import { HolidaysPage } from '../pages/attendance/HolidaysPage';
+import { ShiftAssignmentsPage } from '../pages/attendance/ShiftAssignmentsPage';
 import { AuditLogsPage } from '../pages/audit/AuditLogsPage';
 import { AuthCallbackPage } from '../pages/AuthCallbackPage';
 import { CalendarPage } from '../pages/calendar/CalendarPage';
@@ -119,6 +124,46 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute route={ROUTES.attendanceMapping}>
             <AttendanceMappingPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.timesheetGrid,
+        element: (
+          <ProtectedRoute route={ROUTES.timesheetGrid}>
+            <TimesheetGridPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.timesheetPeriods,
+        element: (
+          <ProtectedRoute route={ROUTES.timesheetPeriods}>
+            <TimesheetPeriodsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.workShifts,
+        element: (
+          <ProtectedRoute route={ROUTES.workShifts}>
+            <WorkShiftsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.holidays,
+        element: (
+          <ProtectedRoute route={ROUTES.holidays}>
+            <HolidaysPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.shiftAssignments,
+        element: (
+          <ProtectedRoute route={ROUTES.shiftAssignments}>
+            <ShiftAssignmentsPage />
           </ProtectedRoute>
         ),
       },

@@ -23,6 +23,7 @@ import { useAuth } from "../auth/useAuth";
 import { AUTH_ADMIN_PERMISSIONS } from "../auth/permissions";
 import type { Employee } from "../employees/employeeTypes";
 import { WorkReportAuthorizationSummary } from "../work-report-authorizations/WorkReportAuthorizationSummary";
+import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 import {
   updateAccountDirectPermissionGroups,
   updateAccountDirectPermissions,
@@ -733,13 +734,11 @@ export function AccountAuthorizationModal({
                 </Alert>
 
                 <Group grow align="flex-end">
-                  <TextInput
+                  <NormalizedSearchInput
                     label="Tìm quyền"
                     placeholder="system.module.action"
                     value={permissionSearch}
-                    onChange={(event) =>
-                      setPermissionSearch(event.currentTarget.value)
-                    }
+                    onChange={setPermissionSearch}
                   />
                   <Select
                     clearable
@@ -835,9 +834,7 @@ export function AccountAuthorizationModal({
                   label="Lý do bắt buộc"
                   placeholder="Nhập lý do để ghi audit log"
                   value={directPermissionReason}
-                  onChange={(event) =>
-                    setDirectPermissionReason(event.currentTarget.value)
-                  }
+                  onChange={(event) => setDirectPermissionReason(event.currentTarget.value)}
                   required
                   disabled={editDisabled || !canAssignDirectPermissions}
                 />
@@ -885,13 +882,11 @@ export function AccountAuthorizationModal({
 
             <Tabs.Panel value="effective" pt="md">
               <Stack gap="sm">
-                <TextInput
+                <NormalizedSearchInput
                   label="Tìm quyền hiệu lực"
                   placeholder="Tìm theo permission hoặc nguồn"
                   value={effectiveSearch}
-                  onChange={(event) =>
-                    setEffectiveSearch(event.currentTarget.value)
-                  }
+                  onChange={setEffectiveSearch}
                 />
 
                 <ScrollArea h={420}>

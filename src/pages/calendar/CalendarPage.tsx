@@ -30,7 +30,7 @@ function CalendarPageInner() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
 
-  // Detail selection = explicit click OR notification deep-link (?eventId=...).
+  // Chọn chi tiết bằng click trực tiếp hoặc deep-link từ thông báo (?eventId=...).
   // Derived (no effect) so the URL param opens the modal without cascading renders.
   const selectedEventId = localEventId ?? searchParams.get('eventId');
 
