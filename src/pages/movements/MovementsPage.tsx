@@ -3,6 +3,7 @@ import {
   Button,
   Card,
   Col,
+  Descriptions,
   Drawer,
   Form,
   Input,
@@ -11,9 +12,18 @@ import {
   Select,
   Space,
   Table,
+  Tooltip,
+  Typography,
   message,
 } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import {
+  CheckOutlined,
+  CloseOutlined,
+  EyeOutlined,
+  PlusOutlined,
+  SendOutlined,
+  StopOutlined,
+} from "@ant-design/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -37,6 +47,37 @@ import { MOVEMENT_TYPE_OPTIONS } from "../../shared/constants/statuses";
 import { formatDate } from "../../shared/utils/date";
 import { useAuth } from "../../features/auth/useAuth";
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
+
+const MOVEMENT_TYPE_LABELS: Record<string, string> = {
+  TRANSFER: "Chuyển phòng ban",
+  STATUS_CHANGE: "Thay đổi trạng thái",
+  TERMINATION: "Chấm dứt hợp đồng",
+  PROMOTION: "Thăng chức",
+};
+
+const STATUS_FILTER_LABELS: Record<string, string> = {
+  DRAFT: "Bản nháp",
+  SUBMITTED: "Đã gửi",
+  APPROVED: "Đã duyệt",
+  REJECTED: "Từ chối",
+  CANCELLED: "Đã hủy",
+};
+
+const AFTER_JSON_KEY_LABELS: Record<string, string> = {
+  departmentId: "Phòng ban mới",
+  positionId: "Vị trí mới",
+  unitId: "Đơn vị mới",
+  managerId: "Quản lý trực tiếp mới",
+  employmentStatus: "Trạng thái nhân sự mới",
+};
+
+function humanizeAfterJsonKey(key: string) {
+  if (AFTER_JSON_KEY_LABELS[key]) return AFTER_JSON_KEY_LABELS[key];
+  const withSpaces = key.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+  return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1);
+}
+
+const { Text } = Typography;
 
 export function MovementsPage() {
   const queryClient = useQueryClient();
@@ -134,7 +175,7 @@ export function MovementsPage() {
                 style={{ width: "100%" }}
                 options={MOVEMENT_TYPE_OPTIONS.map((item) => ({
                   value: item,
-                  label: item,
+                  label: MOVEMENT_TYPE_LABELS[item] ?? item,
                 }))}
                 onChange={(value) =>
                   setParams((current) => ({ ...current, movementType: value }))
@@ -152,7 +193,10 @@ export function MovementsPage() {
                   "APPROVED",
                   "REJECTED",
                   "CANCELLED",
-                ].map((item) => ({ value: item, label: item }))}
+                ].map((item) => ({
+                  value: item,
+                  label: STATUS_FILTER_LABELS[item] ?? item,
+                }))}
                 onChange={(value) =>
                   setParams((current) => ({ ...current, status: value }))
                 }
@@ -172,7 +216,11 @@ export function MovementsPage() {
             }}
             columns={[
               { title: "Nhân viên", dataIndex: "employeeName" },
-              { title: "Loại", dataIndex: "movementType" },
+              {
+                title: "Loại",
+                render: (_, record) =>
+                  MOVEMENT_TYPE_LABELS[record.movementType] ?? record.movementType,
+              },
               {
                 title: "Ngày hiệu lực",
                 render: (_, record) => formatDate(record.effectiveDate),
@@ -185,58 +233,82 @@ export function MovementsPage() {
               {
                 title: "Thao tác",
                 render: (_, record) => (
-                  <Space wrap>
-                    <Button onClick={() => setSelected(record)}>
-                      Chi tiết
-                    </Button>
-                    {record.status === "DRAFT" && can(HR_PERMISSIONS.MOVEMENT_SUBMIT) ? (
+                  <Space size={4} wrap>
+                    <Tooltip title="Chi tiết">
                       <Button
-                        onClick={() =>
-                          statusMutation.mutate({
-                            id: record.id,
-                            action: "submit",
-                          })
-                        }
-                      >
-                        Gửi duyệt
-                      </Button>
+                        size="small"
+                        shape="circle"
+                        icon={<EyeOutlined />}
+                        onClick={() => setSelected(record)}
+                      />
+                    </Tooltip>
+                    {record.status === "DRAFT" && can(HR_PERMISSIONS.MOVEMENT_SUBMIT) ? (
+                      <Tooltip title="Gửi duyệt">
+                        <Button
+                          size="small"
+                          shape="circle"
+                          color="blue"
+                          variant="outlined"
+                          icon={<SendOutlined />}
+                          onClick={() =>
+                            statusMutation.mutate({
+                              id: record.id,
+                              action: "submit",
+                            })
+                          }
+                        />
+                      </Tooltip>
                     ) : null}
                     {record.status === "SUBMITTED" && can(HR_PERMISSIONS.MOVEMENT_APPROVE) ? (
-                      <Button
-                        onClick={() =>
-                          statusMutation.mutate({
-                            id: record.id,
-                            action: "approve",
-                          })
-                        }
-                      >
-                        Duyệt
-                      </Button>
+                      <Tooltip title="Duyệt">
+                        <Button
+                          size="small"
+                          shape="circle"
+                          color="green"
+                          variant="solid"
+                          icon={<CheckOutlined />}
+                          onClick={() =>
+                            statusMutation.mutate({
+                              id: record.id,
+                              action: "approve",
+                            })
+                          }
+                        />
+                      </Tooltip>
                     ) : null}
                     {record.status === "SUBMITTED" && can(HR_PERMISSIONS.MOVEMENT_REJECT) ? (
-                      <Button
-                        danger
-                        onClick={() =>
-                          statusMutation.mutate({
-                            id: record.id,
-                            action: "reject",
-                          })
-                        }
-                      >
-                        Từ chối
-                      </Button>
+                      <Tooltip title="Từ chối">
+                        <Button
+                          size="small"
+                          shape="circle"
+                          color="danger"
+                          variant="outlined"
+                          icon={<CloseOutlined />}
+                          onClick={() =>
+                            statusMutation.mutate({
+                              id: record.id,
+                              action: "reject",
+                            })
+                          }
+                        />
+                      </Tooltip>
                     ) : null}
                     {["DRAFT", "SUBMITTED"].includes(record.status) && can(HR_PERMISSIONS.MOVEMENT_CANCEL) ? (
-                      <Button
-                        onClick={() =>
-                          statusMutation.mutate({
-                            id: record.id,
-                            action: "cancel",
-                          })
-                        }
-                      >
-                        Hủy
-                      </Button>
+                      <Tooltip title="Hủy">
+                        <Button
+                          size="small"
+                          shape="circle"
+                          color="default"
+                          variant="outlined"
+                          icon={<StopOutlined />}
+                          onClick={() =>
+                            statusMutation.mutate({
+                              id: record.id,
+                              action: "cancel",
+                            })
+                          }
+                        />
+                      </Tooltip>
                     ) : null}
                   </Space>
                 ),
@@ -291,7 +363,7 @@ export function MovementsPage() {
             <Select
               options={MOVEMENT_TYPE_OPTIONS.map((item) => ({
                 value: item,
-                label: item,
+                label: MOVEMENT_TYPE_LABELS[item] ?? item,
               }))}
             />
           </Form.Item>
@@ -338,9 +410,58 @@ export function MovementsPage() {
         footer={null}
         onCancel={() => setSelected(null)}
       >
-        <pre className="json-block">
-          {JSON.stringify(selected?.afterJson ?? {}, null, 2)}
-        </pre>
+        {selected ? (
+          <Space direction="vertical" size={16} style={{ width: "100%" }}>
+            <Descriptions column={1} size="small" bordered>
+              <Descriptions.Item label="Nhân viên">
+                {selected.employeeName}
+              </Descriptions.Item>
+              <Descriptions.Item label="Loại điều chuyển">
+                {MOVEMENT_TYPE_LABELS[selected.movementType] ?? selected.movementType}
+              </Descriptions.Item>
+              <Descriptions.Item label="Ngày hiệu lực">
+                {formatDate(selected.effectiveDate)}
+              </Descriptions.Item>
+              <Descriptions.Item label="Lý do">
+                {selected.reason || "—"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Trạng thái">
+                <StatusTag status={selected.status} />
+              </Descriptions.Item>
+            </Descriptions>
+
+            <div>
+              <Text strong>Thay đổi áp dụng</Text>
+              <Space direction="vertical" size={6} style={{ width: "100%", marginTop: 8 }}>
+                {Object.entries(selected.afterJson ?? {}).length ? (
+                  Object.entries(selected.afterJson ?? {}).map(([key, value]) => (
+                    <div
+                      key={key}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "8px 12px",
+                        background: "#fafafa",
+                        border: "1px solid #f0f0f0",
+                        borderRadius: 8,
+                      }}
+                    >
+                      <Text type="secondary">{humanizeAfterJsonKey(key)}</Text>
+                      {key === "employmentStatus" ? (
+                        <StatusTag status={String(value)} />
+                      ) : (
+                        <Text strong>{String(value)}</Text>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <Text type="secondary">Không có dữ liệu thay đổi.</Text>
+                )}
+              </Space>
+            </div>
+          </Space>
+        ) : null}
       </Modal>
     </>
   );

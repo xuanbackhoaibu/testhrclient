@@ -1,24 +1,27 @@
 import { Badge } from '@mantine/core';
 
 const STATUS_COLOR_MAP: Record<string, string> = {
+  // Trạng thái nhân sự
   ACTIVE: 'green',
   INACTIVE: 'gray',
   PROBATION: 'yellow',
   TERMINATED: 'red',
-  RESIGNED: 'orange',
+  RESIGNED: 'gray',
   SUSPENDED: 'orange',
+  // Luồng phê duyệt (điều chuyển, nghỉ phép, hợp đồng...)
   DRAFT: 'gray',
   SUBMITTED: 'blue',
   APPROVED: 'green',
   REJECTED: 'red',
-  CANCELLED: 'orange',
+  CANCELLED: 'gray',
   COMPLETED: 'green',
+  IN_PROGRESS: 'blue',
   FAILED: 'red',
   PARTIAL_SUCCESS: 'yellow',
-  IN_PROGRESS: 'blue',
+  // Liên kết dữ liệu
   LINKED: 'green',
   UNLINKED: 'gray',
-  // Account statuses
+  // Trạng thái tài khoản
   NOT_CREATED: 'gray',
   PENDING_ACTIVATION: 'yellow',
   LOCKED: 'orange',
@@ -28,15 +31,27 @@ const STATUS_COLOR_MAP: Record<string, string> = {
 };
 
 const STATUS_LABEL_MAP: Record<string, string> = {
+  // Trạng thái nhân sự
   ACTIVE: 'Đang làm việc',
   INACTIVE: 'Tạm ngưng',
   PROBATION: 'Thử việc',
   TERMINATED: 'Nghỉ việc',
-  RESIGNED: 'Admin',
+  RESIGNED: 'Đã nghỉ việc',
   SUSPENDED: 'Tạm dừng',
+  // Luồng phê duyệt (điều chuyển, nghỉ phép, hợp đồng...)
+  DRAFT: 'Bản nháp',
+  SUBMITTED: 'Đã gửi',
+  APPROVED: 'Đã duyệt',
+  REJECTED: 'Từ chối',
+  CANCELLED: 'Đã hủy',
+  COMPLETED: 'Hoàn tất',
+  IN_PROGRESS: 'Đang xử lý',
+  FAILED: 'Thất bại',
+  PARTIAL_SUCCESS: 'Thành công một phần',
+  // Liên kết dữ liệu
   LINKED: 'Đã liên kết',
   UNLINKED: 'Chưa liên kết',
-  // Account statuses
+  // Trạng thái tài khoản
   NOT_CREATED: 'Chưa tạo TK',
   PENDING_ACTIVATION: 'Chờ kích hoạt',
   LOCKED: 'Bị khóa',
@@ -45,18 +60,45 @@ const STATUS_LABEL_MAP: Record<string, string> = {
   TOMBSTONED: 'Đã xóa',
 };
 
+function StatusDot({ color }: { color: string }) {
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        width: 6,
+        height: 6,
+        borderRadius: '50%',
+        backgroundColor: `var(--mantine-color-${color}-6)`,
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
 export function StatusTag({ status }: { status?: string | null }) {
   if (!status) {
     return (
-      <Badge color="gray" variant="light">
-        -
+      <Badge color="gray" variant="light" radius="xl" size="sm" tt="none" fw={600}>
+        —
       </Badge>
     );
   }
 
+  const color = STATUS_COLOR_MAP[status] ?? 'gray';
+  const label = STATUS_LABEL_MAP[status] ?? status;
+
   return (
-    <Badge color={STATUS_COLOR_MAP[status] ?? 'gray'} variant="light" radius="sm">
-      {STATUS_LABEL_MAP[status] ?? `Khác: ${status}`}
+    <Badge
+      color={color}
+      variant="light"
+      radius="xl"
+      size="sm"
+      tt="none"
+      fw={600}
+      leftSection={<StatusDot color={color} />}
+    >
+      {label}
     </Badge>
   );
 }
+
