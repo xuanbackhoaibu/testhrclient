@@ -1057,6 +1057,11 @@ Dashboard mới được chia theo 3 tầng:
 Chi tiết UI:
 
 - KPI card có icon, màu nền nhẹ và mô tả ngắn.
+- Đã thiết kế lại KPI Cards theo kiểu executive summary:
+  - Tổng nhân sự hiển thị phạm vi dữ liệu theo bộ lọc.
+  - Đang làm việc có progress bar tỷ lệ active.
+  - Đơn chờ duyệt có breakdown Nghỉ/Công/Điều chuyển.
+  - Tuyển mới và Nghỉ việc bỏ sparkline mô phỏng để tránh hiểu nhầm dữ liệu xu hướng giả.
 - Chart nằm trong Paper có border rõ ràng.
 - Layout responsive: trên desktop chia cột, mobile tự xếp dọc.
 

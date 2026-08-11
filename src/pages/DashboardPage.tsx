@@ -62,38 +62,20 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function Sparkline({ values, tone }: { values: number[]; tone: MetricTone }) {
-  const max = Math.max(...values, 1);
-  const points = values
-    .map((value, index) => {
-      const x = (index / Math.max(values.length - 1, 1)) * 110;
-      const y = 34 - (value / max) * 28;
-      return `${x},${y}`;
-    })
-    .join(" ");
-
-  return (
-    <svg className={styles.sparkline} viewBox="0 0 110 38" aria-hidden="true">
-      <polyline className={`${styles.sparklineFill} ${styles[`sparklineFill_${tone}`]}`} points={`0,38 ${points} 110,38`} />
-      <polyline className={`${styles.sparklineLine} ${styles[`sparklineLine_${tone}`]}`} points={points} />
-    </svg>
-  );
-}
-
 function MetricCard({
   title,
   value,
-  description,
+  meta,
+  detail,
   tone,
   icon,
-  trend,
 }: {
   title: string;
   value: number;
-  description: string;
+  meta: string;
+  detail?: React.ReactNode;
   tone: MetricTone;
   icon: React.ReactNode;
-  trend?: number[];
 }) {
   return (
     <Paper className={`${styles.metricCard} ${styles[`metricCard_${tone}`]}`} p="md">
@@ -104,14 +86,14 @@ function MetricCard({
           </Text>
           <Text className={styles.metricValue}>{formatNumber(value)}</Text>
           <Text size="xs" c="dimmed" lineClamp={2}>
-            {description}
+            {meta}
           </Text>
         </Stack>
         <ThemeIcon className={styles.metricIcon} color={tone} variant="light" size={38}>
           {icon}
         </ThemeIcon>
       </Group>
-      {trend ? <Sparkline values={trend} tone={tone} /> : null}
+      {detail ? <div className={styles.metricDetail}>{detail}</div> : null}
     </Paper>
   );
 }
@@ -522,39 +504,64 @@ export function DashboardPage() {
     {
       title: "Tổng nhân sự",
       value: data.totalEmployees,
-      description: `${timeRangeLabel} · ${selectedUnits.length ? `${selectedUnits.length} đơn vị được lọc` : "Toàn hệ thống"}`,
+      meta: timeRangeLabel,
       tone: "blue" as const,
       icon: <IconUsers size={20} />,
+      detail: (
+        <Group gap={6}>
+          <Badge size="sm" variant="light" color="blue">
+            {selectedUnits.length ? `${selectedUnits.length} đơn vị` : "Toàn hệ thống"}
+          </Badge>
+        </Group>
+      ),
     },
     {
       title: "Đang làm việc",
       value: data.activeEmployees,
-      description: `${percent(data.activeEmployees, data.totalEmployees)}% trên tổng nhân sự.`,
+      meta: "Tỷ lệ active",
       tone: "green" as const,
       icon: <IconUserCheck size={20} />,
+      detail: (
+        <div className={styles.kpiProgressWrap}>
+          <div className={styles.kpiProgressTrack}>
+            <div
+              className={styles.kpiProgressFill}
+              style={{ width: `${percent(data.activeEmployees, data.totalEmployees)}%` }}
+            />
+          </div>
+          <Text size="xs" fw={750}>{percent(data.activeEmployees, data.totalEmployees)}%</Text>
+        </div>
+      ),
     },
     {
       title: "Đơn chờ duyệt",
       value: queueTotal,
-      description: "Nghỉ phép, giải trình công và điều chuyển.",
+      meta: "Cần xử lý",
       tone: "orange" as const,
       icon: <IconClockHour4 size={20} />,
+      detail: (
+        <Group gap={6}>
+          <Badge size="sm" color="orange" variant="light">Nghỉ {formatNumber(data.pendingLeaveRequests)}</Badge>
+          <Badge size="sm" color="yellow" variant="light">Công {formatNumber(data.pendingAttendanceExplanations)}</Badge>
+          <Badge size="sm" color="indigo" variant="light">Điều chuyển {formatNumber(data.pendingMovements)}</Badge>
+        </Group>
+      ),
     },
     {
       title: "Tuyển mới tháng này",
       value: data.newHiresThisMonth,
-      description: "Sparkline mô phỏng xu hướng so với các kỳ gần nhất.",
+      meta: "Phát sinh trong kỳ",
       tone: "teal" as const,
       icon: <IconBriefcase size={20} />,
-      trend: [Math.max(0, data.newHiresThisMonth - 2), data.newHiresThisMonth + 1, data.newHiresThisMonth, data.newHiresThisMonth + 2],
+      detail: <Badge size="sm" color="teal" variant="light">Hồ sơ mới</Badge>,
     },
     {
       title: "Nghỉ việc tháng này",
       value: data.terminatedThisMonth,
-      description: "Theo dõi biến động rời công ty theo kỳ.",
+      meta: "Biến động rời công ty",
       tone: "red" as const,
       icon: <IconUserMinus size={20} />,
-      trend: [data.terminatedThisMonth + 1, Math.max(0, data.terminatedThisMonth - 1), data.terminatedThisMonth, data.terminatedThisMonth + 1],
+      detail: <Badge size="sm" color="red" variant="light">Cần theo dõi bàn giao</Badge>,
     },
   ];
 

@@ -65,55 +65,29 @@
   flex: 0 0 auto;
 }
 
-.sparkline {
-  position: absolute;
-  right: 12px;
-  bottom: 10px;
-  width: 112px;
-  height: 38px;
-  opacity: 0.9;
+.metricDetail {
+  margin-top: 14px;
+  min-height: 24px;
 }
 
-.sparklineFill {
-  opacity: 0.14;
-  stroke: none;
+.kpiProgressWrap {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
 }
 
-.sparklineLine {
-  fill: none;
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.kpiProgressTrack {
+  overflow: hidden;
+  height: 8px;
+  border-radius: 999px;
+  background: #dff4e9;
 }
 
-.sparklineFill_teal,
-.sparklineLine_teal {
-  fill: #12b886;
-  stroke: #0ca678;
-}
-
-.sparklineFill_red,
-.sparklineLine_red {
-  fill: #fa5252;
-  stroke: #e03131;
-}
-
-.sparklineFill_blue,
-.sparklineLine_blue {
-  fill: #228be6;
-  stroke: #1971c2;
-}
-
-.sparklineFill_green,
-.sparklineLine_green {
-  fill: #2f9e44;
-  stroke: #2b8a3e;
-}
-
-.sparklineFill_orange,
-.sparklineLine_orange {
-  fill: #fd7e14;
-  stroke: #e8590c;
+.kpiProgressFill {
+  height: 100%;
+  border-radius: inherit;
+  background: #10b981;
 }
 
 .chartPanel,
@@ -384,9 +358,8 @@
     grid-row: 2;
   }
 
-  .sparkline {
-    position: static;
-    margin-top: 8px;
+  .metricDetail {
+    min-height: auto;
   }
 }
 
