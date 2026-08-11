@@ -1,70 +1,45 @@
-.overviewPanel {
+.dashboardSurface {
+  color: var(--hrm-text);
+}
+
+.filterPanel,
+.metricCard,
+.chartPanel,
+.actionPanel {
+  border: 1px solid var(--hrm-border);
+  background: var(--hrm-surface);
+  box-shadow: var(--hrm-shadow);
+}
+
+.filterControls {
+  max-width: 100%;
+}
+
+.metricCard {
   position: relative;
+  min-height: 152px;
   overflow: hidden;
-  border: 1px solid #dfe6f0;
-  border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  border-radius: var(--hrm-radius);
 }
 
-.overviewPanel::after {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: #0b5ed7;
-  content: "";
+.metricCard_blue {
+  background: linear-gradient(180deg, #f7fbff 0%, #ffffff 100%);
 }
 
-.summaryTile {
-  min-height: 92px;
-  border: 1px solid #edf1f6;
-  border-radius: 12px;
-  background: #fbfcfe;
-  padding: 14px 16px;
+.metricCard_green {
+  background: linear-gradient(180deg, #f7fcf9 0%, #ffffff 100%);
 }
 
-.summaryTile_blue {
-  background: #f7fbff;
+.metricCard_teal {
+  background: linear-gradient(180deg, #f5fcfb 0%, #ffffff 100%);
 }
 
-.summaryTile_green {
-  background: #f7fcf9;
+.metricCard_red {
+  background: linear-gradient(180deg, #fff8f8 0%, #ffffff 100%);
 }
 
-.summaryTile_teal {
-  background: #f5fcfb;
-}
-
-.summaryTile_red {
-  background: #fff8f8;
-}
-
-.summaryTile_yellow {
-  background: #fffdf4;
-}
-
-.summaryTile_orange {
-  background: #fff9f3;
-}
-
-.summaryTile_indigo {
-  background: #f8f9ff;
-}
-
-.summaryTile_gray {
-  background: #fbfcfd;
-}
-
-.summaryValue {
-  color: #0f172a;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
-}
-
-.metricValue {
-  color: #0f172a;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
+.metricCard_orange {
+  background: linear-gradient(180deg, #fff9f3 0%, #ffffff 100%);
 }
 
 .metricLabel {
@@ -72,93 +47,351 @@
   text-transform: uppercase;
 }
 
-.metricCard,
-.panel {
-  border-color: #dfe6f0;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-}
-
-.metricCard {
-  min-height: 132px;
-  border-radius: 12px;
-  background: #ffffff;
-}
-
-.metricCard_blue {
-  border-left: 3px solid #228be6;
-}
-
-.metricCard_green {
-  border-left: 3px solid #2f9e44;
-}
-
-.metricCard_teal {
-  border-left: 3px solid #12b886;
-}
-
-.metricCard_red {
-  border-left: 3px solid #fa5252;
-}
-
-.metricCard_yellow {
-  border-left: 3px solid #fab005;
-}
-
-.metricCard_orange {
-  border-left: 3px solid #fd7e14;
-}
-
-.metricCard_indigo {
-  border-left: 3px solid #4c6ef5;
-}
-
-.metricCard_gray {
-  border-left: 3px solid #868e96;
-}
-
-.panel {
-  height: 100%;
-  background: #ffffff;
-}
-
-.priorityColumn {
-  min-width: 0;
-}
-
-.queueRow {
-  min-height: 44px;
-  border-left: 3px solid #dfe6f0;
-  border-radius: 8px;
-  background: #fbfcfe;
-  padding: 8px 10px;
-}
-
-.queueRow_yellow {
-  border-left-color: #fab005;
-}
-
-.queueRow_orange {
-  border-left-color: #fd7e14;
-}
-
-.queueRow_indigo {
-  border-left-color: #4c6ef5;
-}
-
-.queueRow_gray {
-  border-left-color: #868e96;
-}
-
-.tabular {
+.metricValue,
+.donutTotal,
+.barValue,
+.legendValue {
   font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 640px) {
-  .overviewPanel {
-    border-radius: 12px;
+.metricValue {
+  color: var(--hrm-text);
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.metricIcon {
+  flex: 0 0 auto;
+}
+
+.sparkline {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  width: 112px;
+  height: 38px;
+  opacity: 0.9;
+}
+
+.sparklineFill {
+  opacity: 0.14;
+  stroke: none;
+}
+
+.sparklineLine {
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sparklineFill_teal,
+.sparklineLine_teal {
+  fill: #12b886;
+  stroke: #0ca678;
+}
+
+.sparklineFill_red,
+.sparklineLine_red {
+  fill: #fa5252;
+  stroke: #e03131;
+}
+
+.sparklineFill_blue,
+.sparklineLine_blue {
+  fill: #228be6;
+  stroke: #1971c2;
+}
+
+.sparklineFill_green,
+.sparklineLine_green {
+  fill: #2f9e44;
+  stroke: #2b8a3e;
+}
+
+.sparklineFill_orange,
+.sparklineLine_orange {
+  fill: #fd7e14;
+  stroke: #e8590c;
+}
+
+.chartPanel,
+.actionPanel {
+  min-height: 320px;
+  border-radius: var(--hrm-radius);
+}
+
+.donutLayout {
+  min-height: 230px;
+}
+
+.donutWrap {
+  position: relative;
+  width: 230px;
+  height: 230px;
+  flex: 0 0 230px;
+}
+
+.donut {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.donutTrack {
+  fill: none;
+  stroke: var(--hrm-border-soft);
+  stroke-width: 8;
+}
+
+.donutSegment {
+  cursor: pointer;
+  fill: none;
+  stroke-width: 8;
+  transition: opacity 140ms ease, stroke-width 140ms ease;
+}
+
+.donutSegment:hover {
+  opacity: 0.82;
+  stroke-width: 9.4;
+}
+
+.donutCenter {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 120px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.donutTotal {
+  color: var(--hrm-text);
+  font-size: 28px;
+  line-height: 1;
+}
+
+.legend {
+  min-width: 220px;
+  flex: 1 1 220px;
+}
+
+.legendItem {
+  display: grid;
+  grid-template-columns: 12px minmax(90px, 1fr) auto;
+  align-items: center;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  column-gap: 8px;
+  cursor: pointer;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.legendItem:hover {
+  background: var(--hrm-surface-subtle);
+}
+
+.legendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.legendLabel {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legendValue {
+  color: var(--hrm-muted);
+  font-size: 12px;
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: minmax(96px, 170px) 1fr 40px;
+  align-items: center;
+  gap: 10px;
+}
+
+.barLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barTrack,
+.stackedTrack {
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--hrm-border-soft);
+}
+
+.barTrack {
+  height: 14px;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: inherit;
+}
+
+.barFill_normal {
+  background: #0b5ed7;
+}
+
+.barFill_danger {
+  background: #ef4444;
+}
+
+.stackedRow {
+  display: grid;
+  gap: 6px;
+}
+
+.stackedTrack {
+  display: flex;
+  height: 18px;
+}
+
+.stackedAttend {
+  background: #10b981;
+}
+
+.stackedAbsent {
+  background: #ef4444;
+}
+
+.todoRow {
+  min-height: 58px;
+  border: 1px solid var(--hrm-border-soft);
+  border-radius: 8px;
+  background: var(--hrm-surface-subtle);
+  padding: 10px;
+}
+
+.alertRow {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  align-items: center;
+  width: 100%;
+  border: 1px solid var(--hrm-border-soft);
+  border-radius: 8px;
+  background: var(--hrm-surface-subtle);
+  color: inherit;
+  column-gap: 10px;
+  cursor: pointer;
+  padding: 10px;
+  text-align: left;
+}
+
+.alertRow:hover,
+.todoRow:hover {
+  border-color: var(--hrm-border);
+}
+
+.emptyIllustration {
+  width: 96px;
+  height: 72px;
+}
+
+.emptyIllustration rect,
+.emptyIllustration circle {
+  fill: #eaf2ff;
+  stroke: #0b5ed7;
+  stroke-width: 2;
+}
+
+.emptyIllustration path {
+  fill: none;
+  stroke: #0f9f6e;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 5;
+}
+
+:global([data-mantine-color-scheme='dark']) .filterPanel,
+:global([data-mantine-color-scheme='dark']) .metricCard,
+:global([data-mantine-color-scheme='dark']) .chartPanel,
+:global([data-mantine-color-scheme='dark']) .actionPanel {
+  border-color: #253244;
+  background: #111827;
+  box-shadow: none;
+}
+
+:global([data-mantine-color-scheme='dark']) .metricCard_blue,
+:global([data-mantine-color-scheme='dark']) .metricCard_green,
+:global([data-mantine-color-scheme='dark']) .metricCard_teal,
+:global([data-mantine-color-scheme='dark']) .metricCard_red,
+:global([data-mantine-color-scheme='dark']) .metricCard_orange {
+  background: #111827;
+}
+
+:global([data-mantine-color-scheme='dark']) .metricValue,
+:global([data-mantine-color-scheme='dark']) .donutTotal {
+  color: #f8fafc;
+}
+
+:global([data-mantine-color-scheme='dark']) .todoRow,
+:global([data-mantine-color-scheme='dark']) .alertRow,
+:global([data-mantine-color-scheme='dark']) .legendItem:hover {
+  border-color: #253244;
+  background: #172033;
+}
+
+:global([data-mantine-color-scheme='dark']) .barTrack,
+:global([data-mantine-color-scheme='dark']) .stackedTrack,
+:global([data-mantine-color-scheme='dark']) .donutTrack {
+  background: #253244;
+  stroke: #253244;
+}
+
+@media (max-width: 900px) {
+  .filterControls {
+    width: 100%;
   }
 
-  .metricCard {
+  .donutLayout {
+    justify-content: center;
+  }
+
+  .donutWrap {
+    width: 190px;
+    height: 190px;
+    flex-basis: 190px;
+  }
+}
+
+@media (max-width: 640px) {
+  .metricCard,
+  .chartPanel,
+  .actionPanel {
     min-height: auto;
+  }
+
+  .barRow {
+    grid-template-columns: 1fr 42px;
+  }
+
+  .barTrack {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .sparkline {
+    position: static;
+    margin-top: 8px;
+  }
+}
+
+@media print {
+  .filterPanel {
+    display: none;
   }
 }

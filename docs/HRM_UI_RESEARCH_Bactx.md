@@ -1015,3 +1015,127 @@ http://127.0.0.1:5173/
   - Kiểm tra thực tế flow import Excel với file mẫu lớn.
   - Bổ sung rule preflight theo từng template cụ thể, ví dụ mã nhân viên bắt buộc, email đúng định dạng, ngày vào làm bắt buộc.
   - Tiếp tục migrate các form CRUD legacy còn lại sang Mantine Form + Zod.
+
+## 20. Nâng cấp Dashboard - Data Visualization & Actionable Widgets
+
+Thời gian ghi nhận:
+
+```text
+2026-08-11 19:40 +07
+```
+
+### 20.1. Trực quan hóa dữ liệu
+
+Đã nâng cấp:
+
+```text
+src/pages/DashboardPage.tsx
+src/pages/DashboardPage.module.css
+```
+
+Thay đổi chính:
+
+- Thay danh sách text "Nhân sự theo đơn vị" bằng Donut Chart.
+- Thay danh sách text "Nhân sự theo trạng thái" bằng Donut Chart.
+- Ở giữa Donut Chart hiển thị tổng số nhân sự/hồ sơ.
+- Thêm legend có số lượng và tỷ lệ phần trăm.
+- Tooltip khi hover từng phần hiển thị tên nhóm, số lượng và tỷ lệ.
+- Click lát biểu đồ điều hướng sang danh sách nhân sự với query tương ứng.
+- Thay bảng "Nhân sự đi muộn nhiều nhất" bằng Horizontal Bar Chart.
+- Cột đi muộn chuyển màu đỏ khi vượt ngưỡng cảnh báo.
+- Thêm Stacked Bar Chart cho chuyên cần theo phòng ban, gồm ngày đi làm và ngày vắng/nghỉ.
+- Thêm sparkline nhỏ trên KPI tuyển mới và nghỉ việc để tạo cảm giác theo dõi xu hướng.
+
+### 20.2. Bố cục và kiến trúc thông tin
+
+Dashboard mới được chia theo 3 tầng:
+
+- Hàng 1: KPI Cards gồm Tổng nhân sự, Đang làm việc, Đơn chờ duyệt, Tuyển mới, Nghỉ việc.
+- Hàng 2: Chart phân tích gồm cơ cấu nhân sự và chuyên cần.
+- Hàng 3: Widget hành động gồm Công việc cần làm, Cảnh báo nhân sự và Bàn giao lương.
+
+Chi tiết UI:
+
+- KPI card có icon, màu nền nhẹ và mô tả ngắn.
+- Chart nằm trong Paper có border rõ ràng.
+- Layout responsive: trên desktop chia cột, mobile tự xếp dọc.
+
+### 20.3. Tương tác và bộ lọc
+
+Đã thêm:
+
+- Bộ lọc thời gian bằng `SegmentedControl`:
+  - Tháng này
+  - Quý này
+  - Năm nay
+  - Tùy chỉnh
+- Tùy chỉnh thời gian có 2 input ngày.
+- Bộ lọc theo đơn vị bằng `MultiSelect`.
+- Nút reload dữ liệu Dashboard.
+- Drill-down từ chart sang trang nhân sự.
+
+Ghi chú:
+
+- API hiện tại `useDashboardSummary` chưa nhận params thời gian/phòng ban, nên phần lọc đang áp dụng trực quan ở UI với dữ liệu đã có. Khi backend hỗ trợ query params, có thể nối trực tiếp vào query key/API.
+
+### 20.4. Widget hành động
+
+Đã thêm:
+
+- Widget `Công việc cần làm` hiển thị các hàng chờ xử lý như đơn nghỉ, giải trình công, điều chuyển.
+- Mỗi dòng có nút mở nhanh sang module tương ứng.
+- Widget `Cảnh báo nhân sự` hiển thị thử việc, cảnh báo phép và hợp đồng.
+- Nhóm Quick Actions trên PageHeader:
+  - Thêm nhân viên
+  - Tạo đơn nghỉ
+  - Import Excel
+
+### 20.5. UI polish và state
+
+Đã thêm:
+
+- Skeleton loading mô phỏng đúng bố cục KPI/chart/widget thay vì spinner đơn giản.
+- Empty state có SVG illustration nhỏ cho trường hợp không có dữ liệu đi muộn hoặc không có dữ liệu chart.
+- Dark mode styles cho card, chart, legend, bar và widget.
+- Tooltip thân thiện, format số theo `vi-VN`.
+- Chart tự viết bằng SVG/CSS, không thêm thư viện chart mới.
+
+### 20.6. Export báo cáo
+
+Đã thêm nút:
+
+```text
+Xuất báo cáo
+```
+
+Chức năng:
+
+- Tải Dashboard hiện tại thành file PNG bằng cơ chế SVG `foreignObject` + Canvas.
+- Có thêm lựa chọn In / lưu PDF bằng `window.print()`.
+
+### 20.7. Kiểm tra đã thực hiện
+
+Đã chạy:
+
+```bash
+npm run typecheck
+npm run lint
+npm run build
+```
+
+Kết quả:
+
+- `npm run typecheck`: pass.
+- `npm run lint`: pass.
+- `npm run build`: pass.
+- Build còn warning bundle lớn chung của Vite, không chặn build.
+
+### 20.8. Trạng thái sau nâng cấp Dashboard
+
+- Thay đổi đang nằm ở local trên nhánh `Bactx`.
+- Chưa push GitHub sau nâng cấp Dashboard.
+- Web dev server vẫn đang chạy tại:
+
+```text
+http://127.0.0.1:5173/
+```
