@@ -9,6 +9,11 @@
   overflow: hidden;
 }
 
+:global([data-mantine-color-scheme='dark']) .header {
+  background-color: var(--hrm-surface);
+  border-bottom-color: var(--hrm-border);
+}
+
 /* Wraps the name/label block, constrains width so long names don't push other elements */
 .viewingInfo {
   flex: 1;
@@ -42,4 +47,13 @@
 .backButton:hover {
   background-color: var(--mantine-color-gray-1);
   color: var(--mantine-color-gray-8);
+}
+
+:global([data-mantine-color-scheme='dark']) .backButton {
+  color: var(--hrm-muted);
+}
+
+:global([data-mantine-color-scheme='dark']) .backButton:hover {
+  background-color: var(--hrm-surface-subtle);
+  color: var(--hrm-text);
 }

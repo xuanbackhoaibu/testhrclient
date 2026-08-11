@@ -20,6 +20,11 @@
   border-bottom: 1px solid var(--mantine-color-gray-2);
 }
 
+:global([data-mantine-color-scheme='dark']) .actionBar {
+  background-color: var(--hrm-surface);
+  border-bottom-color: var(--hrm-border);
+}
+
 .emptyState {
   display: flex;
   flex-direction: column;

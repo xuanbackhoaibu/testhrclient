@@ -21,6 +21,7 @@ import {
   useNotifications,
   useUnreadNotificationCount,
   useNotificationMutations,
+  useNotificationStream,
 } from './useNotifications';
 import type { AppNotification } from './notificationApi';
 
@@ -52,6 +53,7 @@ function actionUrlOf(n: AppNotification): string | null {
 export function NotificationBell() {
   const [opened, setOpened] = useState(false);
   const navigate = useNavigate();
+  useNotificationStream();
 
   const { data: unreadCount = 0 } = useUnreadNotificationCount();
   const { data: notifications = [], isLoading } = useNotifications({
@@ -101,6 +103,9 @@ export function NotificationBell() {
           <Text fw={600} size="sm">
             Thông báo
           </Text>
+          <Badge variant="dot" color="green" size="xs">
+            Live
+          </Badge>
           {unreadCount > 0 && (
             <Button
               variant="subtle"

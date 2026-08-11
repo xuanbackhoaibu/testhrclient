@@ -14,6 +14,11 @@
   border-bottom: 1px solid var(--mantine-color-gray-2);
 }
 
+:global([data-mantine-color-scheme='dark']) .calendarHeader {
+  background-color: var(--hrm-surface);
+  border-bottom-color: var(--hrm-border);
+}
+
 .calendarGrid {
   flex: 1;
   display: flex;
@@ -26,6 +31,11 @@
   grid-template-columns: repeat(7, 1fr);
   background-color: var(--mantine-color-gray-0);
   border-bottom: 1px solid var(--mantine-color-gray-2);
+}
+
+:global([data-mantine-color-scheme='dark']) .dayHeaders {
+  background-color: var(--hrm-surface-subtle);
+  border-bottom-color: var(--hrm-border);
 }
 
 .dayHeader {
@@ -49,12 +59,26 @@
   transition: background-color 0.15s ease;
 }
 
+:global([data-mantine-color-scheme='dark']) .dayCell {
+  background-color: var(--hrm-surface);
+  border-right-color: var(--hrm-border);
+  border-bottom-color: var(--hrm-border);
+}
+
 .dayCell:hover {
   background-color: var(--mantine-color-gray-0);
 }
 
+:global([data-mantine-color-scheme='dark']) .dayCell:hover {
+  background-color: var(--hrm-surface-subtle);
+}
+
 .otherMonth {
   background-color: var(--mantine-color-gray-0);
+}
+
+:global([data-mantine-color-scheme='dark']) .otherMonth {
+  background-color: #0b1220;
 }
 
 .otherMonth .dayHeader {
@@ -65,9 +89,17 @@
   background-color: var(--mantine-color-blue-0);
 }
 
+:global([data-mantine-color-scheme='dark']) .today {
+  background-color: var(--hrm-accent-soft);
+}
+
 .todayText {
   font-weight: 700;
   color: var(--mantine-color-blue-6);
+}
+
+:global([data-mantine-color-scheme='dark']) .todayText {
+  color: #bfdbfe;
 }
 
 .eventsContainer {

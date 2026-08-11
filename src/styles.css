@@ -20,6 +20,19 @@ body,
   --hrm-shadow-raised: 0 14px 34px rgba(15, 23, 42, 0.08);
 }
 
+:root[data-mantine-color-scheme='dark'] {
+  --hrm-bg: #0f172a;
+  --hrm-surface: #111827;
+  --hrm-surface-subtle: #172033;
+  --hrm-border: #263244;
+  --hrm-border-soft: #1f2937;
+  --hrm-text: #e5e7eb;
+  --hrm-muted: #94a3b8;
+  --hrm-accent-soft: rgba(45, 123, 234, 0.18);
+  --hrm-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --hrm-shadow-raised: 0 18px 40px rgba(0, 0, 0, 0.34);
+}
+
 body {
   background: var(--hrm-bg);
   font-family:
@@ -41,9 +54,17 @@ body {
   backdrop-filter: saturate(130%) blur(10px);
 }
 
+:root[data-mantine-color-scheme='dark'] .app-shell-header {
+  background: rgba(17, 24, 39, 0.92);
+}
+
 .app-shell-navbar {
   background: #fbfcfe;
   border-right: 1px solid var(--hrm-border);
+}
+
+:root[data-mantine-color-scheme='dark'] .app-shell-navbar {
+  background: #0b1220;
 }
 
 .app-shell-main {
@@ -53,7 +74,7 @@ body {
 }
 
 .app-shell-title {
-  color: #0f172a;
+  color: var(--hrm-text);
   letter-spacing: 0;
 }
 
@@ -66,6 +87,11 @@ body {
 .app-user-menu-button:hover {
   background: #f8fafc;
   border-color: #e5ebf3;
+}
+
+:root[data-mantine-color-scheme='dark'] .app-user-menu-button:hover {
+  background: #172033;
+  border-color: #263244;
 }
 
 .mantine-Button-root {
@@ -94,8 +120,15 @@ body {
   background: #ffffff;
 }
 
+:root[data-mantine-color-scheme='dark'] .mantine-Input-input,
+:root[data-mantine-color-scheme='dark'] .mantine-Select-input,
+:root[data-mantine-color-scheme='dark'] .mantine-PasswordInput-input,
+:root[data-mantine-color-scheme='dark'] .mantine-Textarea-input {
+  background: #0f172a;
+}
+
 .mantine-Input-label {
-  color: #334155;
+  color: var(--hrm-text);
   font-weight: 650;
 }
 
@@ -179,6 +212,29 @@ body {
   color: var(--hrm-text);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
+}
+
+.global-command-item {
+  display: block;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 10px;
+  color: var(--hrm-text);
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.global-command-item:hover,
+.global-command-item:focus-visible {
+  border-color: var(--mantine-color-blue-3);
+  background: var(--mantine-color-blue-light);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+:root[data-mantine-color-scheme='dark'] .global-command-item:hover,
+:root[data-mantine-color-scheme='dark'] .global-command-item:focus-visible {
+  border-color: var(--mantine-color-blue-8);
 }
 
 .employee-row-quick-actions {
@@ -266,23 +322,66 @@ body {
 }
 
 :root[data-mantine-color-scheme='dark'] .timesheet-cell_ok {
-  background: color-mix(in srgb, var(--mantine-color-green-9), transparent 55%);
+  background: color-mix(in srgb, var(--mantine-color-teal-3), transparent 82%);
 }
 
 :root[data-mantine-color-scheme='dark'] .timesheet-cell_absent {
-  background: color-mix(in srgb, var(--mantine-color-red-9), transparent 48%);
+  background: color-mix(in srgb, var(--mantine-color-red-3), transparent 78%);
 }
 
 :root[data-mantine-color-scheme='dark'] .timesheet-cell_warning {
-  background: color-mix(in srgb, var(--mantine-color-yellow-9), transparent 52%);
+  background: color-mix(in srgb, var(--mantine-color-yellow-3), transparent 78%);
 }
 
 :root[data-mantine-color-scheme='dark'] .timesheet-cell_leave {
   background: var(--mantine-color-dark-5);
 }
 
+.contract-empty-alert {
+  overflow: hidden;
+}
+
+.contract-empty-illustration {
+  position: relative;
+  flex: 0 0 84px;
+  width: 84px;
+  height: 54px;
+}
+
+.contract-empty-illustration span {
+  position: absolute;
+  display: block;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mantine-color-green-4), transparent 24%);
+}
+
+.contract-empty-illustration span:nth-child(1) {
+  inset: 12px 14px 8px 12px;
+}
+
+.contract-empty-illustration span:nth-child(2) {
+  top: 4px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  background: color-mix(in srgb, var(--mantine-color-blue-4), transparent 30%);
+}
+
+.contract-empty-illustration span:nth-child(3) {
+  bottom: 6px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  background: color-mix(in srgb, var(--mantine-color-yellow-4), transparent 20%);
+}
+
 .contract-expiry-critical {
   animation: contractPulse 1.4s ease-in-out infinite;
+}
+
+:root[data-mantine-color-scheme='dark'] .contract-expiry-critical {
+  background: #fecaca !important;
+  color: #7f1d1d !important;
 }
 
 @keyframes contractPulse {
@@ -753,6 +852,238 @@ body {
 
 .ant-btn-primary {
   font-weight: 650;
+}
+
+:root[data-mantine-color-scheme='dark'] .mantine-Paper-root,
+:root[data-mantine-color-scheme='dark'] .mantine-Card-root,
+:root[data-mantine-color-scheme='dark'] .mantine-Drawer-content,
+:root[data-mantine-color-scheme='dark'] .mantine-Modal-content,
+:root[data-mantine-color-scheme='dark'] .mantine-Popover-dropdown {
+  background: var(--hrm-surface);
+  border-color: var(--hrm-border);
+  color: var(--hrm-text);
+}
+
+:root[data-mantine-color-scheme='dark'] .mantine-Drawer-header,
+:root[data-mantine-color-scheme='dark'] .mantine-Modal-header {
+  background: var(--hrm-surface);
+  border-bottom-color: var(--hrm-border-soft);
+}
+
+:root[data-mantine-color-scheme='dark'] .mantine-Text-root {
+  color: inherit;
+}
+
+:root[data-mantine-color-scheme='dark'] .mantine-Text-root[data-c='dimmed'],
+:root[data-mantine-color-scheme='dark'] .mantine-Input-description,
+:root[data-mantine-color-scheme='dark'] .mantine-Input-error {
+  color: var(--hrm-muted);
+}
+
+:root[data-mantine-color-scheme='dark'] .mantine-Input-input::placeholder {
+  color: #64748b;
+}
+
+:root[data-mantine-color-scheme='dark'] .app-nav-link {
+  color: var(--hrm-muted);
+}
+
+:root[data-mantine-color-scheme='dark'] .app-nav-link:hover {
+  background: var(--hrm-surface-subtle);
+  color: var(--hrm-text);
+}
+
+:root[data-mantine-color-scheme='dark'] .app-nav-link[data-active='true'] {
+  background: var(--hrm-accent-soft);
+  color: #bfdbfe;
+}
+
+:root[data-mantine-color-scheme='dark'] .data-table-heading,
+:root[data-mantine-color-scheme='dark'] .employee-detail-table .mantine-Table-th,
+:root[data-mantine-color-scheme='dark'] .work-report-permission-matrix .mantine-Table-th {
+  background: var(--hrm-surface-subtle);
+  color: #cbd5e1;
+}
+
+:root[data-mantine-color-scheme='dark'] .data-table-shell .mantine-Table-th,
+:root[data-mantine-color-scheme='dark'] .data-table-shell .mantine-Table-td,
+:root[data-mantine-color-scheme='dark'] .employee-detail-table .mantine-Table-th,
+:root[data-mantine-color-scheme='dark'] .employee-detail-table .mantine-Table-td {
+  border-bottom-color: var(--hrm-border-soft);
+  color: var(--hrm-text);
+}
+
+:root[data-mantine-color-scheme='dark'] .data-table-shell .mantine-Table-tbody .mantine-Table-tr,
+:root[data-mantine-color-scheme='dark'] .data-table-shell .mantine-Table-tbody .mantine-Table-tr[data-striped='odd'],
+:root[data-mantine-color-scheme='dark'] .data-table-shell .mantine-Table-tbody .mantine-Table-tr[data-striped='even'] {
+  background: var(--hrm-surface) !important;
+}
+
+:root[data-mantine-color-scheme='dark'] .data-table-shell .mantine-Table-tbody .mantine-Table-tr[data-striped='odd'] .mantine-Table-td,
+:root[data-mantine-color-scheme='dark'] .data-table-shell .mantine-Table-tbody .mantine-Table-tr[data-striped='even'] .mantine-Table-td {
+  background: color-mix(in srgb, var(--hrm-surface-subtle), transparent 45%) !important;
+}
+
+:root[data-mantine-color-scheme='dark'] .data-table-shell .mantine-Table-tr:hover .mantine-Table-td,
+:root[data-mantine-color-scheme='dark'] .data-table-shell .mantine-Table-tbody .mantine-Table-tr:hover,
+:root[data-mantine-color-scheme='dark'] .data-table-shell .mantine-Table-tbody .mantine-Table-tr:hover .mantine-Table-td,
+:root[data-mantine-color-scheme='dark'] .employee-detail-table .mantine-Table-tr:hover .mantine-Table-td,
+:root[data-mantine-color-scheme='dark'] .resource-list-row:hover {
+  background: #172033 !important;
+  color: var(--hrm-text) !important;
+}
+
+:root[data-mantine-color-scheme='dark'] .data-table-shell .mantine-Table-tr[style*='blue-light'],
+:root[data-mantine-color-scheme='dark'] .data-table-shell .mantine-Table-tr[style*='blue-light'] .mantine-Table-td {
+  background: color-mix(in srgb, var(--mantine-color-blue-8), transparent 72%) !important;
+  color: var(--hrm-text) !important;
+}
+
+:root[data-mantine-color-scheme='dark'] .data-table-footer,
+:root[data-mantine-color-scheme='dark'] .data-table-refreshing,
+:root[data-mantine-color-scheme='dark'] .employee-selection-bar,
+:root[data-mantine-color-scheme='dark'] .employee-detail-empty,
+:root[data-mantine-color-scheme='dark'] .empty-state-surface {
+  background: var(--hrm-surface-subtle);
+  border-color: var(--hrm-border);
+}
+
+:root[data-mantine-color-scheme='dark'] .empty-state-icon {
+  border-color: var(--hrm-border);
+}
+
+:root[data-mantine-color-scheme='dark'] .table-actions-menu .mantine-ActionIcon-root:hover {
+  background: var(--hrm-surface-subtle);
+}
+
+:root[data-mantine-color-scheme='dark'] .excel-import-dropzone .ant-upload,
+:root[data-mantine-color-scheme='dark'] .excel-import-guide,
+:root[data-mantine-color-scheme='dark'] .excel-import-stat {
+  background: var(--hrm-surface-subtle);
+  border-color: var(--hrm-border);
+  color: var(--hrm-text);
+}
+
+:root[data-mantine-color-scheme='dark'] .excel-import-stat .ant-statistic-title {
+  color: var(--hrm-muted);
+}
+
+:root[data-mantine-color-scheme='dark'] .excel-import-stat .ant-statistic-content {
+  color: var(--hrm-text);
+}
+
+:root[data-mantine-color-scheme='dark'] .ant-card,
+:root[data-mantine-color-scheme='dark'] .ant-drawer-content,
+:root[data-mantine-color-scheme='dark'] .ant-modal-content,
+:root[data-mantine-color-scheme='dark'] .ant-popover-inner,
+:root[data-mantine-color-scheme='dark'] .ant-dropdown-menu,
+:root[data-mantine-color-scheme='dark'] .ant-tabs-content-holder {
+  background: var(--hrm-surface);
+  color: var(--hrm-text);
+}
+
+:root[data-mantine-color-scheme='dark'] .ant-card,
+:root[data-mantine-color-scheme='dark'] .ant-drawer-content,
+:root[data-mantine-color-scheme='dark'] .ant-modal-content {
+  border-color: var(--hrm-border);
+}
+
+:root[data-mantine-color-scheme='dark'] .ant-drawer-header,
+:root[data-mantine-color-scheme='dark'] .ant-modal-header {
+  background: var(--hrm-surface);
+  border-bottom-color: var(--hrm-border-soft);
+}
+
+:root[data-mantine-color-scheme='dark'] .ant-drawer-title,
+:root[data-mantine-color-scheme='dark'] .ant-modal-title,
+:root[data-mantine-color-scheme='dark'] .ant-form-item-label > label,
+:root[data-mantine-color-scheme='dark'] .ant-descriptions-title,
+:root[data-mantine-color-scheme='dark'] .ant-descriptions-item-label,
+:root[data-mantine-color-scheme='dark'] .ant-descriptions-item-content,
+:root[data-mantine-color-scheme='dark'] .ant-typography,
+:root[data-mantine-color-scheme='dark'] .ant-tabs-tab,
+:root[data-mantine-color-scheme='dark'] .ant-table {
+  color: var(--hrm-text);
+}
+
+:root[data-mantine-color-scheme='dark'] .ant-descriptions-view,
+:root[data-mantine-color-scheme='dark'] .ant-descriptions-row > th,
+:root[data-mantine-color-scheme='dark'] .ant-descriptions-row > td {
+  border-color: var(--hrm-border-soft);
+}
+
+:root[data-mantine-color-scheme='dark'] .ant-descriptions-item-label {
+  color: #cbd5e1 !important;
+}
+
+:root[data-mantine-color-scheme='dark'] .ant-descriptions-item-content {
+  color: var(--hrm-text) !important;
+}
+
+:root[data-mantine-color-scheme='dark'] .ant-form-item-extra,
+:root[data-mantine-color-scheme='dark'] .ant-typography-secondary {
+  color: var(--hrm-muted) !important;
+}
+
+:root[data-mantine-color-scheme='dark'] .ant-input,
+:root[data-mantine-color-scheme='dark'] .ant-input-affix-wrapper,
+:root[data-mantine-color-scheme='dark'] .ant-input-number,
+:root[data-mantine-color-scheme='dark'] .ant-select-selector {
+  background: #0f172a !important;
+  border-color: var(--hrm-border) !important;
+  color: var(--hrm-text) !important;
+}
+
+:root[data-mantine-color-scheme='dark'] .ant-select-selection-placeholder,
+:root[data-mantine-color-scheme='dark'] .ant-input::placeholder {
+  color: #64748b !important;
+}
+
+:root[data-mantine-color-scheme='dark'] .ant-table-wrapper .ant-table,
+:root[data-mantine-color-scheme='dark'] .ant-table-container,
+:root[data-mantine-color-scheme='dark'] .ant-table-content,
+:root[data-mantine-color-scheme='dark'] .ant-table-tbody > tr > td {
+  background: var(--hrm-surface);
+  color: var(--hrm-text);
+  border-color: var(--hrm-border-soft);
+}
+
+:root[data-mantine-color-scheme='dark'] .ant-table-wrapper .ant-table-thead > tr > th {
+  background: var(--hrm-surface-subtle);
+  color: #cbd5e1;
+  border-color: var(--hrm-border);
+}
+
+:root[data-mantine-color-scheme='dark'] .ant-table-tbody > tr.ant-table-row:hover > td,
+:root[data-mantine-color-scheme='dark'] .ant-table-tbody > tr > td.ant-table-cell-row-hover {
+  background: #172033 !important;
+}
+
+:root[data-mantine-color-scheme='dark'] .ant-pagination-item,
+:root[data-mantine-color-scheme='dark'] .ant-pagination-prev .ant-pagination-item-link,
+:root[data-mantine-color-scheme='dark'] .ant-pagination-next .ant-pagination-item-link {
+  background: var(--hrm-surface);
+  border-color: var(--hrm-border);
+}
+
+:root[data-mantine-color-scheme='dark'] .ant-pagination-item a,
+:root[data-mantine-color-scheme='dark'] .ant-pagination-item-link {
+  color: var(--hrm-text);
+}
+
+:root[data-mantine-color-scheme='dark'] .ant-pagination-item-active {
+  background: var(--hrm-accent-soft);
+  border-color: var(--hrm-accent);
+}
+
+:root[data-mantine-color-scheme='dark'] .ant-steps-item-title,
+:root[data-mantine-color-scheme='dark'] .ant-steps-item-description {
+  color: var(--hrm-text) !important;
+}
+
+:root[data-mantine-color-scheme='dark'] .ant-steps-item-wait .ant-steps-item-description,
+:root[data-mantine-color-scheme='dark'] .ant-steps-item-process .ant-steps-item-description {
+  color: var(--hrm-muted) !important;
 }
 
 @media (max-width: 900px) {

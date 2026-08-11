@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Card, Drawer, Group, NumberInput, Paper, SegmentedControl, Select, SimpleGrid, Stack, Text, Textarea, TextInput, Timeline } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconCalendarMonth, IconListDetails, IconPlus } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
+import { useSearchParams } from 'react-router-dom';
 
 import { approveLeaveRequest, cancelLeaveRequest, createLeaveRequest, rejectLeaveRequest, submitLeaveRequest } from '../../features/leave/leaveApi';
 import type { LeaveRequest, LeaveRequestPayload } from '../../features/leave/leaveTypes';
@@ -60,6 +61,7 @@ const actionLabels: Record<LeaveAction, string> = {
 export function LeavePage() {
   const queryClient = useQueryClient();
   const { can } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [open, setOpen] = useState(false);
   const [viewMode, setViewMode] = useState<LeaveViewMode>('list');
   const [selectedLeave, setSelectedLeave] = useState<LeaveRequest | null>(null);
@@ -98,6 +100,15 @@ export function LeavePage() {
       ).sort(([left], [right]) => left.localeCompare(right)),
     [data?.items],
   );
+
+  useEffect(() => {
+    if (searchParams.get('action') !== 'create') return;
+    const timer = window.setTimeout(() => setOpen(true), 0);
+    const next = new URLSearchParams(searchParams);
+    next.delete('action');
+    setSearchParams(next, { replace: true });
+    return () => window.clearTimeout(timer);
+  }, [searchParams, setSearchParams]);
 
   const createMutation = useMutation({
     mutationFn: createLeaveRequest,

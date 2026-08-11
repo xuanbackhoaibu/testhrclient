@@ -28,6 +28,7 @@ import type {
   OnboardingInstancePayload,
   WorkflowItem,
 } from "../../features/onboarding/onboardingTypes";
+import type { OnboardingTemplate } from "../../features/onboarding/onboardingTypes";
 import { useOnboarding } from "../../features/onboarding/useOnboarding";
 import { mockEmployees } from "../../shared/mocks/mockEmployees";
 import { ErrorState } from "../../shared/components/ErrorState";
@@ -47,6 +48,39 @@ export function OnboardingPage() {
     page: 1,
     pageSize: 50,
   });
+  const onboardingQueryKey = ["onboarding", { page: 1, pageSize: 50 }] as const;
+
+  function patchSelectedItem(itemId: string, status: string) {
+    setSelected((current) =>
+      current
+        ? {
+            ...current,
+            items: current.items.map((item) =>
+              item.id === itemId ? { ...item, status } : item,
+            ),
+          }
+        : current,
+    );
+  }
+
+  function patchOnboardingCache(itemId: string, status: string) {
+    queryClient.setQueryData<{
+      instances: OnboardingInstance[];
+      templates: OnboardingTemplate[];
+    }>(onboardingQueryKey, (current) =>
+      current
+        ? {
+            ...current,
+            instances: current.instances.map((instance) => ({
+              ...instance,
+              items: instance.items.map((item) =>
+                item.id === itemId ? { ...item, status } : item,
+              ),
+            })),
+          }
+        : current,
+    );
+  }
 
   const createMutation = useMutation({
     mutationFn: createOnboardingInstance,
@@ -61,6 +95,26 @@ export function OnboardingPage() {
   const itemMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       updateOnboardingItem(id, { status }),
+    onMutate: async ({ id, status }) => {
+      await queryClient.cancelQueries({ queryKey: ["onboarding"] });
+      const previousData = queryClient.getQueryData<{
+        instances: OnboardingInstance[];
+        templates: OnboardingTemplate[];
+      }>(onboardingQueryKey);
+      const previousSelected = selected;
+      patchOnboardingCache(id, status);
+      patchSelectedItem(id, status);
+      return { previousData, previousSelected };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(onboardingQueryKey, context.previousData);
+      }
+      if (context?.previousSelected) {
+        setSelected(context.previousSelected);
+      }
+      message.error("Không cập nhật được checklist onboarding.");
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["onboarding"] });
     },

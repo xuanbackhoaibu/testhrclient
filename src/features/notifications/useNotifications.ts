@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { notificationApi, type ListNotificationsParams } from './notificationApi';
@@ -9,6 +10,11 @@ import { notificationApi, type ListNotificationsParams } from './notificationApi
  */
 const POLL_INTERVAL_MS = 30_000;
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
+const notificationStreamUrl =
+  import.meta.env.VITE_NOTIFICATION_STREAM_URL ??
+  (import.meta.env.VITE_HR_API_BASE_URL || import.meta.env.VITE_API_BASE_URL
+    ? `${String(import.meta.env.VITE_HR_API_BASE_URL ?? import.meta.env.VITE_API_BASE_URL).replace(/\/$/, '')}/notifications/stream`
+    : '/notifications/stream');
 
 export const notificationKeys = {
   all: ['notifications'] as const,
@@ -34,6 +40,33 @@ export function useNotifications(params?: ListNotificationsParams) {
     refetchInterval: isMockMode ? false : POLL_INTERVAL_MS,
     staleTime: 10_000,
   });
+}
+
+export function useNotificationStream() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (isMockMode || typeof EventSource === 'undefined') {
+      return undefined;
+    }
+
+    const source = new EventSource(notificationStreamUrl, { withCredentials: true });
+
+    source.onmessage = () => {
+      void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+    };
+
+    source.addEventListener('notification', () => {
+      void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+    });
+
+    source.onerror = () => {
+      // Keep the connection lifecycle simple. React Query polling remains the
+      // fallback when the backend has not enabled SSE yet.
+    };
+
+    return () => source.close();
+  }, [queryClient]);
 }
 
 export function useNotificationMutations() {

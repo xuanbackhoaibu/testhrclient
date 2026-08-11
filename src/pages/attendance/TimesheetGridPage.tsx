@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Badge,
@@ -16,6 +16,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconInfoCircle, IconRefresh, IconTrash } from "@tabler/icons-react";
+import { useSearchParams } from "react-router-dom";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
@@ -71,6 +72,7 @@ function getTimesheetCellClass(day: TimesheetGridDay): string {
 export function TimesheetGridPage() {
   const { can } = useAuth();
   const canEdit = can(HR_PERMISSIONS.ATTENDANCE_UPDATE);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -178,7 +180,63 @@ export function TimesheetGridPage() {
     }
   }
 
-  const rows = gridQuery.data?.rows ?? [];
+  const rows = useMemo(() => gridQuery.data?.rows ?? [], [gridQuery.data?.rows]);
+
+  const exportCurrentTimesheet = useCallback(() => {
+    if (!rows.length) {
+      notifications.show({
+        color: "yellow",
+        title: "Chưa có dữ liệu bảng công",
+        message: "Không có dòng nào để xuất ở bộ lọc hiện tại.",
+      });
+      return;
+    }
+
+    const headers = ["Mã NS", "Nhân viên", "Phòng ban", ...dayColumns.map((day) => String(day)), "Tổng công", "Nghỉ phép"];
+    const lines = rows.map((row) => {
+      const byDay = new Map(row.days.map((day) => [day.day, day]));
+      return [
+        row.employeeCode,
+        row.fullName,
+        row.departmentName ?? "",
+        ...dayColumns.map((dayNumber) => byDay.get(dayNumber)?.displaySymbol ?? ""),
+        row.summary.totalPaidDays,
+        row.summary.totalLeaveDays,
+      ];
+    });
+    const csv = [headers, ...lines]
+      .map((line) => line.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `bang-cong-${year}-${String(month).padStart(2, "0")}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    notifications.show({
+      color: "green",
+      title: "Đã xuất bảng công",
+      message: "File CSV có thể mở trực tiếp bằng Excel.",
+    });
+  }, [dayColumns, month, rows, year]);
+
+  useEffect(() => {
+    function handleGlobalExport() {
+      exportCurrentTimesheet();
+    }
+
+    window.addEventListener("hrm:export-current-page", handleGlobalExport);
+    return () => window.removeEventListener("hrm:export-current-page", handleGlobalExport);
+  }, [exportCurrentTimesheet]);
+
+  useEffect(() => {
+    if (searchParams.get("action") !== "export" || gridQuery.isLoading) return;
+    exportCurrentTimesheet();
+    const next = new URLSearchParams(searchParams);
+    next.delete("action");
+    setSearchParams(next, { replace: true });
+  }, [exportCurrentTimesheet, gridQuery.isLoading, searchParams, setSearchParams]);
 
   return (
     <>

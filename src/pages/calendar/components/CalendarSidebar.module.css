@@ -9,6 +9,11 @@
   overflow: hidden;
 }
 
+:global([data-mantine-color-scheme='dark']) .sidebar {
+  background-color: var(--hrm-surface);
+  border-right-color: var(--hrm-border);
+}
+
 /* Card shown when actively viewing another person's calendar */
 .viewingCard {
   display: flex;
@@ -19,6 +24,21 @@
   border: 1px solid var(--mantine-color-blue-2);
   border-radius: var(--mantine-radius-md);
   min-width: 0;
+}
+
+:global([data-mantine-color-scheme='dark']) .viewingCard {
+  background: var(--hrm-accent-soft);
+  border-color: var(--hrm-border);
+}
+
+:global([data-mantine-color-scheme='dark']) .viewingCardName {
+  color: var(--hrm-text);
+}
+
+:global([data-mantine-color-scheme='dark']) .viewingCardLabel,
+:global([data-mantine-color-scheme='dark']) .viewingCardSub,
+:global([data-mantine-color-scheme='dark']) .employeeSub {
+  color: var(--hrm-muted);
 }
 
 .viewingCardInfo {

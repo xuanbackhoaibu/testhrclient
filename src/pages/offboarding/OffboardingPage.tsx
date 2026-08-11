@@ -24,6 +24,7 @@ import {
 import type {
   OffboardingInstance,
   OffboardingInstancePayload,
+  OffboardingTemplate,
 } from "../../features/offboarding/offboardingTypes";
 import type { WorkflowItem } from "../../features/onboarding/onboardingTypes";
 import { useOffboarding } from "../../features/offboarding/useOffboarding";
@@ -43,6 +44,39 @@ export function OffboardingPage() {
     page: 1,
     pageSize: 50,
   });
+  const offboardingQueryKey = ["offboarding", { page: 1, pageSize: 50 }] as const;
+
+  function patchSelectedItem(itemId: string, status: string) {
+    setSelected((current) =>
+      current
+        ? {
+            ...current,
+            items: current.items.map((item) =>
+              item.id === itemId ? { ...item, status } : item,
+            ),
+          }
+        : current,
+    );
+  }
+
+  function patchOffboardingCache(itemId: string, status: string) {
+    queryClient.setQueryData<{
+      instances: OffboardingInstance[];
+      templates: OffboardingTemplate[];
+    }>(offboardingQueryKey, (current) =>
+      current
+        ? {
+            ...current,
+            instances: current.instances.map((instance) => ({
+              ...instance,
+              items: instance.items.map((item) =>
+                item.id === itemId ? { ...item, status } : item,
+              ),
+            })),
+          }
+        : current,
+    );
+  }
 
   const createMutation = useMutation({
     mutationFn: createOffboardingInstance,
@@ -57,6 +91,26 @@ export function OffboardingPage() {
   const itemMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       updateOffboardingItem(id, { status }),
+    onMutate: async ({ id, status }) => {
+      await queryClient.cancelQueries({ queryKey: ["offboarding"] });
+      const previousData = queryClient.getQueryData<{
+        instances: OffboardingInstance[];
+        templates: OffboardingTemplate[];
+      }>(offboardingQueryKey);
+      const previousSelected = selected;
+      patchOffboardingCache(id, status);
+      patchSelectedItem(id, status);
+      return { previousData, previousSelected };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(offboardingQueryKey, context.previousData);
+      }
+      if (context?.previousSelected) {
+        setSelected(context.previousSelected);
+      }
+      message.error("Không cập nhật được checklist offboarding.");
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["offboarding"] });
     },

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Alert, Badge, Button, Card, Drawer, Group, Select, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconAlertTriangle, IconPlus } from '@tabler/icons-react';
+import { IconAlertTriangle, IconMoodSmile, IconPlus } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 
@@ -171,7 +171,25 @@ export function ContractsPage() {
                 </Button>
               </Group>
             </Alert>
-          ) : null}
+          ) : (
+            <Alert color="green" variant="light" icon={<IconMoodSmile size={20} />} className="contract-empty-alert">
+              <Group justify="space-between" gap="sm" align="center">
+                <Stack gap={2}>
+                  <Text fw={750}>
+                    Tuyệt vời! Không có hợp đồng nào cần gia hạn trong tháng này.
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    Hệ thống sẽ tự động kiểm tra lại vào ngày mai.
+                  </Text>
+                </Stack>
+                <div className="contract-empty-illustration" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              </Group>
+            </Alert>
+          )}
           <SimpleGrid cols={{ base: 1, md: 2 }} spacing="sm">
             <Select
               clearable

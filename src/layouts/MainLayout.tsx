@@ -1,5 +1,7 @@
 import {
   AppShell,
+  ActionIcon,
+  Button,
   Avatar,
   Burger,
   Group,
@@ -9,7 +11,9 @@ import {
   Stack,
   Text,
   Title,
+  Tooltip,
   UnstyledButton,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -24,6 +28,7 @@ import {
   IconKey,
   IconLink,
   IconLogout,
+  IconMoon,
   IconSettings,
   IconShield,
   IconSitemap,
@@ -32,11 +37,14 @@ import {
   IconUserCheck,
   IconUsers,
   IconCalendarStats,
+  IconSearch,
+  IconSun,
 } from "@tabler/icons-react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../features/auth/useAuth";
 import { canAccessRoute } from "../features/auth/routePolicies";
+import { GlobalCommandCenter } from "../features/command-center/GlobalCommandCenter";
 import { NotificationBell } from "../features/notifications/NotificationBell";
 import { BrandLogo } from "../shared/components/BrandLogo";
 import { ROUTES } from "../shared/constants/routes";
@@ -121,6 +129,7 @@ function isActive(pathname: string, path: string) {
 
 export function MainLayout() {
   const [opened, { toggle, close }] = useDisclosure();
+  const { colorScheme, setColorScheme } = useMantineColorScheme();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -128,6 +137,7 @@ export function MainLayout() {
   const visibleMainItems = mainItems.filter((item) => canAccessRoute(user, item.path));
   const visibleOrgItems = orgItems.filter((item) => canAccessRoute(user, item.path));
   const visibleIamItems = iamItems.filter((item) => canAccessRoute(user, item.path));
+  const commandRoutes = [...visibleMainItems, ...visibleOrgItems, ...visibleIamItems];
 
   const showOrganizationMenu = visibleOrgItems.length > 0;
   const showIamMenu = visibleIamItems.length > 0;
@@ -141,12 +151,14 @@ export function MainLayout() {
     close();
   }
 
+  const isDarkMode = colorScheme === "dark";
+
   return (
     <AppShell
       header={{ height: 64 }}
       navbar={{ width: 260, breakpoint: "md", collapsed: { mobile: !opened } }}
       padding="lg"
-      bg="#f6f8fb"
+      bg="var(--hrm-bg)"
       className="app-shell"
     >
       <AppShell.Header className="app-shell-header">
@@ -164,6 +176,25 @@ export function MainLayout() {
           </Group>
 
           <Group gap="sm" wrap="nowrap" className="app-shell-user-tools">
+          <Tooltip label={isDarkMode ? "Tắt Dark Mode" : "Bật Dark Mode"}>
+            <ActionIcon
+              variant="default"
+              size="lg"
+              aria-label={isDarkMode ? "Tắt Dark Mode" : "Bật Dark Mode"}
+              onClick={() => setColorScheme(isDarkMode ? "light" : "dark")}
+            >
+              {isDarkMode ? <IconSun size={18} /> : <IconMoon size={18} />}
+            </ActionIcon>
+          </Tooltip>
+          <Button
+            variant="default"
+            size="xs"
+            leftSection={<IconSearch size={15} />}
+            visibleFrom="sm"
+            onClick={() => window.dispatchEvent(new CustomEvent("hrm:open-command-center"))}
+          >
+            Ctrl K
+          </Button>
           <NotificationBell />
           <Menu position="bottom-end" shadow="md" width={230}>
             <Menu.Target>
@@ -308,6 +339,7 @@ export function MainLayout() {
       <AppShell.Main className="app-shell-main">
         <Outlet />
       </AppShell.Main>
+      <GlobalCommandCenter routes={commandRoutes} />
     </AppShell>
   );
 }

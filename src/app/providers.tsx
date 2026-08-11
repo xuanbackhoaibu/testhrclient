@@ -100,7 +100,7 @@ function AuthBootstrap({ children }: PropsWithChildren) {
 export function AppProviders({ children }: PropsWithChildren) {
   return (
     <ConfigProvider theme={antdTheme}>
-      <MantineProvider theme={mantineTheme}>
+      <MantineProvider theme={mantineTheme} defaultColorScheme="light">
         <Notifications position="top-right" zIndex={4000} />
         <QueryClientProvider client={queryClient}>
           <AuthBootstrap>{children}</AuthBootstrap>

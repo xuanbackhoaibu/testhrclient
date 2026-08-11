@@ -1238,3 +1238,98 @@ http://127.0.0.1:5173/
 - Thêm progress circle theo từng đợt onboarding/offboarding dựa trên số checklist item đã hoàn thành.
 - Checklist trong modal chi tiết có checkbox tick trực tiếp để đổi trạng thái.
 - Onboarding có modal nhập thông tin cấp laptop khi hoàn thành bước liên quan đến laptop, gồm serial máy và ngày cấp.
+
+## 22. Phase 5 - Global Command Center
+
+### 22.1. Global Command Palette
+
+Đã nâng cấp:
+
+- Thêm `GlobalCommandCenter` hoạt động toàn hệ thống.
+- Phím tắt `Ctrl + K` hoặc `Cmd + K` mở command palette ở bất kỳ màn hình nào trong `MainLayout`.
+- Có nút `Ctrl K` trên header để HR dễ phát hiện tính năng.
+- Command hỗ trợ:
+  - Tìm và mở nhanh các phân hệ HRM theo route người dùng có quyền truy cập.
+  - Tìm nhanh hồ sơ nhân sự demo/mocks để mở profile.
+  - `Tạo đơn nghỉ` điều hướng tới `/leave?action=create` và tự mở drawer tạo đơn.
+  - `Xuất Excel Bảng công` điều hướng tới `/attendance/timesheet?action=export` và tự tải file CSV bảng công hiện tại.
+
+Ghi chú:
+
+- Repo chưa cài `@mantine/spotlight`, nên triển khai command palette bằng Mantine `Modal + TextInput + ScrollArea` để tránh thêm dependency mới. Cấu trúc component vẫn tách riêng để có thể đổi sang `@mantine/spotlight` sau.
+
+### 22.2. Notification Hub real-time ready
+
+Đã nâng cấp:
+
+- `NotificationBell` tiếp tục hiển thị unread badge, dropdown danh sách thông báo và thao tác đánh dấu đã đọc.
+- Thêm `useNotificationStream` dùng `EventSource` để lắng nghe `/notifications/stream`.
+- Khi nhận event SSE, cache `notifications` được invalidate để UI cập nhật ngay.
+- Polling 30 giây hiện có vẫn giữ lại làm fallback nếu backend chưa bật SSE.
+- Có thể cấu hình endpoint stream bằng biến môi trường `VITE_NOTIFICATION_STREAM_URL`.
+
+### 22.3. Keyboard Shortcuts
+
+Đã nâng cấp:
+
+- Phím `?` mở modal danh sách phím tắt.
+- Phím `C` mở nhanh form tạo đơn nghỉ phép.
+- Phím `E` phát event export dữ liệu trang hiện tại.
+- `TimesheetGridPage` đã nghe event export và tải file CSV bảng công hiện tại.
+- Phím `Esc` đóng command palette hoặc modal phím tắt.
+
+## 23. Phase 6 - Advanced UX
+
+### 23.1. Actionable Empty State cho Contracts
+
+Đã nâng cấp:
+
+- Widget cảnh báo hợp đồng không còn biến mất khi không có dữ liệu.
+- Khi không có hợp đồng sắp hết hạn, UI hiển thị trạng thái tích cực:
+  - Illustration nhẹ.
+  - Text: `Tuyệt vời! Không có hợp đồng nào cần gia hạn trong tháng này.`
+  - Ghi chú hệ thống sẽ tự kiểm tra lại vào ngày mai.
+
+### 23.2. Optimistic UI cho checklist Onboarding/Offboarding
+
+Đã nâng cấp:
+
+- Khi HR tick checklist item, UI cập nhật checkbox và progress circle ngay lập tức.
+- Dùng `useMutation.onMutate` để cập nhật cache TanStack Query trước khi API trả về.
+- Có rollback cache và drawer state nếu API báo lỗi.
+- Vẫn invalidate query sau khi mutation thành công để đồng bộ dữ liệu server.
+
+### 23.3. Dark Mode Data Visualization Audit
+
+Đã nâng cấp:
+
+- Timesheet conditional formatting ở dark mode đổi sang tone pastel dịu:
+  - Teal pastel cho đủ công.
+  - Red pastel cho vắng/cần giải trình.
+  - Yellow pastel cho đi muộn/về sớm.
+  - Dark neutral cho nghỉ/ngày không làm.
+- Badge hợp đồng sắp hết hạn ở dark mode dùng nền đỏ pastel, chữ đỏ đậm để giảm chói khi làm việc ban đêm.
+
+### 23.4. Nút bật/tắt Dark Mode toàn hệ thống
+
+Đã nâng cấp:
+
+- Thêm nút Dark Mode trên header chung `MainLayout`, đặt cạnh Notification Hub.
+- Dùng `useMantineColorScheme` để chuyển `light/dark` đúng cơ chế Mantine.
+- Cấu hình `MantineProvider` với `defaultColorScheme="light"`.
+- Bổ sung CSS variable dark mode cho nền app, header, navbar, input, modal/drawer để giao diện đổi theme đồng bộ hơn.
+
+### 23.5. Đồng bộ Dark Mode toàn web
+
+Đã nâng cấp:
+
+- Bỏ hardcode nền sáng ở `AppShell`, chuyển sang `var(--hrm-bg)`.
+- Thêm dark override cho các surface chung:
+  - Mantine Paper/Card/Modal/Drawer/Popover.
+  - AntD Card/Drawer/Modal/Table/Form/Input/Select/Pagination/Steps.
+  - DataTable, Employee detail table, Empty/Loading/Error state.
+  - Excel import panels và dropzone.
+- Đồng bộ màu chữ trong dark mode để tránh tình trạng text xám quá mờ trên nền tối.
+- Đồng bộ Calendar module CSS: header, sidebar, day grid, today/other-month state.
+- Vá riêng AntD `Descriptions` ở trang Cài đặt để title, label và content chuyển sang màu sáng rõ trong dark mode.
+- Vá hover/striped/selected state của DataTable trong dark mode để bảng Nhân sự không chuyển sang nền trắng khi rê chuột.
