@@ -44,7 +44,7 @@ import styles from "./DashboardPage.module.css";
 type MetricTone = "blue" | "green" | "teal" | "red" | "yellow" | "orange" | "indigo" | "gray";
 type TimeRange = "month" | "quarter" | "year" | "custom";
 
-const chartPalette = ["#0b5ed7", "#10b981", "#f59f00", "#ef4444", "#8b5cf6", "#06b6d4", "#64748b"];
+const chartPalette = ["#d71920", "#d8c764", "#565a61", "#f08a8f", "#b8aa55", "#8a8f98", "#f3c4c6"];
 const lateThreshold = 3;
 
 function formatNumber(value: number): string {

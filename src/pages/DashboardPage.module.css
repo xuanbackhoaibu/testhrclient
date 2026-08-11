@@ -23,23 +23,23 @@
 }
 
 .metricCard_blue {
-  background: linear-gradient(180deg, #f7fbff 0%, #ffffff 100%);
-}
-
-.metricCard_green {
-  background: linear-gradient(180deg, #f7fcf9 0%, #ffffff 100%);
-}
-
-.metricCard_teal {
-  background: linear-gradient(180deg, #f5fcfb 0%, #ffffff 100%);
-}
-
-.metricCard_red {
   background: linear-gradient(180deg, #fff8f8 0%, #ffffff 100%);
 }
 
+.metricCard_green {
+  background: linear-gradient(180deg, #fbfaf1 0%, #ffffff 100%);
+}
+
+.metricCard_teal {
+  background: linear-gradient(180deg, #f7f7f8 0%, #ffffff 100%);
+}
+
+.metricCard_red {
+  background: linear-gradient(180deg, #fff5f5 0%, #ffffff 100%);
+}
+
 .metricCard_orange {
-  background: linear-gradient(180deg, #fff9f3 0%, #ffffff 100%);
+  background: linear-gradient(180deg, #fbfaf1 0%, #ffffff 100%);
 }
 
 .metricLabel {
@@ -89,13 +89,13 @@
   overflow: hidden;
   height: 8px;
   border-radius: 999px;
-  background: #dff4e9;
+  background: #f1e8e8;
 }
 
 .kpiProgressFill {
   height: 100%;
   border-radius: inherit;
-  background: #10b981;
+  background: linear-gradient(90deg, #d71920, #d8c764);
 }
 
 .miniStatGrid {
@@ -107,8 +107,8 @@
 .miniStatGrid span {
   overflow: hidden;
   border-radius: 6px;
-  background: rgba(245, 159, 0, 0.1);
-  color: #92400e;
+  background: rgba(216, 199, 100, 0.18);
+  color: #6b5f20;
   font-size: 11px;
   line-height: 1.2;
   padding: 5px 6px;
@@ -248,11 +248,11 @@
 }
 
 .barFill_normal {
-  background: #0b5ed7;
+  background: linear-gradient(90deg, #d8c764, #b8aa55);
 }
 
 .barFill_danger {
-  background: #ef4444;
+  background: linear-gradient(90deg, #f08a8f, #d71920);
 }
 
 .stackedRow {
@@ -266,11 +266,11 @@
 }
 
 .stackedAttend {
-  background: #10b981;
+  background: #d8c764;
 }
 
 .stackedAbsent {
-  background: #ef4444;
+  background: #d71920;
 }
 
 .todoRow {
@@ -308,14 +308,14 @@
 
 .emptyIllustration rect,
 .emptyIllustration circle {
-  fill: #eaf2ff;
-  stroke: #0b5ed7;
+  fill: #fbfaf1;
+  stroke: #d8c764;
   stroke-width: 2;
 }
 
 .emptyIllustration path {
   fill: none;
-  stroke: #0f9f6e;
+  stroke: #d71920;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 5;
@@ -351,8 +351,8 @@
 }
 
 :global([data-mantine-color-scheme='dark']) .miniStatGrid span {
-  background: rgba(245, 159, 0, 0.18);
-  color: #fbbf24;
+  background: rgba(216, 199, 100, 0.18);
+  color: #e6d87f;
 }
 
 :global([data-mantine-color-scheme='dark']) .barTrack,

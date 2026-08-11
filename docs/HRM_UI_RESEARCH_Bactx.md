@@ -1104,6 +1104,11 @@ Ghi chú:
 - Dark mode styles cho card, chart, legend, bar và widget.
 - Tooltip thân thiện, format số theo `vi-VN`.
 - Chart tự viết bằng SVG/CSS, không thêm thư viện chart mới.
+- Palette biểu đồ đã chuyển theo nhận diện HACOM:
+  - Đỏ thương hiệu làm điểm nhấn/cảnh báo.
+  - Vàng gold dùng cho phần tích cực/chuyên cần.
+  - Xám graphite và các sắc đỏ/gold dịu dùng cho lát phụ trong Donut Chart.
+  - Empty state và stacked/bar chart cũng dùng cùng hệ màu để giao diện dịu mắt và liên quan đến logo công ty.
 
 ### 20.6. Export báo cáo
 
