@@ -7,6 +7,7 @@ import {
   Modal,
   NumberInput,
   Paper,
+  Pagination,
   ScrollArea,
   Select,
   Stack,
@@ -58,6 +59,10 @@ const fixedColumns = [
   { key: "title", label: "Chức vụ", left: 330, width: 154 },
 ] as const;
 const dayColumnWidth = 44;
+const rowsPerPageOptions = [20, 50, 100].map((value) => ({
+  value: String(value),
+  label: `${value}/trang`,
+}));
 const bccTailColumns = [
   { key: "actualWorkDays", label: "Ngày\nlàm việc\nthực tế\n(1)", width: 72 },
   { key: "annualLeaveDays", label: "Nghỉ ngày\nPhép\n(2)", width: 72 },
@@ -92,6 +97,9 @@ const bccTailWidth = bccTailColumns.reduce(
   (total, column) => total + column.width,
   0,
 );
+const fixedColumnsWidth =
+  fixedColumns[fixedColumns.length - 1].left +
+  fixedColumns[fixedColumns.length - 1].width;
 
 interface EditingCell {
   day: TimesheetGridDay;
@@ -107,6 +115,16 @@ interface DayMeta {
 interface PreparedTimesheetRow {
   row: TimesheetGridRow;
   daysByNumber: Map<number, TimesheetGridDay>;
+}
+
+interface PreparedTimesheetGroup {
+  index: number;
+  key: string;
+  label: string;
+  sortKey: string;
+  totalRows: number;
+  rows: PreparedTimesheetRow[];
+  startIndex: number;
 }
 
 function lastDayOfMonth(year: number, month: number): string {
@@ -138,6 +156,21 @@ function departmentGroupLabel(row: TimesheetGridRow): string {
     [row.unitName, row.departmentName].filter(Boolean).join(" · ") ||
     "Chưa phân đơn vị / phòng ban"
   );
+}
+
+function organizationNameKey(...parts: Array<string | null | undefined>): string {
+  return parts
+    .map((part) =>
+      (part ?? "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replaceAll("đ", "d")
+        .replaceAll("Đ", "D")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase(),
+    )
+    .join("\u0000");
 }
 
 function surfaceForSymbol(symbol: string): string | undefined {
@@ -318,6 +351,8 @@ export function TimesheetGridPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [departmentIds, setDepartmentIds] = useState<string[]>([]);
   const [unitIds, setUnitIds] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
   const [scopeModalOpened, setScopeModalOpened] = useState(false);
   const [draftDepartmentIds, setDraftDepartmentIds] = useState<string[]>([]);
   const [draftUnitIds, setDraftUnitIds] = useState<string[]>([]);
@@ -357,6 +392,43 @@ export function TimesheetGridPage() {
     () => new Map((unitsQuery.data ?? []).map((unit) => [unit.id, unit.name])),
     [unitsQuery.data],
   );
+  const unitCodeById = useMemo(
+    () => new Map((unitsQuery.data ?? []).map((unit) => [unit.id, unit.code])),
+    [unitsQuery.data],
+  );
+  const unitCodeByName = useMemo(
+    () =>
+      new Map(
+        (unitsQuery.data ?? []).map((unit) => [
+          organizationNameKey(unit.name),
+          unit.code,
+        ]),
+      ),
+    [unitsQuery.data],
+  );
+  const departmentCodeById = useMemo(
+    () =>
+      new Map(
+        (departmentsQuery.data ?? []).map((department) => [
+          department.id,
+          department.code,
+        ]),
+      ),
+    [departmentsQuery.data],
+  );
+  const departmentCodeByOrganizationName = useMemo(
+    () =>
+      new Map(
+        (departmentsQuery.data ?? []).map((department) => [
+          organizationNameKey(
+            unitNameById.get(department.unitId),
+            department.name,
+          ),
+          department.code,
+        ]),
+      ),
+    [departmentsQuery.data, unitNameById],
+  );
   const unitOptions = useMemo(
     () =>
       (unitsQuery.data ?? []).map((unit) => ({
@@ -383,28 +455,94 @@ export function TimesheetGridPage() {
       })),
     [rows],
   );
-  const groupedRows = useMemo(() => {
-    const groups = new Map<string, PreparedTimesheetRow[]>();
-    [...preparedRows]
-      .sort(
-        (left, right) =>
-          departmentGroupLabel(left.row).localeCompare(
-            departmentGroupLabel(right.row),
-            "vi",
-          ) ||
-          left.row.employeeCode.localeCompare(right.row.employeeCode, "vi"),
+  const groupedRows = useMemo<PreparedTimesheetGroup[]>(() => {
+    const groups = new Map<
+      string,
+      Omit<PreparedTimesheetGroup, "index" | "startIndex" | "totalRows">
+    >();
+
+    for (const item of preparedRows) {
+      const organizationKey = organizationNameKey(
+        item.row.unitName,
+        item.row.departmentName,
+      );
+      const departmentCode =
+        (item.row.departmentId
+          ? departmentCodeById.get(item.row.departmentId)
+          : undefined) ?? departmentCodeByOrganizationName.get(organizationKey);
+      const unitCode =
+        (item.row.unitId ? unitCodeById.get(item.row.unitId) : undefined) ??
+        unitCodeByName.get(organizationNameKey(item.row.unitName));
+      const label = departmentGroupLabel(item.row);
+      const key =
+        item.row.departmentId ??
+        (organizationKey === "\u0000" ? "unassigned" : organizationKey);
+      // Theo đúng thứ tự danh mục: đơn vị trước, rồi tới phòng ban
+      // (DV001_01 → DV001_07, DV002_01 → ...). Dữ liệu máy chấm công cũ
+      // có thể không trả unitId, khi đó suy ra đơn vị từ tiền tố mã phòng ban.
+      const unitSortCode = unitCode ?? departmentCode?.split("_", 1)[0] ?? "ZZZ";
+      const sortKey = [unitSortCode, departmentCode ?? "ZZZ", label].join("\u0000");
+      const group = groups.get(key);
+
+      if (group) {
+        group.rows.push(item);
+      } else {
+        groups.set(key, { key, label, sortKey, rows: [item] });
+      }
+    }
+
+    return [...groups.values()]
+      .sort((left, right) =>
+        left.sortKey.localeCompare(right.sortKey, "vi", {
+          numeric: true,
+          sensitivity: "base",
+        }),
       )
-      .forEach((item) => {
-        const label = departmentGroupLabel(item.row);
-        groups.set(label, [...(groups.get(label) ?? []), item]);
+      .map((group, index, sortedGroups) => {
+        const rows = [...group.rows].sort((left, right) =>
+          left.row.employeeCode.localeCompare(right.row.employeeCode, "vi", {
+            numeric: true,
+            sensitivity: "base",
+          }),
+        );
+        const startIndex = sortedGroups
+          .slice(0, index)
+          .reduce((total, previousGroup) => total + previousGroup.rows.length, 0);
+        const preparedGroup = {
+          ...group,
+          index: index + 1,
+          rows,
+          startIndex,
+          totalRows: rows.length,
+        };
+        return preparedGroup;
       });
-    let startIndex = 0;
-    return [...groups.entries()].map(([label, groupRows]) => {
-      const group = { label, rows: groupRows, startIndex };
-      startIndex += groupRows.length;
-      return group;
+  }, [
+    departmentCodeById,
+    departmentCodeByOrganizationName,
+    preparedRows,
+    unitCodeById,
+    unitCodeByName,
+  ]);
+  const totalPages = Math.max(1, Math.ceil(preparedRows.length / rowsPerPage));
+  const currentPage = Math.min(page, totalPages);
+  const pagedGroups = useMemo(() => {
+    const pageStart = (currentPage - 1) * rowsPerPage;
+    const pageEnd = pageStart + rowsPerPage;
+
+    return groupedRows.flatMap((group) => {
+      const groupStart = group.startIndex;
+
+      const start = Math.max(0, pageStart - groupStart);
+      const end = Math.min(group.rows.length, pageEnd - groupStart);
+      if (start >= end) return [];
+      return [{ ...group, rows: group.rows.slice(start, end) }];
     });
-  }, [preparedRows]);
+  }, [currentPage, groupedRows, rowsPerPage]);
+  const pageStartRecord = preparedRows.length
+    ? (currentPage - 1) * rowsPerPage + 1
+    : 0;
+  const pageEndRecord = Math.min(currentPage * rowsPerPage, preparedRows.length);
   const scopeLabel = useMemo(() => {
     if (!unitIds.length && !departmentIds.length) return "Toàn công ty";
     return [
@@ -581,7 +719,10 @@ export function TimesheetGridPage() {
                 w={128}
                 data={monthOptions}
                 value={String(month)}
-                onChange={(value) => setMonth(Number(value ?? 1))}
+                onChange={(value) => {
+                  setMonth(Number(value ?? 1));
+                  setPage(1);
+                }}
               />
               <Select
                 size="sm"
@@ -589,9 +730,10 @@ export function TimesheetGridPage() {
                 w={92}
                 data={yearOptions}
                 value={String(year)}
-                onChange={(value) =>
-                  setYear(Number(value ?? now.getFullYear()))
-                }
+                onChange={(value) => {
+                  setYear(Number(value ?? now.getFullYear()));
+                  setPage(1);
+                }}
               />
               <Stack gap={2}>
                 <Text size="xs" fw={600} c="dimmed" tt="uppercase">
@@ -609,7 +751,7 @@ export function TimesheetGridPage() {
             </Group>
             <Group gap="xs" pb={2}>
               <Text size="xs" c="dimmed">
-                {rows.length} nhân viên · {groupedRows.length} nhóm
+                {rows.length} nhân viên · {groupedRows.length} phòng ban
               </Text>
             </Group>
           </Group>
@@ -627,7 +769,13 @@ export function TimesheetGridPage() {
             rồi cập nhật lại bảng công.
           </Alert>
         ) : (
-          <ScrollArea type="auto" offsetScrollbars>
+          <Stack gap="xs">
+          <ScrollArea
+            type="always"
+            h="min(680px, calc(100vh - 315px))"
+            offsetScrollbars
+            scrollbarSize={12}
+          >
             <Table
               className="timesheet-bcc-table"
               withTableBorder
@@ -638,8 +786,7 @@ export function TimesheetGridPage() {
               verticalSpacing={0}
               style={{
                 minWidth:
-                  fixedColumns[fixedColumns.length - 1].left +
-                  fixedColumns[fixedColumns.length - 1].width +
+                  fixedColumnsWidth +
                   dayMetas.length * dayColumnWidth +
                   bccTailWidth,
               }}
@@ -715,27 +862,42 @@ export function TimesheetGridPage() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {groupedRows.map((group, groupIndex) => (
-                  <Fragment key={group.label}>
+                {pagedGroups.map((group) => (
+                  <Fragment key={group.key}>
                     <Table.Tr>
                       <Table.Td
+                        colSpan={fixedColumns.length}
+                        style={{
+                          background: "#d9d2e9",
+                          boxShadow: "2px 0 0 var(--mantine-color-gray-4)",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          left: 0,
+                          minWidth: fixedColumnsWidth,
+                          padding: "7px 10px",
+                          position: "sticky",
+                          width: fixedColumnsWidth,
+                          zIndex: 3,
+                        }}
+                      >
+                        {group.index}.{" "}
+                        {group.label}{" "}
+                        <Text component="span" size="xs" c="dimmed">
+                          ({group.rows.length < group.totalRows
+                            ? `${group.rows.length}/${group.totalRows} nhân viên`
+                            : `${group.rows.length} nhân viên`})
+                        </Text>
+                      </Table.Td>
+                      <Table.Td
                         colSpan={
-                          fixedColumns.length +
                           dayMetas.length +
                           bccTailColumns.length
                         }
                         style={{
                           background: "#d9d2e9",
-                          fontSize: 12,
-                          fontWeight: 700,
                           padding: "7px 10px",
                         }}
-                      >
-                        {groupIndex + 1}. {group.label}{" "}
-                        <Text component="span" size="xs" c="dimmed">
-                          ({group.rows.length} nhân viên)
-                        </Text>
-                      </Table.Td>
+                      />
                     </Table.Tr>
                     {group.rows.map((item, rowIndex) => (
                       <TimesheetDataRow
@@ -752,6 +914,33 @@ export function TimesheetGridPage() {
               </Table.Tbody>
             </Table>
           </ScrollArea>
+          <Group justify="space-between" mt="xs" px="xs" wrap="wrap">
+            <Text size="xs" c="dimmed">
+              Hiển thị {pageStartRecord}–{pageEndRecord} / {preparedRows.length} nhân viên
+            </Text>
+            <Group gap="xs">
+              <Select
+                aria-label="Số nhân sự mỗi trang"
+                size="xs"
+                w={96}
+                data={rowsPerPageOptions}
+                value={String(rowsPerPage)}
+                onChange={(value) => {
+                  setRowsPerPage(Number(value ?? 20));
+                  setPage(1);
+                }}
+              />
+              <Pagination
+                size="sm"
+                value={currentPage}
+                total={totalPages}
+                siblings={1}
+                boundaries={1}
+                onChange={setPage}
+              />
+            </Group>
+          </Group>
+          </Stack>
         )}
       </Stack>
 
@@ -851,6 +1040,7 @@ export function TimesheetGridPage() {
                 onClick={() => {
                   setUnitIds(draftUnitIds);
                   setDepartmentIds(draftDepartmentIds);
+                  setPage(1);
                   setScopeModalOpened(false);
                 }}
               >
