@@ -3,6 +3,8 @@ import type {
   AdjustTimesheetDayPayload,
   RecomputePayload,
   RecomputeResult,
+  SetAutoFullAttendancePayload,
+  SetAutoFullAttendanceResult,
   OpenTimesheetPeriodPayload,
   ReopenTimesheetPeriodPayload,
   TimesheetGrid,
@@ -53,6 +55,16 @@ export async function recomputeTimesheet(
   payload: RecomputePayload,
 ): Promise<RecomputeResult> {
   return api.post<RecomputeResult>(`${BASE}/recompute`, payload);
+}
+
+export async function setAutoFullAttendance(
+  employeeId: string,
+  payload: SetAutoFullAttendancePayload,
+): Promise<SetAutoFullAttendanceResult> {
+  return api.patch<SetAutoFullAttendanceResult>(
+    `${BASE}/employees/${employeeId}/auto-full-attendance`,
+    payload,
+  );
 }
 
 export async function listTimesheetPeriods(year: number): Promise<TimesheetPeriod[]> {
