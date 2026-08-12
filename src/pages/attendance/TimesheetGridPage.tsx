@@ -829,7 +829,7 @@ export function TimesheetGridPage() {
         message:
           result.skippedLocked + result.skippedAdjusted > 0
             ? `Giữ nguyên ${result.skippedLocked} ngày đã chốt và ${result.skippedAdjusted} ngày HR đã sửa tay.`
-            : "Bảng công đã được tạo đủ ngày cho toàn bộ nhân sự đang làm việc.",
+            : "Bảng công đã được tạo/cập nhật theo phân công hiệu lực của kỳ đang xem, kể cả tháng lịch sử.",
       });
     } catch {
       notifications.show({
@@ -959,7 +959,9 @@ export function TimesheetGridPage() {
             muộn. Thứ Bảy làm buổi sáng <b>08:00–12:00</b>; Chủ nhật luôn là
             <b> ngày nghỉ</b>, không cảnh báo muộn hay thiếu chấm công. HR có
             thể tick <b>Đủ công mặc định</b> theo từng người đặc thù: ngày làm
-            việc tự đủ công, bỏ tick sẽ trở lại tính theo máy.
+            việc tự đủ công, bỏ tick sẽ trở lại tính theo máy. Khi chọn tháng
+            cũ, hệ thống xét đúng phân công hiệu lực của tháng đó, kể cả nhân
+            sự đã nghỉ hoặc chuyển đơn vị sau này.
           </Text>
         </Alert>
 
