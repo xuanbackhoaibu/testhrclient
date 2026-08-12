@@ -63,13 +63,13 @@ const emptyForm: ShiftFormValues = {
   code: "",
   name: "",
   startTime: "08:00",
-  endTime: "17:00",
+  endTime: "17:30",
   breakStart: "12:00",
   breakEnd: "13:00",
   breakDeducted: true,
-  standardMinutes: 480,
+  standardMinutes: 510,
   dayValue: 1,
-  lateThresholdMinutes: 10,
+  lateThresholdMinutes: 15,
   earlyLeaveThresholdMinutes: 10,
   note: "",
   status: "ACTIVE",
@@ -311,11 +311,11 @@ export function WorkShiftsPage() {
           icon={<IconInfoCircle size={18} />}
           color="blue"
           variant="light"
-          title="Ngưỡng đi muộn / về sớm hiện chỉ để ĐÁNH DẤU"
+          title="Quy tắc chấm công: chỉ quá 15 phút mới tính đi muộn"
         >
-          Hệ thống ghi nhận và hiển thị số phút đi muộn / về sớm nhưng{" "}
-          <b>chưa trừ công</b> — HR chưa ban hành mức xử lý. Khi có quyết định,
-          chỉ cần sửa ngưỡng ở đây, không phải sửa phần mềm.
+          Mốc 15 phút được tính theo điều kiện <b>quá 15 phút</b>: vào lúc
+          08:15 vẫn đúng giờ, 08:16 mới bị đánh dấu muộn. Hệ thống hiện chỉ
+          ghi nhận, <b>chưa trừ công</b>. Thứ Bảy dùng ca sáng 08:00–12:00.
         </Alert>
 
         <DataTable
@@ -431,7 +431,7 @@ export function WorkShiftsPage() {
               />
               <TextInput
                 label="Giờ ra"
-                placeholder="17:00"
+                placeholder="17:30"
                 withAsterisk
                 {...form.getInputProps("endTime")}
               />
@@ -470,9 +470,11 @@ export function WorkShiftsPage() {
                 {...form.getInputProps("dayValue")}
               />
               <NumberInput
-                label="Ngưỡng đánh dấu đi muộn (phút)"
+                label="Ngưỡng đi muộn theo quy định (phút)"
+                description="Cố định toàn công ty: chỉ quá 15 phút mới tính muộn"
                 min={0}
                 max={240}
+                disabled
                 {...form.getInputProps("lateThresholdMinutes")}
               />
               <NumberInput
