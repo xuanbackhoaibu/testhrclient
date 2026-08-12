@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  Badge,
   Button,
   Drawer,
   Group,
@@ -13,15 +14,12 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import {
-  IconEdit,
-  IconPlus,
-  IconTrash,
-} from "@tabler/icons-react";
+import { IconPlus } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
+import { useAllEmployees } from "../../features/employees/useEmployees";
 import { DomainExcelImportModal } from "../../features/import-export/DomainExcelImportModal";
 import { downloadPositionsExport } from "../../features/import-export/excelFilesApi";
 import { ImportExportToolbar } from "../../features/import-export/ImportExportToolbar";
@@ -32,21 +30,19 @@ import {
   updatePosition,
 } from "../../features/organization/positionsApi";
 import type { Position } from "../../features/organization/organizationTypes";
-import type { PaginationMeta } from "../../shared/types/api";
 import { sortByCode } from "../../shared/utils/sort";
 import { useAllPositions } from "../../features/organization/usePositions";
-import {
-  DataTable,
-  type DataTableColumn,
-} from "../../shared/components/DataTable";
 import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
 import { PageHeader } from "../../shared/components/PageHeader";
-import { StatusTag } from "../../shared/components/StatusTag";
-import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
+import { OrganizationHierarchyList, type OrganizationHierarchyRow } from "./OrganizationHierarchyList";
 
 // Mã chức danh không còn nhập từ UI — backend tự sinh từ tên chức danh.
 type PositionFormValues = Omit<Position, "id" | "code">;
+
+type PositionTreeRecord =
+  | { kind: "group"; key: string; name: string }
+  | { kind: "position"; position: Position };
 
 const statusOptions = [
   { value: "ACTIVE", label: "Đang hoạt động" },
@@ -77,6 +73,7 @@ export function PositionsPage() {
     search: params.search || undefined,
     status: params.status,
   });
+  const { data: employees = [] } = useAllEmployees({});
   const templateDownload = useHrmCoreTemplateDownload("positions");
 
   const exportMutation = useMutation({
@@ -198,119 +195,65 @@ export function PositionsPage() {
     () => sortByCode(allPositions),
     [allPositions],
   );
-  const totalCount = sortedPositions.length;
-  const totalPages = Math.max(1, Math.ceil(totalCount / params.pageSize));
-  const currentPage = Math.min(params.page, totalPages);
-  const pagedPositions = useMemo(() => {
-    const start = (currentPage - 1) * params.pageSize;
-    return sortedPositions.slice(start, start + params.pageSize);
-  }, [sortedPositions, currentPage, params.pageSize]);
-  const pagedMeta = useMemo<PaginationMeta>(
-    () => ({
-      page: currentPage,
-      pageSize: params.pageSize,
-      total: totalCount,
-      totalPages,
-      hasNextPage: currentPage < totalPages,
-      hasPreviousPage: currentPage > 1,
-    }),
-    [currentPage, params.pageSize, totalCount, totalPages],
-  );
+  const activeCount = sortedPositions.filter((item) => item.status === "ACTIVE").length;
+  const treeRows = useMemo<OrganizationHierarchyRow<PositionTreeRecord>[]>(() => {
+    const groups = new Map<string, Position[]>();
+    sortedPositions.forEach((position) => {
+      const key = position.jobFunction || position.scope || "Chưa phân nhóm";
+      groups.set(key, [...(groups.get(key) ?? []), position]);
+    });
 
-  const columns = useMemo<DataTableColumn<Position>[]>(
-    () => [
-      {
-        key: "name",
-        header: "Tên chức danh",
-        render: (record) => <Text fw={600}>{record.name}</Text>,
-      },
-      {
-        key: "scope",
-        header: "Phạm vi",
-        render: (record) => record.scope || "-",
-      },
-      {
-        key: "jobFunction",
-        header: "Nhóm công việc",
-        render: (record) => record.jobFunction || "-",
-      },
-      {
-        key: "grade",
-        header: "Grade",
-        width: 110,
-        render: (record) => record.grade || "-",
-      },
-      {
-        key: "status",
-        header: "Trạng thái",
-        width: 140,
-        render: (record) => <StatusTag status={record.status} />,
-      },
-      {
-        key: "actions",
-        header: "",
-        width: 108,
-        align: "right",
-        render: (record) => (
-          <TableActionsMenu
-            actions={[
-              {
-                label: "Chỉnh sửa",
-                icon: <IconEdit size={16} />,
-                disabled: !canEditPosition,
-                onClick: () => {
-                  debugPermissionCheck({
-                    action: "position.update",
-                    required: HR_PERMISSIONS.POSITION_UPDATE,
-                    permissions,
-                    roles,
-                    allowed: canEditPosition,
-                  });
-                  if (!canEditPosition) {
-                    return;
-                  }
-                  setEditing(record);
-                  form.setValues({
-                    name: record.name,
-                    scope: record.scope ?? "",
-                    jobFunction: record.jobFunction ?? "",
-                    grade: record.grade ?? "",
-                    note: record.note ?? "",
-                    status: record.status,
-                  });
-                  setOpen(true);
-                },
-              },
-              {
-                label:
-                  record.status === "INACTIVE"
-                    ? "Chức danh đã tạm ngưng"
-                    : "Xóa",
-                icon: <IconTrash size={16} />,
-                color: "red",
-                // Xóa = chuyển sang INACTIVE, nên bản ghi đã tạm ngưng thì thôi.
-                disabled: !canDeletePosition || record.status === "INACTIVE",
-                onClick: () => {
-                  debugPermissionCheck({
-                    action: "position.delete",
-                    required: HR_PERMISSIONS.POSITION_DELETE,
-                    permissions,
-                    roles,
-                    allowed: canDeletePosition,
-                  });
-                  if (!canDeletePosition) {
-                    return;
-                  }
-                  setDeleting(record);
-                },
-              },
-            ]}
-          />
-        ),
-      },
-    ],
-    [canDeletePosition, canEditPosition, form, permissions, roles],
-  );
+    return Array.from(groups.entries()).flatMap(([key, positions]) => {
+      const groupId = `group-${key}`;
+      const groupEmployees = employees.filter((employee) =>
+        positions.some((position) => employee.currentEmployeeAssignment?.positionId === position.id),
+      );
+      const parent: OrganizationHierarchyRow<PositionTreeRecord> = {
+        id: groupId,
+        code: "GROUP",
+        name: key,
+        status: "ACTIVE",
+        description: "Nhóm chức danh",
+        level: 0,
+        employeeCount: groupEmployees.length,
+        employees: groupEmployees,
+        record: { kind: "group", key, name: key },
+        meta: `${positions.length} chức danh`,
+      };
+      const children: OrganizationHierarchyRow<PositionTreeRecord>[] = positions.map((position) => ({
+        id: position.id,
+        code: position.code,
+        name: position.name,
+        status: position.status,
+        description: position.note,
+        level: 1,
+        parentId: groupId,
+        employeeCount: employees.filter((employee) => employee.currentEmployeeAssignment?.positionId === position.id).length,
+        employees: employees.filter((employee) => employee.currentEmployeeAssignment?.positionId === position.id),
+        record: { kind: "position", position },
+        meta: [position.scope, position.grade].filter(Boolean).join(" · ") || "Chức danh",
+        detailFields: [
+          { label: "Phạm vi", value: position.scope || "-" },
+          { label: "Nhóm công việc", value: position.jobFunction || "-" },
+          { label: "Grade", value: position.grade || "-" },
+        ],
+      }));
+      return [parent, ...children];
+    });
+  }, [employees, sortedPositions]);
+
+  function openEditPosition(record: Position) {
+    setEditing(record);
+    form.setValues({
+      name: record.name,
+      scope: record.scope ?? "",
+      jobFunction: record.jobFunction ?? "",
+      grade: record.grade ?? "",
+      note: record.note ?? "",
+      status: record.status,
+    });
+    setOpen(true);
+  }
 
   return (
     <>
@@ -319,6 +262,7 @@ export function PositionsPage() {
         subtitle="Danh mục chức danh, nhóm công việc, grade và import Excel ngay trong modal."
         actions={
           <>
+            <Badge variant="light">{activeCount} active</Badge>
             <ImportExportToolbar
               onDownloadTemplate={templateDownload.downloadTemplate}
               onImport={
@@ -384,19 +328,22 @@ export function PositionsPage() {
           />
         </SimpleGrid>
 
-        <DataTable
-          data={pagedPositions}
-          columns={columns}
-          rowKey={(record) => record.id}
-          meta={pagedMeta}
+        <OrganizationHierarchyList
+          rows={treeRows}
+          employees={employees}
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}
-          onPageChange={(page, pageSize) =>
-            setParams((current) => ({ ...current, page, pageSize }))
-          }
           emptyTitle="Chưa có chức danh"
           emptyDescription="Không có chức danh phù hợp với bộ lọc hiện tại."
+          canEdit={(row) => canEditPosition && row.record.kind === "position"}
+          canDeactivate={(row) => canDeletePosition && row.record.kind === "position"}
+          onEdit={(row) => {
+            if (row.record.kind === "position") openEditPosition(row.record.position);
+          }}
+          onDeactivate={(row) => {
+            if (row.record.kind === "position") setDeleting(row.record.position);
+          }}
         />
       </Stack>
 
@@ -468,9 +415,8 @@ export function PositionsPage() {
       >
         <Stack gap="sm">
           <Text size="sm">
-            Xóa chức danh <strong>{deleting?.name}</strong>? Chức danh sẽ chuyển
-            sang trạng thái tạm ngưng và không còn xuất hiện khi phân công nhân
-            sự. Nhân sự đang giữ chức danh này vẫn giữ nguyên dữ liệu.
+            Có <strong>{deleting ? treeRows.find((row) => row.id === deleting.id)?.employeeCount ?? 0 : 0}</strong> nhân sự đang giữ chức danh <strong>{deleting?.name}</strong>. Chức danh sẽ chuyển
+            sang trạng thái tạm ngưng và không còn xuất hiện khi phân công nhân sự mới.
           </Text>
           <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={() => setDeleting(null)}>

@@ -702,6 +702,166 @@ body {
   padding: 8px 10px;
 }
 
+.employee-detail-hero,
+.employee-detail-section,
+.employee-detail-stat-card,
+.employee-detail-quota-card {
+  background: var(--hrm-surface);
+  border-color: var(--hrm-border);
+  box-shadow: var(--hrm-shadow);
+}
+
+.employee-detail-hero {
+  overflow: hidden;
+  position: relative;
+}
+
+.employee-detail-hero::before {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.14), rgba(20, 184, 166, 0.12));
+  content: '';
+  inset: 0 0 auto;
+  height: 4px;
+  position: absolute;
+}
+
+.employee-detail-hero-main {
+  min-width: 280px;
+}
+
+.employee-detail-avatar-wrap {
+  flex: 0 0 auto;
+  position: relative;
+}
+
+.employee-detail-avatar {
+  border: 3px solid var(--hrm-surface);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+}
+
+.employee-detail-status-dot {
+  border: 3px solid var(--hrm-surface);
+  border-radius: 999px;
+  bottom: 8px;
+  height: 20px;
+  position: absolute;
+  right: 4px;
+  width: 20px;
+}
+
+.employee-detail-status-dot.is-active {
+  background: var(--mantine-color-green-5);
+}
+
+.employee-detail-status-dot.is-probation {
+  background: var(--mantine-color-yellow-5);
+}
+
+.employee-detail-status-dot.is-terminated {
+  background: var(--mantine-color-red-5);
+}
+
+.employee-detail-status-dot.is-muted {
+  background: var(--mantine-color-gray-5);
+}
+
+.employee-detail-name {
+  line-height: 1.12;
+}
+
+.employee-detail-actions {
+  justify-content: flex-end;
+  max-width: 620px;
+}
+
+.employee-detail-tabs .mantine-Tabs-list {
+  gap: 6px;
+}
+
+.employee-detail-tabs .mantine-Tabs-tab {
+  border-radius: 8px;
+  font-weight: 650;
+}
+
+.employee-detail-info-row {
+  min-width: 0;
+}
+
+.employee-detail-info-label {
+  flex: 0 0 148px;
+}
+
+.employee-detail-info-value {
+  color: var(--hrm-text);
+  min-width: 0;
+}
+
+.employee-detail-sensitive {
+  min-width: 0;
+}
+
+.employee-detail-mini-calendar {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(7, minmax(34px, 1fr));
+}
+
+.employee-detail-calendar-head {
+  color: var(--hrm-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.employee-detail-calendar-cell {
+  align-items: center;
+  aspect-ratio: 1;
+  border: 1px solid var(--hrm-border);
+  border-radius: 8px;
+  color: var(--hrm-text);
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 36px;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.employee-detail-calendar-cell:not(.is-blank):hover {
+  border-color: var(--mantine-color-blue-4);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+  transform: translateY(-1px);
+}
+
+.employee-detail-calendar-cell.is-blank {
+  background: transparent;
+  border-color: transparent;
+}
+
+.employee-detail-calendar-cell.is-empty {
+  background: var(--hrm-surface-subtle);
+  color: var(--hrm-muted);
+}
+
+.employee-detail-calendar-cell.is-ok {
+  background: color-mix(in srgb, var(--mantine-color-green-1), transparent 24%);
+  border-color: color-mix(in srgb, var(--mantine-color-green-3), transparent 20%);
+}
+
+.employee-detail-calendar-cell.is-late {
+  background: color-mix(in srgb, var(--mantine-color-yellow-1), transparent 8%);
+  border-color: color-mix(in srgb, var(--mantine-color-yellow-4), transparent 18%);
+}
+
+.employee-detail-calendar-cell.is-absent {
+  background: color-mix(in srgb, var(--mantine-color-red-1), transparent 12%);
+  border-color: color-mix(in srgb, var(--mantine-color-red-3), transparent 10%);
+}
+
+.employee-detail-calendar-cell.is-leave {
+  background: var(--mantine-color-gray-1);
+  border-color: var(--mantine-color-gray-3);
+}
+
 .employee-detail-table-scroll {
   border: 1px solid var(--hrm-border);
   border-radius: var(--hrm-radius);
@@ -736,6 +896,63 @@ body {
   border: 1px dashed #dbe3ee;
   border-radius: var(--hrm-radius);
   padding: 14px 16px;
+}
+
+.organization-tree-shell,
+.organization-detail-card {
+  background: var(--hrm-surface);
+  border-color: var(--hrm-border);
+  box-shadow: var(--hrm-shadow);
+}
+
+.organization-tree-table .mantine-Table-th {
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.organization-tree-table .mantine-Table-td {
+  border-bottom-color: #eef2f7;
+  color: var(--hrm-text);
+  padding-bottom: 11px;
+  padding-top: 11px;
+  vertical-align: middle;
+}
+
+.organization-tree-row {
+  cursor: pointer;
+  transition: background 140ms ease, transform 140ms ease;
+}
+
+.organization-tree-row:hover .mantine-Table-td {
+  background: #f8fbff;
+}
+
+.organization-employee-row {
+  border: 1px solid var(--hrm-border);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+@media (max-width: 768px) {
+  .employee-detail-hero-main,
+  .employee-detail-actions {
+    width: 100%;
+  }
+
+  .employee-detail-actions .mantine-Button-root {
+    flex: 1 1 180px;
+  }
+
+  .employee-detail-info-label {
+    flex-basis: 126px;
+  }
+
+  .employee-detail-mini-calendar {
+    gap: 6px;
+  }
 }
 
 .empty-state-surface,
@@ -942,9 +1159,70 @@ body {
 :root[data-mantine-color-scheme='dark'] .data-table-footer,
 :root[data-mantine-color-scheme='dark'] .data-table-refreshing,
 :root[data-mantine-color-scheme='dark'] .employee-selection-bar,
+:root[data-mantine-color-scheme='dark'] .employee-detail-hero,
+:root[data-mantine-color-scheme='dark'] .employee-detail-section,
+:root[data-mantine-color-scheme='dark'] .employee-detail-stat-card,
+:root[data-mantine-color-scheme='dark'] .employee-detail-quota-card,
+:root[data-mantine-color-scheme='dark'] .organization-tree-shell,
+:root[data-mantine-color-scheme='dark'] .organization-detail-card,
 :root[data-mantine-color-scheme='dark'] .employee-detail-empty,
 :root[data-mantine-color-scheme='dark'] .empty-state-surface {
   background: var(--hrm-surface-subtle);
+  border-color: var(--hrm-border);
+}
+
+:root[data-mantine-color-scheme='dark'] .employee-detail-avatar,
+:root[data-mantine-color-scheme='dark'] .employee-detail-status-dot {
+  border-color: var(--hrm-surface-subtle);
+}
+
+:root[data-mantine-color-scheme='dark'] .employee-detail-info-value,
+:root[data-mantine-color-scheme='dark'] .employee-detail-calendar-cell {
+  color: var(--hrm-text);
+}
+
+:root[data-mantine-color-scheme='dark'] .employee-detail-calendar-cell.is-empty {
+  background: var(--mantine-color-dark-6);
+  color: var(--hrm-muted);
+}
+
+:root[data-mantine-color-scheme='dark'] .employee-detail-calendar-cell.is-ok {
+  background: color-mix(in srgb, var(--mantine-color-teal-3), transparent 84%);
+  border-color: color-mix(in srgb, var(--mantine-color-teal-3), transparent 58%);
+}
+
+:root[data-mantine-color-scheme='dark'] .employee-detail-calendar-cell.is-late {
+  background: color-mix(in srgb, var(--mantine-color-yellow-3), transparent 80%);
+  border-color: color-mix(in srgb, var(--mantine-color-yellow-3), transparent 56%);
+}
+
+:root[data-mantine-color-scheme='dark'] .employee-detail-calendar-cell.is-absent {
+  background: color-mix(in srgb, var(--mantine-color-red-3), transparent 80%);
+  border-color: color-mix(in srgb, var(--mantine-color-red-3), transparent 56%);
+}
+
+:root[data-mantine-color-scheme='dark'] .employee-detail-calendar-cell.is-leave {
+  background: var(--mantine-color-dark-5);
+  border-color: var(--hrm-border);
+}
+
+:root[data-mantine-color-scheme='dark'] .organization-tree-table .mantine-Table-th {
+  background: var(--hrm-surface-subtle);
+  color: #cbd5e1;
+}
+
+:root[data-mantine-color-scheme='dark'] .organization-tree-table .mantine-Table-td {
+  border-bottom-color: var(--hrm-border-soft);
+  color: var(--hrm-text);
+}
+
+:root[data-mantine-color-scheme='dark'] .organization-tree-row:hover .mantine-Table-td {
+  background: #172033 !important;
+  color: var(--hrm-text) !important;
+}
+
+:root[data-mantine-color-scheme='dark'] .organization-employee-row {
+  background: var(--hrm-surface);
   border-color: var(--hrm-border);
 }
 

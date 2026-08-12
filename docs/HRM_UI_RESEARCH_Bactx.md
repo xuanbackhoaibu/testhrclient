@@ -1342,3 +1342,109 @@ Ghi chú:
 - Giữ 5 ô nằm một hàng ngang trên desktop, tự xuống 3/2/1 cột theo breakpoint nhỏ hơn.
 - Giảm padding, font size, icon size và chiều cao skeleton loading tương ứng.
 - Detail text và mini stat chip được rút gọn để không làm card phình to.
+
+## 24. EmployeeDetailPage - Nâng cấp trang chi tiết nhân viên
+
+### 24.1. Hero Header
+
+Đã nâng cấp:
+
+- Thiết kế lại header chi tiết nhân viên theo dạng hero rõ ràng hơn.
+- Thêm avatar tròn cỡ lớn kèm chấm trạng thái:
+  - Xanh: đang làm việc.
+  - Vàng: thử việc.
+  - Đỏ: đã nghỉ/ngừng làm việc.
+- Hiển thị nổi bật họ tên, mã nhân sự, chức danh, đơn vị và phòng ban.
+- Thêm badge trạng thái nhân sự và trạng thái tài khoản liên kết.
+- Thêm nhóm thao tác nhanh:
+  - Sửa hồ sơ.
+  - Gửi email.
+  - Xem bảng công.
+  - Xem hợp đồng.
+
+### 24.2. Hệ thống tab nghiệp vụ
+
+Đã nâng cấp:
+
+- Tách trang chi tiết thành các tab rõ nghĩa hơn:
+  - Thông tin cá nhân.
+  - Phân công.
+  - Hợp đồng.
+  - Chấm công.
+  - Nghỉ phép.
+  - Điều chuyển.
+  - Tài khoản.
+  - Lịch sử.
+- Tab thông tin cá nhân dùng layout 2 cột label/value.
+- Các trường nhạy cảm như ngày sinh, CCCD/CMND và số điện thoại cá nhân được ẩn mặc định, có nút hiện/ẩn và copy nhanh.
+- Tab phân công có card phân công hiện tại và timeline lịch sử phân công.
+- Tab hợp đồng dùng badge cảnh báo hạn hợp đồng:
+  - Đỏ nhấp nháy nếu còn dưới 15 ngày.
+  - Vàng nếu còn dưới 30 ngày.
+  - Xanh nếu còn hiệu lực dài.
+- Tab chấm công có mini lịch tháng với màu trạng thái đủ công, đi muộn, vắng, nghỉ phép và tooltip chi tiết check-in/check-out.
+- Tab nghỉ phép có progress quỹ phép năm và danh sách đơn nghỉ gần nhất.
+- Tab điều chuyển có timeline dọc các lần điều chuyển.
+- Tab tài khoản giữ lại chức năng quản lý tài khoản/quyền truy cập hiện có, bổ sung trạng thái liên kết và nút cấp tài khoản khi chưa có.
+- Tab lịch sử chuyển từ bảng tĩnh sang timeline audit dễ quét hơn.
+
+### 24.3. Dữ liệu và Dark Mode
+
+Đã nâng cấp:
+
+- Mở rộng `useEmployeeDetail` để lấy thêm danh sách điều chuyển theo `employeeId`.
+- Trang chi tiết dùng cùng nguồn dữ liệu từ API/mock hiện có cho hợp đồng, nghỉ phép, chấm công, audit và điều chuyển.
+- Bổ sung CSS responsive cho hero action và mini calendar trên mobile.
+- Đồng bộ dark mode cho hero, card, giá trị thông tin và các ô lịch chấm công để text không bị mờ trên nền tối.
+
+## 25. Nhóm trang Cơ cấu tổ chức
+
+Áp dụng cho:
+
+- Lĩnh vực kinh doanh.
+- Đơn vị.
+- Phòng ban.
+- Chức danh.
+
+### 25.1. Pattern danh sách phân cấp
+
+Đã nâng cấp:
+
+- Thêm badge đếm số bản ghi `active` ngay trên header từng trang.
+- Giữ lại ô tìm kiếm và filter trạng thái hiện có.
+- Thay bảng phẳng bằng danh sách phân cấp có nút mở/đóng:
+  - Lĩnh vực → Đơn vị.
+  - Đơn vị → Phòng ban.
+  - Phòng ban nhóm theo Đơn vị.
+  - Chức danh nhóm theo nhóm công việc/phạm vi.
+- Mỗi dòng hiển thị mã, tên, thông tin phụ, số nhân sự trực thuộc và trạng thái.
+- Dòng con được thụt lề theo cấp cha để HR quét cấu trúc nhanh hơn.
+
+### 25.2. Drawer chi tiết
+
+Đã nâng cấp:
+
+- Click vào từng dòng mở drawer chi tiết.
+- Drawer hiển thị thông tin cơ bản, mô tả/ghi chú và các trường liên quan của bản ghi.
+- Bổ sung danh sách nhân sự trực thuộc:
+  - Avatar chữ cái đầu.
+  - Tên nhân sự.
+  - Mã nhân sự.
+  - Badge trạng thái làm việc.
+- Nút sửa và vô hiệu hóa được đưa vào drawer, vẫn tôn trọng phân quyền hiện có.
+
+### 25.3. Cảnh báo vô hiệu hóa
+
+Đã nâng cấp:
+
+- Modal xác nhận tạm ngưng/vô hiệu hóa hiển thị rõ số nhân sự đang gắn với bản ghi.
+- Áp dụng cho Lĩnh vực, Đơn vị, Phòng ban và Chức danh.
+- Giúp HR cân nhắc trước khi tắt bản ghi đang được dùng trong phân công nhân sự.
+
+### 25.4. Đồng bộ UI/Dark Mode
+
+Đã nâng cấp:
+
+- Tạo component dùng chung `OrganizationHierarchyList` cho 4 trang để tránh lặp pattern.
+- Bổ sung CSS cho bảng cây, hover row, drawer detail card và danh sách nhân sự.
+- Đồng bộ dark mode để header bảng, dòng hover và card chi tiết không bị nền trắng/chữ mờ.
