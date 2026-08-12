@@ -556,6 +556,16 @@ export function TimesheetGridPage() {
       ),
     [departmentsQuery.data, unitNameById],
   );
+  const departmentUnitIdById = useMemo(
+    () =>
+      new Map(
+        (departmentsQuery.data ?? []).map((department) => [
+          department.id,
+          department.unitId,
+        ]),
+      ),
+    [departmentsQuery.data],
+  );
   const unitOptions = useMemo(
     () =>
       (unitsQuery.data ?? []).map((unit) => ({
@@ -564,16 +574,21 @@ export function TimesheetGridPage() {
       })),
     [unitsQuery.data],
   );
-  const departmentOptions = useMemo(
-    () =>
-      (departmentsQuery.data ?? []).map((department) => ({
-        value: department.id,
-        label: unitNameById.get(department.unitId)
-          ? `${department.name} (${unitNameById.get(department.unitId)})`
-          : department.name,
-      })),
-    [departmentsQuery.data, unitNameById],
-  );
+  const visibleDepartmentOptions = useMemo(() => {
+    const selectedUnitIds = new Set(draftUnitIds);
+    const departments = draftUnitIds.length
+      ? (departmentsQuery.data ?? []).filter((department) =>
+          selectedUnitIds.has(department.unitId),
+        )
+      : (departmentsQuery.data ?? []);
+
+    return departments.map((department) => ({
+      value: department.id,
+      label: unitNameById.get(department.unitId)
+        ? `${department.name} (${unitNameById.get(department.unitId)})`
+        : department.name,
+    }));
+  }, [departmentsQuery.data, draftUnitIds, unitNameById]);
   const preparedRows = useMemo<PreparedTimesheetRow[]>(
     () =>
       rows.map((row) => ({
@@ -693,8 +708,35 @@ export function TimesheetGridPage() {
 
   function openScopeModal() {
     setDraftUnitIds(unitIds);
-    setDraftDepartmentIds(departmentIds);
+    setDraftDepartmentIds(
+      restrictDepartmentsToDraftUnits(departmentIds, unitIds),
+    );
     setScopeModalOpened(true);
+  }
+
+  /** Một phòng ban chỉ hợp lệ trong các đơn vị đang chọn. Khi không chọn đơn
+   * vị, cho phép HR lọc trực tiếp theo phòng ban trên toàn công ty. */
+  function restrictDepartmentsToDraftUnits(
+    ids: string[],
+    selectedUnitIds: string[],
+  ) {
+    if (!selectedUnitIds.length || !departmentsQuery.data) return ids;
+
+    const selectedUnitIdSet = new Set(selectedUnitIds);
+    return ids.filter((departmentId) =>
+      selectedUnitIdSet.has(departmentUnitIdById.get(departmentId) ?? ""),
+    );
+  }
+
+  function toggleDraftUnitSelection(unitId: string) {
+    const nextUnitIds = draftUnitIds.includes(unitId)
+      ? draftUnitIds.filter((id) => id !== unitId)
+      : [...draftUnitIds, unitId];
+
+    setDraftUnitIds(nextUnitIds);
+    setDraftDepartmentIds((currentDepartmentIds) =>
+      restrictDepartmentsToDraftUnits(currentDepartmentIds, nextUnitIds),
+    );
   }
 
   function toggleDraftSelection(
@@ -1133,8 +1175,9 @@ export function TimesheetGridPage() {
         <Stack gap="md">
           <Alert color="violet" variant="light">
             Không chọn mục nào nghĩa là xem và xuất <b>toàn công ty</b>. Có thể
-            chọn nhiều đơn vị và phòng ban; kết quả được gộp trong một bảng
-            công, phân nhóm rõ theo đơn vị/phòng ban.
+            chọn nhiều đơn vị và phòng ban; khi đã chọn đơn vị, danh sách phòng
+            ban chỉ hiện các phòng thuộc đơn vị đó. Kết quả được gộp trong một
+            bảng công, phân nhóm rõ theo đơn vị/phòng ban.
           </Alert>
           <Group align="flex-start" grow>
             <Stack gap="xs">
@@ -1155,13 +1198,7 @@ export function TimesheetGridPage() {
                       key={option.value}
                       label={option.label}
                       checked={draftUnitIds.includes(option.value)}
-                      onChange={() =>
-                        toggleDraftSelection(
-                          option.value,
-                          draftUnitIds,
-                          setDraftUnitIds,
-                        )
-                      }
+                      onChange={() => toggleDraftUnitSelection(option.value)}
                     />
                   ))}
                 </Stack>
@@ -1180,7 +1217,7 @@ export function TimesheetGridPage() {
               </Group>
               <ScrollArea h={250} type="auto">
                 <Stack gap={8} pr="sm">
-                  {departmentOptions.map((option) => (
+                  {visibleDepartmentOptions.map((option) => (
                     <Checkbox
                       key={option.value}
                       label={option.label}
@@ -1218,7 +1255,12 @@ export function TimesheetGridPage() {
               <Button
                 onClick={() => {
                   setUnitIds(draftUnitIds);
-                  setDepartmentIds(draftDepartmentIds);
+                  setDepartmentIds(
+                    restrictDepartmentsToDraftUnits(
+                      draftDepartmentIds,
+                      draftUnitIds,
+                    ),
+                  );
                   setPage(1);
                   setScopeModalOpened(false);
                 }}
