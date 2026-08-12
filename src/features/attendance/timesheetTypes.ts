@@ -75,6 +75,8 @@ export interface TimesheetGrid {
 export interface TimesheetGridQuery {
   month: number;
   year: number;
+  /** Chỉ xem/xuất bảng công của một nhân sự đã chọn. */
+  employeeId?: string;
   departmentId?: string;
   unitId?: string;
   departmentIds?: string[];

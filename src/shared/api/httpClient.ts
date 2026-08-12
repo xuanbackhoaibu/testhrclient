@@ -4,3 +4,5 @@ export {
   getFilenameFromContentDisposition,
   unwrapApiEnvelope,
 } from './http-client';
+
+export type { SaveLocationDownloadResult } from './http-client';

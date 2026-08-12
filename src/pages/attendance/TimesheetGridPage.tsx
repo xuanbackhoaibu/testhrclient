@@ -39,6 +39,7 @@ import {
   type TimesheetGridDay,
   type TimesheetGridRow,
 } from "../../features/attendance/timesheetTypes";
+import { useEmployees } from "../../features/employees/useEmployees";
 import { useDepartmentsSelect } from "../../features/organization/useDepartments";
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { PageHeader } from "../../shared/components/PageHeader";
@@ -65,6 +66,11 @@ const rowsPerPageOptions = [20, 50, 100].map((value) => ({
   value: String(value),
   label: `${value}/trang`,
 }));
+
+type EmployeeFilterOption = {
+  value: string;
+  label: string;
+};
 const colorLegendItems = [
   {
     color: "#d9d2e9",
@@ -474,6 +480,10 @@ export function TimesheetGridPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [departmentIds, setDepartmentIds] = useState<string[]>([]);
   const [unitIds, setUnitIds] = useState<string[]>([]);
+  const [employeeId, setEmployeeId] = useState<string | null>(null);
+  const [employeeSearch, setEmployeeSearch] = useState("");
+  const [selectedEmployee, setSelectedEmployee] =
+    useState<EmployeeFilterOption | null>(null);
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [scopeModalOpened, setScopeModalOpened] = useState(false);
@@ -487,14 +497,20 @@ export function TimesheetGridPage() {
 
   const departmentsQuery = useDepartmentsSelect();
   const unitsQuery = useUnitsSelect();
+  const employeeSearchQuery = useEmployees({
+    search: employeeSearch.trim() || undefined,
+    page: 1,
+    pageSize: 20,
+  });
   const query = useMemo(
     () => ({
       month,
       year,
+      employeeId: employeeId ?? undefined,
       departmentIds: departmentIds.length ? departmentIds : undefined,
       unitIds: unitIds.length ? unitIds : undefined,
     }),
-    [departmentIds, month, unitIds, year],
+    [departmentIds, employeeId, month, unitIds, year],
   );
   const gridQuery = useTimesheetGrid(query);
   const adjustDay = useAdjustTimesheetDay();
@@ -556,6 +572,16 @@ export function TimesheetGridPage() {
       ),
     [departmentsQuery.data, unitNameById],
   );
+  const departmentUnitIdById = useMemo(
+    () =>
+      new Map(
+        (departmentsQuery.data ?? []).map((department) => [
+          department.id,
+          department.unitId,
+        ]),
+      ),
+    [departmentsQuery.data],
+  );
   const unitOptions = useMemo(
     () =>
       (unitsQuery.data ?? []).map((unit) => ({
@@ -564,16 +590,35 @@ export function TimesheetGridPage() {
       })),
     [unitsQuery.data],
   );
-  const departmentOptions = useMemo(
-    () =>
-      (departmentsQuery.data ?? []).map((department) => ({
-        value: department.id,
-        label: unitNameById.get(department.unitId)
-          ? `${department.name} (${unitNameById.get(department.unitId)})`
-          : department.name,
-      })),
-    [departmentsQuery.data, unitNameById],
-  );
+  const visibleDepartmentOptions = useMemo(() => {
+    const selectedUnitIds = new Set(draftUnitIds);
+    const departments = draftUnitIds.length
+      ? (departmentsQuery.data ?? []).filter((department) =>
+          selectedUnitIds.has(department.unitId),
+        )
+      : (departmentsQuery.data ?? []);
+
+    return departments.map((department) => ({
+      value: department.id,
+      label: unitNameById.get(department.unitId)
+        ? `${department.name} (${unitNameById.get(department.unitId)})`
+        : department.name,
+    }));
+  }, [departmentsQuery.data, draftUnitIds, unitNameById]);
+  const employeeOptions = useMemo<EmployeeFilterOption[]>(() => {
+    const options = (employeeSearchQuery.data?.data ?? []).map((employee) => ({
+      value: employee.id,
+      label: `${employee.fullName} · ${employee.employeeCode}`,
+    }));
+
+    if (
+      selectedEmployee &&
+      !options.some((option) => option.value === selectedEmployee.value)
+    ) {
+      return [selectedEmployee, ...options];
+    }
+    return options;
+  }, [employeeSearchQuery.data?.data, selectedEmployee]);
   const preparedRows = useMemo<PreparedTimesheetRow[]>(
     () =>
       rows.map((row) => ({
@@ -693,8 +738,35 @@ export function TimesheetGridPage() {
 
   function openScopeModal() {
     setDraftUnitIds(unitIds);
-    setDraftDepartmentIds(departmentIds);
+    setDraftDepartmentIds(
+      restrictDepartmentsToDraftUnits(departmentIds, unitIds),
+    );
     setScopeModalOpened(true);
+  }
+
+  /** Một phòng ban chỉ hợp lệ trong các đơn vị đang chọn. Khi không chọn đơn
+   * vị, cho phép HR lọc trực tiếp theo phòng ban trên toàn công ty. */
+  function restrictDepartmentsToDraftUnits(
+    ids: string[],
+    selectedUnitIds: string[],
+  ) {
+    if (!selectedUnitIds.length || !departmentsQuery.data) return ids;
+
+    const selectedUnitIdSet = new Set(selectedUnitIds);
+    return ids.filter((departmentId) =>
+      selectedUnitIdSet.has(departmentUnitIdById.get(departmentId) ?? ""),
+    );
+  }
+
+  function toggleDraftUnitSelection(unitId: string) {
+    const nextUnitIds = draftUnitIds.includes(unitId)
+      ? draftUnitIds.filter((id) => id !== unitId)
+      : [...draftUnitIds, unitId];
+
+    setDraftUnitIds(nextUnitIds);
+    setDraftDepartmentIds((currentDepartmentIds) =>
+      restrictDepartmentsToDraftUnits(currentDepartmentIds, nextUnitIds),
+    );
   }
 
   function toggleDraftSelection(
@@ -757,7 +829,7 @@ export function TimesheetGridPage() {
         message:
           result.skippedLocked + result.skippedAdjusted > 0
             ? `Giữ nguyên ${result.skippedLocked} ngày đã chốt và ${result.skippedAdjusted} ngày HR đã sửa tay.`
-            : "Bảng công đã được tạo đủ ngày cho toàn bộ nhân sự đang làm việc.",
+            : "Bảng công đã được tạo/cập nhật theo phân công hiệu lực của kỳ đang xem, kể cả tháng lịch sử.",
       });
     } catch {
       notifications.show({
@@ -810,11 +882,23 @@ export function TimesheetGridPage() {
   async function handleExport() {
     setIsExporting(true);
     try {
-      await downloadTimesheetGridExport(query);
+      const result = await downloadTimesheetGridExport(query);
+      if (result.status === "cancelled") {
+        return;
+      }
+      if (result.status === "unsupported") {
+        notifications.show({
+          color: "orange",
+          title: "Chưa thể chọn nơi lưu",
+          message:
+            "Hãy mở Hacom HRM bằng Chrome hoặc Microsoft Edge để chọn thư mục và tên file Excel.",
+        });
+        return;
+      }
       notifications.show({
         color: "green",
-        title: "Đã xuất Excel",
-        message: "File BCC được tải xuống theo đúng phạm vi đang chọn.",
+        title: "Đã lưu Excel",
+        message: `Đã lưu ${result.filename} theo đúng phạm vi đang chọn.`,
       });
     } catch {
       notifications.show({
@@ -875,7 +959,9 @@ export function TimesheetGridPage() {
             muộn. Thứ Bảy làm buổi sáng <b>08:00–12:00</b>; Chủ nhật luôn là
             <b> ngày nghỉ</b>, không cảnh báo muộn hay thiếu chấm công. HR có
             thể tick <b>Đủ công mặc định</b> theo từng người đặc thù: ngày làm
-            việc tự đủ công, bỏ tick sẽ trở lại tính theo máy.
+            việc tự đủ công, bỏ tick sẽ trở lại tính theo máy. Khi chọn tháng
+            cũ, hệ thống xét đúng phân công hiệu lực của tháng đó, kể cả nhân
+            sự đã nghỉ hoặc chuyển đơn vị sau này.
           </Text>
         </Alert>
 
@@ -917,6 +1003,32 @@ export function TimesheetGridPage() {
                   {scopeLabel}
                 </Button>
               </Stack>
+              <Select
+                size="sm"
+                label="Nhân sự"
+                w={260}
+                searchable
+                clearable
+                data={employeeOptions}
+                value={employeeId}
+                searchValue={employeeSearch}
+                placeholder="Tìm tên hoặc mã nhân viên"
+                nothingFoundMessage={
+                  employeeSearchQuery.isFetching
+                    ? "Đang tìm nhân sự…"
+                    : "Không tìm thấy nhân sự"
+                }
+                onSearchChange={setEmployeeSearch}
+                onChange={(value) => {
+                  const option = employeeOptions.find(
+                    (item) => item.value === value,
+                  );
+                  setEmployeeId(value);
+                  setSelectedEmployee(option ?? null);
+                  setEmployeeSearch("");
+                  setPage(1);
+                }}
+              />
             </Group>
             <TimesheetColorLegend />
             <Group gap="xs" pb={2}>
@@ -1133,8 +1245,9 @@ export function TimesheetGridPage() {
         <Stack gap="md">
           <Alert color="violet" variant="light">
             Không chọn mục nào nghĩa là xem và xuất <b>toàn công ty</b>. Có thể
-            chọn nhiều đơn vị và phòng ban; kết quả được gộp trong một bảng
-            công, phân nhóm rõ theo đơn vị/phòng ban.
+            chọn nhiều đơn vị và phòng ban; khi đã chọn đơn vị, danh sách phòng
+            ban chỉ hiện các phòng thuộc đơn vị đó. Kết quả được gộp trong một
+            bảng công, phân nhóm rõ theo đơn vị/phòng ban.
           </Alert>
           <Group align="flex-start" grow>
             <Stack gap="xs">
@@ -1155,13 +1268,7 @@ export function TimesheetGridPage() {
                       key={option.value}
                       label={option.label}
                       checked={draftUnitIds.includes(option.value)}
-                      onChange={() =>
-                        toggleDraftSelection(
-                          option.value,
-                          draftUnitIds,
-                          setDraftUnitIds,
-                        )
-                      }
+                      onChange={() => toggleDraftUnitSelection(option.value)}
                     />
                   ))}
                 </Stack>
@@ -1180,7 +1287,7 @@ export function TimesheetGridPage() {
               </Group>
               <ScrollArea h={250} type="auto">
                 <Stack gap={8} pr="sm">
-                  {departmentOptions.map((option) => (
+                  {visibleDepartmentOptions.map((option) => (
                     <Checkbox
                       key={option.value}
                       label={option.label}
@@ -1218,7 +1325,12 @@ export function TimesheetGridPage() {
               <Button
                 onClick={() => {
                   setUnitIds(draftUnitIds);
-                  setDepartmentIds(draftDepartmentIds);
+                  setDepartmentIds(
+                    restrictDepartmentsToDraftUnits(
+                      draftDepartmentIds,
+                      draftUnitIds,
+                    ),
+                  );
                   setPage(1);
                   setScopeModalOpened(false);
                 }}
