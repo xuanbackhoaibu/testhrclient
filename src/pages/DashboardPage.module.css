@@ -17,7 +17,7 @@
 
 .metricCard {
   position: relative;
-  min-height: 128px;
+  min-height: 92px;
   overflow: hidden;
   border-radius: var(--hrm-radius);
 }
@@ -43,8 +43,12 @@
 }
 
 .metricLabel {
-  letter-spacing: 0.02em;
+  overflow: hidden;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .metricValue,
@@ -56,14 +60,15 @@
 
 .metricValue {
   color: var(--hrm-text);
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 800;
   line-height: 1;
 }
 
 .metricMeta {
-  max-width: 92px;
-  line-height: 1.25;
+  max-width: 86px;
+  font-size: 11px;
+  line-height: 1.15;
 }
 
 .metricIcon {
@@ -71,23 +76,27 @@
 }
 
 .metricDetail {
-  min-height: 18px;
+  min-height: 14px;
 }
 
 .metricDetailText {
-  line-height: 1.25;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .kpiProgressWrap {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .kpiProgressTrack {
   overflow: hidden;
-  height: 8px;
+  height: 6px;
   border-radius: 999px;
   background: #f1e8e8;
 }
@@ -101,7 +110,7 @@
 .miniStatGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  gap: 4px;
 }
 
 .miniStatGrid span {
@@ -109,16 +118,16 @@
   border-radius: 6px;
   background: rgba(216, 199, 100, 0.18);
   color: #6b5f20;
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1.2;
-  padding: 5px 6px;
+  padding: 4px 5px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .miniStatGrid strong {
-  margin-left: 3px;
-  font-size: 12px;
+  margin-left: 2px;
+  font-size: 11px;
 }
 
 .chartPanel,

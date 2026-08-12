@@ -84,17 +84,15 @@ function MetricCard({
   icon: React.ReactNode;
 }) {
   return (
-    <Paper className={`${styles.metricCard} ${styles[`metricCard_${tone}`]}`} p="md">
-      <Stack gap="xs" h="100%" justify="space-between">
+    <Paper className={`${styles.metricCard} ${styles[`metricCard_${tone}`]}`} p="sm">
+      <Stack gap={6} h="100%" justify="space-between">
         <Group justify="space-between" align="flex-start" wrap="nowrap">
           <Text size="xs" fw={750} c="dimmed" className={styles.metricLabel}>
             {title}
           </Text>
-          <ThemeIcon className={styles.metricIcon} color={tone} variant="light" size={30}>
-            {icon}
-          </ThemeIcon>
+          <ThemeIcon className={styles.metricIcon} color={tone} variant="light" size={26}>{icon}</ThemeIcon>
         </Group>
-        <Group align="flex-end" justify="space-between" gap="xs" wrap="nowrap">
+        <Group align="flex-end" justify="space-between" gap={6} wrap="nowrap">
           <Text className={styles.metricValue}>{formatNumber(value)}</Text>
           <Text size="xs" c="dimmed" ta="right" className={styles.metricMeta}>{meta}</Text>
         </Group>
@@ -138,7 +136,7 @@ function DashboardSkeleton() {
       </Paper>
       <SimpleGrid cols={{ base: 1, sm: 2, xl: 5 }} spacing="md">
         {Array.from({ length: 5 }).map((_, index) => (
-          <Skeleton key={index} height={152} radius="md" />
+          <Skeleton key={index} height={96} radius="md" />
         ))}
       </SimpleGrid>
       <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
@@ -734,7 +732,7 @@ export function DashboardPage() {
           </Group>
         </Paper>
 
-        <SimpleGrid cols={{ base: 1, sm: 2, xl: 5 }} spacing="md">
+        <SimpleGrid cols={{ base: 1, sm: 2, md: 3, xl: 5 }} spacing="sm">
           {metrics.map((metric) => (
             <MetricCard key={metric.title} {...metric} />
           ))}

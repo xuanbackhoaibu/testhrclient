@@ -1333,3 +1333,12 @@ Ghi chú:
 - Đồng bộ Calendar module CSS: header, sidebar, day grid, today/other-month state.
 - Vá riêng AntD `Descriptions` ở trang Cài đặt để title, label và content chuyển sang màu sáng rõ trong dark mode.
 - Vá hover/striped/selected state của DataTable trong dark mode để bảng Nhân sự không chuyển sang nền trắng khi rê chuột.
+
+### 23.6. Compact KPI Cards trên Dashboard
+
+Đã nâng cấp:
+
+- Thu gọn 5 KPI cards đầu Dashboard để không chiếm quá nhiều chiều cao.
+- Giữ 5 ô nằm một hàng ngang trên desktop, tự xuống 3/2/1 cột theo breakpoint nhỏ hơn.
+- Giảm padding, font size, icon size và chiều cao skeleton loading tương ứng.
+- Detail text và mini stat chip được rút gọn để không làm card phình to.
