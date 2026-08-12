@@ -31,6 +31,7 @@ import { downloadTimesheetGridExport } from "../../features/attendance/timesheet
 import {
   useAdjustTimesheetDay,
   useRecomputeTimesheet,
+  useSetAutoFullAttendance,
   useTimesheetGrid,
 } from "../../features/attendance/useTimesheet";
 import {
@@ -38,6 +39,7 @@ import {
   type TimesheetGridDay,
   type TimesheetGridRow,
 } from "../../features/attendance/timesheetTypes";
+import { useEmployees } from "../../features/employees/useEmployees";
 import { useDepartmentsSelect } from "../../features/organization/useDepartments";
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { PageHeader } from "../../shared/components/PageHeader";
@@ -56,13 +58,76 @@ const fixedColumns = [
   { key: "number", label: "TT", left: 0, width: 42 },
   { key: "code", label: "Mã nhân viên", left: 42, width: 104 },
   { key: "name", label: "Họ và tên", left: 146, width: 184 },
-  { key: "title", label: "Chức vụ", left: 330, width: 154 },
+  { key: "autoFull", label: "Đủ công\nmặc định", left: 330, width: 86 },
+  { key: "title", label: "Chức vụ", left: 416, width: 154 },
 ] as const;
 const dayColumnWidth = 44;
 const rowsPerPageOptions = [20, 50, 100].map((value) => ({
   value: String(value),
   label: `${value}/trang`,
 }));
+
+type EmployeeFilterOption = {
+  value: string;
+  label: string;
+};
+const colorLegendItems = [
+  {
+    color: "#d9d2e9",
+    label: "Phòng ban",
+    description: "Dải tiêu đề của từng phòng ban",
+  },
+  {
+    color: "#dbeafe",
+    label: "HR sửa tay",
+    description: "Ngày đã được HR điều chỉnh thủ công",
+  },
+  {
+    color: "#fee2e2",
+    label: "? Giải trình",
+    description: "Thiếu chấm công hoặc chưa đủ điều kiện ghi công",
+  },
+  {
+    color: "#ffedd5",
+    label: "Muộn ≥ 08:15",
+    description: "Check-in từ 08:15 đã được tính đi muộn",
+  },
+  {
+    color: "#e9ecef",
+    label: "CN/ngày nghỉ",
+    description: "Chủ nhật hoặc ngày không làm việc",
+  },
+  {
+    color: "#fff3bf",
+    label: "Ngày lễ",
+    description: "Ngày lễ theo lịch công ty",
+  },
+  {
+    color: "#c7e9b4",
+    label: "CT/BP",
+    description: "Công tác hoặc biệt phái",
+  },
+  {
+    color: "#fff59d",
+    label: "P/L",
+    description: "Nghỉ phép hoặc mã lễ, tết",
+  },
+  {
+    color: "#ff7875",
+    label: "KL",
+    description: "Nghỉ không hưởng lương",
+  },
+  {
+    color: "#ffd8a8",
+    label: "Ốm/TS/online",
+    description: "Ốm, con ốm, thai sản, tai nạn lao động hoặc làm việc online",
+  },
+  {
+    color: "#ffffff",
+    label: "+/- công",
+    description: "+ là đủ công (máy hoặc cờ mặc định), - là nửa công",
+  },
+] as const;
 const bccTailColumns = [
   { key: "actualWorkDays", label: "Ngày\nlàm việc\nthực tế\n(1)", width: 72 },
   { key: "annualLeaveDays", label: "Nghỉ ngày\nPhép\n(2)", width: 72 },
@@ -184,9 +249,49 @@ function surfaceForSymbol(symbol: string): string | undefined {
   return undefined;
 }
 
-function cellDescription(day: TimesheetGridDay | undefined): string {
+function TimesheetColorLegend() {
+  return (
+    <Stack gap={3} pb={2} style={{ flex: 1, minWidth: 360 }}>
+      <Text size="xs" fw={600} c="dimmed" tt="uppercase">
+        Chú giải màu ô
+      </Text>
+      <Group gap="xs" wrap="wrap">
+        {colorLegendItems.map((item) => (
+          <Group key={item.label} gap={4} wrap="nowrap">
+            <span
+              aria-hidden
+              style={{
+                background: item.color,
+                border: "1px solid var(--mantine-color-gray-4)",
+                borderRadius: 3,
+                display: "block",
+                flex: "0 0 auto",
+                height: 11,
+                width: 11,
+              }}
+            />
+            <Text fz={10} lh={1.2} c="dimmed" title={item.description}>
+              {item.label}
+            </Text>
+          </Group>
+        ))}
+      </Group>
+    </Stack>
+  );
+}
+
+function cellDescription(
+  day: TimesheetGridDay | undefined,
+  attendanceAutoFullDay = false,
+): string {
   if (!day) return "Chưa tạo dữ liệu ngày công";
   return [
+    attendanceAutoFullDay &&
+    day.isWorkingDay &&
+    !day.hasAdjustment &&
+    !day.isLocked
+      ? "Đủ công mặc định"
+      : null,
     day.holidayName,
     day.firstPunch && day.lastPunch
       ? `${day.firstPunch}–${day.lastPunch}`
@@ -236,13 +341,20 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
   employeeNumber,
   dayMetas,
   canEdit,
+  updatingEmployeeId,
   onOpenCell,
+  onToggleAutoFullAttendance,
 }: {
   item: PreparedTimesheetRow;
   employeeNumber: number;
   dayMetas: DayMeta[];
   canEdit: boolean;
+  updatingEmployeeId: string | null;
   onOpenCell: (row: TimesheetGridRow, day: TimesheetGridDay) => void;
+  onToggleAutoFullAttendance: (
+    row: TimesheetGridRow,
+    enabled: boolean,
+  ) => void;
 }) {
   const { row, daysByNumber } = item;
 
@@ -266,7 +378,24 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
           {row.fullName}
         </Text>
       </Table.Td>
-      <Table.Td style={fixedStyle(fixedColumns[3].left, fixedColumns[3].width)}>
+      <Table.Td
+        style={{
+          ...fixedStyle(fixedColumns[3].left, fixedColumns[3].width),
+          textAlign: "center",
+        }}
+      >
+        <Checkbox
+          aria-label={`Đủ công mặc định cho ${row.fullName}`}
+          checked={Boolean(row.attendanceAutoFullDay)}
+          disabled={!canEdit || updatingEmployeeId === row.employeeId}
+          title="HR tick cho nhân sự không cần chấm công; ngày làm việc tự đủ công. Bỏ tick để quay lại tính theo máy."
+          onClick={(event) => event.stopPropagation()}
+          onChange={(event) =>
+            onToggleAutoFullAttendance(row, event.currentTarget.checked)
+          }
+        />
+      </Table.Td>
+      <Table.Td style={fixedStyle(fixedColumns[4].left, fixedColumns[4].width)}>
         {row.jobTitle ? (
           <Text size="xs">{row.jobTitle}</Text>
         ) : (
@@ -303,7 +432,7 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
         return (
           <Table.Td
             key={meta.day}
-            title={cellDescription(day)}
+            title={cellDescription(day, Boolean(row.attendanceAutoFullDay))}
             style={{
               minWidth: dayColumnWidth,
               width: dayColumnWidth,
@@ -351,6 +480,10 @@ export function TimesheetGridPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [departmentIds, setDepartmentIds] = useState<string[]>([]);
   const [unitIds, setUnitIds] = useState<string[]>([]);
+  const [employeeId, setEmployeeId] = useState<string | null>(null);
+  const [employeeSearch, setEmployeeSearch] = useState("");
+  const [selectedEmployee, setSelectedEmployee] =
+    useState<EmployeeFilterOption | null>(null);
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [scopeModalOpened, setScopeModalOpened] = useState(false);
@@ -364,18 +497,28 @@ export function TimesheetGridPage() {
 
   const departmentsQuery = useDepartmentsSelect();
   const unitsQuery = useUnitsSelect();
+  const employeeSearchQuery = useEmployees({
+    search: employeeSearch.trim() || undefined,
+    page: 1,
+    pageSize: 20,
+  });
   const query = useMemo(
     () => ({
       month,
       year,
+      employeeId: employeeId ?? undefined,
       departmentIds: departmentIds.length ? departmentIds : undefined,
       unitIds: unitIds.length ? unitIds : undefined,
     }),
-    [departmentIds, month, unitIds, year],
+    [departmentIds, employeeId, month, unitIds, year],
   );
   const gridQuery = useTimesheetGrid(query);
   const adjustDay = useAdjustTimesheetDay();
   const recompute = useRecomputeTimesheet();
+  const autoFullAttendance = useSetAutoFullAttendance();
+  const [updatingEmployeeId, setUpdatingEmployeeId] = useState<string | null>(
+    null,
+  );
   const rows = useMemo(
     () => gridQuery.data?.rows ?? [],
     [gridQuery.data?.rows],
@@ -429,6 +572,16 @@ export function TimesheetGridPage() {
       ),
     [departmentsQuery.data, unitNameById],
   );
+  const departmentUnitIdById = useMemo(
+    () =>
+      new Map(
+        (departmentsQuery.data ?? []).map((department) => [
+          department.id,
+          department.unitId,
+        ]),
+      ),
+    [departmentsQuery.data],
+  );
   const unitOptions = useMemo(
     () =>
       (unitsQuery.data ?? []).map((unit) => ({
@@ -437,16 +590,35 @@ export function TimesheetGridPage() {
       })),
     [unitsQuery.data],
   );
-  const departmentOptions = useMemo(
-    () =>
-      (departmentsQuery.data ?? []).map((department) => ({
-        value: department.id,
-        label: unitNameById.get(department.unitId)
-          ? `${department.name} (${unitNameById.get(department.unitId)})`
-          : department.name,
-      })),
-    [departmentsQuery.data, unitNameById],
-  );
+  const visibleDepartmentOptions = useMemo(() => {
+    const selectedUnitIds = new Set(draftUnitIds);
+    const departments = draftUnitIds.length
+      ? (departmentsQuery.data ?? []).filter((department) =>
+          selectedUnitIds.has(department.unitId),
+        )
+      : (departmentsQuery.data ?? []);
+
+    return departments.map((department) => ({
+      value: department.id,
+      label: unitNameById.get(department.unitId)
+        ? `${department.name} (${unitNameById.get(department.unitId)})`
+        : department.name,
+    }));
+  }, [departmentsQuery.data, draftUnitIds, unitNameById]);
+  const employeeOptions = useMemo<EmployeeFilterOption[]>(() => {
+    const options = (employeeSearchQuery.data?.data ?? []).map((employee) => ({
+      value: employee.id,
+      label: `${employee.fullName} · ${employee.employeeCode}`,
+    }));
+
+    if (
+      selectedEmployee &&
+      !options.some((option) => option.value === selectedEmployee.value)
+    ) {
+      return [selectedEmployee, ...options];
+    }
+    return options;
+  }, [employeeSearchQuery.data?.data, selectedEmployee]);
   const preparedRows = useMemo<PreparedTimesheetRow[]>(
     () =>
       rows.map((row) => ({
@@ -566,8 +738,35 @@ export function TimesheetGridPage() {
 
   function openScopeModal() {
     setDraftUnitIds(unitIds);
-    setDraftDepartmentIds(departmentIds);
+    setDraftDepartmentIds(
+      restrictDepartmentsToDraftUnits(departmentIds, unitIds),
+    );
     setScopeModalOpened(true);
+  }
+
+  /** Một phòng ban chỉ hợp lệ trong các đơn vị đang chọn. Khi không chọn đơn
+   * vị, cho phép HR lọc trực tiếp theo phòng ban trên toàn công ty. */
+  function restrictDepartmentsToDraftUnits(
+    ids: string[],
+    selectedUnitIds: string[],
+  ) {
+    if (!selectedUnitIds.length || !departmentsQuery.data) return ids;
+
+    const selectedUnitIdSet = new Set(selectedUnitIds);
+    return ids.filter((departmentId) =>
+      selectedUnitIdSet.has(departmentUnitIdById.get(departmentId) ?? ""),
+    );
+  }
+
+  function toggleDraftUnitSelection(unitId: string) {
+    const nextUnitIds = draftUnitIds.includes(unitId)
+      ? draftUnitIds.filter((id) => id !== unitId)
+      : [...draftUnitIds, unitId];
+
+    setDraftUnitIds(nextUnitIds);
+    setDraftDepartmentIds((currentDepartmentIds) =>
+      restrictDepartmentsToDraftUnits(currentDepartmentIds, nextUnitIds),
+    );
   }
 
   function toggleDraftSelection(
@@ -630,7 +829,7 @@ export function TimesheetGridPage() {
         message:
           result.skippedLocked + result.skippedAdjusted > 0
             ? `Giữ nguyên ${result.skippedLocked} ngày đã chốt và ${result.skippedAdjusted} ngày HR đã sửa tay.`
-            : "Bảng công đã được tạo đủ ngày cho toàn bộ nhân sự đang làm việc.",
+            : "Bảng công đã được tạo/cập nhật theo phân công hiệu lực của kỳ đang xem, kể cả tháng lịch sử.",
       });
     } catch {
       notifications.show({
@@ -641,14 +840,65 @@ export function TimesheetGridPage() {
     }
   }
 
+  async function handleToggleAutoFullAttendance(
+    row: TimesheetGridRow,
+    enabled: boolean,
+  ) {
+    setUpdatingEmployeeId(row.employeeId);
+    try {
+      const result = await autoFullAttendance.mutateAsync({
+        employeeId: row.employeeId,
+        payload: {
+          enabled,
+          fromDate: `${year}-${String(month).padStart(2, "0")}-01`,
+          toDate: lastDayOfMonth(year, month),
+        },
+      });
+      notifications.show({
+        color: "green",
+        title: enabled ? "Đã bật đủ công mặc định" : "Đã tắt đủ công mặc định",
+        message: enabled
+          ? `${row.fullName} được tự đủ công ở các ngày làm việc của kỳ đang xem; Chủ nhật vẫn là ngày nghỉ.`
+          : `${row.fullName} đã quay lại tính công theo dữ liệu máy.`,
+      });
+      if (result.recompute.skippedLocked + result.recompute.skippedAdjusted > 0) {
+        notifications.show({
+          color: "blue",
+          title: "Giữ nguyên quyết định đã có",
+          message: `Không thay đổi ${result.recompute.skippedLocked} ngày đã chốt và ${result.recompute.skippedAdjusted} ngày HR đã sửa tay.`,
+        });
+      }
+    } catch {
+      notifications.show({
+        color: "red",
+        title: "Không lưu được đủ công mặc định",
+        message: "Kiểm tra lại quyền HR và thử lại sau.",
+      });
+    } finally {
+      setUpdatingEmployeeId(null);
+    }
+  }
+
   async function handleExport() {
     setIsExporting(true);
     try {
-      await downloadTimesheetGridExport(query);
+      const result = await downloadTimesheetGridExport(query);
+      if (result.status === "cancelled") {
+        return;
+      }
+      if (result.status === "unsupported") {
+        notifications.show({
+          color: "orange",
+          title: "Chưa thể chọn nơi lưu",
+          message:
+            "Hãy mở Hacom HRM bằng Chrome hoặc Microsoft Edge để chọn thư mục và tên file Excel.",
+        });
+        return;
+      }
       notifications.show({
         color: "green",
-        title: "Đã xuất Excel",
-        message: "File BCC được tải xuống theo đúng phạm vi đang chọn.",
+        title: "Đã lưu Excel",
+        message: `Đã lưu ${result.filename} theo đúng phạm vi đang chọn.`,
       });
     } catch {
       notifications.show({
@@ -705,8 +955,13 @@ export function TimesheetGridPage() {
           variant="light"
         >
           <Text size="xs">
-            Giờ hành chính <b>08:00–17:30</b>; chỉ check-in <b>sau 08:15</b> mới
-            tính đi muộn. Thứ Bảy làm buổi sáng <b>08:00–12:00</b>.
+            Giờ hành chính <b>08:00–17:30</b>; check-in <b>từ 08:15</b> tính đi
+            muộn. Thứ Bảy làm buổi sáng <b>08:00–12:00</b>; Chủ nhật luôn là
+            <b> ngày nghỉ</b>, không cảnh báo muộn hay thiếu chấm công. HR có
+            thể tick <b>Đủ công mặc định</b> theo từng người đặc thù: ngày làm
+            việc tự đủ công, bỏ tick sẽ trở lại tính theo máy. Khi chọn tháng
+            cũ, hệ thống xét đúng phân công hiệu lực của tháng đó, kể cả nhân
+            sự đã nghỉ hoặc chuyển đơn vị sau này.
           </Text>
         </Alert>
 
@@ -748,7 +1003,34 @@ export function TimesheetGridPage() {
                   {scopeLabel}
                 </Button>
               </Stack>
+              <Select
+                size="sm"
+                label="Nhân sự"
+                w={260}
+                searchable
+                clearable
+                data={employeeOptions}
+                value={employeeId}
+                searchValue={employeeSearch}
+                placeholder="Tìm tên hoặc mã nhân viên"
+                nothingFoundMessage={
+                  employeeSearchQuery.isFetching
+                    ? "Đang tìm nhân sự…"
+                    : "Không tìm thấy nhân sự"
+                }
+                onSearchChange={setEmployeeSearch}
+                onChange={(value) => {
+                  const option = employeeOptions.find(
+                    (item) => item.value === value,
+                  );
+                  setEmployeeId(value);
+                  setSelectedEmployee(option ?? null);
+                  setEmployeeSearch("");
+                  setPage(1);
+                }}
+              />
             </Group>
+            <TimesheetColorLegend />
             <Group gap="xs" pb={2}>
               <Text size="xs" c="dimmed">
                 {rows.length} nhân viên · {groupedRows.length} phòng ban
@@ -799,9 +1081,14 @@ export function TimesheetGridPage() {
                       rowSpan={2}
                       style={{
                         ...fixedStyle(column.left, column.width, true),
-                        textAlign: column.key === "number" ? "center" : "left",
+                        textAlign:
+                          column.key === "number" || column.key === "autoFull"
+                            ? "center"
+                            : "left",
                         verticalAlign: "middle",
                         padding: "5px 7px",
+                        whiteSpace:
+                          column.key === "autoFull" ? "pre-line" : undefined,
                       }}
                     >
                       {column.label}
@@ -906,7 +1193,11 @@ export function TimesheetGridPage() {
                         employeeNumber={group.startIndex + rowIndex + 1}
                         dayMetas={dayMetas}
                         canEdit={canEdit}
+                        updatingEmployeeId={updatingEmployeeId}
                         onOpenCell={openCell}
+                        onToggleAutoFullAttendance={
+                          handleToggleAutoFullAttendance
+                        }
                       />
                     ))}
                   </Fragment>
@@ -954,8 +1245,9 @@ export function TimesheetGridPage() {
         <Stack gap="md">
           <Alert color="violet" variant="light">
             Không chọn mục nào nghĩa là xem và xuất <b>toàn công ty</b>. Có thể
-            chọn nhiều đơn vị và phòng ban; kết quả được gộp trong một bảng
-            công, phân nhóm rõ theo đơn vị/phòng ban.
+            chọn nhiều đơn vị và phòng ban; khi đã chọn đơn vị, danh sách phòng
+            ban chỉ hiện các phòng thuộc đơn vị đó. Kết quả được gộp trong một
+            bảng công, phân nhóm rõ theo đơn vị/phòng ban.
           </Alert>
           <Group align="flex-start" grow>
             <Stack gap="xs">
@@ -976,13 +1268,7 @@ export function TimesheetGridPage() {
                       key={option.value}
                       label={option.label}
                       checked={draftUnitIds.includes(option.value)}
-                      onChange={() =>
-                        toggleDraftSelection(
-                          option.value,
-                          draftUnitIds,
-                          setDraftUnitIds,
-                        )
-                      }
+                      onChange={() => toggleDraftUnitSelection(option.value)}
                     />
                   ))}
                 </Stack>
@@ -1001,7 +1287,7 @@ export function TimesheetGridPage() {
               </Group>
               <ScrollArea h={250} type="auto">
                 <Stack gap={8} pr="sm">
-                  {departmentOptions.map((option) => (
+                  {visibleDepartmentOptions.map((option) => (
                     <Checkbox
                       key={option.value}
                       label={option.label}
@@ -1039,7 +1325,12 @@ export function TimesheetGridPage() {
               <Button
                 onClick={() => {
                   setUnitIds(draftUnitIds);
-                  setDepartmentIds(draftDepartmentIds);
+                  setDepartmentIds(
+                    restrictDepartmentsToDraftUnits(
+                      draftDepartmentIds,
+                      draftUnitIds,
+                    ),
+                  );
                   setPage(1);
                   setScopeModalOpened(false);
                 }}
