@@ -39,6 +39,7 @@ import {
   type TimesheetGridDay,
   type TimesheetGridRow,
 } from "../../features/attendance/timesheetTypes";
+import { useEmployees } from "../../features/employees/useEmployees";
 import { useDepartmentsSelect } from "../../features/organization/useDepartments";
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { PageHeader } from "../../shared/components/PageHeader";
@@ -65,6 +66,11 @@ const rowsPerPageOptions = [20, 50, 100].map((value) => ({
   value: String(value),
   label: `${value}/trang`,
 }));
+
+type EmployeeFilterOption = {
+  value: string;
+  label: string;
+};
 const colorLegendItems = [
   {
     color: "#d9d2e9",
@@ -474,6 +480,10 @@ export function TimesheetGridPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [departmentIds, setDepartmentIds] = useState<string[]>([]);
   const [unitIds, setUnitIds] = useState<string[]>([]);
+  const [employeeId, setEmployeeId] = useState<string | null>(null);
+  const [employeeSearch, setEmployeeSearch] = useState("");
+  const [selectedEmployee, setSelectedEmployee] =
+    useState<EmployeeFilterOption | null>(null);
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [scopeModalOpened, setScopeModalOpened] = useState(false);
@@ -487,14 +497,20 @@ export function TimesheetGridPage() {
 
   const departmentsQuery = useDepartmentsSelect();
   const unitsQuery = useUnitsSelect();
+  const employeeSearchQuery = useEmployees({
+    search: employeeSearch.trim() || undefined,
+    page: 1,
+    pageSize: 20,
+  });
   const query = useMemo(
     () => ({
       month,
       year,
+      employeeId: employeeId ?? undefined,
       departmentIds: departmentIds.length ? departmentIds : undefined,
       unitIds: unitIds.length ? unitIds : undefined,
     }),
-    [departmentIds, month, unitIds, year],
+    [departmentIds, employeeId, month, unitIds, year],
   );
   const gridQuery = useTimesheetGrid(query);
   const adjustDay = useAdjustTimesheetDay();
@@ -589,6 +605,20 @@ export function TimesheetGridPage() {
         : department.name,
     }));
   }, [departmentsQuery.data, draftUnitIds, unitNameById]);
+  const employeeOptions = useMemo<EmployeeFilterOption[]>(() => {
+    const options = (employeeSearchQuery.data?.data ?? []).map((employee) => ({
+      value: employee.id,
+      label: `${employee.fullName} · ${employee.employeeCode}`,
+    }));
+
+    if (
+      selectedEmployee &&
+      !options.some((option) => option.value === selectedEmployee.value)
+    ) {
+      return [selectedEmployee, ...options];
+    }
+    return options;
+  }, [employeeSearchQuery.data?.data, selectedEmployee]);
   const preparedRows = useMemo<PreparedTimesheetRow[]>(
     () =>
       rows.map((row) => ({
@@ -959,6 +989,32 @@ export function TimesheetGridPage() {
                   {scopeLabel}
                 </Button>
               </Stack>
+              <Select
+                size="sm"
+                label="Nhân sự"
+                w={260}
+                searchable
+                clearable
+                data={employeeOptions}
+                value={employeeId}
+                searchValue={employeeSearch}
+                placeholder="Tìm tên hoặc mã nhân viên"
+                nothingFoundMessage={
+                  employeeSearchQuery.isFetching
+                    ? "Đang tìm nhân sự…"
+                    : "Không tìm thấy nhân sự"
+                }
+                onSearchChange={setEmployeeSearch}
+                onChange={(value) => {
+                  const option = employeeOptions.find(
+                    (item) => item.value === value,
+                  );
+                  setEmployeeId(value);
+                  setSelectedEmployee(option ?? null);
+                  setEmployeeSearch("");
+                  setPage(1);
+                }}
+              />
             </Group>
             <TimesheetColorLegend />
             <Group gap="xs" pb={2}>
