@@ -33,13 +33,18 @@ export interface TimesheetGridRow {
   employeeId: string;
   employeeCode: string;
   fullName: string;
+  departmentId: string | null;
   departmentName: string | null;
+  unitId: string | null;
   unitName: string | null;
+  jobTitle: string | null;
   days: TimesheetGridDay[];
   summary: {
     totalPaidDays: number;
     totalLeaveDays: number;
     countBySymbol: Record<string, number>;
+    annualLeaveUsedToMonth: number;
+    annualLeaveUsedInYear: number;
   };
 }
 
@@ -55,6 +60,8 @@ export interface TimesheetGridQuery {
   year: number;
   departmentId?: string;
   unitId?: string;
+  departmentIds?: string[];
+  unitIds?: string[];
 }
 
 export interface AdjustTimesheetDayPayload {
