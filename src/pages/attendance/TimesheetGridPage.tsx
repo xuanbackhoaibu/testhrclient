@@ -89,8 +89,8 @@ const colorLegendItems = [
   },
   {
     color: "#ffedd5",
-    label: "Muộn ≥ 08:15",
-    description: "Check-in từ 08:15 đã được tính đi muộn",
+    label: "Muộn sau 08:15",
+    description: "Chỉ check-in sau 08:15 mới được tính đi muộn",
   },
   {
     color: "#e9ecef",
@@ -296,7 +296,7 @@ function cellDescription(
     day.firstPunch && day.lastPunch
       ? `${day.firstPunch}–${day.lastPunch}`
       : null,
-    day.lateMinutes > 0 ? `Muộn ${day.lateMinutes}'` : null,
+    day.lateMinutes > 15 ? `Muộn ${day.lateMinutes}'` : null,
     day.earlyLeaveMinutes > 0 ? `Về sớm ${day.earlyLeaveMinutes}'` : null,
     day.needsExplanation ? "Chờ giải trình" : null,
     day.hasAdjustment ? "HR đã sửa tay" : null,
@@ -424,7 +424,7 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
                 ? "#dbeafe"
                 : day?.needsExplanation
                   ? "#fee2e2"
-                  : day?.lateMinutes
+                  : (day?.lateMinutes ?? 0) > 15
                     ? "#ffedd5"
                     : undefined));
         const isEditable = canEdit && day !== undefined && !day.isLocked;
@@ -981,8 +981,8 @@ export function TimesheetGridPage() {
           variant="light"
         >
           <Text size="xs">
-            Giờ hành chính <b>08:00–17:30</b>; check-in <b>từ 08:15</b> tính đi
-            muộn. Thứ Bảy làm buổi sáng <b>08:00–12:00</b>; Chủ nhật luôn là
+            Giờ hành chính <b>08:00–17:30</b>; check-in <b>sau 08:15</b> mới tính
+            đi muộn. Thứ Bảy làm buổi sáng <b>08:00–12:00</b>; Chủ nhật luôn là
             <b> ngày nghỉ</b>, không cảnh báo muộn hay thiếu chấm công. HR có
             thể tick <b>Đủ công mặc định</b> theo từng người đặc thù: ngày làm
             việc tự đủ công, bỏ tick sẽ trở lại tính theo máy. Khi chọn tháng
