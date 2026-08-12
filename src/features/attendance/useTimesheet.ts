@@ -51,9 +51,8 @@ export function useRecomputeTimesheet() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: RecomputePayload) => recomputeTimesheet(payload),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: timesheetKeys.all });
-    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: timesheetKeys.all }),
   });
 }
 
@@ -67,9 +66,8 @@ export function useSetAutoFullAttendance() {
       employeeId: string;
       payload: SetAutoFullAttendancePayload;
     }) => setAutoFullAttendance(employeeId, payload),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: timesheetKeys.all });
-    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: timesheetKeys.all }),
   });
 }
 
