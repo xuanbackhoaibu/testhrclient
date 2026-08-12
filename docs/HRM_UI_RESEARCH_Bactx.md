@@ -1644,3 +1644,134 @@ Ghi chú:
 
 - Bổ sung CSS cho audit stat card, filter panel, feed item và diff table.
 - Đồng bộ dark mode cho hover feed, link thực thể và highlight field thay đổi.
+
+## 29. ImportsPage
+
+### 29.1. Wizard nhập liệu 5 bước
+
+Đã nâng cấp:
+
+- Thay Steps/Tabs AntD bằng giao diện Mantine đồng bộ dark mode.
+- Thêm wizard 5 bước trực quan:
+  - Tải file.
+  - Xem trước.
+  - Kiểm tra.
+  - Xác nhận.
+  - Kết quả.
+- Mỗi bước có icon và trạng thái `done/current/pending`.
+- Wizard tự chuyển trạng thái theo preview batch, lỗi validation, cảnh báo và trạng thái committed.
+
+### 29.2. Màn xem trước và kiểm tra dữ liệu
+
+Đã nâng cấp:
+
+- Thêm 4 card tóm tắt:
+  - Hợp lệ.
+  - Trùng.
+  - Lỗi.
+  - Cảnh báo.
+- Thêm Progress Bar khi upload/parse file Excel để user không tưởng web bị đứng với file lớn.
+- Bảng preview hiển thị staging rows từ API.
+- Dòng lỗi được tô đỏ, dòng cảnh báo được tô vàng.
+- Ô có field lỗi được viền đỏ để HR nhìn đúng vị trí cần sửa.
+- Cột lý do hiển thị message lỗi hoặc cảnh báo theo từng dòng.
+- Nút `Xác nhận import` bị khóa nếu batch còn lỗi hoặc còn cảnh báo nhưng HR chưa chấp nhận.
+
+### 29.3. Lịch sử import và modal đối chiếu
+
+Đã nâng cấp:
+
+- Thay bảng lịch sử phẳng bằng danh sách batch dạng card.
+- Mỗi batch hiển thị tên file, batch code, loại import, thời gian tạo, tổng dòng, số dòng thành công/thất bại và badge trạng thái.
+- Click vào batch mở modal chi tiết kết quả import.
+- Modal chi tiết hiển thị tổng dòng, thành công, thất bại và bảng lỗi gồm dòng, trường, thông báo, gợi ý.
+- Trường `người thực hiện` đang hiển thị placeholder vì API hiện tại chưa trả actor/user thực hiện batch.
+
+### 29.4. Đồng bộ UI/Dark Mode
+
+Đã nâng cấp:
+
+- Bổ sung CSS cho import wizard, control card, preview table, summary card và history row.
+- Đồng bộ màu nền, border, text và highlight lỗi/cảnh báo cho dark mode.
+- Responsive mobile: wizard tự xếp dọc để không tràn ngang.
+
+## 30. SettingsPage
+
+### 30.1. Bố cục card cấu hình
+
+Đã nâng cấp:
+
+- Thay trang settings dạng `Descriptions` thô bằng bố cục card Mantine.
+- Chia thành 4 nhóm chính:
+  - Thông tin công ty.
+  - Giao diện.
+  - Thông báo.
+  - Chính sách mật khẩu.
+- Vẫn giữ khối runtime/session context để kiểm tra API, mock mode, user, role và data scope hiện tại.
+
+### 30.2. Giao diện Light / Dark / Auto
+
+Đã nâng cấp:
+
+- Thêm 3 card xem trước theme:
+  - Light.
+  - Dark.
+  - Auto.
+- Click vào card áp dụng ngay theme bằng `useMantineColorScheme`.
+- Card đang chọn có icon check, border nổi bật và thumbnail preview.
+- Bổ sung toggle mật độ giao diện `Comfortable / Compact` để chuẩn bị cho cấu hình dashboard/table sau này.
+
+### 30.3. Ma trận thông báo
+
+Đã nâng cấp:
+
+- Thêm ma trận toggle theo kênh:
+  - Email.
+  - Push.
+- Các loại sự kiện:
+  - Đơn nghỉ phép.
+  - Hợp đồng.
+  - Import Excel.
+  - Bảo mật.
+- Thêm khung giờ yên lặng `quiet hours` với giờ bắt đầu và kết thúc.
+
+### 30.4. Chính sách mật khẩu
+
+Đã nâng cấp:
+
+- Thêm slider độ dài tối thiểu từ 8 đến 20 ký tự.
+- Thêm toggle yêu cầu ký tự đặc biệt.
+- Thêm toggle yêu cầu chữ số.
+- Thêm cấu hình chu kỳ hết hạn mật khẩu theo ngày.
+- Thêm preview mật khẩu mẫu để HR/Admin thấy ngay chính sách đang tạo ra yêu cầu như thế nào.
+
+### 30.5. Trạng thái chưa lưu
+
+Đã nâng cấp:
+
+- Tự phát hiện thay đổi cục bộ bằng snapshot cấu hình.
+- Khi có thay đổi, hiển thị badge `Chưa lưu`.
+- Thêm thanh lưu nổi ở đáy với nút:
+  - Hoàn tác.
+  - Lưu.
+- Khi lưu, cập nhật snapshot cục bộ và hiển thị notification thành công.
+
+### 30.6. Phân quyền theo khu vực cài đặt
+
+Đã nâng cấp:
+
+- Thêm khối `Phạm vi thao tác hiện tại` để người dùng biết mình được sửa phần nào.
+- Tách quyền Settings theo 4 nhóm:
+  - Thông tin công ty: chỉ quản trị hệ thống/quản trị tài khoản được sửa.
+  - Giao diện cá nhân: user đã đăng nhập được đổi theme và mật độ hiển thị.
+  - Thông báo hệ thống: chỉ user có quyền audit/quản trị tài khoản hoặc system admin được sửa.
+  - Chính sách mật khẩu: chỉ user có quyền reset password/quản trị tài khoản/quản trị vai trò hoặc system admin được sửa.
+- Nếu không có quyền, 2 phần `Thông báo hệ thống` và `Chính sách mật khẩu` được ẩn hẳn khỏi màn hình.
+- `Thông tin công ty` vẫn hiển thị, nhưng chỉ user có quyền quản trị mới sửa được.
+
+### 30.7. Đồng bộ UI/Dark Mode
+
+Đã nâng cấp:
+
+- Bổ sung CSS cho settings panel, theme preview card, notification table, password preview và thanh lưu nổi.
+- Đồng bộ màu text, border, nền card và hover state trong dark mode để tránh lỗi chữ tối trên nền tối.
