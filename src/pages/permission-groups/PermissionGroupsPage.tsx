@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Accordion,
   ActionIcon,
   Badge,
   Box,
@@ -9,12 +10,9 @@ import {
   Loader,
   Modal,
   Stack,
-  Table,
   Text,
   TextInput,
   Textarea,
-  Title,
-  Tooltip,
   Select,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
@@ -37,6 +35,7 @@ import type {
   PermissionGroupDefinition,
 } from '../../features/auth-admin/authAdminTypes';
 import { NormalizedSearchInput } from '../../shared/components/NormalizedSearchInput';
+import { PageHeader } from '../../shared/components/PageHeader';
 import { useImeSafeSelectFilter } from '../../shared/hooks/useImeSafeSelectFilter';
 
 const STATUS_LABEL: Record<string, string> = { active: 'Đang dùng', inactive: 'Vô hiệu' };
@@ -145,14 +144,16 @@ export function PermissionGroupsPage() {
 
   return (
     <Box>
-      <Group justify="space-between" mb="md">
-        <Title order={3}>Nhóm quyền</Title>
-        {canManage && (
+      <PageHeader
+        title="Nhóm quyền"
+        subtitle="Gom các quyền con theo nghiệp vụ để gán nhanh cho vai trò."
+        breadcrumbs={['Phân quyền', 'Nhóm quyền']}
+        actions={canManage ? (
           <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>
             Tạo nhóm quyền
           </Button>
-        )}
-      </Group>
+        ) : undefined}
+      />
 
       <Group mb="md">
         <NormalizedSearchInput
@@ -174,58 +175,44 @@ export function PermissionGroupsPage() {
       {isLoading ? (
         <Group justify="center" py="xl"><Loader /></Group>
       ) : (
-        <Table striped highlightOnHover withTableBorder>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Key</Table.Th>
-              <Table.Th>Tên</Table.Th>
-              <Table.Th>Hệ thống</Table.Th>
-              <Table.Th>Số quyền</Table.Th>
-              <Table.Th>Trạng thái</Table.Th>
-              <Table.Th></Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
+        <Accordion multiple variant="separated" className="permission-group-accordion">
             {groups.map((group) => (
-              <Table.Tr key={group.id}>
-                <Table.Td>
-                  <Text size="sm" ff="monospace" c="blue">{group.key}</Text>
-                </Table.Td>
-                <Table.Td>
-                  <Text size="sm" fw={500}>{group.name}</Text>
-                  {group.description && (
-                    <Text size="xs" c="dimmed" lineClamp={1}>{group.description}</Text>
-                  )}
-                </Table.Td>
-                <Table.Td>
-                  <Badge variant="light" size="sm">{group.system ?? '—'}</Badge>
-                </Table.Td>
-                <Table.Td>
-                  <Text size="sm">{group.permissionCount ?? 0}</Text>
-                </Table.Td>
-                <Table.Td>
-                  <Badge color={STATUS_COLOR[group.status] ?? 'gray'} variant="light" size="sm">
-                    {STATUS_LABEL[group.status] ?? group.status}
-                  </Badge>
-                </Table.Td>
-                <Table.Td>
-                  <Tooltip label="Xem chi tiết">
-                    <ActionIcon variant="subtle" onClick={() => handleOpenDetail(group)}>
-                      <IconEye size={16} />
-                    </ActionIcon>
-                  </Tooltip>
-                </Table.Td>
-              </Table.Tr>
+              <Accordion.Item key={group.id} value={group.id}>
+                <Accordion.Control>
+                  <Group justify="space-between" wrap="nowrap">
+                    <Stack gap={2}>
+                      <Group gap="xs">
+                        <Text fw={750}>{group.name}</Text>
+                        <Badge color={STATUS_COLOR[group.status] ?? 'gray'} variant="light" size="sm">
+                          {STATUS_LABEL[group.status] ?? group.status}
+                        </Badge>
+                      </Group>
+                      <Text size="xs" ff="monospace" c="dimmed">{group.key}</Text>
+                      {group.description ? <Text size="xs" c="dimmed">{group.description}</Text> : null}
+                    </Stack>
+                    <Group gap="xs">
+                      <Badge variant="light">{group.permissionCount ?? 0} quyền</Badge>
+                      <Badge variant="light" color="gray">Vai trò: chưa có số liệu</Badge>
+                      <Badge variant="light" size="sm">{group.system ?? '—'}</Badge>
+                    </Group>
+                  </Group>
+                </Accordion.Control>
+                <Accordion.Panel>
+                  <Stack gap="xs">
+                    <Button size="xs" variant="light" leftSection={<IconEye size={14} />} onClick={() => handleOpenDetail(group)}>
+                      Xem / chỉnh nhóm quyền
+                    </Button>
+                    <Text size="sm" c="dimmed">
+                      Mở chi tiết để xem đầy đủ quyền con, mô tả và thao tác thêm/bớt quyền.
+                    </Text>
+                  </Stack>
+                </Accordion.Panel>
+              </Accordion.Item>
             ))}
             {groups.length === 0 && (
-              <Table.Tr>
-                <Table.Td colSpan={6}>
-                  <Text c="dimmed" ta="center" py="lg">Không có nhóm quyền nào</Text>
-                </Table.Td>
-              </Table.Tr>
+              <Text c="dimmed" ta="center" py="lg">Không có nhóm quyền nào</Text>
             )}
-          </Table.Tbody>
-        </Table>
+        </Accordion>
       )}
 
       {/* Create modal */}

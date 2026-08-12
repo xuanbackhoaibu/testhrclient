@@ -1448,3 +1448,199 @@ Ghi chú:
 - Tạo component dùng chung `OrganizationHierarchyList` cho 4 trang để tránh lặp pattern.
 - Bổ sung CSS cho bảng cây, hover row, drawer detail card và danh sách nhân sự.
 - Đồng bộ dark mode để header bảng, dòng hover và card chi tiết không bị nền trắng/chữ mờ.
+
+## 26. Nhóm trang Cấu hình chấm công
+
+Áp dụng cho:
+
+- Ca làm việc.
+- Ngày lễ.
+- Phân ca.
+- Kỳ công.
+- Ánh xạ chấm công.
+
+### 26.1. Ca làm việc
+
+Đã nâng cấp:
+
+- Thêm card trực quan cho từng ca làm việc.
+- Mỗi card có thanh thời gian 0h-24h, tô đậm khoảng giờ làm.
+- Ca đêm vắt qua ngày hôm sau được vẽ thành 2 đoạn.
+- Tự phân loại badge `Ca ngày`, `Ca đêm`, `Ca gãy`.
+- Lịch tuần mặc định chuyển sang 7 ô ngày rõ ràng hơn thay vì danh sách dòng.
+- Giữ cảnh báo ngưỡng đi muộn/về sớm chỉ đánh dấu, chưa trừ công.
+
+### 26.2. Ngày lễ
+
+Đã nâng cấp:
+
+- Bộ chọn năm tiếp tục nằm đầu trang.
+- Danh sách ngày lễ sắp xếp theo ngày.
+- Thêm badge phân biệt `Dương lịch` và `Âm lịch`.
+- Dòng nhân bản cần HR kiểm tra có nền cam nhạt và nhãn `Cần HR soát lại`.
+- Modal nhân bản từ năm trước có preview danh sách ngày lễ dự kiến tạo.
+
+### 26.3. Phân ca
+
+Đã nâng cấp:
+
+- Thêm banner nhắc số nhân sự chưa có phân ca riêng.
+- Thêm nhóm phân ca theo thứ tự ưu tiên:
+  - `1. Cá nhân`.
+  - `2. Phòng ban`.
+  - `3. Đơn vị`.
+- Mỗi nhóm hiển thị các phân ca active nổi bật trước bảng CRUD chi tiết.
+- Giữ nguyên logic tạo/kết thúc phân ca hiện có.
+
+### 26.4. Kỳ công
+
+Đã nâng cấp:
+
+- Badge trạng thái kỳ công làm rõ `Đã chốt` và kỳ đang mở/chờ xử lý.
+- Kỳ đã chốt hiển thị icon khóa, người chốt và thời gian chốt nếu API trả về.
+- Nút chốt kỳ không chốt ngay nữa, mở modal xác nhận trước.
+- Modal xác nhận chốt kỳ hiển thị tóm tắt:
+  - Tổng nhân sự trong kỳ.
+  - Số ô đã sửa tay.
+  - Số dòng chờ giải trình/khiếu nại.
+  - Tình trạng xác nhận của nhân viên.
+
+### 26.5. Ánh xạ chấm công
+
+Đã nâng cấp:
+
+- Bảng dữ liệu chưa map chuyển sang bố cục 2 cột:
+  - Ký hiệu máy chấm công.
+  - Ký hiệu nội bộ HRM.
+- Các cặp chưa ánh xạ được highlight bằng nền đỏ nhạt.
+- Vẫn giữ modal map nhân sự và thao tác chạy lại mapping hiện có.
+
+### 26.6. Đồng bộ UI/Dark Mode
+
+Đã nâng cấp:
+
+- Bổ sung CSS cho timebar ca làm, card phân ca, bảng ngày lễ và hàng mapping chưa ánh xạ.
+- Bổ sung dark mode cho các surface mới để nền không bị trắng và màu cảnh báo dịu hơn.
+
+## 27. Nhóm trang Tài khoản & Phân quyền
+
+Áp dụng cho:
+
+- Quản lý tài khoản.
+- Tài khoản chờ liên kết nhân sự.
+- Vai trò.
+- Danh mục quyền.
+- Nhóm quyền.
+
+### 27.1. AccountsPage
+
+Đã nâng cấp:
+
+- Bổ sung card tài khoản làm lớp hiển thị chính.
+- Card hiển thị tên, email, mã nhân sự/username và badge trạng thái tài khoản.
+- Thêm thanh tuổi mật khẩu dạng progress `đã dùng x/90 ngày`, đổi màu khi gần hạn.
+- Thêm dòng `Đăng nhập cuối` theo thời gian tương đối.
+- Thêm nút thao tác nhanh: đặt lại mật khẩu, khóa/mở khóa và xem nhật ký.
+
+### 27.2. PendingHrLinkAccountsPage
+
+Đã nâng cấp:
+
+- Thêm badge số yêu cầu chờ ngay trên header.
+- Bổ sung queue card cho từng yêu cầu liên kết.
+- Mỗi card hiển thị thông tin user pending, claim mã nhân sự/email và thời gian tạo.
+- Thêm nút nhanh `Duyệt liên kết`, `Từ chối`, `Sửa claim`.
+- Modal liên kết hiện có tiếp tục đóng vai trò preview hồ sơ nhân viên sẽ bị gắn.
+
+### 27.3. RolesPage
+
+Đã nâng cấp:
+
+- Chuyển danh sách role sang card vai trò.
+- Mỗi card có icon, tên, key, mô tả, badge trạng thái/nhạy cảm/system.
+- Thêm nút `Nhân bản` để tạo role mới nhanh từ role hiện tại.
+- Bổ sung indicator `kế thừa từ` nếu backend trả field tương ứng.
+
+### 27.4. PermissionsPage
+
+Đã nâng cấp:
+
+- Thêm ma trận quyền tương tác:
+  - Hàng là quyền.
+  - Cột là vai trò.
+  - Ô checkbox bật/tắt trực tiếp.
+- Màu xanh cho ô có quyền, xám cho ô không có quyền.
+- Hover highlight hàng quyền.
+- Thêm thanh `Thay đổi chưa lưu` nổi ở đáy với nút `Lưu` và `Hoàn tác`.
+- Khi lưu, dùng API sẵn có `addPermissionToRole` và `removePermissionFromRole`.
+
+### 27.5. PermissionGroupsPage
+
+Đã nâng cấp:
+
+- Chuyển bảng nhóm quyền sang Accordion.
+- Mỗi nhóm hiển thị key, mô tả, hệ thống, trạng thái và số quyền con.
+- Thêm badge số vai trò đang dùng nhóm quyền ở dạng placeholder nếu backend chưa trả số liệu.
+- Drawer chi tiết hiện có vẫn dùng để xem đầy đủ quyền con và thêm/bớt quyền.
+
+### 27.6. Đồng bộ UI/Dark Mode
+
+Đã nâng cấp:
+
+- Bổ sung CSS cho account card, pending queue, role card, permission matrix và thanh thay đổi chưa lưu.
+- Đồng bộ dark mode cho các surface mới, hover state và màu ô ma trận.
+
+## 28. AuditLogsPage
+
+### 28.1. Khối thống kê đầu trang
+
+Đã nâng cấp:
+
+- Thêm 4 card thống kê theo dữ liệu audit đang lọc:
+  - Tạo.
+  - Sửa.
+  - Xóa.
+  - Đăng nhập.
+- Mỗi card có icon và màu trạng thái riêng để admin quét nhanh mức độ hoạt động.
+
+### 28.2. Dòng hoạt động dạng feed
+
+Đã nâng cấp:
+
+- Thay bảng AntD phẳng bằng activity feed Mantine.
+- Mỗi dòng có avatar người thực hiện, tên, badge hành động và thời gian tương đối.
+- Badge hành động đổi màu:
+  - Tạo: xanh.
+  - Sửa: xanh dương.
+  - Xóa: đỏ.
+  - Đăng nhập/Auth: tím.
+- Tên thực thể bị tác động có link điều hướng tới trang tương ứng khi có route phù hợp.
+
+### 28.3. Modal so sánh thay đổi
+
+Đã nâng cấp:
+
+- Modal chi tiết chuyển từ JSON thô sang bảng so sánh 2 cột `Trước` / `Sau`.
+- Tự gom các field xuất hiện trong `beforeJson` và `afterJson`.
+- Field có thay đổi được tô nền vàng để dễ nhìn.
+- Vẫn hỗ trợ hiển thị object dạng JSON compact nếu field là object.
+
+### 28.4. Bộ lọc
+
+Đã nâng cấp:
+
+- Bộ lọc Mantine gồm:
+  - Người thực hiện.
+  - Loại hành động.
+  - Loại thực thể.
+  - ID thực thể.
+  - Khoảng thời gian.
+  - Tìm kiếm tự do.
+- Thống kê đầu trang tự cập nhật theo dữ liệu đang lọc/trang hiện tại.
+
+### 28.5. Đồng bộ UI/Dark Mode
+
+Đã nâng cấp:
+
+- Bổ sung CSS cho audit stat card, filter panel, feed item và diff table.
+- Đồng bộ dark mode cho hover feed, link thực thể và highlight field thay đổi.

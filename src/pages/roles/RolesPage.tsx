@@ -4,11 +4,13 @@ import {
   Badge,
   Box,
   Button,
+  Card,
   Drawer,
   Group,
   Loader,
   Modal,
   Select,
+  SimpleGrid,
   Stack,
   Switch,
   Tabs,
@@ -231,44 +233,76 @@ export function RolesPage() {
       {isLoading ? (
         <Group justify="center" py="xl"><Loader /></Group>
       ) : (
-        <Stack gap="xs" className="resource-list">
+        <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }} spacing="md" className="roles-card-grid">
           {visibleRoles.map((role) => (
-            <Group
+            <Card
               key={role.id ?? role.key}
-              p="md"
-              className="resource-list-row"
+              withBorder
+              className="role-card"
               onClick={() => handleOpenDetail(role)}
-              justify="space-between"
             >
-              <Group gap="md">
-                <IconShield
-                  size={20}
-                  color={role.isSensitive ? '#fa5252' : '#228be6'}
-                />
-                <Stack gap={2}>
-                  <Group gap="xs">
-                    <Text fw={600} size="sm">{role.name}</Text>
-                    {role.isSensitive && <Badge color="red" variant="light" size="xs">Nhạy cảm</Badge>}
-                    {role.isSystem && <Badge color="blue" variant="light" size="xs">System</Badge>}
+              <Stack gap="sm">
+                <Group justify="space-between" align="flex-start">
+                  <Group gap="sm">
+                    <Box className={role.isSensitive ? "role-card-icon is-sensitive" : "role-card-icon"}>
+                      <IconShield size={20} />
+                    </Box>
+                    <Box>
+                      <Text fw={800}>{role.name}</Text>
+                      <Text size="xs" ff="monospace" c="dimmed">{role.key}</Text>
+                    </Box>
                   </Group>
-                  <Text size="xs" ff="monospace" c="dimmed">{role.key}</Text>
-                  {role.description && <Text size="xs" c="dimmed">{role.description}</Text>}
-                </Stack>
-              </Group>
-              <Group gap="xs">
-                <Badge color={STATUS_COLOR[role.status ?? 'active']} variant="light" size="sm">
-                  {STATUS_LABEL[role.status ?? 'active']}
-                </Badge>
-                <Tooltip label="Xem chi tiết">
-                  <ActionIcon variant="subtle" size="sm" onClick={(e) => { e.stopPropagation(); handleOpenDetail(role); }}>
-                    <IconEye size={16} />
-                  </ActionIcon>
-                </Tooltip>
-              </Group>
-            </Group>
+                  <Badge color={STATUS_COLOR[role.status ?? 'active']} variant="light" size="sm">
+                    {STATUS_LABEL[role.status ?? 'active']}
+                  </Badge>
+                </Group>
+                <Text size="sm" c="dimmed" lineClamp={2}>
+                  {role.description || "Chưa có mô tả vai trò."}
+                </Text>
+                <Group gap={6}>
+                  <Badge variant="light" color="blue">User: chưa có số liệu</Badge>
+                  {role.isSensitive && <Badge color="red" variant="light">Nhạy cảm</Badge>}
+                  {role.isSystem && <Badge color="blue" variant="light">System</Badge>}
+                  {(role as RoleDefinition & { inheritedFrom?: string }).inheritedFrom ? (
+                    <Badge color="grape" variant="light">Kế thừa từ {(role as RoleDefinition & { inheritedFrom?: string }).inheritedFrom}</Badge>
+                  ) : null}
+                </Group>
+                <Group justify="space-between" mt="xs">
+                  <Group gap={4}>
+                    <Badge size="xs" variant="dot">Nhóm quyền</Badge>
+                    <Badge size="xs" variant="dot" color="gray">Quyền trực tiếp</Badge>
+                  </Group>
+                  <Group gap="xs">
+                    {canManage ? (
+                      <Button
+                        size="xs"
+                        variant="light"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setCreateForm({
+                            key: `${role.key ?? "role"}_copy`,
+                            name: `${role.name} copy`,
+                            description: role.description ?? "",
+                            isSensitive: role.isSensitive ?? false,
+                          });
+                          openCreate();
+                        }}
+                      >
+                        Nhân bản
+                      </Button>
+                    ) : null}
+                    <Tooltip label="Xem chi tiết">
+                      <ActionIcon variant="subtle" size="sm" onClick={(e) => { e.stopPropagation(); handleOpenDetail(role); }}>
+                        <IconEye size={16} />
+                      </ActionIcon>
+                    </Tooltip>
+                  </Group>
+                </Group>
+              </Stack>
+            </Card>
           ))}
           {visibleRoles.length === 0 && <Text c="dimmed" ta="center" py="lg">Không tìm thấy vai trò phù hợp.</Text>}
-        </Stack>
+        </SimpleGrid>
       )}
 
       {/* Create modal */}

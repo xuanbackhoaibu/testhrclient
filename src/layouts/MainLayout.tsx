@@ -25,6 +25,7 @@ import {
   IconClipboardList,
   IconClock,
   IconDashboard,
+  IconFileAnalytics,
   IconKey,
   IconLink,
   IconLogout,
@@ -70,7 +71,7 @@ const mainItems: NavItem[] = [
   { label: "Phân ca", path: ROUTES.shiftAssignments, icon: IconCalendarTime },
   // { label: "Onboarding", path: ROUTES.onboarding, icon: IconFolderOpen },
   // { label: "Offboarding", path: ROUTES.offboarding, icon: IconFileImport },
-  // { label: "Audit logs", path: ROUTES.auditLogs, icon: IconFileAnalytics },
+  { label: "Nhật ký audit", path: ROUTES.auditLogs, icon: IconFileAnalytics },
   { label: "Cài đặt", path: ROUTES.settings, icon: IconSettings },
 ];
 

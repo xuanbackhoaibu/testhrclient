@@ -2,11 +2,14 @@ import { useMemo, useState } from "react";
 import {
   Alert,
   Badge,
+  Box,
   Button,
   Card,
+  Divider,
   Drawer,
   Group,
   NumberInput,
+  Paper,
   Select,
   SimpleGrid,
   Stack,
@@ -15,6 +18,7 @@ import {
   TextInput,
   Textarea,
   Title,
+  Tooltip,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
@@ -74,6 +78,93 @@ const emptyForm: ShiftFormValues = {
   note: "",
   status: "ACTIVE",
 };
+
+function toMinutes(time: string) {
+  const [hour, minute] = time.split(":").map(Number);
+  return hour * 60 + minute;
+}
+
+function shiftKind(shift: WorkShift) {
+  const start = toMinutes(shift.startTime);
+  const end = toMinutes(shift.endTime);
+  if (end <= start) return { label: "Ca đêm", color: "indigo" };
+  if (shift.breakStart && shift.breakEnd && toMinutes(shift.breakEnd) - toMinutes(shift.breakStart) >= 120) {
+    return { label: "Ca gãy", color: "orange" };
+  }
+  return { label: "Ca ngày", color: "green" };
+}
+
+function TimelineSegment({ left, width }: { left: number; width: number }) {
+  return <span className="work-shift-time-segment" style={{ left: `${left}%`, width: `${width}%` }} />;
+}
+
+function ShiftTimeline({ shift }: { shift: WorkShift }) {
+  const start = toMinutes(shift.startTime);
+  const end = toMinutes(shift.endTime);
+  const segments =
+    end <= start
+      ? [
+          { left: (start / 1440) * 100, width: ((1440 - start) / 1440) * 100 },
+          { left: 0, width: (end / 1440) * 100 },
+        ]
+      : [{ left: (start / 1440) * 100, width: ((end - start) / 1440) * 100 }];
+
+  return (
+    <Box className="work-shift-timebar">
+      <div className="work-shift-timebar-track">
+        {segments.map((segment, index) => (
+          <TimelineSegment key={index} left={segment.left} width={segment.width} />
+        ))}
+      </div>
+      <Group justify="space-between" mt={4}>
+        {["0h", "6h", "12h", "18h", "24h"].map((label) => (
+          <Text key={label} size="10px" c="dimmed">{label}</Text>
+        ))}
+      </Group>
+    </Box>
+  );
+}
+
+function ShiftVisualCard({ shift, onEdit, canEdit }: { shift: WorkShift; onEdit: (shift: WorkShift) => void; canEdit: boolean }) {
+  const kind = shiftKind(shift);
+  const markOnly = shift.lateThresholdMinutes > 0 || shift.earlyLeaveThresholdMinutes > 0;
+
+  return (
+    <Paper withBorder p="md" className="work-shift-card">
+      <Group justify="space-between" align="flex-start" mb="sm">
+        <Box>
+          <Group gap="xs">
+            <Text fw={800}>{shift.name}</Text>
+            <Badge variant="light" color={kind.color}>{kind.label}</Badge>
+          </Group>
+          <Text size="xs" c="dimmed" ff="monospace">{shift.code}</Text>
+        </Box>
+        <StatusTag status={shift.status} />
+      </Group>
+
+      <ShiftTimeline shift={shift} />
+
+      <Group gap="xs" mt="sm">
+        <Badge variant="light">{shift.startTime} - {shift.endTime}</Badge>
+        <Badge variant="light" color="gray">{shift.standardMinutes} phút</Badge>
+        <Badge variant="light" color="blue">{shift.dayValue} công</Badge>
+      </Group>
+
+      <Divider my="sm" />
+
+      <Group justify="space-between" align="center">
+        <Tooltip label="Ngưỡng hiện chỉ đánh dấu đi muộn/về sớm, chưa trừ công">
+          <Badge variant="light" color={markOnly ? "orange" : "gray"}>
+            Muộn/sớm: {shift.lateThresholdMinutes}' / {shift.earlyLeaveThresholdMinutes}'
+          </Badge>
+        </Tooltip>
+        <Button size="xs" variant="subtle" disabled={!canEdit} onClick={() => onEdit(shift)}>
+          Sửa
+        </Button>
+      </Group>
+    </Paper>
+  );
+}
 
 export function WorkShiftsPage() {
   const { can } = useAuth();
@@ -318,6 +409,12 @@ export function WorkShiftsPage() {
           chỉ cần sửa ngưỡng ở đây, không phải sửa phần mềm.
         </Alert>
 
+        <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }} spacing="md">
+          {(shiftsQuery.data ?? []).map((shift) => (
+            <ShiftVisualCard key={shift.id} shift={shift} onEdit={openEdit} canEdit={canEdit} />
+          ))}
+        </SimpleGrid>
+
         <DataTable
           data={shiftsQuery.data ?? []}
           columns={columns}
@@ -329,7 +426,7 @@ export function WorkShiftsPage() {
           emptyDescription="Tạo ca hành chính trước, sau đó gán vào lịch tuần bên dưới."
         />
 
-        <Card withBorder padding="lg" radius="md">
+        <Card withBorder padding="lg" radius="md" className="work-week-card">
           <Stack gap="sm">
             <div>
               <Title order={4} size="h5">
@@ -346,15 +443,18 @@ export function WorkShiftsPage() {
                 Đang tải lịch tuần…
               </Text>
             ) : (
-              <Stack gap="xs">
+              <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm">
                 {(calendarQuery.data ?? [])
                   .slice()
                   .sort((a, b) => a.weekday - b.weekday)
                   .map((day) => (
-                    <Group key={day.weekday} gap="md" wrap="nowrap">
-                      <Text w={90} fw={500}>
-                        {WEEKDAY_LABELS[day.weekday]}
-                      </Text>
+                    <Paper key={day.weekday} withBorder p="sm" className="work-week-day">
+                      <Group justify="space-between" mb="xs">
+                        <Text fw={700}>{WEEKDAY_LABELS[day.weekday]}</Text>
+                        <Badge size="xs" color={day.isWorkingDay ? "green" : "gray"} variant="light">
+                          {day.isWorkingDay ? "Làm" : "Nghỉ"}
+                        </Badge>
+                      </Group>
                       <Switch
                         checked={day.isWorkingDay}
                         disabled={!canEdit || updateCalendarDay.isPending}
@@ -370,7 +470,7 @@ export function WorkShiftsPage() {
                       />
                       <Select
                         placeholder="Chọn ca"
-                        w={260}
+                        mt="xs"
                         data={shiftOptions}
                         value={day.shiftId}
                         disabled={
@@ -384,13 +484,13 @@ export function WorkShiftsPage() {
                         }}
                       />
                       {day.shift ? (
-                        <Text c="dimmed" size="sm">
-                          {day.shift.dayValue} công
+                        <Text c="dimmed" size="xs" mt={6}>
+                          {day.shift.code} - {day.shift.dayValue} công
                         </Text>
                       ) : null}
-                    </Group>
+                    </Paper>
                   ))}
-              </Stack>
+              </SimpleGrid>
             )}
           </Stack>
         </Card>

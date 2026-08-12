@@ -936,6 +936,200 @@ body {
   padding: 8px;
 }
 
+.work-shift-card,
+.work-week-card,
+.work-week-day,
+.shift-assignment-group-card,
+.holiday-table-shell,
+.holiday-clone-preview {
+  background: var(--hrm-surface);
+  border-color: var(--hrm-border);
+  box-shadow: var(--hrm-shadow);
+}
+
+.work-shift-timebar-track {
+  background: linear-gradient(90deg, var(--mantine-color-gray-1), var(--mantine-color-gray-2));
+  border-radius: 999px;
+  height: 14px;
+  overflow: hidden;
+  position: relative;
+}
+
+.work-shift-time-segment {
+  background: linear-gradient(90deg, var(--mantine-color-blue-5), var(--mantine-color-teal-5));
+  border-radius: 999px;
+  height: 100%;
+  position: absolute;
+  top: 0;
+}
+
+.work-week-day {
+  min-height: 128px;
+}
+
+.shift-assignment-item,
+.organization-employee-row {
+  background: var(--hrm-surface-subtle);
+}
+
+.holiday-table .mantine-Table-th {
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.holiday-table .mantine-Table-td {
+  border-bottom-color: #eef2f7;
+  color: var(--hrm-text);
+}
+
+.holiday-row-review .mantine-Table-td {
+  background: color-mix(in srgb, var(--mantine-color-orange-1), transparent 22%);
+}
+
+.attendance-mapping-unmapped-row .mantine-Table-td {
+  background: color-mix(in srgb, var(--mantine-color-red-1), transparent 20%);
+}
+
+.account-card,
+.pending-link-card,
+.role-card,
+.permission-matrix-shell {
+  background: var(--hrm-surface);
+  border-color: var(--hrm-border);
+  box-shadow: var(--hrm-shadow);
+}
+
+.pending-link-suggestion {
+  border-color: var(--hrm-border);
+}
+
+.role-card {
+  cursor: pointer;
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.role-card:hover {
+  border-color: var(--mantine-color-blue-4);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
+  transform: translateY(-1px);
+}
+
+.role-card-icon {
+  align-items: center;
+  background: var(--mantine-color-blue-light);
+  border-radius: 8px;
+  color: var(--mantine-color-blue-7);
+  display: flex;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.role-card-icon.is-sensitive {
+  background: var(--mantine-color-red-light);
+  color: var(--mantine-color-red-7);
+}
+
+.permission-matrix-table .mantine-Table-th {
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.permission-matrix-table .mantine-Table-td {
+  border-bottom-color: #eef2f7;
+  color: var(--hrm-text);
+}
+
+.permission-matrix-row:hover .mantine-Table-td {
+  background: #f8fbff;
+}
+
+.permission-cell-enabled {
+  background: color-mix(in srgb, var(--mantine-color-green-1), transparent 35%);
+}
+
+.permission-cell-disabled {
+  background: color-mix(in srgb, var(--mantine-color-gray-1), transparent 20%);
+}
+
+.permission-unsaved-bar {
+  background: var(--hrm-surface);
+  border-color: var(--hrm-border);
+  border-radius: var(--hrm-radius);
+  bottom: 18px;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.18);
+  left: 50%;
+  max-width: min(720px, calc(100vw - 32px));
+  position: fixed;
+  transform: translateX(-50%);
+  width: 100%;
+  z-index: 30;
+}
+
+.permission-group-accordion .mantine-Accordion-item {
+  background: var(--hrm-surface);
+  border-color: var(--hrm-border);
+}
+
+.audit-stat-card,
+.audit-filter-panel,
+.audit-feed-shell {
+  background: var(--hrm-surface);
+  border-color: var(--hrm-border);
+  box-shadow: var(--hrm-shadow);
+}
+
+.audit-feed-item {
+  border-bottom: 1px solid var(--hrm-border);
+  transition: background 140ms ease;
+}
+
+.audit-feed-item:last-child {
+  border-bottom: 0;
+}
+
+.audit-feed-item:hover {
+  background: #f8fbff;
+}
+
+.audit-entity-link {
+  color: var(--mantine-color-blue-7);
+  text-decoration: none;
+}
+
+.audit-entity-link:hover {
+  text-decoration: underline;
+}
+
+.audit-diff-table .mantine-Table-th {
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.audit-diff-table .mantine-Table-td {
+  vertical-align: top;
+}
+
+.audit-diff-changed .mantine-Table-td {
+  background: color-mix(in srgb, var(--mantine-color-yellow-1), transparent 18%);
+}
+
+.audit-diff-value {
+  background: transparent;
+  color: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
 @media (max-width: 768px) {
   .employee-detail-hero-main,
   .employee-detail-actions {
@@ -1165,6 +1359,20 @@ body {
 :root[data-mantine-color-scheme='dark'] .employee-detail-quota-card,
 :root[data-mantine-color-scheme='dark'] .organization-tree-shell,
 :root[data-mantine-color-scheme='dark'] .organization-detail-card,
+:root[data-mantine-color-scheme='dark'] .work-shift-card,
+:root[data-mantine-color-scheme='dark'] .work-week-card,
+:root[data-mantine-color-scheme='dark'] .work-week-day,
+:root[data-mantine-color-scheme='dark'] .shift-assignment-group-card,
+:root[data-mantine-color-scheme='dark'] .holiday-table-shell,
+:root[data-mantine-color-scheme='dark'] .holiday-clone-preview,
+:root[data-mantine-color-scheme='dark'] .account-card,
+:root[data-mantine-color-scheme='dark'] .pending-link-card,
+:root[data-mantine-color-scheme='dark'] .role-card,
+:root[data-mantine-color-scheme='dark'] .permission-matrix-shell,
+:root[data-mantine-color-scheme='dark'] .permission-unsaved-bar,
+:root[data-mantine-color-scheme='dark'] .audit-stat-card,
+:root[data-mantine-color-scheme='dark'] .audit-filter-panel,
+:root[data-mantine-color-scheme='dark'] .audit-feed-shell,
 :root[data-mantine-color-scheme='dark'] .employee-detail-empty,
 :root[data-mantine-color-scheme='dark'] .empty-state-surface {
   background: var(--hrm-surface-subtle);
@@ -1224,6 +1432,90 @@ body {
 :root[data-mantine-color-scheme='dark'] .organization-employee-row {
   background: var(--hrm-surface);
   border-color: var(--hrm-border);
+}
+
+:root[data-mantine-color-scheme='dark'] .work-shift-timebar-track {
+  background: var(--mantine-color-dark-5);
+}
+
+:root[data-mantine-color-scheme='dark'] .shift-assignment-item {
+  background: var(--hrm-surface);
+}
+
+:root[data-mantine-color-scheme='dark'] .holiday-table .mantine-Table-th {
+  background: var(--hrm-surface-subtle);
+  color: #cbd5e1;
+}
+
+:root[data-mantine-color-scheme='dark'] .holiday-table .mantine-Table-td {
+  border-bottom-color: var(--hrm-border-soft);
+  color: var(--hrm-text);
+}
+
+:root[data-mantine-color-scheme='dark'] .holiday-row-review .mantine-Table-td {
+  background: color-mix(in srgb, var(--mantine-color-orange-4), transparent 84%);
+}
+
+:root[data-mantine-color-scheme='dark'] .attendance-mapping-unmapped-row .mantine-Table-td {
+  background: color-mix(in srgb, var(--mantine-color-red-4), transparent 84%);
+}
+
+:root[data-mantine-color-scheme='dark'] .role-card:hover {
+  border-color: var(--mantine-color-blue-5);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.26);
+}
+
+:root[data-mantine-color-scheme='dark'] .permission-matrix-table .mantine-Table-th {
+  background: var(--hrm-surface-subtle);
+  color: #cbd5e1;
+}
+
+:root[data-mantine-color-scheme='dark'] .permission-matrix-table .mantine-Table-td {
+  border-bottom-color: var(--hrm-border-soft);
+  color: var(--hrm-text);
+}
+
+:root[data-mantine-color-scheme='dark'] .permission-matrix-row:hover .mantine-Table-td {
+  background: #172033;
+}
+
+:root[data-mantine-color-scheme='dark'] .permission-cell-enabled {
+  background: color-mix(in srgb, var(--mantine-color-teal-3), transparent 84%);
+}
+
+:root[data-mantine-color-scheme='dark'] .permission-cell-disabled {
+  background: var(--mantine-color-dark-6);
+}
+
+:root[data-mantine-color-scheme='dark'] .permission-group-accordion .mantine-Accordion-item {
+  background: var(--hrm-surface-subtle);
+  border-color: var(--hrm-border);
+}
+
+:root[data-mantine-color-scheme='dark'] .audit-feed-item {
+  border-bottom-color: var(--hrm-border);
+}
+
+:root[data-mantine-color-scheme='dark'] .audit-feed-item:hover {
+  background: #172033;
+}
+
+:root[data-mantine-color-scheme='dark'] .audit-entity-link {
+  color: #93c5fd;
+}
+
+:root[data-mantine-color-scheme='dark'] .audit-diff-table .mantine-Table-th {
+  background: var(--hrm-surface-subtle);
+  color: #cbd5e1;
+}
+
+:root[data-mantine-color-scheme='dark'] .audit-diff-table .mantine-Table-td {
+  border-color: var(--hrm-border);
+  color: var(--hrm-text);
+}
+
+:root[data-mantine-color-scheme='dark'] .audit-diff-changed .mantine-Table-td {
+  background: color-mix(in srgb, var(--mantine-color-yellow-3), transparent 82%);
 }
 
 :root[data-mantine-color-scheme='dark'] .empty-state-icon {

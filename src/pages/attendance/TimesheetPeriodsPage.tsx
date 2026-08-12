@@ -3,10 +3,12 @@ import {
   Alert,
   Badge,
   Button,
+  Card,
   Group,
   Modal,
   ScrollArea,
   Select,
+  SimpleGrid,
   Stack,
   Table,
   Text,
@@ -100,6 +102,7 @@ export function TimesheetPeriodsPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [openModal, setOpenModal] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<TimesheetPeriod | null>(null);
+  const [closeTarget, setCloseTarget] = useState<TimesheetPeriod | null>(null);
   const [reopenTarget, setReopenTarget] = useState<TimesheetPeriod | null>(null);
   const [newMonth, setNewMonth] = useState(now.getMonth() + 1);
   const [newYear, setNewYear] = useState(now.getFullYear());
@@ -109,7 +112,7 @@ export function TimesheetPeriodsPage() {
   const [exportingPeriodId, setExportingPeriodId] = useState<string | null>(null);
 
   const periodsQuery = useTimesheetPeriods(year);
-  const confirmationsQuery = useTimesheetConfirmations(selectedPeriod?.id ?? null);
+  const confirmationsQuery = useTimesheetConfirmations(selectedPeriod?.id ?? closeTarget?.id ?? null);
   const unitsQuery = useUnitsSelect();
   const openPeriod = useOpenTimesheetPeriod();
   const closePeriod = useCloseTimesheetPeriod();
@@ -156,12 +159,14 @@ export function TimesheetPeriodsPage() {
         title: "Đã chốt kỳ công",
         message: "Toàn bộ ngày công trong kỳ đã bị khóa.",
       });
+      return true;
     } catch {
       notifications.show({
         color: "red",
         title: "Không chốt được kỳ công",
         message: "Kiểm tra lại trạng thái kỳ trước khi chốt.",
       });
+      return false;
     }
   }
 
@@ -286,9 +291,17 @@ export function TimesheetPeriodsPage() {
                   </Table.Td>
                   <Table.Td>{period.unit?.name ?? "Toàn công ty"}</Table.Td>
                   <Table.Td>
-                    <Badge color={periodStatusColor[period.status]} variant="light">
-                      {periodStatusLabel[period.status]}
-                    </Badge>
+                    <Group gap="xs">
+                      {period.status === "CLOSED" ? <IconLock size={15} /> : <IconLockOpen size={15} />}
+                      <Badge color={periodStatusColor[period.status]} variant="light">
+                        {period.status === "CLOSED" ? "Đã chốt" : periodStatusLabel[period.status]}
+                      </Badge>
+                    </Group>
+                    {period.closedAt ? (
+                      <Text size="xs" c="dimmed">
+                        {period.closedBy ?? "Hệ thống"} · {toDateOnly(period.closedAt)}
+                      </Text>
+                    ) : null}
                   </Table.Td>
                   <Table.Td>{toDateOnly(period.confirmDeadline)}</Table.Td>
                   <Table.Td>{period._count?.confirmations ?? 0}</Table.Td>
@@ -317,8 +330,7 @@ export function TimesheetPeriodsPage() {
                           size="xs"
                           color="green"
                           leftSection={<IconLock size={14} />}
-                          loading={closePeriod.isPending}
-                          onClick={() => void handleClosePeriod(period)}
+                          onClick={() => setCloseTarget(period)}
                         >
                           Chốt
                         </Button>
@@ -463,6 +475,57 @@ export function TimesheetPeriodsPage() {
               </Table.Tbody>
             </Table>
           </ScrollArea>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={closeTarget !== null}
+        onClose={() => setCloseTarget(null)}
+        title={closeTarget ? `Chốt kỳ công ${closeTarget.month}/${closeTarget.year}` : "Chốt kỳ công"}
+        centered
+        size="lg"
+      >
+        <Stack gap="md">
+          <Alert color="orange" variant="light" icon={<IconLock size={18} />}>
+            Sau khi chốt, các ô bảng công trong kỳ sẽ bị khóa. HR chỉ nên chốt khi đã xử lý xong các dòng chờ xác nhận/khiếu nại.
+          </Alert>
+          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+            <Card withBorder padding="sm">
+              <Text size="xs" c="dimmed" fw={700}>Tổng nhân sự</Text>
+              <Text size="xl" fw={800}>{closeTarget?._count?.confirmations ?? confirmations.length}</Text>
+            </Card>
+            <Card withBorder padding="sm">
+              <Text size="xs" c="dimmed" fw={700}>Ô đã sửa tay</Text>
+              <Text size="xl" fw={800}>0</Text>
+              <Text size="xs" c="dimmed">Chưa có API tổng hợp trên kỳ.</Text>
+            </Card>
+            <Card withBorder padding="sm">
+              <Text size="xs" c="dimmed" fw={700}>Chờ giải trình/khiếu nại</Text>
+              <Text size="xl" fw={800} c={counts.DISPUTED > 0 ? "orange" : undefined}>{counts.DISPUTED}</Text>
+            </Card>
+          </SimpleGrid>
+          <Group>
+            <Badge color="gray">Chưa xác nhận: {counts.PENDING}</Badge>
+            <Badge color="green">Đã xác nhận: {counts.CONFIRMED}</Badge>
+            <Badge color="orange">Khiếu nại: {counts.DISPUTED}</Badge>
+          </Group>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setCloseTarget(null)}>Hủy</Button>
+            <Button
+              color="green"
+              leftSection={<IconLock size={16} />}
+              loading={closePeriod.isPending}
+              onClick={() => {
+                if (closeTarget) {
+                  void handleClosePeriod(closeTarget).then((success) => {
+                    if (success) setCloseTarget(null);
+                  });
+                }
+              }}
+            >
+              Xác nhận chốt kỳ
+            </Button>
+          </Group>
         </Stack>
       </Modal>
 

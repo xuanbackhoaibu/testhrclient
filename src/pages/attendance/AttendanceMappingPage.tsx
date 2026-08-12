@@ -163,9 +163,8 @@ function UnmappedTable({
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th>Mã chấm công</Table.Th>
-            <Table.Th>Họ tên BioTime</Table.Th>
-            <Table.Th>Phòng ban BioTime</Table.Th>
+            <Table.Th>Ký hiệu máy chấm công</Table.Th>
+            <Table.Th>Ký hiệu nội bộ HRM</Table.Th>
             <Table.Th ta="center">Số bản ghi</Table.Th>
             <Table.Th>Ngày đầu</Table.Th>
             <Table.Th>Ngày cuối</Table.Th>
@@ -176,13 +175,13 @@ function UnmappedTable({
         <Table.Tbody>
           {isLoading ? (
             <Table.Tr>
-              <Table.Td colSpan={8}>
+              <Table.Td colSpan={7}>
                 <Text size="sm" c="dimmed" ta="center">Đang tải...</Text>
               </Table.Td>
             </Table.Tr>
           ) : items.length === 0 ? (
             <Table.Tr>
-              <Table.Td colSpan={8}>
+              <Table.Td colSpan={7}>
                 <Text size="sm" c="dimmed" ta="center">
                   Không có bản ghi nào cần xử lý.
                 </Text>
@@ -190,15 +189,17 @@ function UnmappedTable({
             </Table.Tr>
           ) : (
             items.map((item) => (
-              <Table.Tr key={item.empCode}>
+              <Table.Tr key={item.empCode} className="attendance-mapping-unmapped-row">
                 <Table.Td>
-                  <Text size="sm" fw={600}>{item.empCode}</Text>
+                  <Text size="sm" fw={750} ff="monospace">{item.empCode}</Text>
+                  <Text size="xs" c="dimmed">{item.fullName ?? 'Không có tên máy'}</Text>
+                  <Text size="xs" c="dimmed">{item.deptName ?? 'Không có phòng ban máy'}</Text>
                 </Table.Td>
                 <Table.Td>
-                  <Text size="sm">{item.fullName ?? '-'}</Text>
-                </Table.Td>
-                <Table.Td>
-                  <Text size="sm" c="dimmed">{item.deptName ?? '-'}</Text>
+                  <Badge color="red" variant="light" size="sm">
+                    Chưa ánh xạ
+                  </Badge>
+                  <Text size="xs" c="dimmed" mt={4}>Chọn nhân sự HRM để gắn mã nội bộ.</Text>
                 </Table.Td>
                 <Table.Td ta="center">
                   <Badge variant="light" size="sm">
