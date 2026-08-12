@@ -164,6 +164,104 @@ body {
   letter-spacing: 0;
 }
 
+.auth-state-page {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: min(680px, calc(100vh - 140px));
+  padding: 24px;
+}
+
+.auth-state-card {
+  background: var(--hrm-surface);
+  border-color: var(--hrm-border);
+  box-shadow: var(--hrm-shadow-raised);
+  max-width: 680px;
+  width: 100%;
+}
+
+.auth-state-illustration {
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.auth-state-illustration-ring {
+  border: 1px dashed color-mix(in srgb, var(--mantine-color-blue-4), transparent 28%);
+  border-radius: 999px;
+  height: 104px;
+  position: absolute;
+  width: 104px;
+}
+
+.auth-state-details {
+  background: var(--hrm-surface-subtle);
+  border: 1px solid var(--hrm-border-soft);
+  border-radius: 8px;
+  padding: 10px 12px;
+  width: 100%;
+}
+
+.auth-callback-card,
+.change-password-policy-card {
+  background: var(--hrm-surface);
+  border-color: var(--hrm-border);
+  box-shadow: var(--hrm-shadow);
+}
+
+.auth-callback-step {
+  border: 1px solid var(--hrm-border-soft);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.auth-callback-step.is-current {
+  background: var(--mantine-color-blue-light);
+  border-color: var(--mantine-color-blue-4);
+}
+
+.auth-callback-step.is-done {
+  background: color-mix(in srgb, var(--mantine-color-green-1), transparent 28%);
+  border-color: color-mix(in srgb, var(--mantine-color-green-4), transparent 20%);
+}
+
+.change-password-checklist .mantine-List-itemWrapper {
+  align-items: center;
+}
+
+.change-password-confirm-match .mantine-Input-input {
+  border-color: var(--mantine-color-green-5);
+}
+
+.change-password-confirm-match .mantine-Input-description {
+  color: var(--mantine-color-green-7);
+}
+
+.change-password-confirm-mismatch .mantine-Input-input {
+  border-color: var(--mantine-color-red-5);
+}
+
+.change-password-confirm-mismatch .mantine-Input-description {
+  color: var(--mantine-color-red-7);
+}
+
+.layout-skeleton {
+  background: var(--hrm-surface);
+  border-color: var(--hrm-border);
+  box-shadow: var(--hrm-shadow);
+}
+
+.layout-skeleton-table-grid {
+  display: grid;
+  gap: 8px;
+  min-width: 720px;
+  overflow-x: auto;
+}
+
+.layout-skeleton-chart {
+  min-height: 260px;
+}
+
 .page-header {
   background: var(--hrm-surface);
   border: 1px solid var(--hrm-border);
@@ -1492,6 +1590,12 @@ body {
   color: var(--hrm-text);
 }
 
+:root[data-mantine-color-scheme='dark'] .auth-page {
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.86), rgba(10, 15, 26, 0.98)),
+    var(--hrm-bg);
+}
+
 :root[data-mantine-color-scheme='dark'] .mantine-Drawer-header,
 :root[data-mantine-color-scheme='dark'] .mantine-Modal-header {
   background: var(--hrm-surface);
@@ -1569,6 +1673,12 @@ body {
 
 :root[data-mantine-color-scheme='dark'] .data-table-footer,
 :root[data-mantine-color-scheme='dark'] .data-table-refreshing,
+:root[data-mantine-color-scheme='dark'] .auth-state-card,
+:root[data-mantine-color-scheme='dark'] .auth-state-details,
+:root[data-mantine-color-scheme='dark'] .auth-callback-card,
+:root[data-mantine-color-scheme='dark'] .auth-callback-step,
+:root[data-mantine-color-scheme='dark'] .change-password-policy-card,
+:root[data-mantine-color-scheme='dark'] .layout-skeleton,
 :root[data-mantine-color-scheme='dark'] .employee-selection-bar,
 :root[data-mantine-color-scheme='dark'] .employee-detail-hero,
 :root[data-mantine-color-scheme='dark'] .employee-detail-section,
@@ -1605,6 +1715,16 @@ body {
 :root[data-mantine-color-scheme='dark'] .empty-state-surface {
   background: var(--hrm-surface-subtle);
   border-color: var(--hrm-border);
+}
+
+:root[data-mantine-color-scheme='dark'] .auth-callback-step.is-current {
+  background: color-mix(in srgb, var(--mantine-color-blue-4), transparent 84%);
+  border-color: var(--mantine-color-blue-5);
+}
+
+:root[data-mantine-color-scheme='dark'] .auth-callback-step.is-done {
+  background: color-mix(in srgb, var(--mantine-color-teal-3), transparent 86%);
+  border-color: color-mix(in srgb, var(--mantine-color-teal-4), transparent 40%);
 }
 
 :root[data-mantine-color-scheme='dark'] .employee-detail-avatar,

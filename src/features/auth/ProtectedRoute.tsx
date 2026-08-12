@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react';
-import { Button } from '@mantine/core';
-import { Result } from 'antd';
 import { Navigate, useLocation } from 'react-router-dom';
 
 import { ROUTES } from '../../shared/constants/routes';
+import { AuthStatePage } from '../../shared/components/AuthStatePage';
 import { LoadingState } from '../../shared/components/LoadingState';
 import { useAuth } from './useAuth';
 import { getRoutePolicy, isSuperAdmin } from './routePolicies';
@@ -32,21 +31,24 @@ export function ProtectedRoute({
 
   if (!user) {
     return (
-      <Result
-        status="error"
-        title="503 - Không thể xác minh quyền"
-        subTitle={error ?? 'Dịch vụ authority hiện không khả dụng.'}
-        extra={<Button onClick={() => void refreshCurrentUser()}>Thử lại</Button>}
+      <AuthStatePage
+        variant="session"
+        title="Không thể xác minh phiên làm việc"
+        description={error ?? 'Dịch vụ authority hiện không khả dụng. Bạn có thể thử tải lại quyền hoặc đăng nhập lại để tiếp tục.'}
+        primaryLabel="Đăng nhập lại"
+        secondaryLabel="Thử lại"
+        onPrimary={() => window.location.assign(`${ROUTES.login}?next=${encodeURIComponent(location.pathname)}`)}
+        onSecondary={() => void refreshCurrentUser()}
       />
     );
   }
 
   if (user.accountStatus !== 'ACTIVE') {
     return (
-      <Result
-        status="403"
+      <AuthStatePage
+        variant="403"
         title="Tài khoản không hoạt động"
-        subTitle="Trạng thái tài khoản hiện tại không cho phép truy cập HRM."
+        description="Trạng thái tài khoản hiện tại không cho phép truy cập HRM. Vui lòng liên hệ quản trị viên để kiểm tra."
       />
     );
   }
@@ -58,17 +60,21 @@ export function ProtectedRoute({
   const routePolicy = route ? getRoutePolicy(route) : null;
   if (route === ROUTES.dashboard && !isSuperAdmin(user)) {
     return (
-      <Result
-        status="404"
-        title="404"
-        subTitle="Không tìm thấy màn hình dashboard cho tài khoản hiện tại."
+      <AuthStatePage
+        variant="404"
+        title="Dashboard chưa được mở cho tài khoản này"
+        description="Không tìm thấy màn hình dashboard phù hợp với quyền hiện tại. Hệ thống chỉ hiển thị các module đã được cấp quyền."
       />
     );
   }
 
   if (routePolicy?.kind === 'unavailable') {
     return (
-      <Result status="403" title="Chức năng chưa được cấp policy" subTitle={routePolicy.reason} />
+      <AuthStatePage
+        variant="403"
+        title="Chức năng chưa được cấp policy"
+        description={routePolicy.reason}
+      />
     );
   }
   const requiredPermissions =
@@ -83,10 +89,10 @@ export function ProtectedRoute({
 
   if (!routeAllowed) {
     return (
-      <Result
-        status="403"
-        title="403"
-        subTitle="Bạn không có quyền truy cập chức năng này."
+      <AuthStatePage
+        variant="403"
+        title="Bạn không có quyền truy cập"
+        description="Tài khoản hiện tại chưa được cấp permission cho chức năng này. Hãy liên hệ admin nếu đây là công việc bạn cần xử lý."
       />
     );
   }

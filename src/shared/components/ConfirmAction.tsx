@@ -1,18 +1,54 @@
 import type { ReactNode } from 'react';
-import { Popconfirm } from 'antd';
+import { useState } from 'react';
+import { Box } from '@mantine/core';
+
+import { ConfirmActionModal } from './ConfirmActionModal';
 
 interface ConfirmActionProps {
   title: string;
   description?: string;
-  onConfirm: () => void;
+  confirmLabel?: string;
+  color?: string;
+  danger?: boolean;
+  requiredText?: string;
+  requireReason?: boolean;
+  onConfirm: (payload?: { reason?: string }) => void;
   children: ReactNode;
 }
 
-export function ConfirmAction({ title, description, onConfirm, children }: ConfirmActionProps) {
+export function ConfirmAction({
+  title,
+  description,
+  confirmLabel,
+  color,
+  danger,
+  requiredText,
+  requireReason,
+  onConfirm,
+  children,
+}: ConfirmActionProps) {
+  const [opened, setOpened] = useState(false);
+
   return (
-    <Popconfirm title={title} description={description} onConfirm={onConfirm}>
-      {children}
-    </Popconfirm>
+    <>
+      <Box component="span" onClick={() => setOpened(true)}>
+        {children}
+      </Box>
+      <ConfirmActionModal
+        opened={opened}
+        title={title}
+        message={description ?? 'Bạn có chắc chắn muốn thực hiện thao tác này?'}
+        confirmLabel={confirmLabel}
+        color={color}
+        danger={danger}
+        requiredText={requiredText}
+        requireReason={requireReason}
+        onClose={() => setOpened(false)}
+        onConfirm={(payload) => {
+          onConfirm(payload);
+          setOpened(false);
+        }}
+      />
+    </>
   );
 }
-

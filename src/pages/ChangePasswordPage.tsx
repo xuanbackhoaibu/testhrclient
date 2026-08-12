@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import {
   Alert,
+  Box,
   Button,
+  Card,
+  Group,
   List,
   PasswordInput,
+  Progress,
   Stack,
   Text,
   ThemeIcon,
@@ -56,6 +60,17 @@ function validateNewPassword(value: string): string | null {
   return validatePasswordPolicy(value);
 }
 
+function getPasswordStrengthScore(checks: ReturnType<typeof getPasswordPolicyChecks>) {
+  return checks.filter((check) => check.pass).length;
+}
+
+function getPasswordStrengthMeta(score: number) {
+  if (score <= 1) return { label: 'Yếu', color: 'red', value: 25 };
+  if (score === 2) return { label: 'Trung bình', color: 'orange', value: 50 };
+  if (score === 3) return { label: 'Khá', color: 'yellow', value: 75 };
+  return { label: 'Mạnh', color: 'green', value: 100 };
+}
+
 export function ChangePasswordPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +91,9 @@ export function ChangePasswordPage() {
 
   const policyChecks = getPasswordPolicyChecks(form.values.newPassword);
   const showPolicy = form.values.newPassword.length > 0;
+  const strength = getPasswordStrengthMeta(getPasswordStrengthScore(policyChecks));
+  const confirmTouched = form.values.confirmPassword.length > 0;
+  const confirmMatched = confirmTouched && form.values.confirmPassword === form.values.newPassword;
 
   async function handleSubmit(values: ChangePasswordForm) {
     setSubmitting(true);
@@ -164,25 +182,37 @@ export function ChangePasswordPage() {
           />
 
           {showPolicy ? (
-            <List spacing={4} size="sm">
-              {policyChecks.map((check) => (
-                <List.Item
-                  key={check.label}
-                  icon={
-                    <ThemeIcon
-                      color={check.pass ? 'green' : 'red'}
-                      size={16}
-                      radius="xl"
+            <Card withBorder className="change-password-policy-card">
+              <Stack gap="sm">
+                <Box>
+                  <Group justify="space-between" mb={6}>
+                    <Text size="sm" fw={800}>Độ mạnh mật khẩu</Text>
+                    <Text size="sm" fw={800} c={`${strength.color}.7`}>{strength.label}</Text>
+                  </Group>
+                  <Progress value={strength.value} color={strength.color} size="md" radius="xl" />
+                </Box>
+                <List spacing={6} size="sm" className="change-password-checklist">
+                  {policyChecks.map((check) => (
+                    <List.Item
+                      key={check.label}
+                      icon={
+                        <ThemeIcon
+                          color={check.pass ? 'green' : 'gray'}
+                          size={18}
+                          radius="xl"
+                          variant={check.pass ? 'filled' : 'light'}
+                        >
+                          {check.pass ? <IconCheck size={12} /> : <IconX size={12} />}
+                        </ThemeIcon>
+                      }
+                      c={check.pass ? 'green' : 'dimmed'}
                     >
-                      {check.pass ? <IconCheck size={10} /> : <IconX size={10} />}
-                    </ThemeIcon>
-                  }
-                  c={check.pass ? 'green' : 'red'}
-                >
-                  {check.label}
-                </List.Item>
-              ))}
-            </List>
+                      {check.label}
+                    </List.Item>
+                  ))}
+                </List>
+              </Stack>
+            </Card>
           ) : null}
 
           <PasswordInput
@@ -191,6 +221,20 @@ export function ChangePasswordPage() {
             leftSection={<IconLock size={18} />}
             autoComplete="new-password"
             disabled={submitting}
+            className={
+              confirmTouched
+                ? confirmMatched
+                  ? 'change-password-confirm-match'
+                  : 'change-password-confirm-mismatch'
+                : undefined
+            }
+            description={
+              confirmTouched
+                ? confirmMatched
+                  ? 'Mật khẩu xác nhận đã khớp.'
+                  : 'Mật khẩu xác nhận chưa khớp.'
+                : undefined
+            }
             {...form.getInputProps('confirmPassword')}
           />
 

@@ -1760,7 +1760,6 @@ Ghi chú:
 
 Đã nâng cấp:
 
-- Thêm khối `Phạm vi thao tác hiện tại` để người dùng biết mình được sửa phần nào.
 - Tách quyền Settings theo 4 nhóm:
   - Thông tin công ty: chỉ quản trị hệ thống/quản trị tài khoản được sửa.
   - Giao diện cá nhân: user đã đăng nhập được đổi theme và mật độ hiển thị.
@@ -1775,3 +1774,111 @@ Ghi chú:
 
 - Bổ sung CSS cho settings panel, theme preview card, notification table, password preview và thanh lưu nổi.
 - Đồng bộ màu text, border, nền card và hover state trong dark mode để tránh lỗi chữ tối trên nền tối.
+
+## 31. Trang Auth & Lỗi
+
+### 31.1. ChangePasswordPage
+
+Đã nâng cấp:
+
+- Thêm thanh đo độ mạnh mật khẩu 4 nấc:
+  - Yếu.
+  - Trung bình.
+  - Khá.
+  - Mạnh.
+- Thanh đổi màu theo số tiêu chí mật khẩu đã đạt.
+- Checklist yêu cầu mật khẩu tự tick theo realtime.
+- Ô xác nhận mật khẩu đổi viền xanh khi khớp và đỏ khi chưa khớp.
+- Thêm mô tả trạng thái khớp/chưa khớp ngay dưới ô xác nhận.
+
+### 31.2. AuthCallbackPage
+
+Đã nâng cấp:
+
+- Thay loading chung bằng tiến trình 3 bước:
+  - Xác thực.
+  - Tải hồ sơ.
+  - Hoàn tất.
+- Mỗi bước có icon, trạng thái đang chạy và spinner riêng.
+- Khi lỗi, hiển thị alert rõ ràng kèm nút `Quay lại đăng nhập`.
+- Vẫn giữ logic hiện tại: xử lý callback, gọi `/auth/me`, rồi điều hướng tới màn hình phù hợp theo quyền.
+
+### 31.3. Trang 403 / 404 / Lỗi / Hết phiên
+
+Đã nâng cấp:
+
+- Tạo component dùng chung `AuthStatePage` cho các trạng thái lỗi.
+- Mỗi trạng thái có illustration/icon riêng:
+  - 403: không có quyền.
+  - 404: không tìm thấy.
+  - Error: lỗi hiển thị màn hình.
+  - Session: phiên đăng nhập/hồ sơ quyền không xác minh được.
+- Thay các `AntD Result` cũ trong `ProtectedRoute`, `AuthorizationLanding` và `RouteErrorPage`.
+- Trang hết phiên có nút `Đăng nhập lại` và truyền `next` theo path hiện tại để giữ ngữ cảnh màn hình đang xem.
+- Trang lỗi 500/render error có nút `Tải lại`, không bị trông giống trang hết phiên.
+
+### 31.4. Đồng bộ UI/Dark Mode
+
+Đã nâng cấp:
+
+- Bổ sung CSS cho auth state card, callback steps, password policy card và confirm password state.
+- Đồng bộ dark mode cho nền, border, text và trạng thái current/done của tiến trình callback.
+
+## 32. Shared UI Kit
+
+### 32.1. Bộ Empty States
+
+Đã nâng cấp:
+
+- Mở rộng `EmptyState` thành 4 mẫu dùng chung:
+  - `empty`: Chưa có dữ liệu + nút tạo mới.
+  - `search`: Không có kết quả tìm kiếm + nút xóa lọc.
+  - `forbidden`: Không có quyền + nút liên hệ admin.
+  - `error`: Lỗi tải dữ liệu + nút thử lại.
+- Hỗ trợ action chính/phụ để các trang có thể gắn workflow phù hợp.
+- Giữ backward-compatible với các nơi đang gọi `EmptyState` cũ.
+
+### 32.2. Bộ Skeleton theo layout
+
+Đã nâng cấp:
+
+- Thêm `TableSkeleton` cho bảng dữ liệu.
+- Thêm `CardGridSkeleton` cho màn danh sách dạng card.
+- Thêm `DetailSkeleton` cho trang chi tiết.
+- Thêm `ChartSkeleton` cho biểu đồ bar/donut/area.
+- `LoadingState` có thêm prop `layout` để gọi nhanh:
+  - `default`.
+  - `table`.
+  - `cards`.
+  - `detail`.
+  - `chart`.
+
+### 32.3. Modal xác nhận hành động nguy hiểm
+
+Đã nâng cấp:
+
+- Mở rộng `ConfirmActionModal` để dùng cho thao tác nguy hiểm như xóa, chốt kỳ, vô hiệu hóa.
+- Hỗ trợ cảnh báo danger.
+- Hỗ trợ bắt nhập chính xác tên bản ghi qua `requiredText`.
+- Hỗ trợ bắt nhập lý do qua `requireReason`.
+- Nút xác nhận tự khóa nếu chưa nhập đúng tên hoặc thiếu lý do.
+- `ConfirmAction` đã chuyển khỏi AntD Popconfirm sang modal Mantine dùng chung.
+
+### 32.4. Toast có hành động
+
+Đã nâng cấp:
+
+- Thêm helper `showActionToast`.
+- Toast hỗ trợ nút hành động, mặc định là `Hoàn tác`.
+- Dùng cho các thao tác vừa thực hiện như xóa nháp, hủy đơn hoặc thao tác có thể rollback.
+
+### 32.5. Export dùng chung
+
+Đã nâng cấp:
+
+- Export các component mới qua `src/shared/ui/index.ts` để các module import tập trung:
+  - `EmptyState`.
+  - `LoadingState`.
+  - `TableSkeleton`, `CardGridSkeleton`, `DetailSkeleton`, `ChartSkeleton`.
+  - `ConfirmAction`, `ConfirmActionModal`.
+  - `showActionToast`.
