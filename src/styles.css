@@ -1215,7 +1215,6 @@ body {
 
 .settings-panel,
 .settings-runtime-box,
-.settings-access-card,
 .settings-password-preview {
   background: var(--hrm-surface);
   border-color: var(--hrm-border);
@@ -1236,10 +1235,6 @@ body {
 .settings-row {
   border-top: 1px solid var(--hrm-border-soft);
   padding-top: 14px;
-}
-
-.settings-access-card {
-  min-height: 86px;
 }
 
 .settings-theme-card {
@@ -1603,7 +1598,6 @@ body {
 :root[data-mantine-color-scheme='dark'] .imports-history-row,
 :root[data-mantine-color-scheme='dark'] .settings-panel,
 :root[data-mantine-color-scheme='dark'] .settings-runtime-box,
-:root[data-mantine-color-scheme='dark'] .settings-access-card,
 :root[data-mantine-color-scheme='dark'] .settings-password-preview,
 :root[data-mantine-color-scheme='dark'] .settings-theme-card,
 :root[data-mantine-color-scheme='dark'] .settings-unsaved-bar,

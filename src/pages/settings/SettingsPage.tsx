@@ -259,35 +259,6 @@ export function SettingsPage() {
       <PageHeader title="Cài đặt" subtitle="Quản lý thông tin công ty, giao diện, thông báo và chính sách mật khẩu." />
 
       <Stack gap="md" pb={hasChanges ? 84 : 0}>
-        <Card withBorder className="settings-panel">
-          <Group justify="space-between" align="flex-start">
-            <Box>
-              <Title order={4}>Phạm vi thao tác hiện tại</Title>
-              <Text size="sm" c="dimmed">
-                Settings được chia theo quyền: cá nhân được đổi giao diện, quản trị mới được sửa cấu hình hệ thống.
-              </Text>
-            </Box>
-            <Badge color={isSystemAdmin ? 'green' : 'blue'} variant="light">
-              {isSystemAdmin ? 'System admin' : 'Theo quyền được cấp'}
-            </Badge>
-          </Group>
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm" mt="md">
-            {[
-              { label: 'Thông tin công ty', allowed: canManageCompany, visible: true },
-              { label: 'Giao diện cá nhân', allowed: true, visible: true },
-              { label: 'Thông báo hệ thống', allowed: canManageNotifications, visible: canManageNotifications },
-              { label: 'Chính sách mật khẩu', allowed: canManagePasswordPolicy, visible: canManagePasswordPolicy },
-            ].filter((item) => item.visible).map((item) => (
-              <Paper key={item.label} withBorder p="sm" className="settings-access-card">
-                <Text size="sm" fw={800}>{item.label}</Text>
-                <Badge mt={6} color={item.allowed ? 'green' : 'gray'} variant="light">
-                  {item.allowed ? 'Được thao tác' : 'Chỉ xem'}
-                </Badge>
-              </Paper>
-            ))}
-          </SimpleGrid>
-        </Card>
-
         <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
           <Card withBorder className="settings-panel">
             <SettingsCardHeader
