@@ -143,32 +143,32 @@ export function MainLayout() {
 
   return (
     <AppShell
-      header={{ height: 64 }}
-      navbar={{ width: 260, breakpoint: "md", collapsed: { mobile: !opened } }}
-      padding="lg"
+      header={{ height: 56 }}
+      navbar={{ width: 232, breakpoint: "md", collapsed: { mobile: !opened } }}
+      padding="md"
       bg="#f6f8fb"
     >
       <AppShell.Header>
-        <Group h="100%" px="lg" justify="space-between" wrap="nowrap">
-          <Group gap="sm" wrap="nowrap">
+        <Group h="100%" px="md" justify="space-between" wrap="nowrap">
+          <Group gap="xs" wrap="nowrap">
             <Burger
               opened={opened}
               onClick={toggle}
               hiddenFrom="md"
               size="sm"
             />
-            <Title order={1} size="h3">
+            <Title order={1} size="h4">
               {routeTitles[selectedPath] ?? "HACOM HRM"}
             </Title>
           </Group>
 
-          <Group gap="sm" wrap="nowrap">
+          <Group gap="xs" wrap="nowrap">
           <NotificationBell />
           <Menu position="bottom-end" shadow="md" width={230}>
             <Menu.Target>
               <UnstyledButton>
                 <Group gap="xs" wrap="nowrap">
-                  <Avatar size={32} radius="xl" color="blue">
+                  <Avatar size={28} radius="xl" color="blue">
                     {(user?.fullName ?? user?.email ?? "U")
                       .slice(0, 1)
                       .toUpperCase()}
@@ -201,9 +201,9 @@ export function MainLayout() {
       </AppShell.Header>
 
       <AppShell.Navbar p="md">
-        <Stack gap="md" h="100%">
+        <Stack gap="sm" h="100%">
           <Group px="xs">
-            <BrandLogo />
+            <BrandLogo compact />
           </Group>
 
           <ScrollArea flex={1}>
