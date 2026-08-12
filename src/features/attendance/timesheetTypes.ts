@@ -29,6 +29,19 @@ export interface TimesheetGridDay {
   isLocked: boolean;
 }
 
+export interface BccSummary {
+  actualWorkDays: number;
+  publicHolidayDays: number;
+  annualLeaveDays: number;
+  compensatoryLeaveDays: number;
+  paidPersonalLeaveDays: number;
+  companyTripDays: number;
+  dutyDays: number;
+  unpaidLeaveDays: number;
+  socialInsuranceDays: number;
+  totalActualDays: number;
+}
+
 export interface TimesheetGridRow {
   employeeId: string;
   employeeCode: string;
@@ -43,18 +56,8 @@ export interface TimesheetGridRow {
     totalPaidDays: number;
     totalLeaveDays: number;
     countBySymbol: Record<string, number>;
-    bcc: {
-      actualWorkDays: number;
-      publicHolidayDays: number;
-      annualLeaveDays: number;
-      compensatoryLeaveDays: number;
-      paidPersonalLeaveDays: number;
-      companyTripDays: number;
-      dutyDays: number;
-      unpaidLeaveDays: number;
-      socialInsuranceDays: number;
-      totalActualDays: number;
-    };
+    /** Optional while the deployed API is being upgraded to the BCC contract. */
+    bcc?: BccSummary;
     annualLeaveUsedToMonth: number;
     annualLeaveUsedInYear: number;
   };

@@ -26,6 +26,7 @@ import {
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
+import { summarizeBccFromDays } from "../../features/attendance/bccSummary";
 import { downloadTimesheetGridExport } from "../../features/attendance/timesheetApi";
 import {
   useAdjustTimesheetDay,
@@ -168,7 +169,7 @@ function cellDescription(day: TimesheetGridDay | undefined): string {
 }
 
 function bccTailValue(row: TimesheetGridRow, key: BccTailKey): number | string {
-  const bcc = row.summary.bcc;
+  const bcc = row.summary.bcc ?? summarizeBccFromDays(row.days);
   const values: Record<BccTailKey, number | string> = {
     actualWorkDays: bcc.actualWorkDays,
     annualLeaveDays: bcc.annualLeaveDays,
