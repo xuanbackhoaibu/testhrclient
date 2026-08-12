@@ -1,7 +1,6 @@
 import { Fragment, memo, useCallback, useMemo, useState } from "react";
 import {
   Alert,
-  Badge,
   Button,
   Checkbox,
   Group,
@@ -53,38 +52,39 @@ const yearOptions = Array.from({ length: 5 }, (_, index) => {
   return { value: String(year), label: String(year) };
 });
 const fixedColumns = [
-  { key: "number", label: "TT", left: 0, width: 52 },
-  { key: "code", label: "Mã nhân viên", left: 52, width: 118 },
-  { key: "name", label: "Họ và tên", left: 170, width: 220 },
-  { key: "title", label: "Chức vụ", left: 390, width: 185 },
+  { key: "number", label: "TT", left: 0, width: 42 },
+  { key: "code", label: "Mã nhân viên", left: 42, width: 104 },
+  { key: "name", label: "Họ và tên", left: 146, width: 184 },
+  { key: "title", label: "Chức vụ", left: 330, width: 154 },
 ] as const;
+const dayColumnWidth = 44;
 const bccTailColumns = [
-  { key: "actualWorkDays", label: "Ngày\nlàm việc\nthực tế\n(1)", width: 84 },
-  { key: "annualLeaveDays", label: "Nghỉ ngày\nPhép\n(2)", width: 88 },
-  { key: "dutyDays", label: "Ngày\ntrực", width: 78 },
+  { key: "actualWorkDays", label: "Ngày\nlàm việc\nthực tế\n(1)", width: 72 },
+  { key: "annualLeaveDays", label: "Nghỉ ngày\nPhép\n(2)", width: 72 },
+  { key: "dutyDays", label: "Ngày\ntrực", width: 58 },
   {
     key: "unpaidLeaveDays",
     label: "Ng.nghỉ\nkhông hưởng\nlương\n(Ẩn)",
-    width: 94,
+    width: 74,
     color: "red.8",
   },
   {
     key: "totalActualDays",
     label: "Tổng\nngày công\nthực tế\n(3)=(1)+(2)",
-    width: 94,
+    width: 74,
   },
   {
     key: "annualLeaveUsedToMonth",
     label: "Số ngày phép\nđược sử dụng\nđến tháng",
-    width: 96,
+    width: 82,
   },
   {
     key: "annualLeaveUsedInYear",
     label: "Số ngày phép\nđược sử dụng\ntrong năm",
-    width: 96,
+    width: 82,
   },
-  { key: "signature", label: "Ký xác\nnhận", width: 82 },
-  { key: "note", label: "Ghi chú\n(Để theo dõi,\nko in cột này)", width: 138 },
+  { key: "signature", label: "Ký xác\nnhận", width: 68 },
+  { key: "note", label: "Ghi chú\n(Để theo dõi,\nko in cột này)", width: 116 },
 ] as const;
 
 type BccTailKey = (typeof bccTailColumns)[number]["key"];
@@ -215,26 +215,35 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
 
   return (
     <Table.Tr>
-      <Table.Td style={{ ...fixedStyle(0, 52), textAlign: "center" }}>
+      <Table.Td
+        style={{
+          ...fixedStyle(fixedColumns[0].left, fixedColumns[0].width),
+          textAlign: "center",
+        }}
+      >
         {employeeNumber}
       </Table.Td>
-      <Table.Td style={fixedStyle(52, 118)}>
-        <Text size="sm" fw={600}>
+      <Table.Td style={fixedStyle(fixedColumns[1].left, fixedColumns[1].width)}>
+        <Text size="xs" fw={600}>
           {row.employeeCode}
         </Text>
       </Table.Td>
-      <Table.Td style={fixedStyle(170, 220)}>
-        <Text size="sm" fw={600}>
+      <Table.Td style={fixedStyle(fixedColumns[2].left, fixedColumns[2].width)}>
+        <Text size="xs" fw={600}>
           {row.fullName}
         </Text>
       </Table.Td>
-      <Table.Td style={fixedStyle(390, 185)}>
+      <Table.Td style={fixedStyle(fixedColumns[3].left, fixedColumns[3].width)}>
         {row.jobTitle ? (
-          <Text size="sm">{row.jobTitle}</Text>
+          <Text size="xs">{row.jobTitle}</Text>
         ) : (
-          <Badge size="sm" color="orange" variant="light">
-            Chưa gán chức vụ
-          </Badge>
+          <Text
+            size="xs"
+            c="dimmed"
+            title="Hồ sơ chưa có phân công/chức danh hiệu lực"
+          >
+            —
+          </Text>
         )}
       </Table.Td>
       {dayMetas.map((meta) => {
@@ -263,7 +272,8 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
             key={meta.day}
             title={cellDescription(day)}
             style={{
-              minWidth: 52,
+              minWidth: dayColumnWidth,
+              width: dayColumnWidth,
               textAlign: "center",
               background,
               cursor: isEditable ? "pointer" : "default",
@@ -272,7 +282,7 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
           >
             <Text
               fw={label ? 700 : undefined}
-              size="sm"
+              size="xs"
               c={label.includes("KL") ? "red.9" : undefined}
             >
               {label || (day?.needsExplanation ? "?" : "·")}
@@ -289,7 +299,7 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
           >
             <Text
               fw={column.key === "totalActualDays" ? 700 : undefined}
-              size="sm"
+              size="xs"
             >
               {value}
             </Text>
@@ -516,6 +526,7 @@ export function TimesheetGridPage() {
   return (
     <>
       <PageHeader
+        compact
         title="Bảng chấm công tháng"
         subtitle="Theo dõi theo công ty, phòng ban và nhân viên; chức vụ lấy từ phân công hiệu lực trong kỳ."
         actions={
@@ -523,8 +534,9 @@ export function TimesheetGridPage() {
             <Group gap="xs">
               {canExport ? (
                 <Button
+                  size="sm"
                   variant="default"
-                  leftSection={<IconDownload size={18} />}
+                  leftSection={<IconDownload size={16} />}
                   loading={isExporting}
                   onClick={() => void handleExport()}
                 >
@@ -533,7 +545,8 @@ export function TimesheetGridPage() {
               ) : null}
               {canEdit ? (
                 <Button
-                  leftSection={<IconRefresh size={18} />}
+                  size="sm"
+                  leftSection={<IconRefresh size={16} />}
                   loading={recompute.isPending}
                   onClick={() => void handleRecompute()}
                 >
@@ -545,37 +558,47 @@ export function TimesheetGridPage() {
         }
       />
 
-      <Stack gap="md">
-        <Alert icon={<IconInfoCircle size={18} />} color="blue" variant="light">
-          Giờ hành chính <b>08:00–17:30</b>; chỉ check-in <b>sau 08:15</b> mới
-          tính đi muộn. Thứ Bảy làm buổi sáng <b>08:00–12:00</b>. Ô “Chưa gán
-          chức vụ” là hồ sơ chưa có phân công/chức danh hiệu lực.
+      <Stack gap="xs">
+        <Alert
+          p="xs"
+          radius="sm"
+          icon={<IconInfoCircle size={15} />}
+          color="blue"
+          variant="light"
+        >
+          <Text size="xs">
+            Giờ hành chính <b>08:00–17:30</b>; chỉ check-in <b>sau 08:15</b> mới
+            tính đi muộn. Thứ Bảy làm buổi sáng <b>08:00–12:00</b>.
+          </Text>
         </Alert>
 
-        <Paper withBorder radius="md" p="sm" shadow="xs">
+        <Paper withBorder radius="sm" p="xs">
           <Group justify="space-between" align="end" wrap="wrap">
             <Group align="end" gap="sm">
               <Select
+                size="sm"
                 label="Kỳ công"
-                w={142}
+                w={128}
                 data={monthOptions}
                 value={String(month)}
                 onChange={(value) => setMonth(Number(value ?? 1))}
               />
               <Select
+                size="sm"
                 label="Năm"
-                w={112}
+                w={92}
                 data={yearOptions}
                 value={String(year)}
                 onChange={(value) =>
                   setYear(Number(value ?? now.getFullYear()))
                 }
               />
-              <Stack gap={4}>
-                <Text size="sm" fw={500}>
+              <Stack gap={2}>
+                <Text size="xs" fw={600} c="dimmed" tt="uppercase">
                   Phạm vi xem & xuất
                 </Text>
                 <Button
+                  size="sm"
                   variant="default"
                   leftSection={<IconFilter size={16} />}
                   onClick={openScopeModal}
@@ -584,11 +607,8 @@ export function TimesheetGridPage() {
                 </Button>
               </Stack>
             </Group>
-            <Group gap="xs" pb={4}>
-              <Badge variant="light" color="violet">
-                {scopeLabel}
-              </Badge>
-              <Text size="sm" c="dimmed">
+            <Group gap="xs" pb={2}>
+              <Text size="xs" c="dimmed">
                 {rows.length} nhân viên · {groupedRows.length} nhóm
               </Text>
             </Group>
@@ -609,11 +629,20 @@ export function TimesheetGridPage() {
         ) : (
           <ScrollArea type="auto" offsetScrollbars>
             <Table
+              className="timesheet-bcc-table"
               withTableBorder
               highlightOnHover
               stickyHeader
               stickyHeaderOffset={0}
-              style={{ minWidth: 575 + dayMetas.length * 52 + bccTailWidth }}
+              horizontalSpacing={0}
+              verticalSpacing={0}
+              style={{
+                minWidth:
+                  fixedColumns[fixedColumns.length - 1].left +
+                  fixedColumns[fixedColumns.length - 1].width +
+                  dayMetas.length * dayColumnWidth +
+                  bccTailWidth,
+              }}
             >
               <Table.Thead>
                 <Table.Tr>
@@ -625,6 +654,7 @@ export function TimesheetGridPage() {
                         ...fixedStyle(column.left, column.width, true),
                         textAlign: column.key === "number" ? "center" : "left",
                         verticalAlign: "middle",
+                        padding: "5px 7px",
                       }}
                     >
                       {column.label}
@@ -634,9 +664,11 @@ export function TimesheetGridPage() {
                     <Table.Th
                       key={meta.day}
                       style={{
-                        minWidth: 52,
+                        minWidth: dayColumnWidth,
+                        width: dayColumnWidth,
                         textAlign: "center",
                         background: meta.isSunday ? "#ffe7a6" : "#e6f2df",
+                        padding: "5px 2px",
                       }}
                     >
                       {String(meta.day).padStart(2, "0")}
@@ -656,6 +688,9 @@ export function TimesheetGridPage() {
                             ? "#e03131"
                             : undefined,
                         background: "#e6f2df",
+                        fontSize: 10,
+                        lineHeight: 1.15,
+                        padding: "4px 3px",
                       }}
                     >
                       {bccTailLabel(column, month, year)}
@@ -667,9 +702,11 @@ export function TimesheetGridPage() {
                     <Table.Th
                       key={meta.day}
                       style={{
-                        minWidth: 52,
+                        minWidth: dayColumnWidth,
+                        width: dayColumnWidth,
                         textAlign: "center",
                         background: meta.isSunday ? "#ffe7a6" : "#e6f2df",
+                        padding: "5px 2px",
                       }}
                     >
                       {meta.label}
@@ -687,10 +724,15 @@ export function TimesheetGridPage() {
                           dayMetas.length +
                           bccTailColumns.length
                         }
-                        style={{ background: "#d9d2e9", fontWeight: 700 }}
+                        style={{
+                          background: "#d9d2e9",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          padding: "7px 10px",
+                        }}
                       >
                         {groupIndex + 1}. {group.label}{" "}
-                        <Text component="span" size="sm" c="dimmed">
+                        <Text component="span" size="xs" c="dimmed">
                           ({group.rows.length} nhân viên)
                         </Text>
                       </Table.Td>
