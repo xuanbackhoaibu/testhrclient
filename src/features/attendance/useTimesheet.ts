@@ -9,12 +9,14 @@ import {
   openTimesheetPeriod,
   recomputeTimesheet,
   reopenTimesheetPeriod,
+  setAutoFullAttendance,
 } from './timesheetApi';
 import type {
   AdjustTimesheetDayPayload,
   OpenTimesheetPeriodPayload,
   RecomputePayload,
   ReopenTimesheetPeriodPayload,
+  SetAutoFullAttendancePayload,
   TimesheetGridQuery,
 } from './timesheetTypes';
 
@@ -49,6 +51,22 @@ export function useRecomputeTimesheet() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: RecomputePayload) => recomputeTimesheet(payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: timesheetKeys.all });
+    },
+  });
+}
+
+export function useSetAutoFullAttendance() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      employeeId,
+      payload,
+    }: {
+      employeeId: string;
+      payload: SetAutoFullAttendancePayload;
+    }) => setAutoFullAttendance(employeeId, payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: timesheetKeys.all });
     },

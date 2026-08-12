@@ -46,6 +46,8 @@ export interface TimesheetGridRow {
   employeeId: string;
   employeeCode: string;
   fullName: string;
+  /** HR bật cho lãnh đạo/nhân sự đặc thù không cần log chấm công. */
+  attendanceAutoFullDay: boolean;
   departmentId: string | null;
   departmentName: string | null;
   unitId: string | null;
@@ -94,6 +96,18 @@ export interface RecomputeResult {
   processed: number;
   skippedLocked: number;
   skippedAdjusted: number;
+}
+
+export interface SetAutoFullAttendancePayload {
+  enabled: boolean;
+  fromDate: string;
+  toDate: string;
+}
+
+export interface SetAutoFullAttendanceResult {
+  employeeId: string;
+  attendanceAutoFullDay: boolean;
+  recompute: RecomputeResult;
 }
 
 export type TimesheetPeriodStatus =

@@ -31,6 +31,7 @@ import { downloadTimesheetGridExport } from "../../features/attendance/timesheet
 import {
   useAdjustTimesheetDay,
   useRecomputeTimesheet,
+  useSetAutoFullAttendance,
   useTimesheetGrid,
 } from "../../features/attendance/useTimesheet";
 import {
@@ -56,7 +57,8 @@ const fixedColumns = [
   { key: "number", label: "TT", left: 0, width: 42 },
   { key: "code", label: "Mã nhân viên", left: 42, width: 104 },
   { key: "name", label: "Họ và tên", left: 146, width: 184 },
-  { key: "title", label: "Chức vụ", left: 330, width: 154 },
+  { key: "autoFull", label: "Đủ công\nmặc định", left: 330, width: 86 },
+  { key: "title", label: "Chức vụ", left: 416, width: 154 },
 ] as const;
 const dayColumnWidth = 44;
 const rowsPerPageOptions = [20, 50, 100].map((value) => ({
@@ -116,8 +118,8 @@ const colorLegendItems = [
   },
   {
     color: "#ffffff",
-    label: "+/- công máy",
-    description: "+ là đủ công, - là nửa công theo dữ liệu máy",
+    label: "+/- công",
+    description: "+ là đủ công (máy hoặc cờ mặc định), - là nửa công",
   },
 ] as const;
 const bccTailColumns = [
@@ -272,9 +274,18 @@ function TimesheetColorLegend() {
   );
 }
 
-function cellDescription(day: TimesheetGridDay | undefined): string {
+function cellDescription(
+  day: TimesheetGridDay | undefined,
+  attendanceAutoFullDay = false,
+): string {
   if (!day) return "Chưa tạo dữ liệu ngày công";
   return [
+    attendanceAutoFullDay &&
+    day.isWorkingDay &&
+    !day.hasAdjustment &&
+    !day.isLocked
+      ? "Đủ công mặc định"
+      : null,
     day.holidayName,
     day.firstPunch && day.lastPunch
       ? `${day.firstPunch}–${day.lastPunch}`
@@ -324,13 +335,20 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
   employeeNumber,
   dayMetas,
   canEdit,
+  updatingEmployeeId,
   onOpenCell,
+  onToggleAutoFullAttendance,
 }: {
   item: PreparedTimesheetRow;
   employeeNumber: number;
   dayMetas: DayMeta[];
   canEdit: boolean;
+  updatingEmployeeId: string | null;
   onOpenCell: (row: TimesheetGridRow, day: TimesheetGridDay) => void;
+  onToggleAutoFullAttendance: (
+    row: TimesheetGridRow,
+    enabled: boolean,
+  ) => void;
 }) {
   const { row, daysByNumber } = item;
 
@@ -354,7 +372,24 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
           {row.fullName}
         </Text>
       </Table.Td>
-      <Table.Td style={fixedStyle(fixedColumns[3].left, fixedColumns[3].width)}>
+      <Table.Td
+        style={{
+          ...fixedStyle(fixedColumns[3].left, fixedColumns[3].width),
+          textAlign: "center",
+        }}
+      >
+        <Checkbox
+          aria-label={`Đủ công mặc định cho ${row.fullName}`}
+          checked={Boolean(row.attendanceAutoFullDay)}
+          disabled={!canEdit || updatingEmployeeId === row.employeeId}
+          title="HR tick cho nhân sự không cần chấm công; ngày làm việc tự đủ công. Bỏ tick để quay lại tính theo máy."
+          onClick={(event) => event.stopPropagation()}
+          onChange={(event) =>
+            onToggleAutoFullAttendance(row, event.currentTarget.checked)
+          }
+        />
+      </Table.Td>
+      <Table.Td style={fixedStyle(fixedColumns[4].left, fixedColumns[4].width)}>
         {row.jobTitle ? (
           <Text size="xs">{row.jobTitle}</Text>
         ) : (
@@ -391,7 +426,7 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
         return (
           <Table.Td
             key={meta.day}
-            title={cellDescription(day)}
+            title={cellDescription(day, Boolean(row.attendanceAutoFullDay))}
             style={{
               minWidth: dayColumnWidth,
               width: dayColumnWidth,
@@ -464,6 +499,10 @@ export function TimesheetGridPage() {
   const gridQuery = useTimesheetGrid(query);
   const adjustDay = useAdjustTimesheetDay();
   const recompute = useRecomputeTimesheet();
+  const autoFullAttendance = useSetAutoFullAttendance();
+  const [updatingEmployeeId, setUpdatingEmployeeId] = useState<string | null>(
+    null,
+  );
   const rows = useMemo(
     () => gridQuery.data?.rows ?? [],
     [gridQuery.data?.rows],
@@ -729,6 +768,45 @@ export function TimesheetGridPage() {
     }
   }
 
+  async function handleToggleAutoFullAttendance(
+    row: TimesheetGridRow,
+    enabled: boolean,
+  ) {
+    setUpdatingEmployeeId(row.employeeId);
+    try {
+      const result = await autoFullAttendance.mutateAsync({
+        employeeId: row.employeeId,
+        payload: {
+          enabled,
+          fromDate: `${year}-${String(month).padStart(2, "0")}-01`,
+          toDate: lastDayOfMonth(year, month),
+        },
+      });
+      notifications.show({
+        color: "green",
+        title: enabled ? "Đã bật đủ công mặc định" : "Đã tắt đủ công mặc định",
+        message: enabled
+          ? `${row.fullName} được tự đủ công ở các ngày làm việc của kỳ đang xem; Chủ nhật vẫn là ngày nghỉ.`
+          : `${row.fullName} đã quay lại tính công theo dữ liệu máy.`,
+      });
+      if (result.recompute.skippedLocked + result.recompute.skippedAdjusted > 0) {
+        notifications.show({
+          color: "blue",
+          title: "Giữ nguyên quyết định đã có",
+          message: `Không thay đổi ${result.recompute.skippedLocked} ngày đã chốt và ${result.recompute.skippedAdjusted} ngày HR đã sửa tay.`,
+        });
+      }
+    } catch {
+      notifications.show({
+        color: "red",
+        title: "Không lưu được đủ công mặc định",
+        message: "Kiểm tra lại quyền HR và thử lại sau.",
+      });
+    } finally {
+      setUpdatingEmployeeId(null);
+    }
+  }
+
   async function handleExport() {
     setIsExporting(true);
     try {
@@ -795,7 +873,9 @@ export function TimesheetGridPage() {
           <Text size="xs">
             Giờ hành chính <b>08:00–17:30</b>; check-in <b>từ 08:15</b> tính đi
             muộn. Thứ Bảy làm buổi sáng <b>08:00–12:00</b>; Chủ nhật luôn là
-            <b> ngày nghỉ</b>, không cảnh báo muộn hay thiếu chấm công.
+            <b> ngày nghỉ</b>, không cảnh báo muộn hay thiếu chấm công. HR có
+            thể tick <b>Đủ công mặc định</b> theo từng người đặc thù: ngày làm
+            việc tự đủ công, bỏ tick sẽ trở lại tính theo máy.
           </Text>
         </Alert>
 
@@ -889,9 +969,14 @@ export function TimesheetGridPage() {
                       rowSpan={2}
                       style={{
                         ...fixedStyle(column.left, column.width, true),
-                        textAlign: column.key === "number" ? "center" : "left",
+                        textAlign:
+                          column.key === "number" || column.key === "autoFull"
+                            ? "center"
+                            : "left",
                         verticalAlign: "middle",
                         padding: "5px 7px",
+                        whiteSpace:
+                          column.key === "autoFull" ? "pre-line" : undefined,
                       }}
                     >
                       {column.label}
@@ -996,7 +1081,11 @@ export function TimesheetGridPage() {
                         employeeNumber={group.startIndex + rowIndex + 1}
                         dayMetas={dayMetas}
                         canEdit={canEdit}
+                        updatingEmployeeId={updatingEmployeeId}
                         onOpenCell={openCell}
+                        onToggleAutoFullAttendance={
+                          handleToggleAutoFullAttendance
+                        }
                       />
                     ))}
                   </Fragment>
