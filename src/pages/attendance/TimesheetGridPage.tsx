@@ -882,11 +882,23 @@ export function TimesheetGridPage() {
   async function handleExport() {
     setIsExporting(true);
     try {
-      await downloadTimesheetGridExport(query);
+      const result = await downloadTimesheetGridExport(query);
+      if (result.status === "cancelled") {
+        return;
+      }
+      if (result.status === "unsupported") {
+        notifications.show({
+          color: "orange",
+          title: "Chưa thể chọn nơi lưu",
+          message:
+            "Hãy mở Hacom HRM bằng Chrome hoặc Microsoft Edge để chọn thư mục và tên file Excel.",
+        });
+        return;
+      }
       notifications.show({
         color: "green",
-        title: "Đã xuất Excel",
-        message: "File BCC được tải xuống theo đúng phạm vi đang chọn.",
+        title: "Đã lưu Excel",
+        message: `Đã lưu ${result.filename} theo đúng phạm vi đang chọn.`,
       });
     } catch {
       notifications.show({

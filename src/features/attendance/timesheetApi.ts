@@ -1,4 +1,7 @@
-import { api } from '../../shared/api/httpClient';
+import {
+  api,
+  type SaveLocationDownloadResult,
+} from '../../shared/api/httpClient';
 import type {
   AdjustTimesheetDayPayload,
   RecomputePayload,
@@ -36,8 +39,8 @@ export async function getTimesheetGrid(
 
 export async function downloadTimesheetGridExport(
   query: TimesheetGridQuery,
-): Promise<void> {
-  await api.download(
+): Promise<SaveLocationDownloadResult> {
+  return api.downloadToSelectedLocation(
     `${BASE}/export`,
     `bang-cham-cong-${query.year}-${String(query.month).padStart(2, '0')}.xlsx`,
     timesheetParams(query),
