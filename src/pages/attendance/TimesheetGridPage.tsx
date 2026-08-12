@@ -63,6 +63,63 @@ const rowsPerPageOptions = [20, 50, 100].map((value) => ({
   value: String(value),
   label: `${value}/trang`,
 }));
+const colorLegendItems = [
+  {
+    color: "#d9d2e9",
+    label: "Phòng ban",
+    description: "Dải tiêu đề của từng phòng ban",
+  },
+  {
+    color: "#dbeafe",
+    label: "HR sửa tay",
+    description: "Ngày đã được HR điều chỉnh thủ công",
+  },
+  {
+    color: "#fee2e2",
+    label: "? Giải trình",
+    description: "Thiếu chấm công hoặc chưa đủ điều kiện ghi công",
+  },
+  {
+    color: "#ffedd5",
+    label: "Muộn ≥ 08:15",
+    description: "Check-in từ 08:15 đã được tính đi muộn",
+  },
+  {
+    color: "#e9ecef",
+    label: "CN/ngày nghỉ",
+    description: "Chủ nhật hoặc ngày không làm việc",
+  },
+  {
+    color: "#fff3bf",
+    label: "Ngày lễ",
+    description: "Ngày lễ theo lịch công ty",
+  },
+  {
+    color: "#c7e9b4",
+    label: "CT/BP",
+    description: "Công tác hoặc biệt phái",
+  },
+  {
+    color: "#fff59d",
+    label: "P/L",
+    description: "Nghỉ phép hoặc mã lễ, tết",
+  },
+  {
+    color: "#ff7875",
+    label: "KL",
+    description: "Nghỉ không hưởng lương",
+  },
+  {
+    color: "#ffd8a8",
+    label: "Ốm/TS/online",
+    description: "Ốm, con ốm, thai sản, tai nạn lao động hoặc làm việc online",
+  },
+  {
+    color: "#ffffff",
+    label: "+/- công máy",
+    description: "+ là đủ công, - là nửa công theo dữ liệu máy",
+  },
+] as const;
 const bccTailColumns = [
   { key: "actualWorkDays", label: "Ngày\nlàm việc\nthực tế\n(1)", width: 72 },
   { key: "annualLeaveDays", label: "Nghỉ ngày\nPhép\n(2)", width: 72 },
@@ -182,6 +239,37 @@ function surfaceForSymbol(symbol: string): string | undefined {
     return "#ffd8a8";
   }
   return undefined;
+}
+
+function TimesheetColorLegend() {
+  return (
+    <Stack gap={3} pb={2} style={{ flex: 1, minWidth: 360 }}>
+      <Text size="xs" fw={600} c="dimmed" tt="uppercase">
+        Chú giải màu ô
+      </Text>
+      <Group gap="xs" wrap="wrap">
+        {colorLegendItems.map((item) => (
+          <Group key={item.label} gap={4} wrap="nowrap">
+            <span
+              aria-hidden
+              style={{
+                background: item.color,
+                border: "1px solid var(--mantine-color-gray-4)",
+                borderRadius: 3,
+                display: "block",
+                flex: "0 0 auto",
+                height: 11,
+                width: 11,
+              }}
+            />
+            <Text fz={10} lh={1.2} c="dimmed" title={item.description}>
+              {item.label}
+            </Text>
+          </Group>
+        ))}
+      </Group>
+    </Stack>
+  );
 }
 
 function cellDescription(day: TimesheetGridDay | undefined): string {
@@ -705,8 +793,9 @@ export function TimesheetGridPage() {
           variant="light"
         >
           <Text size="xs">
-            Giờ hành chính <b>08:00–17:30</b>; chỉ check-in <b>sau 08:15</b> mới
-            tính đi muộn. Thứ Bảy làm buổi sáng <b>08:00–12:00</b>.
+            Giờ hành chính <b>08:00–17:30</b>; check-in <b>từ 08:15</b> tính đi
+            muộn. Thứ Bảy làm buổi sáng <b>08:00–12:00</b>; Chủ nhật luôn là
+            <b> ngày nghỉ</b>, không cảnh báo muộn hay thiếu chấm công.
           </Text>
         </Alert>
 
@@ -749,6 +838,7 @@ export function TimesheetGridPage() {
                 </Button>
               </Stack>
             </Group>
+            <TimesheetColorLegend />
             <Group gap="xs" pb={2}>
               <Text size="xs" c="dimmed">
                 {rows.length} nhân viên · {groupedRows.length} phòng ban
