@@ -1219,6 +1219,15 @@ http://127.0.0.1:5173/
   - Vàng: đi muộn/về sớm.
   - Xám: ngày nghỉ/nghỉ phép.
 - Tooltip ô chấm công hiển thị check-in, check-out, ký hiệu, muộn/về sớm, trạng thái chờ giải trình, sửa tay và khóa kỳ.
+- Đã khôi phục lại code gốc của Bảng công tháng từ `hacom/main` để bảo toàn đúng nghiệp vụ hiện có trên main.
+- Đồng bộ thêm các dependency liên quan từ main:
+  - `bccSummary.ts`.
+  - `timesheetApi.ts`.
+  - `timesheetTypes.ts`.
+  - `useTimesheet.ts`.
+  - helper download trong `shared/api/http-client.ts`.
+  - `PageHeader.tsx` để hỗ trợ layout compact đang được trang Bảng công tháng sử dụng.
+- Mục tiêu của lần này là lấy lại nền code main đầy đủ trước, sau đó nếu cần chỉ polish UI dựa trên đúng code gốc này.
 
 ### 21.4. ContractsPage
 

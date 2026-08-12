@@ -60,6 +60,72 @@ export function getFilenameFromContentDisposition(value?: string): string | null
   return asciiMatch?.[1]?.trim() || null;
 }
 
+type SaveFileHandle = {
+  name: string;
+  createWritable: () => Promise<{
+    write: (data: Blob) => Promise<void>;
+    close: () => Promise<void>;
+  }>;
+};
+
+type SaveFilePicker = (options: {
+  suggestedName: string;
+  types: Array<{
+    description: string;
+    accept: Record<string, string[]>;
+  }>;
+}) => Promise<SaveFileHandle>;
+
+export type SaveLocationDownloadResult =
+  | { status: 'saved'; filename: string }
+  | { status: 'cancelled' }
+  | { status: 'unsupported' };
+
+function getSaveFilePicker(): SaveFilePicker | undefined {
+  return (
+    window as typeof window & { showSaveFilePicker?: SaveFilePicker }
+  ).showSaveFilePicker;
+}
+
+async function requestDownloadFile(
+  url: string,
+  filenameFallback: string,
+  params?: Record<string, unknown>,
+): Promise<{ blob: Blob; filename: string }> {
+  const response = await axiosInstance.get(url, {
+    params,
+    responseType: 'blob',
+  });
+  const contentType = String(response.headers['content-type'] ?? '');
+
+  if (contentType.includes('application/json')) {
+    const text = await (response.data as Blob).text();
+    let json: unknown;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      throw new ApiError({
+        message: 'Tải file thất bại',
+        statusCode: response.status,
+        errorCode: 'DOWNLOAD_FAILED',
+      });
+    }
+    unwrapApiEnvelope<never>(json);
+    throw new ApiError({
+      message: 'Tải file thất bại',
+      statusCode: response.status,
+      errorCode: 'DOWNLOAD_FAILED',
+    });
+  }
+
+  return {
+    blob: response.data as Blob,
+    filename:
+      getFilenameFromContentDisposition(response.headers['content-disposition']) ??
+      filenameFallback,
+  };
+}
+
 export const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_HR_API_BASE_URL ?? import.meta.env.VITE_API_BASE_URL,
   timeout: 15000,
@@ -226,32 +292,12 @@ export const api = {
     filenameFallback: string,
     params?: Record<string, unknown>,
   ): Promise<void> {
-    const response = await axiosInstance.get(url, {
+    const { blob, filename } = await requestDownloadFile(
+      url,
+      filenameFallback,
       params,
-      responseType: 'blob',
-    });
-    const contentType = String(response.headers['content-type'] ?? '');
-
-    if (contentType.includes('application/json')) {
-      const text = await (response.data as Blob).text();
-      let json: unknown;
-      try {
-        json = JSON.parse(text);
-      } catch {
-        throw new ApiError({
-          message: 'Tải file thất bại',
-          statusCode: response.status,
-          errorCode: 'DOWNLOAD_FAILED',
-        });
-      }
-      unwrapApiEnvelope<never>(json);
-      return;
-    }
-
-    const filename =
-      getFilenameFromContentDisposition(response.headers['content-disposition']) ??
-      filenameFallback;
-    const blobUrl = window.URL.createObjectURL(response.data);
+    );
+    const blobUrl = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = blobUrl;
     link.download = filename;
@@ -259,5 +305,48 @@ export const api = {
     link.click();
     link.remove();
     window.URL.revokeObjectURL(blobUrl);
+  },
+
+  /**
+   * Hộp thoại hệ điều hành để người dùng tự chọn thư mục và tên file.
+   * Không fallback sang tự tải nhằm tránh lưu file khi HR chưa chọn vị trí.
+   */
+  async downloadToSelectedLocation(
+    url: string,
+    filenameFallback: string,
+    params?: Record<string, unknown>,
+  ): Promise<SaveLocationDownloadResult> {
+    const saveFilePicker = getSaveFilePicker();
+    if (!saveFilePicker) {
+      return { status: 'unsupported' };
+    }
+
+    let fileHandle: SaveFileHandle;
+    try {
+      fileHandle = await saveFilePicker({
+        suggestedName: filenameFallback,
+        types: [
+          {
+            description: 'Tệp Excel',
+            accept: {
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': [
+                '.xlsx',
+              ],
+            },
+          },
+        ],
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return { status: 'cancelled' };
+      }
+      throw error;
+    }
+
+    const { blob } = await requestDownloadFile(url, filenameFallback, params);
+    const writable = await fileHandle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    return { status: 'saved', filename: fileHandle.name };
   },
 };

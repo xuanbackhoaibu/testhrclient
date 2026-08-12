@@ -1,8 +1,13 @@
-import { api } from '../../shared/api/httpClient';
+import {
+  api,
+  type SaveLocationDownloadResult,
+} from '../../shared/api/httpClient';
 import type {
   AdjustTimesheetDayPayload,
   RecomputePayload,
   RecomputeResult,
+  SetAutoFullAttendancePayload,
+  SetAutoFullAttendanceResult,
   OpenTimesheetPeriodPayload,
   ReopenTimesheetPeriodPayload,
   TimesheetGrid,
@@ -14,10 +19,32 @@ import type {
 const BASE = '/attendance/timesheet';
 const PERIOD_BASE = '/timesheet/periods';
 
+/** API nhận các bộ lọc nhiều lựa chọn dạng CSV để Nest xử lý ổn định ở cả
+ * proxy và query parser khác nhau (tránh phụ thuộc departmentIds[]=...). */
+function timesheetParams(query: TimesheetGridQuery): Record<string, unknown> {
+  return {
+    ...query,
+    departmentIds: query.departmentIds?.length
+      ? query.departmentIds.join(',')
+      : undefined,
+    unitIds: query.unitIds?.length ? query.unitIds.join(',') : undefined,
+  };
+}
+
 export async function getTimesheetGrid(
   query: TimesheetGridQuery,
 ): Promise<TimesheetGrid> {
-  return api.get<TimesheetGrid>(`${BASE}/grid`, { params: query });
+  return api.get<TimesheetGrid>(`${BASE}/grid`, { params: timesheetParams(query) });
+}
+
+export async function downloadTimesheetGridExport(
+  query: TimesheetGridQuery,
+): Promise<SaveLocationDownloadResult> {
+  return api.downloadToSelectedLocation(
+    `${BASE}/export`,
+    `bang-cham-cong-${query.year}-${String(query.month).padStart(2, '0')}.xlsx`,
+    timesheetParams(query),
+  );
 }
 
 export async function adjustTimesheetDay(
@@ -31,6 +58,16 @@ export async function recomputeTimesheet(
   payload: RecomputePayload,
 ): Promise<RecomputeResult> {
   return api.post<RecomputeResult>(`${BASE}/recompute`, payload);
+}
+
+export async function setAutoFullAttendance(
+  employeeId: string,
+  payload: SetAutoFullAttendancePayload,
+): Promise<SetAutoFullAttendanceResult> {
+  return api.patch<SetAutoFullAttendanceResult>(
+    `${BASE}/employees/${employeeId}/auto-full-attendance`,
+    payload,
+  );
 }
 
 export async function listTimesheetPeriods(year: number): Promise<TimesheetPeriod[]> {
