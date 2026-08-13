@@ -23,6 +23,7 @@ test('every router screen is wrapped by the shared route policy', () => {
     'ROUTES.movements',
     'ROUTES.contracts',
     'ROUTES.leave',
+    'ROUTES.leaveApprovalAssignments',
     'ROUTES.onboarding',
     'ROUTES.offboarding',
   ]) {
@@ -43,6 +44,7 @@ test('workflow and audit routes use canonical read permissions', () => {
     'HR_PERMISSIONS.MOVEMENT_READ',
     'HR_PERMISSIONS.CONTRACT_READ',
     'HR_PERMISSIONS.LEAVE_READ',
+    'HR_PERMISSIONS.LEAVE_UPDATE',
     'HR_PERMISSIONS.ONBOARDING_READ',
     'HR_PERMISSIONS.OFFBOARDING_READ',
   ]) {

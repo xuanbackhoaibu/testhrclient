@@ -20,6 +20,7 @@ import { EmployeeDetailPage } from '../pages/employees/EmployeeDetailPage';
 import { EmployeesPage } from '../pages/employees/EmployeesPage';
 import { ImportsPage } from '../pages/imports/ImportsPage';
 import { LeavePage } from '../pages/leave/LeavePage';
+import { LeaveApprovalAssignmentsPage } from '../pages/leave/LeaveApprovalAssignmentsPage';
 import { LoginPage } from '../pages/LoginPage';
 import { MovementsPage } from '../pages/movements/MovementsPage';
 import { OffboardingPage } from '../pages/offboarding/OffboardingPage';
@@ -111,6 +112,7 @@ export const router = createBrowserRouter([
       { path: ROUTES.movements, element: <ProtectedRoute route={ROUTES.movements}><MovementsPage /></ProtectedRoute> },
       { path: ROUTES.contracts, element: <ProtectedRoute route={ROUTES.contracts}><ContractsPage /></ProtectedRoute> },
       { path: ROUTES.leave, element: <ProtectedRoute route={ROUTES.leave}><LeavePage /></ProtectedRoute> },
+      { path: ROUTES.leaveApprovalAssignments, element: <ProtectedRoute route={ROUTES.leaveApprovalAssignments}><LeaveApprovalAssignmentsPage /></ProtectedRoute> },
       {
         path: ROUTES.attendance,
         element: (

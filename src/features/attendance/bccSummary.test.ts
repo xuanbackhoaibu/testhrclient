@@ -7,6 +7,9 @@ describe("summarizeBccFromDays", () => {
     const summary = summarizeBccFromDays(
       [
         "+",
+        "-",
+        "H",
+        "O",
         "CT",
         "L",
         "P",
@@ -21,7 +24,7 @@ describe("summarizeBccFromDays", () => {
     );
 
     expect(summary).toEqual({
-      actualWorkDays: 3,
+      actualWorkDays: 5.5,
       publicHolidayDays: 1,
       annualLeaveDays: 2,
       compensatoryLeaveDays: 0.5,
@@ -30,7 +33,7 @@ describe("summarizeBccFromDays", () => {
       dutyDays: 1,
       unpaidLeaveDays: 1,
       socialInsuranceDays: 0.5,
-      totalActualDays: 8.5,
+      totalActualDays: 11,
     });
   });
 });

@@ -63,13 +63,13 @@ const emptyForm: ShiftFormValues = {
   code: "",
   name: "",
   startTime: "08:00",
-  endTime: "17:30",
+  endTime: "17:00",
   breakStart: "12:00",
   breakEnd: "13:00",
   breakDeducted: true,
-  standardMinutes: 510,
+  standardMinutes: 480,
   dayValue: 1,
-  lateThresholdMinutes: 15,
+  lateThresholdMinutes: 10,
   earlyLeaveThresholdMinutes: 10,
   note: "",
   status: "ACTIVE",
@@ -311,12 +311,12 @@ export function WorkShiftsPage() {
           icon={<IconInfoCircle size={18} />}
           color="blue"
           variant="light"
-          title="Quy tắc chấm công: sau 08:15 mới tính đi muộn"
+          title="Quy tắc chấm công: quá ngưỡng ca mới tính đi muộn"
         >
-          Mốc 15 phút được tính theo điều kiện <b>quá mốc</b>: vào lúc
-          08:15 vẫn đúng giờ, 08:16 mới bị đánh dấu muộn. Hệ thống hiện chỉ ghi nhận, <b>chưa trừ
-          công</b>. Thứ Bảy dùng ca sáng 08:00–12:00; Chủ nhật luôn là ngày
-          nghỉ, không báo muộn hoặc thiếu chấm công.
+          Ca hành chính mặc định dùng mốc <b>10 phút</b>: vào lúc 08:10 vẫn đúng
+          giờ, 08:11 mới bị đánh dấu muộn. HR có thể cấu hình ngưỡng theo từng
+          ca; hệ thống hiện chỉ ghi nhận, <b>chưa trừ công</b>. Thứ Bảy dùng ca
+          sáng 08:00–12:00; Chủ nhật luôn là ngày nghỉ.
         </Alert>
 
         <DataTable
@@ -337,8 +337,9 @@ export function WorkShiftsPage() {
                 Lịch tuần mặc định
               </Title>
               <Text c="dimmed" size="sm">
-                Áp dụng cho toàn công ty khi nhân viên không có phân ca riêng.
-                Ngày lễ luôn phủ lên lịch này.
+                Là mẫu lịch để HR tham chiếu khi phân ca. Nhân sự thực tế cần
+                được gán ca hiệu lực; nếu chưa gán, BCC hiển thị “chưa phân ca”
+                và không tự tính công. Ngày lễ luôn phủ lên lịch này.
               </Text>
             </div>
 
@@ -432,7 +433,7 @@ export function WorkShiftsPage() {
               />
               <TextInput
                 label="Giờ ra"
-                placeholder="17:30"
+                placeholder="17:00"
                 withAsterisk
                 {...form.getInputProps("endTime")}
               />
@@ -471,11 +472,10 @@ export function WorkShiftsPage() {
                 {...form.getInputProps("dayValue")}
               />
               <NumberInput
-                label="Ngưỡng đi muộn theo quy định (phút)"
-                description="Cố định toàn công ty: check-in sau 08:15 mới tính đi muộn"
+                label="Ngưỡng đánh dấu đi muộn (phút)"
+                description="Mặc định 10; chỉ quá ngưỡng mới bị đánh dấu, chưa trừ công"
                 min={0}
                 max={240}
-                disabled
                 {...form.getInputProps("lateThresholdMinutes")}
               />
               <NumberInput

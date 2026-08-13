@@ -11,6 +11,7 @@ export const ROUTES = {
   movements: '/movements',
   contracts: '/contracts',
   leave: '/leave',
+  leaveApprovalAssignments: '/leave/approval-assignments',
   attendance: '/attendance',
   attendanceMapping: '/attendance/mapping',
   timesheetGrid: '/attendance/timesheet',
