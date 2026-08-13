@@ -1,4 +1,4 @@
-import { Fragment, memo, useCallback, useMemo, useState } from "react";
+import { Fragment, memo, useCallback, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Button,
@@ -89,8 +89,8 @@ const colorLegendItems = [
   },
   {
     color: "#ffedd5",
-    label: "Muộn ≥ 08:15",
-    description: "Check-in từ 08:15 đã được tính đi muộn",
+    label: "Muộn sau 08:15",
+    description: "Chỉ check-in sau 08:15 mới được tính đi muộn",
   },
   {
     color: "#e9ecef",
@@ -296,7 +296,7 @@ function cellDescription(
     day.firstPunch && day.lastPunch
       ? `${day.firstPunch}–${day.lastPunch}`
       : null,
-    day.lateMinutes > 0 ? `Muộn ${day.lateMinutes}'` : null,
+    day.lateMinutes > 15 ? `Muộn ${day.lateMinutes}'` : null,
     day.earlyLeaveMinutes > 0 ? `Về sớm ${day.earlyLeaveMinutes}'` : null,
     day.needsExplanation ? "Chờ giải trình" : null,
     day.hasAdjustment ? "HR đã sửa tay" : null,
@@ -424,7 +424,7 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
                 ? "#dbeafe"
                 : day?.needsExplanation
                   ? "#fee2e2"
-                  : day?.lateMinutes
+                  : (day?.lateMinutes ?? 0) > 15
                     ? "#ffedd5"
                     : undefined));
         const isEditable = canEdit && day !== undefined && !day.isLocked;
@@ -494,6 +494,8 @@ export function TimesheetGridPage() {
   const [editPortion, setEditPortion] = useState(1);
   const [editReason, setEditReason] = useState("");
   const [isExporting, setIsExporting] = useState(false);
+  const tableViewportRef = useRef<HTMLDivElement>(null);
+  const tableScrollPositionRef = useRef({ left: 0, top: 0 });
 
   const departmentsQuery = useDepartmentsSelect();
   const unitsQuery = useUnitsSelect();
@@ -523,6 +525,25 @@ export function TimesheetGridPage() {
     () => gridQuery.data?.rows ?? [],
     [gridQuery.data?.rows],
   );
+  const rememberTimesheetScroll = useCallback(() => {
+    const viewport = tableViewportRef.current;
+    if (!viewport) return;
+    tableScrollPositionRef.current = {
+      left: viewport.scrollLeft,
+      top: viewport.scrollTop,
+    };
+  }, []);
+  const restoreTimesheetScroll = useCallback(() => {
+    // invalidateQueries hoàn tất trước khi React kịp commit DOM mới. Chờ hai
+    // frame để giữ nguyên ngày/hàng HR đang xem thay vì nhảy ngang khi tick.
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const viewport = tableViewportRef.current;
+        if (!viewport) return;
+        viewport.scrollTo(tableScrollPositionRef.current);
+      });
+    });
+  }, []);
   const dayMetas = useMemo(
     () =>
       Array.from({ length: gridQuery.data?.daysInMonth ?? 31 }, (_, index) =>
@@ -818,6 +839,7 @@ export function TimesheetGridPage() {
   }
 
   async function handleRecompute() {
+    rememberTimesheetScroll();
     try {
       const result = await recompute.mutateAsync({
         fromDate: `${year}-${String(month).padStart(2, "0")}-01`,
@@ -837,6 +859,8 @@ export function TimesheetGridPage() {
         title: "Không tính lại được",
         message: "Vui lòng thử lại sau.",
       });
+    } finally {
+      restoreTimesheetScroll();
     }
   }
 
@@ -844,6 +868,7 @@ export function TimesheetGridPage() {
     row: TimesheetGridRow,
     enabled: boolean,
   ) {
+    rememberTimesheetScroll();
     setUpdatingEmployeeId(row.employeeId);
     try {
       const result = await autoFullAttendance.mutateAsync({
@@ -858,8 +883,8 @@ export function TimesheetGridPage() {
         color: "green",
         title: enabled ? "Đã bật đủ công mặc định" : "Đã tắt đủ công mặc định",
         message: enabled
-          ? `${row.fullName} được tự đủ công ở các ngày làm việc của kỳ đang xem; Chủ nhật vẫn là ngày nghỉ.`
-          : `${row.fullName} đã quay lại tính công theo dữ liệu máy.`,
+          ? `${row.fullName} được tự đủ công ở các ngày làm việc của kỳ ${month}/${year}; Chủ nhật vẫn là ngày nghỉ.`
+          : `${row.fullName} đã trở lại dữ liệu máy của kỳ ${month}/${year}. Ô “?” là ngày máy chưa đủ log, không phải lỗi hiển thị.`,
       });
       if (result.recompute.skippedLocked + result.recompute.skippedAdjusted > 0) {
         notifications.show({
@@ -876,6 +901,7 @@ export function TimesheetGridPage() {
       });
     } finally {
       setUpdatingEmployeeId(null);
+      restoreTimesheetScroll();
     }
   }
 
@@ -955,8 +981,8 @@ export function TimesheetGridPage() {
           variant="light"
         >
           <Text size="xs">
-            Giờ hành chính <b>08:00–17:30</b>; check-in <b>từ 08:15</b> tính đi
-            muộn. Thứ Bảy làm buổi sáng <b>08:00–12:00</b>; Chủ nhật luôn là
+            Giờ hành chính <b>08:00–17:30</b>; check-in <b>sau 08:15</b> mới tính
+            đi muộn. Thứ Bảy làm buổi sáng <b>08:00–12:00</b>; Chủ nhật luôn là
             <b> ngày nghỉ</b>, không cảnh báo muộn hay thiếu chấm công. HR có
             thể tick <b>Đủ công mặc định</b> theo từng người đặc thù: ngày làm
             việc tự đủ công, bỏ tick sẽ trở lại tính theo máy. Khi chọn tháng
@@ -1053,6 +1079,7 @@ export function TimesheetGridPage() {
         ) : (
           <Stack gap="xs">
           <ScrollArea
+            viewportRef={tableViewportRef}
             type="always"
             h="min(680px, calc(100vh - 315px))"
             offsetScrollbars

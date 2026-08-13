@@ -311,10 +311,10 @@ export function WorkShiftsPage() {
           icon={<IconInfoCircle size={18} />}
           color="blue"
           variant="light"
-          title="Quy tắc chấm công: từ 08:15 tính đi muộn"
+          title="Quy tắc chấm công: sau 08:15 mới tính đi muộn"
         >
-          Mốc 15 phút được tính theo điều kiện <b>từ đúng mốc</b>: vào lúc
-          08:15 đã bị đánh dấu muộn. Hệ thống hiện chỉ ghi nhận, <b>chưa trừ
+          Mốc 15 phút được tính theo điều kiện <b>quá mốc</b>: vào lúc
+          08:15 vẫn đúng giờ, 08:16 mới bị đánh dấu muộn. Hệ thống hiện chỉ ghi nhận, <b>chưa trừ
           công</b>. Thứ Bảy dùng ca sáng 08:00–12:00; Chủ nhật luôn là ngày
           nghỉ, không báo muộn hoặc thiếu chấm công.
         </Alert>
@@ -472,7 +472,7 @@ export function WorkShiftsPage() {
               />
               <NumberInput
                 label="Ngưỡng đi muộn theo quy định (phút)"
-                description="Cố định toàn công ty: check-in từ 08:15 tính đi muộn"
+                description="Cố định toàn công ty: check-in sau 08:15 mới tính đi muộn"
                 min={0}
                 max={240}
                 disabled
