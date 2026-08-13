@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Alert,
   Badge,
@@ -18,7 +19,12 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconEdit, IconInfoCircle, IconPlus } from "@tabler/icons-react";
+import {
+  IconCalendarTime,
+  IconEdit,
+  IconInfoCircle,
+  IconPlus,
+} from "@tabler/icons-react";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
@@ -29,6 +35,7 @@ import {
   useWorkCalendar,
   useWorkShifts,
 } from "../../features/attendance/useWorkSchedule";
+import { buildShiftAssignmentUrl } from "../../features/attendance/shiftAssignmentNavigation";
 import {
   WEEKDAY_LABELS,
   type WorkShift,
@@ -76,6 +83,7 @@ const emptyForm: ShiftFormValues = {
 };
 
 export function WorkShiftsPage() {
+  const navigate = useNavigate();
   const { can } = useAuth();
   const canEdit = can(HR_PERMISSIONS.ATTENDANCE_UPDATE);
 
@@ -125,25 +133,28 @@ export function WorkShiftsPage() {
     setDrawerOpen(true);
   }
 
-  function openEdit(shift: WorkShift) {
-    setEditing(shift);
-    form.setValues({
-      code: shift.code,
-      name: shift.name,
-      startTime: shift.startTime,
-      endTime: shift.endTime,
-      breakStart: shift.breakStart ?? "",
-      breakEnd: shift.breakEnd ?? "",
-      breakDeducted: shift.breakDeducted,
-      standardMinutes: shift.standardMinutes,
-      dayValue: shift.dayValue,
-      lateThresholdMinutes: shift.lateThresholdMinutes,
-      earlyLeaveThresholdMinutes: shift.earlyLeaveThresholdMinutes,
-      note: shift.note ?? "",
-      status: shift.status,
-    });
-    setDrawerOpen(true);
-  }
+  const openEdit = useCallback(
+    (shift: WorkShift) => {
+      setEditing(shift);
+      form.setValues({
+        code: shift.code,
+        name: shift.name,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        breakStart: shift.breakStart ?? "",
+        breakEnd: shift.breakEnd ?? "",
+        breakDeducted: shift.breakDeducted,
+        standardMinutes: shift.standardMinutes,
+        dayValue: shift.dayValue,
+        lateThresholdMinutes: shift.lateThresholdMinutes,
+        earlyLeaveThresholdMinutes: shift.earlyLeaveThresholdMinutes,
+        note: shift.note ?? "",
+        status: shift.status,
+      });
+      setDrawerOpen(true);
+    },
+    [form],
+  );
 
   async function handleSubmit(values: ShiftFormValues) {
     const payload = {
@@ -173,7 +184,9 @@ export function WorkShiftsPage() {
       notifications.show({
         color: "green",
         title: editing ? "Đã cập nhật ca" : "Đã tạo ca",
-        message: "Bộ tính công sẽ dùng giờ mới ngay, không cần deploy lại.",
+        message: editing
+          ? "Mở Bảng công, chọn đúng tháng rồi Cập nhật bảng công. Ngày đã chốt hoặc HR sửa tay vẫn được giữ nguyên."
+          : "Dùng biểu tượng Phân ca này ở dòng ca để gán theo đối tượng và thời hạn.",
       });
       setDrawerOpen(false);
       setEditing(null);
@@ -271,11 +284,17 @@ export function WorkShiftsPage() {
       {
         key: "actions",
         header: "",
-        width: 80,
+        width: 104,
         align: "right",
         render: (record) => (
           <TableActionsMenu
             actions={[
+              {
+                label: "Phân ca này",
+                icon: <IconCalendarTime size={16} />,
+                disabled: !canEdit || record.status !== "ACTIVE",
+                onClick: () => navigate(buildShiftAssignmentUrl(record.id)),
+              },
               {
                 label: "Chỉnh sửa",
                 icon: <IconEdit size={16} />,
@@ -287,16 +306,14 @@ export function WorkShiftsPage() {
         ),
       },
     ],
-    // openEdit chỉ đọc setState + form (ổn định), nên không cần vào deps.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [canEdit],
+    [canEdit, navigate, openEdit],
   );
 
   return (
     <>
       <PageHeader
         title="Ca làm việc"
-        subtitle="Khai báo ca và lịch tuần. Bộ tính công đọc thẳng từ đây — sửa giờ ca là áp dụng ngay, không cần deploy lại."
+        subtitle="Khai báo mẫu giờ công tái sử dụng. Sau đó dùng “Phân ca này” để gán mẫu cho đúng đối tượng theo khoảng hiệu lực."
         actions={
           canEdit ? (
             <Button leftSection={<IconPlus size={18} />} onClick={openCreate}>
@@ -327,7 +344,7 @@ export function WorkShiftsPage() {
           error={shiftsQuery.error}
           onRetry={() => void shiftsQuery.refetch()}
           emptyTitle="Chưa khai báo ca làm việc"
-          emptyDescription="Tạo ca hành chính trước, sau đó gán vào lịch tuần bên dưới."
+          emptyDescription="Tạo ca trước, rồi dùng “Phân ca này” để gán cho nhóm đã được HR chốt giờ làm."
         />
 
         <Card withBorder padding="lg" radius="md">
@@ -366,7 +383,9 @@ export function WorkShiftsPage() {
                           void handleCalendarChange(
                             day.weekday,
                             nextWorking,
-                            nextWorking ? (day.shiftId ?? shiftOptions[0]?.value ?? null) : null,
+                            nextWorking
+                              ? (day.shiftId ?? shiftOptions[0]?.value ?? null)
+                              : null,
                           );
                         }}
                       />
@@ -376,7 +395,9 @@ export function WorkShiftsPage() {
                         data={shiftOptions}
                         value={day.shiftId}
                         disabled={
-                          !canEdit || !day.isWorkingDay || updateCalendarDay.isPending
+                          !canEdit ||
+                          !day.isWorkingDay ||
+                          updateCalendarDay.isPending
                         }
                         onChange={(value) => {
                           if (!value) {
@@ -486,7 +507,11 @@ export function WorkShiftsPage() {
               />
             </SimpleGrid>
 
-            <Textarea label="Ghi chú" minRows={2} {...form.getInputProps("note")} />
+            <Textarea
+              label="Ghi chú"
+              minRows={2}
+              {...form.getInputProps("note")}
+            />
 
             {editing ? (
               <Select
