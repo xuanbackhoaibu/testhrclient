@@ -27,6 +27,10 @@ import {
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
 import { summarizeBccFromDays } from "../../features/attendance/bccSummary";
+import {
+  compareAttendanceIdentity,
+  formatAttendanceCode,
+} from "../../features/attendance/timesheetAttendanceCode";
 import { downloadTimesheetGridExport } from "../../features/attendance/timesheetApi";
 import {
   useAdjustTimesheetDay,
@@ -56,7 +60,7 @@ const yearOptions = Array.from({ length: 5 }, (_, index) => {
 });
 const fixedColumns = [
   { key: "number", label: "TT", left: 0, width: 42 },
-  { key: "code", label: "Mã nhân viên", left: 42, width: 104 },
+  { key: "code", label: "Mã chấm công", left: 42, width: 104 },
   { key: "name", label: "Họ và tên", left: 146, width: 184 },
   { key: "autoFull", label: "Đủ công\nmặc định", left: 330, width: 86 },
   { key: "title", label: "Chức vụ", left: 416, width: 154 },
@@ -397,8 +401,8 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
         {employeeNumber}
       </Table.Td>
       <Table.Td style={fixedStyle(fixedColumns[1].left, fixedColumns[1].width)}>
-        <Text size="xs" fw={600}>
-          {row.employeeCode}
+        <Text size="xs" fw={600} title="Mã chấm công BioTime/MCB">
+          {formatAttendanceCode(row.attendanceCode)}
         </Text>
       </Table.Td>
       <Table.Td style={fixedStyle(fixedColumns[2].left, fixedColumns[2].width)}>
@@ -660,7 +664,9 @@ export function TimesheetGridPage() {
   const employeeOptions = useMemo<EmployeeFilterOption[]>(() => {
     const options = (employeeSearchQuery.data?.data ?? []).map((employee) => ({
       value: employee.id,
-      label: `${employee.fullName} · ${employee.employeeCode}`,
+      label: `${employee.fullName} · ${
+        employee.biotimeEmployeeCode?.trim() || "Chưa gán mã chấm công"
+      }`,
     }));
 
     if (
@@ -731,10 +737,7 @@ export function TimesheetGridPage() {
       )
       .map((group, index, sortedGroups) => {
         const rows = [...group.rows].sort((left, right) =>
-          left.row.employeeCode.localeCompare(right.row.employeeCode, "vi", {
-            numeric: true,
-            sensitivity: "base",
-          }),
+          compareAttendanceIdentity(left.row, right.row),
         );
         const startIndex = sortedGroups
           .slice(0, index)
@@ -1094,7 +1097,7 @@ export function TimesheetGridPage() {
                 data={employeeOptions}
                 value={employeeId}
                 searchValue={employeeSearch}
-                placeholder="Tìm tên hoặc mã nhân viên"
+                placeholder="Tìm tên hoặc mã chấm công"
                 nothingFoundMessage={
                   employeeSearchQuery.isFetching
                     ? "Đang tìm nhân sự…"
@@ -1328,8 +1331,9 @@ export function TimesheetGridPage() {
           <Alert color="violet" variant="light">
             Không chọn mục nào nghĩa là xem và xuất <b>toàn công ty</b>. Có thể
             chọn nhiều đơn vị và phòng ban; khi đã chọn đơn vị, danh sách phòng
-            ban chỉ hiện các phòng thuộc đơn vị đó. Kết quả được gộp trong một
-            bảng công, phân nhóm rõ theo đơn vị/phòng ban.
+            ban chỉ hiện các phòng thuộc đơn vị đó. Nếu chọn cả hai, bảng công
+            chỉ lấy các phòng ban đã tick thuộc các đơn vị đã tick. Kết quả được
+            gộp trong một bảng công, phân nhóm rõ theo đơn vị/phòng ban.
           </Alert>
           <Group align="flex-start" grow>
             <Stack gap="xs">
