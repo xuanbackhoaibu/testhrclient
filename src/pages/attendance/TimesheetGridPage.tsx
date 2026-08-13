@@ -148,7 +148,7 @@ const bccTailColumns = [
     label: "Nghỉ việc riêng\ncó lương\n(5)",
     width: 78,
   },
-  { key: "companyTripDays", label: "Công tác\n(6)", width: 62 },
+  { key: "companyTripDays", label: "Nghỉ du lịch\n(6)", width: 62 },
   { key: "dutyDays", label: "Ngày\ntrực", width: 58 },
   {
     key: "unpaidLeaveDays",
