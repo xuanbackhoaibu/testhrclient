@@ -388,7 +388,7 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
           aria-label={`Đủ công mặc định cho ${row.fullName}`}
           checked={Boolean(row.attendanceAutoFullDay)}
           disabled={!canEdit || updatingEmployeeId === row.employeeId}
-          title="HR tick cho nhân sự không cần chấm công; ngày làm việc tự đủ công. Bỏ tick để quay lại tính theo máy."
+          title="HR tick cho nhân sự không cần chấm công; ngày làm việc tự đủ công. Bỏ tick để khôi phục đúng bảng công trước khi bật."
           onClick={(event) => event.stopPropagation()}
           onChange={(event) =>
             onToggleAutoFullAttendance(row, event.currentTarget.checked)
@@ -884,7 +884,7 @@ export function TimesheetGridPage() {
         title: enabled ? "Đã bật đủ công mặc định" : "Đã tắt đủ công mặc định",
         message: enabled
           ? `${row.fullName} được tự đủ công ở các ngày làm việc của kỳ ${month}/${year}; Chủ nhật vẫn là ngày nghỉ.`
-          : `${row.fullName} đã trở lại dữ liệu máy của kỳ ${month}/${year}. Ô “?” là ngày máy chưa đủ log, không phải lỗi hiển thị.`,
+          : `${row.fullName} đã khôi phục ${result.recompute.processed} ô bảng công trước khi bật đủ công mặc định. Ô HR sửa tay hoặc kỳ đã chốt vẫn được giữ nguyên.`,
       });
       if (result.recompute.skippedLocked + result.recompute.skippedAdjusted > 0) {
         notifications.show({
@@ -985,7 +985,7 @@ export function TimesheetGridPage() {
             đi muộn. Thứ Bảy làm buổi sáng <b>08:00–12:00</b>; Chủ nhật luôn là
             <b> ngày nghỉ</b>, không cảnh báo muộn hay thiếu chấm công. HR có
             thể tick <b>Đủ công mặc định</b> theo từng người đặc thù: ngày làm
-            việc tự đủ công, bỏ tick sẽ trở lại tính theo máy. Khi chọn tháng
+            việc tự đủ công, bỏ tick sẽ khôi phục đúng bảng công trước khi bật. Khi chọn tháng
             cũ, hệ thống xét đúng phân công hiệu lực của tháng đó, kể cả nhân
             sự đã nghỉ hoặc chuyển đơn vị sau này.
           </Text>
