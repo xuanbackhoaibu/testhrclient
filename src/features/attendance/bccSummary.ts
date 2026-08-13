@@ -37,8 +37,8 @@ function countSymbolPart(days: readonly SymbolDay[], code: string): number {
 export function summarizeBccFromDays(days: readonly SymbolDay[]): BccSummary {
   const actualWorkDays = sumSymbols(
     days,
-    ["+", "CT", "BP"],
-    ["P;-", "KL;-", "CL;-", "Ô;-", "Cô;-", "NB;-"],
+    ["+", "H", "O", "CT", "BP"],
+    ["-", "P;-", "KL;-", "CL;-", "Ô;-", "Cô;-", "NB;-"],
   );
   const publicHolidayDays = sumSymbols(days, ["L"]);
   const annualLeaveDays = sumSymbols(

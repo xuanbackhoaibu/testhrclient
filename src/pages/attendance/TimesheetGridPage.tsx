@@ -89,8 +89,13 @@ const colorLegendItems = [
   },
   {
     color: "#ffedd5",
-    label: "Muộn sau 08:15",
-    description: "Chỉ check-in sau 08:15 mới được tính đi muộn",
+    label: "Đi muộn",
+    description: "Đã vượt ngưỡng đi muộn của ca",
+  },
+  {
+    color: "#e5e7eb",
+    label: "Chưa phân ca",
+    description: "HR cần phân ca trước khi tính BCC",
   },
   {
     color: "#e9ecef",
@@ -113,6 +118,11 @@ const colorLegendItems = [
     description: "Nghỉ phép hoặc mã lễ, tết",
   },
   {
+    color: "#f8bbd0",
+    label: "Lđ",
+    description: "Lao động nghĩa vụ",
+  },
+  {
     color: "#ff7875",
     label: "KL",
     description: "Nghỉ không hưởng lương",
@@ -130,7 +140,15 @@ const colorLegendItems = [
 ] as const;
 const bccTailColumns = [
   { key: "actualWorkDays", label: "Ngày\nlàm việc\nthực tế\n(1)", width: 72 },
-  { key: "annualLeaveDays", label: "Nghỉ ngày\nPhép\n(2)", width: 72 },
+  { key: "publicHolidayDays", label: "Nghỉ ngày\nlễ, tết\n(2)", width: 72 },
+  { key: "annualLeaveDays", label: "Nghỉ ngày\nphép\n(3)", width: 72 },
+  { key: "compensatoryLeaveDays", label: "Nghỉ bù\n(4)", width: 62 },
+  {
+    key: "paidPersonalLeaveDays",
+    label: "Nghỉ việc riêng\ncó lương\n(5)",
+    width: 78,
+  },
+  { key: "companyTripDays", label: "Công tác\n(6)", width: 62 },
   { key: "dutyDays", label: "Ngày\ntrực", width: 58 },
   {
     key: "unpaidLeaveDays",
@@ -138,9 +156,10 @@ const bccTailColumns = [
     width: 74,
     color: "red.8",
   },
+  { key: "socialInsuranceDays", label: "Chế độ\nBHXH\n(Ẩn)", width: 68 },
   {
     key: "totalActualDays",
-    label: "Tổng\nngày công\nthực tế\n(3)=(1)+(2)",
+    label: "Tổng\nngày công\nthực tế\n(7)=(1)+(2)+(3)+(4)+(5)+(6)",
     width: 74,
   },
   {
@@ -223,7 +242,9 @@ function departmentGroupLabel(row: TimesheetGridRow): string {
   );
 }
 
-function organizationNameKey(...parts: Array<string | null | undefined>): string {
+function organizationNameKey(
+  ...parts: Array<string | null | undefined>
+): string {
   return parts
     .map((part) =>
       (part ?? "")
@@ -242,6 +263,9 @@ function surfaceForSymbol(symbol: string): string | undefined {
   const symbols = symbol.split(";");
   if (symbols.includes("KL")) return "#ff7875";
   if (symbols.some((item) => item === "P" || item === "L")) return "#fff59d";
+  if (symbols.some((item) => item === "Lđ" || item === "LĐ")) {
+    return "#f8bbd0";
+  }
   if (symbols.some((item) => item === "CT" || item === "BP")) return "#c7e9b4";
   if (symbols.some((item) => ["Ô", "Cô", "TS", "TN", "O"].includes(item))) {
     return "#ffd8a8";
@@ -293,10 +317,12 @@ function cellDescription(
       ? "Đủ công mặc định"
       : null,
     day.holidayName,
+    day.source === "HOLIDAY_UNPAID" ? "Ngày lễ không lương" : null,
+    day.source === "UNASSIGNED" ? "Chưa phân ca — chưa tính công" : null,
     day.firstPunch && day.lastPunch
       ? `${day.firstPunch}–${day.lastPunch}`
       : null,
-    day.lateMinutes > 15 ? `Muộn ${day.lateMinutes}'` : null,
+    day.lateMinutes > 0 ? `Muộn ${day.lateMinutes}'` : null,
     day.earlyLeaveMinutes > 0 ? `Về sớm ${day.earlyLeaveMinutes}'` : null,
     day.needsExplanation ? "Chờ giải trình" : null,
     day.hasAdjustment ? "HR đã sửa tay" : null,
@@ -310,9 +336,14 @@ function bccTailValue(row: TimesheetGridRow, key: BccTailKey): number | string {
   const bcc = row.summary.bcc ?? summarizeBccFromDays(row.days);
   const values: Record<BccTailKey, number | string> = {
     actualWorkDays: bcc.actualWorkDays,
+    publicHolidayDays: bcc.publicHolidayDays,
     annualLeaveDays: bcc.annualLeaveDays,
+    compensatoryLeaveDays: bcc.compensatoryLeaveDays,
+    paidPersonalLeaveDays: bcc.paidPersonalLeaveDays,
+    companyTripDays: bcc.companyTripDays,
     dutyDays: bcc.dutyDays,
     unpaidLeaveDays: bcc.unpaidLeaveDays,
+    socialInsuranceDays: bcc.socialInsuranceDays,
     totalActualDays: bcc.totalActualDays,
     annualLeaveUsedToMonth: row.summary.annualLeaveUsedToMonth || "",
     annualLeaveUsedInYear: row.summary.annualLeaveUsedInYear || "",
@@ -351,10 +382,7 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
   canEdit: boolean;
   updatingEmployeeId: string | null;
   onOpenCell: (row: TimesheetGridRow, day: TimesheetGridDay) => void;
-  onToggleAutoFullAttendance: (
-    row: TimesheetGridRow,
-    enabled: boolean,
-  ) => void;
+  onToggleAutoFullAttendance: (row: TimesheetGridRow, enabled: boolean) => void;
 }) {
   const { row, daysByNumber } = item;
 
@@ -411,22 +439,25 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
       {dayMetas.map((meta) => {
         const day = daysByNumber.get(meta.day);
         const label = day?.displaySymbol || "";
-        const background = !day?.isWorkingDay
-          ? day?.holidayName
-            ? "#fff3bf"
-            : meta.isSunday
-              ? "#e9ecef"
-              : "#f8f9fa"
-          : (surfaceForSymbol(label) ??
-            (meta.isSunday
-              ? "#f1f3f5"
-              : day?.hasAdjustment
-                ? "#dbeafe"
-                : day?.needsExplanation
-                  ? "#fee2e2"
-                  : (day?.lateMinutes ?? 0) > 15
-                    ? "#ffedd5"
-                    : undefined));
+        const background =
+          day?.source === "UNASSIGNED"
+            ? "#e5e7eb"
+            : !day?.isWorkingDay
+              ? day?.holidayName
+                ? "#fff3bf"
+                : meta.isSunday
+                  ? "#e9ecef"
+                  : "#f8f9fa"
+              : (surfaceForSymbol(label) ??
+                (meta.isSunday
+                  ? "#f1f3f5"
+                  : day?.hasAdjustment
+                    ? "#dbeafe"
+                    : day?.needsExplanation
+                      ? "#fee2e2"
+                      : (day?.lateMinutes ?? 0) > 0
+                        ? "#ffedd5"
+                        : undefined));
         const isEditable = canEdit && day !== undefined && !day.isLocked;
 
         return (
@@ -660,21 +691,28 @@ export function TimesheetGridPage() {
         item.row.departmentName,
       );
       const departmentCode =
+        item.row.departmentCode ??
         (item.row.departmentId
           ? departmentCodeById.get(item.row.departmentId)
-          : undefined) ?? departmentCodeByOrganizationName.get(organizationKey);
+          : undefined) ??
+        departmentCodeByOrganizationName.get(organizationKey);
       const unitCode =
+        item.row.unitCode ??
         (item.row.unitId ? unitCodeById.get(item.row.unitId) : undefined) ??
         unitCodeByName.get(organizationNameKey(item.row.unitName));
       const label = departmentGroupLabel(item.row);
       const key =
         item.row.departmentId ??
+        departmentCode ??
         (organizationKey === "\u0000" ? "unassigned" : organizationKey);
       // Theo đúng thứ tự danh mục: đơn vị trước, rồi tới phòng ban
       // (DV001_01 → DV001_07, DV002_01 → ...). Dữ liệu máy chấm công cũ
       // có thể không trả unitId, khi đó suy ra đơn vị từ tiền tố mã phòng ban.
-      const unitSortCode = unitCode ?? departmentCode?.split("_", 1)[0] ?? "ZZZ";
-      const sortKey = [unitSortCode, departmentCode ?? "ZZZ", label].join("\u0000");
+      const unitSortCode =
+        unitCode ?? departmentCode?.split("_", 1)[0] ?? "ZZZ";
+      const sortKey = [unitSortCode, departmentCode ?? "ZZZ", label].join(
+        "\u0000",
+      );
       const group = groups.get(key);
 
       if (group) {
@@ -700,7 +738,10 @@ export function TimesheetGridPage() {
         );
         const startIndex = sortedGroups
           .slice(0, index)
-          .reduce((total, previousGroup) => total + previousGroup.rows.length, 0);
+          .reduce(
+            (total, previousGroup) => total + previousGroup.rows.length,
+            0,
+          );
         const preparedGroup = {
           ...group,
           index: index + 1,
@@ -729,13 +770,23 @@ export function TimesheetGridPage() {
       const start = Math.max(0, pageStart - groupStart);
       const end = Math.min(group.rows.length, pageEnd - groupStart);
       if (start >= end) return [];
-      return [{ ...group, rows: group.rows.slice(start, end) }];
+      return [
+        {
+          ...group,
+          // Preserve the global TT offset when a page begins mid-group.
+          startIndex: groupStart + start,
+          rows: group.rows.slice(start, end),
+        },
+      ];
     });
   }, [currentPage, groupedRows, rowsPerPage]);
   const pageStartRecord = preparedRows.length
     ? (currentPage - 1) * rowsPerPage + 1
     : 0;
-  const pageEndRecord = Math.min(currentPage * rowsPerPage, preparedRows.length);
+  const pageEndRecord = Math.min(
+    currentPage * rowsPerPage,
+    preparedRows.length,
+  );
   const scopeLabel = useMemo(() => {
     if (!unitIds.length && !departmentIds.length) return "Toàn công ty";
     return [
@@ -886,7 +937,10 @@ export function TimesheetGridPage() {
           ? `${row.fullName} được tự đủ công ở các ngày làm việc của kỳ ${month}/${year}; Chủ nhật vẫn là ngày nghỉ.`
           : `${row.fullName} đã khôi phục ${result.recompute.processed} ô bảng công trước khi bật đủ công mặc định. Ô HR sửa tay hoặc kỳ đã chốt vẫn được giữ nguyên.`,
       });
-      if (result.recompute.skippedLocked + result.recompute.skippedAdjusted > 0) {
+      if (
+        result.recompute.skippedLocked + result.recompute.skippedAdjusted >
+        0
+      ) {
         notifications.show({
           color: "blue",
           title: "Giữ nguyên quyết định đã có",
@@ -981,13 +1035,15 @@ export function TimesheetGridPage() {
           variant="light"
         >
           <Text size="xs">
-            Giờ hành chính <b>08:00–17:30</b>; check-in <b>sau 08:15</b> mới tính
-            đi muộn. Thứ Bảy làm buổi sáng <b>08:00–12:00</b>; Chủ nhật luôn là
-            <b> ngày nghỉ</b>, không cảnh báo muộn hay thiếu chấm công. HR có
-            thể tick <b>Đủ công mặc định</b> theo từng người đặc thù: ngày làm
-            việc tự đủ công, bỏ tick sẽ khôi phục đúng bảng công trước khi bật. Khi chọn tháng
-            cũ, hệ thống xét đúng phân công hiệu lực của tháng đó, kể cả nhân
-            sự đã nghỉ hoặc chuyển đơn vị sau này.
+            Giờ hành chính <b>08:00–17:00</b>; check-in <b>quá 10 phút</b> mới
+            tính đi muộn. Ngưỡng thực tế lấy theo từng ca. Thứ Bảy làm buổi sáng
+            <b> 08:00–12:00</b>; Chủ nhật luôn là <b> ngày nghỉ</b>, không cảnh
+            báo muộn hay thiếu chấm công. Nhân sự chưa được phân ca hiển thị
+            riêng và chưa tự tính công. HR có thể tick <b>Đủ công mặc định</b>{" "}
+            theo từng người đặc thù: ngày làm việc tự đủ công, bỏ tick sẽ khôi
+            phục đúng bảng công trước khi bật. Khi chọn tháng cũ, hệ thống xét
+            đúng phân công hiệu lực của tháng đó, kể cả nhân sự đã nghỉ hoặc
+            chuyển đơn vị sau này.
           </Text>
         </Alert>
 
@@ -1078,186 +1134,185 @@ export function TimesheetGridPage() {
           </Alert>
         ) : (
           <Stack gap="xs">
-          <ScrollArea
-            viewportRef={tableViewportRef}
-            type="always"
-            h="min(680px, calc(100vh - 315px))"
-            offsetScrollbars
-            scrollbarSize={12}
-          >
-            <Table
-              className="timesheet-bcc-table"
-              withTableBorder
-              highlightOnHover
-              stickyHeader
-              stickyHeaderOffset={0}
-              horizontalSpacing={0}
-              verticalSpacing={0}
-              style={{
-                minWidth:
-                  fixedColumnsWidth +
-                  dayMetas.length * dayColumnWidth +
-                  bccTailWidth,
-              }}
+            <ScrollArea
+              viewportRef={tableViewportRef}
+              type="always"
+              h="min(680px, calc(100vh - 315px))"
+              offsetScrollbars
+              scrollbarSize={12}
             >
-              <Table.Thead>
-                <Table.Tr>
-                  {fixedColumns.map((column) => (
-                    <Table.Th
-                      key={column.key}
-                      rowSpan={2}
-                      style={{
-                        ...fixedStyle(column.left, column.width, true),
-                        textAlign:
-                          column.key === "number" || column.key === "autoFull"
-                            ? "center"
-                            : "left",
-                        verticalAlign: "middle",
-                        padding: "5px 7px",
-                        whiteSpace:
-                          column.key === "autoFull" ? "pre-line" : undefined,
-                      }}
-                    >
-                      {column.label}
-                    </Table.Th>
-                  ))}
-                  {dayMetas.map((meta) => (
-                    <Table.Th
-                      key={meta.day}
-                      style={{
-                        minWidth: dayColumnWidth,
-                        width: dayColumnWidth,
-                        textAlign: "center",
-                        background: meta.isSunday ? "#ffe7a6" : "#e6f2df",
-                        padding: "5px 2px",
-                      }}
-                    >
-                      {String(meta.day).padStart(2, "0")}
-                    </Table.Th>
-                  ))}
-                  {bccTailColumns.map((column) => (
-                    <Table.Th
-                      key={column.key}
-                      rowSpan={2}
-                      style={{
-                        minWidth: column.width,
-                        whiteSpace: "pre-line",
-                        textAlign: "center",
-                        verticalAlign: "middle",
-                        color:
-                          column.key === "unpaidLeaveDays"
-                            ? "#e03131"
-                            : undefined,
-                        background: "#e6f2df",
-                        fontSize: 10,
-                        lineHeight: 1.15,
-                        padding: "4px 3px",
-                      }}
-                    >
-                      {bccTailLabel(column, month, year)}
-                    </Table.Th>
-                  ))}
-                </Table.Tr>
-                <Table.Tr>
-                  {dayMetas.map((meta) => (
-                    <Table.Th
-                      key={meta.day}
-                      style={{
-                        minWidth: dayColumnWidth,
-                        width: dayColumnWidth,
-                        textAlign: "center",
-                        background: meta.isSunday ? "#ffe7a6" : "#e6f2df",
-                        padding: "5px 2px",
-                      }}
-                    >
-                      {meta.label}
-                    </Table.Th>
-                  ))}
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {pagedGroups.map((group) => (
-                  <Fragment key={group.key}>
-                    <Table.Tr>
-                      <Table.Td
-                        colSpan={fixedColumns.length}
+              <Table
+                className="timesheet-bcc-table"
+                withTableBorder
+                highlightOnHover
+                stickyHeader
+                stickyHeaderOffset={0}
+                horizontalSpacing={0}
+                verticalSpacing={0}
+                style={{
+                  minWidth:
+                    fixedColumnsWidth +
+                    dayMetas.length * dayColumnWidth +
+                    bccTailWidth,
+                }}
+              >
+                <Table.Thead>
+                  <Table.Tr>
+                    {fixedColumns.map((column) => (
+                      <Table.Th
+                        key={column.key}
+                        rowSpan={2}
                         style={{
-                          background: "#d9d2e9",
-                          boxShadow: "2px 0 0 var(--mantine-color-gray-4)",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          left: 0,
-                          minWidth: fixedColumnsWidth,
-                          padding: "7px 10px",
-                          position: "sticky",
-                          width: fixedColumnsWidth,
-                          zIndex: 3,
+                          ...fixedStyle(column.left, column.width, true),
+                          textAlign:
+                            column.key === "number" || column.key === "autoFull"
+                              ? "center"
+                              : "left",
+                          verticalAlign: "middle",
+                          padding: "5px 7px",
+                          whiteSpace:
+                            column.key === "autoFull" ? "pre-line" : undefined,
                         }}
                       >
-                        {group.index}.{" "}
-                        {group.label}{" "}
-                        <Text component="span" size="xs" c="dimmed">
-                          ({group.rows.length < group.totalRows
-                            ? `${group.rows.length}/${group.totalRows} nhân viên`
-                            : `${group.rows.length} nhân viên`})
-                        </Text>
-                      </Table.Td>
-                      <Table.Td
-                        colSpan={
-                          dayMetas.length +
-                          bccTailColumns.length
-                        }
-                        style={{
-                          background: "#d9d2e9",
-                          padding: "7px 10px",
-                        }}
-                      />
-                    </Table.Tr>
-                    {group.rows.map((item, rowIndex) => (
-                      <TimesheetDataRow
-                        key={item.row.employeeId}
-                        item={item}
-                        employeeNumber={group.startIndex + rowIndex + 1}
-                        dayMetas={dayMetas}
-                        canEdit={canEdit}
-                        updatingEmployeeId={updatingEmployeeId}
-                        onOpenCell={openCell}
-                        onToggleAutoFullAttendance={
-                          handleToggleAutoFullAttendance
-                        }
-                      />
+                        {column.label}
+                      </Table.Th>
                     ))}
-                  </Fragment>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </ScrollArea>
-          <Group justify="space-between" mt="xs" px="xs" wrap="wrap">
-            <Text size="xs" c="dimmed">
-              Hiển thị {pageStartRecord}–{pageEndRecord} / {preparedRows.length} nhân viên
-            </Text>
-            <Group gap="xs">
-              <Select
-                aria-label="Số nhân sự mỗi trang"
-                size="xs"
-                w={96}
-                data={rowsPerPageOptions}
-                value={String(rowsPerPage)}
-                onChange={(value) => {
-                  setRowsPerPage(Number(value ?? 20));
-                  setPage(1);
-                }}
-              />
-              <Pagination
-                size="sm"
-                value={currentPage}
-                total={totalPages}
-                siblings={1}
-                boundaries={1}
-                onChange={setPage}
-              />
+                    {dayMetas.map((meta) => (
+                      <Table.Th
+                        key={meta.day}
+                        style={{
+                          minWidth: dayColumnWidth,
+                          width: dayColumnWidth,
+                          textAlign: "center",
+                          background: meta.isSunday ? "#ffe7a6" : "#e6f2df",
+                          padding: "5px 2px",
+                        }}
+                      >
+                        {String(meta.day).padStart(2, "0")}
+                      </Table.Th>
+                    ))}
+                    {bccTailColumns.map((column) => (
+                      <Table.Th
+                        key={column.key}
+                        rowSpan={2}
+                        style={{
+                          minWidth: column.width,
+                          whiteSpace: "pre-line",
+                          textAlign: "center",
+                          verticalAlign: "middle",
+                          color:
+                            column.key === "unpaidLeaveDays"
+                              ? "#e03131"
+                              : undefined,
+                          background: "#e6f2df",
+                          fontSize: 10,
+                          lineHeight: 1.15,
+                          padding: "4px 3px",
+                        }}
+                      >
+                        {bccTailLabel(column, month, year)}
+                      </Table.Th>
+                    ))}
+                  </Table.Tr>
+                  <Table.Tr>
+                    {dayMetas.map((meta) => (
+                      <Table.Th
+                        key={meta.day}
+                        style={{
+                          minWidth: dayColumnWidth,
+                          width: dayColumnWidth,
+                          textAlign: "center",
+                          background: meta.isSunday ? "#ffe7a6" : "#e6f2df",
+                          padding: "5px 2px",
+                        }}
+                      >
+                        {meta.label}
+                      </Table.Th>
+                    ))}
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {pagedGroups.map((group) => (
+                    <Fragment key={group.key}>
+                      <Table.Tr>
+                        <Table.Td
+                          colSpan={fixedColumns.length}
+                          style={{
+                            background: "#d9d2e9",
+                            boxShadow: "2px 0 0 var(--mantine-color-gray-4)",
+                            fontSize: 12,
+                            fontWeight: 700,
+                            left: 0,
+                            minWidth: fixedColumnsWidth,
+                            padding: "7px 10px",
+                            position: "sticky",
+                            width: fixedColumnsWidth,
+                            zIndex: 3,
+                          }}
+                        >
+                          {group.index}. {group.label}{" "}
+                          <Text component="span" size="xs" c="dimmed">
+                            (
+                            {group.rows.length < group.totalRows
+                              ? `${group.rows.length}/${group.totalRows} nhân viên`
+                              : `${group.rows.length} nhân viên`}
+                            )
+                          </Text>
+                        </Table.Td>
+                        <Table.Td
+                          colSpan={dayMetas.length + bccTailColumns.length}
+                          style={{
+                            background: "#d9d2e9",
+                            padding: "7px 10px",
+                          }}
+                        />
+                      </Table.Tr>
+                      {group.rows.map((item, rowIndex) => (
+                        <TimesheetDataRow
+                          key={item.row.employeeId}
+                          item={item}
+                          employeeNumber={group.startIndex + rowIndex + 1}
+                          dayMetas={dayMetas}
+                          canEdit={canEdit}
+                          updatingEmployeeId={updatingEmployeeId}
+                          onOpenCell={openCell}
+                          onToggleAutoFullAttendance={
+                            handleToggleAutoFullAttendance
+                          }
+                        />
+                      ))}
+                    </Fragment>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </ScrollArea>
+            <Group justify="space-between" mt="xs" px="xs" wrap="wrap">
+              <Text size="xs" c="dimmed">
+                Hiển thị {pageStartRecord}–{pageEndRecord} /{" "}
+                {preparedRows.length} nhân viên
+              </Text>
+              <Group gap="xs">
+                <Select
+                  aria-label="Số nhân sự mỗi trang"
+                  size="xs"
+                  w={96}
+                  data={rowsPerPageOptions}
+                  value={String(rowsPerPage)}
+                  onChange={(value) => {
+                    setRowsPerPage(Number(value ?? 20));
+                    setPage(1);
+                  }}
+                />
+                <Pagination
+                  size="sm"
+                  value={currentPage}
+                  total={totalPages}
+                  siblings={1}
+                  boundaries={1}
+                  onChange={setPage}
+                />
+              </Group>
             </Group>
-          </Group>
           </Stack>
         )}
       </Stack>

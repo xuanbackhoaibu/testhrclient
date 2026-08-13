@@ -1,6 +1,7 @@
 import { notifications } from '@mantine/notifications';
 import type { AxiosError } from 'axios';
 
+import { getLeaveDurationErrorMessage } from '../../features/leave/leaveDurationErrorMessage';
 import { ApiError, type ApiErrorResponse } from './api.types';
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -181,6 +182,11 @@ export async function handleAxiosResponseError(
   }
 
   if (apiError.statusCode === 409) {
+    const leaveDurationMessage = getLeaveDurationErrorMessage(apiError);
+    if (leaveDurationMessage) {
+      showError(appendRequestId(leaveDurationMessage, apiError.requestId));
+      return Promise.reject(apiError);
+    }
     if (apiError.errorCode === 'HR_PROJECTION_NOT_READY') {
       showError(appendRequestId(
         'Dữ liệu nhân sự đang được đồng bộ sang hệ thống tài khoản. Vui lòng thử lại sau ít phút.',

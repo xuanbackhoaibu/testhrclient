@@ -39,6 +39,7 @@ import type {
   LeaveRequestPayload,
 } from '../../features/leave/leaveTypes';
 import { useLeaveRequests, useLeaveTypes } from '../../features/leave/useLeaveRequests';
+import { getLeaveDurationErrorMessage } from '../../features/leave/leaveDurationErrorMessage';
 import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import { useAuth } from '../../features/auth/useAuth';
 import { LEAVE_TYPE_OPTIONS } from '../../shared/constants/statuses';
@@ -172,8 +173,10 @@ export function LeavePage() {
       form.resetFields();
       await queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
     },
-    onError: () => {
-      message.error('Không tạo được đơn nghỉ phép. Kiểm tra lại thông tin và thử lại.');
+    onError: (error) => {
+      message.error(
+        getLeaveDurationErrorMessage(error) ?? 'Không tạo được đơn nghỉ phép. Kiểm tra lại thông tin và thử lại.',
+      );
     },
   });
 

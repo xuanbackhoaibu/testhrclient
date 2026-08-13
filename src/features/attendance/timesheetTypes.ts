@@ -27,6 +27,7 @@ export interface TimesheetGridDay {
   needsExplanation: boolean;
   hasAdjustment: boolean;
   isLocked: boolean;
+  source?: string;
 }
 
 export interface BccSummary {
@@ -49,8 +50,12 @@ export interface TimesheetGridRow {
   /** HR bật cho lãnh đạo/nhân sự đặc thù không cần log chấm công. */
   attendanceAutoFullDay: boolean;
   departmentId: string | null;
+  /** Mã phòng ban tại thời điểm của kỳ công, dùng để nhóm/sắp xếp BCC ổn định. */
+  departmentCode?: string | null;
   departmentName: string | null;
   unitId: string | null;
+  /** Mã đơn vị tại thời điểm của kỳ công, dùng để nhóm/sắp xếp BCC ổn định. */
+  unitCode?: string | null;
   unitName: string | null;
   jobTitle: string | null;
   days: TimesheetGridDay[];
