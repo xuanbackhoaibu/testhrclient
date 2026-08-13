@@ -36,7 +36,10 @@ import {
   IconEye,
   IconFilterOff,
   IconIdBadge2,
+  IconInfoCircle,
   IconMail,
+  IconPinned,
+  IconPinnedOff,
   IconPlus,
   IconSearch,
   IconSignature,
@@ -84,6 +87,7 @@ import { useUnitsSelect } from "../../features/organization/useUnits";
 import { ApiError } from "../../shared/api/api.types";
 import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
 import { focusFirstFormError, zodMantineValidate } from "../../shared/forms/zodMantine";
+import { exportRowsToExcel } from "../../shared/utils/excel";
 import { compareCode } from "../../shared/utils/sort";
 
 const employmentStatusOptions = [
@@ -134,6 +138,8 @@ type EmployeeSortKey =
   | "biotimeEmployeeCode"
   | "fullName";
 type SortDirection = "asc" | "desc";
+type EmployeeExportFormat = "excel" | "csv" | "pdf";
+type EmployeeExportScope = "filtered" | "all" | "selected";
 type EmployeeColumnKey =
   | "employeeCode"
   | "biotimeEmployeeCode"
@@ -438,6 +444,16 @@ export function EmployeesPage() {
     key: "hr-web-client.employee.visible-columns",
     defaultValue: defaultVisibleEmployeeColumns,
   });
+  const [pinnedEmployeeIds, setPinnedEmployeeIds] = useLocalStorage<string[]>({
+    key: "hr-web-client.employee.pinned-rows",
+    defaultValue: [],
+  });
+  const [quickPreviewTarget, setQuickPreviewTarget] = useState<Employee | null>(null);
+  const [exportPreview, setExportPreview] = useState<{
+    format: EmployeeExportFormat;
+    scope: EmployeeExportScope;
+  } | null>(null);
+  const [isAdvancedExporting, setIsAdvancedExporting] = useState(false);
   const [params, setParams] = useState(() => ({
     page: parsePositiveInteger(searchParams.get("page"), 1),
     pageSize: parsePositiveInteger(searchParams.get("pageSize"), DEFAULT_PAGE_SIZE),
@@ -825,8 +841,17 @@ export function EmployeesPage() {
     }
   }, [quickFilter, sortedEmployees]);
 
+  const orderedVisibleEmployees = useMemo(() => {
+    if (!pinnedEmployeeIds.length) return visibleEmployees;
+    const pinnedSet = new Set(pinnedEmployeeIds);
+    return [
+      ...visibleEmployees.filter((employee) => pinnedSet.has(employee.id)),
+      ...visibleEmployees.filter((employee) => !pinnedSet.has(employee.id)),
+    ];
+  }, [pinnedEmployeeIds, visibleEmployees]);
+
   // Phân trang ở client trên danh sách đã sắp xếp.
-  const totalCount = visibleEmployees.length;
+  const totalCount = orderedVisibleEmployees.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / params.pageSize));
   const currentPage = Math.min(params.page, totalPages);
 
@@ -863,8 +888,8 @@ export function EmployeesPage() {
 
   const pagedEmployees = useMemo(() => {
     const start = (currentPage - 1) * params.pageSize;
-    return visibleEmployees.slice(start, start + params.pageSize);
-  }, [visibleEmployees, currentPage, params.pageSize]);
+    return orderedVisibleEmployees.slice(start, start + params.pageSize);
+  }, [orderedVisibleEmployees, currentPage, params.pageSize]);
 
   const pagedMeta = useMemo<PaginationMeta>(
     () => ({
@@ -879,8 +904,8 @@ export function EmployeesPage() {
   );
 
   const selectedEmployees = useMemo(
-    () => visibleEmployees.filter((emp) => selectedIds.has(emp.id)),
-    [visibleEmployees, selectedIds],
+    () => orderedVisibleEmployees.filter((emp) => selectedIds.has(emp.id)),
+    [orderedVisibleEmployees, selectedIds],
   );
 
   const selectedEmails = selectedEmployees
@@ -910,6 +935,125 @@ export function EmployeesPage() {
     link.download = `nhan-su-da-chon-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  function exportEmployeesAsCsv(records: Employee[], filenamePrefix: string) {
+    const headers = ["Mã NS", "Họ tên", "Email", "SĐT", "Trạng thái", "Phòng ban", "Chức danh"];
+    const rows = records.map((employee) => [
+      employee.employeeCode,
+      employee.fullName,
+      employee.companyEmail ?? "",
+      employee.phone ?? "",
+      employee.employmentStatus,
+      employee.currentEmployeeAssignment?.departmentName ?? "",
+      employee.currentEmployeeAssignment?.jobTitle ?? "",
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) =>
+        row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","),
+      )
+      .join("\n");
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${filenamePrefix}-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function escapeHtml(value: string | number | null | undefined) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  async function exportEmployeesAsExcel(records: Employee[], filenamePrefix: string) {
+    await exportRowsToExcel({
+      fileName: `${filenamePrefix}-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      sheetName: "Nhan su",
+      rows: records,
+      columns: [
+        { header: "Mã NS", key: "employeeCode", width: 16, value: (employee) => employee.employeeCode },
+        { header: "Họ tên", key: "fullName", width: 24, value: (employee) => employee.fullName },
+        { header: "Email", key: "companyEmail", width: 28, value: (employee) => employee.companyEmail },
+        { header: "SĐT", key: "phone", width: 16, value: (employee) => employee.phone },
+        { header: "Trạng thái", key: "employmentStatus", width: 18, value: (employee) => employee.employmentStatus },
+        { header: "Phòng ban", key: "department", width: 24, value: (employee) => employee.currentEmployeeAssignment?.departmentName },
+        { header: "Chức danh", key: "jobTitle", width: 24, value: (employee) => employee.currentEmployeeAssignment?.jobTitle },
+      ],
+    });
+  }
+
+  function getExportRecords(scope: EmployeeExportScope) {
+    if (scope === "selected") return selectedEmployees;
+    if (scope === "all") return sortedEmployees;
+    return orderedVisibleEmployees;
+  }
+
+  function openExportPreview(format: EmployeeExportFormat, scope: EmployeeExportScope) {
+    const records = getExportRecords(scope);
+    if (!records.length) {
+      notifications.show({
+        color: "yellow",
+        title: "Chưa có dữ liệu để xuất",
+        message: "Không có nhân sự nào trong phạm vi xuất hiện tại.",
+      });
+      return;
+    }
+    setExportPreview({ format, scope });
+  }
+
+  async function confirmAdvancedExport() {
+    if (!exportPreview) return;
+    const records = getExportRecords(exportPreview.scope);
+    const filenamePrefix = exportPreview.scope === "selected" ? "nhan-su-da-chon" : "nhan-su";
+    setIsAdvancedExporting(true);
+    try {
+      if (exportPreview.format === "excel") {
+        await exportEmployeesAsExcel(records, filenamePrefix);
+      } else if (exportPreview.format === "csv") {
+        exportEmployeesAsCsv(records, filenamePrefix);
+      } else {
+        const htmlRows = records.slice(0, 200).map((employee) => `
+          <tr>
+            <td>${escapeHtml(employee.employeeCode)}</td>
+            <td>${escapeHtml(employee.fullName)}</td>
+            <td>${escapeHtml(employee.companyEmail)}</td>
+            <td>${escapeHtml(employee.phone)}</td>
+            <td>${escapeHtml(employee.currentEmployeeAssignment?.departmentName)}</td>
+          </tr>
+        `).join("");
+        const popup = window.open("", "_blank", "width=960,height=720");
+        popup?.document.write(`
+          <html>
+            <head><title>Danh sách nhân sự</title></head>
+            <body>
+              <h2>Danh sách nhân sự</h2>
+              <p>Tổng số: ${records.length}</p>
+              <table border="1" cellspacing="0" cellpadding="6">
+                <thead><tr><th>Mã NS</th><th>Họ tên</th><th>Email</th><th>SĐT</th><th>Phòng ban</th></tr></thead>
+                <tbody>${htmlRows}</tbody>
+              </table>
+              <script>window.print();</script>
+            </body>
+          </html>
+        `);
+        popup?.document.close();
+      }
+      setExportPreview(null);
+    } catch {
+      notifications.show({
+        color: "red",
+        title: "Không xuất được dữ liệu",
+        message: "Vui lòng thử lại sau.",
+      });
+    } finally {
+      setIsAdvancedExporting(false);
+    }
   }
 
   function mailSelectedEmployees() {
@@ -995,6 +1139,23 @@ export function EmployeesPage() {
     setVisibleColumnKeys(defaultVisibleEmployeeColumns);
   }
 
+  const togglePinnedEmployee = useCallback((record: Employee) => {
+    setPinnedEmployeeIds((current) => {
+      if (current.includes(record.id)) {
+        return current.filter((id) => id !== record.id);
+      }
+      if (current.length >= 5) {
+        notifications.show({
+          color: "yellow",
+          title: "Đã đạt giới hạn ghim",
+          message: "Chỉ nên ghim tối đa 5 nhân sự quan trọng lên đầu bảng.",
+        });
+        return current;
+      }
+      return [...current, record.id];
+    });
+  }, [setPinnedEmployeeIds]);
+
   const visibleColumnSet = useMemo(
     () => new Set<EmployeeColumnKey>(visibleColumnKeys),
     [visibleColumnKeys],
@@ -1022,7 +1183,23 @@ export function EmployeesPage() {
       {
         key: "fullName",
         header: renderSortableHeader("Họ tên", "fullName"),
-        render: (record) => <TruncatedCell value={record.fullName} />,
+        render: (record) => (
+          <Tooltip
+            multiline
+            label={
+              <Stack gap={2}>
+                <Text size="xs" fw={800}>{record.fullName}</Text>
+                <Text size="xs">{record.currentEmployeeAssignment?.jobTitle ?? "Chưa có chức danh"}</Text>
+                <Text size="xs">{record.currentEmployeeAssignment?.departmentName ?? "Chưa có phòng ban"}</Text>
+                <Text size="xs">{record.companyEmail ?? record.phone ?? "Chưa có liên hệ"}</Text>
+              </Stack>
+            }
+          >
+            <Text size="sm" fw={700} className="employee-name-preview-trigger">
+              {record.fullName}
+            </Text>
+          </Tooltip>
+        ),
       },
       {
         key: "companyEmail",
@@ -1116,6 +1293,32 @@ export function EmployeesPage() {
         render: (record) => (
           <Group justify="flex-end" gap={4} wrap="nowrap">
             <Group gap={2} wrap="nowrap" className="employee-row-quick-actions">
+              <Tooltip label={pinnedEmployeeIds.includes(record.id) ? "Bỏ ghim" : "Ghim lên đầu bảng"}>
+                <ActionIcon
+                  aria-label={pinnedEmployeeIds.includes(record.id) ? "Bỏ ghim" : "Ghim nhân sự"}
+                  variant={pinnedEmployeeIds.includes(record.id) ? "light" : "subtle"}
+                  color={pinnedEmployeeIds.includes(record.id) ? "yellow" : "gray"}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    togglePinnedEmployee(record);
+                  }}
+                >
+                  {pinnedEmployeeIds.includes(record.id) ? <IconPinnedOff size={16} /> : <IconPinned size={16} />}
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label="Xem nhanh">
+                <ActionIcon
+                  aria-label="Xem nhanh nhân sự"
+                  variant="subtle"
+                  color="gray"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setQuickPreviewTarget(record);
+                  }}
+                >
+                  <IconEye size={16} />
+                </ActionIcon>
+              </Tooltip>
               <Tooltip label="Gửi Email">
                 <ActionIcon
                   component="a"
@@ -1184,9 +1387,12 @@ export function EmployeesPage() {
       mayProvisionAccounts,
       navigate,
       openEditDrawer,
+      pinnedEmployeeIds,
       renderSortableHeader,
       setAccountDetailTarget,
       setProvisionTarget,
+      setQuickPreviewTarget,
+      togglePinnedEmployee,
     ],
   );
 
@@ -1202,6 +1408,7 @@ export function EmployeesPage() {
     .map((error) => String(error))
     .filter(Boolean);
   const biotimeEmployeeCodeError = getBiotimeEmployeeCodeError(biotimeEmployeeCode);
+  const exportPreviewRecords = exportPreview ? getExportRecords(exportPreview.scope) : [];
 
   return (
     <>
@@ -1221,6 +1428,31 @@ export function EmployeesPage() {
               canImport={mayImportEmployees}
               canExport={mayExportEmployees}
             />
+            {mayExportEmployees ? (
+              <Menu position="bottom-end" width={260}>
+                <Menu.Target>
+                  <Button variant="default" leftSection={<IconFileExport size={16} />}>
+                    Xuất nâng cao
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Label>Đang lọc ({orderedVisibleEmployees.length})</Menu.Label>
+                  <Menu.Item onClick={() => openExportPreview("excel", "filtered")}>Excel</Menu.Item>
+                  <Menu.Item onClick={() => openExportPreview("csv", "filtered")}>CSV</Menu.Item>
+                  <Menu.Item onClick={() => openExportPreview("pdf", "filtered")}>PDF</Menu.Item>
+                  <Menu.Divider />
+                  <Menu.Label>Tất cả ({sortedEmployees.length})</Menu.Label>
+                  <Menu.Item onClick={() => openExportPreview("excel", "all")}>Excel tất cả</Menu.Item>
+                  <Menu.Item onClick={() => openExportPreview("csv", "all")}>CSV tất cả</Menu.Item>
+                  <Menu.Item onClick={() => openExportPreview("pdf", "all")}>PDF tất cả</Menu.Item>
+                  <Menu.Divider />
+                  <Menu.Label>Dòng đang chọn ({selectedEmployees.length})</Menu.Label>
+                  <Menu.Item disabled={!selectedEmployees.length} onClick={() => openExportPreview("excel", "selected")}>Excel dòng chọn</Menu.Item>
+                  <Menu.Item disabled={!selectedEmployees.length} onClick={() => openExportPreview("csv", "selected")}>CSV dòng chọn</Menu.Item>
+                  <Menu.Item disabled={!selectedEmployees.length} onClick={() => openExportPreview("pdf", "selected")}>PDF dòng chọn</Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            ) : null}
             {mayCreateEmployee ? (
               <Button
                 leftSection={<IconPlus size={18} />}
@@ -1459,6 +1691,96 @@ export function EmployeesPage() {
           </Group>
         </Group>
       ) : null}
+
+      <Drawer
+        opened={quickPreviewTarget !== null}
+        onClose={() => setQuickPreviewTarget(null)}
+        title="Xem nhanh nhân sự"
+        position="right"
+        size="md"
+        className="entity-drawer employee-quick-preview-drawer"
+      >
+        {quickPreviewTarget ? (
+          <Stack gap="md">
+            <Paper withBorder p="md" className="employee-preview-hero">
+              <Group align="flex-start" wrap="nowrap">
+                <ThemeIcon size={56} radius="xl" color="blue" variant="light">
+                  <IconIdBadge2 size={28} />
+                </ThemeIcon>
+                <Stack gap={2}>
+                  <Text fw={850} size="lg">{quickPreviewTarget.fullName}</Text>
+                  <Text size="sm" c="dimmed">{quickPreviewTarget.employeeCode}</Text>
+                  <StatusTag status={quickPreviewTarget.employmentStatus} />
+                </Stack>
+              </Group>
+            </Paper>
+            <SimpleGrid cols={1} spacing="xs">
+              {[
+                ["Chức danh", quickPreviewTarget.currentEmployeeAssignment?.jobTitle],
+                ["Phòng ban", quickPreviewTarget.currentEmployeeAssignment?.departmentName],
+                ["Email", quickPreviewTarget.companyEmail],
+                ["Số điện thoại", quickPreviewTarget.phone],
+                ["Mã chấm công", quickPreviewTarget.biotimeEmployeeCode],
+              ].map(([label, value]) => (
+                <Paper key={label} withBorder p="sm" className="employee-preview-field">
+                  <Text size="xs" c="dimmed" fw={800}>{label}</Text>
+                  <Text size="sm" fw={700}>{value || "-"}</Text>
+                </Paper>
+              ))}
+            </SimpleGrid>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setQuickPreviewTarget(null)}>
+                Đóng
+              </Button>
+              <Button onClick={() => navigate(`/employees/${quickPreviewTarget.id}`)}>
+                Xem hồ sơ đầy đủ
+              </Button>
+            </Group>
+          </Stack>
+        ) : null}
+      </Drawer>
+
+      <Drawer
+        opened={exportPreview !== null}
+        onClose={() => setExportPreview(null)}
+        title="Preview trước khi xuất"
+        position="right"
+        size="lg"
+        className="entity-drawer employee-export-preview-drawer"
+      >
+        {exportPreview ? (
+          <Stack gap="md">
+            <Alert color="blue" variant="light" icon={<IconInfoCircle size={18} />}>
+              Xuất định dạng <b>{exportPreview.format.toUpperCase()}</b> với phạm vi <b>{exportPreview.scope}</b>. Preview chỉ hiển thị 5 dòng đầu.
+            </Alert>
+            <Group>
+              <Badge variant="light">Tổng {exportPreviewRecords.length} nhân sự</Badge>
+              <Badge variant="light" color="gray">Cột đang hiển thị {columns.length}</Badge>
+            </Group>
+            <Paper withBorder p="sm" className="employee-export-preview-table">
+              <Stack gap="xs">
+                {exportPreviewRecords.slice(0, 5).map((employee) => (
+                  <Group key={employee.id} justify="space-between" wrap="nowrap">
+                    <Stack gap={0}>
+                      <Text size="sm" fw={800}>{employee.fullName}</Text>
+                      <Text size="xs" c="dimmed">{employee.employeeCode} · {employee.currentEmployeeAssignment?.departmentName ?? "Chưa có phòng ban"}</Text>
+                    </Stack>
+                    <Text size="xs" c="dimmed">{employee.companyEmail ?? "-"}</Text>
+                  </Group>
+                ))}
+              </Stack>
+            </Paper>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setExportPreview(null)}>
+                Hủy
+              </Button>
+              <Button loading={isAdvancedExporting} leftSection={<IconFileExport size={16} />} onClick={() => void confirmAdvancedExport()}>
+                Xác nhận xuất
+              </Button>
+            </Group>
+          </Stack>
+        ) : null}
+      </Drawer>
 
       <Drawer
         opened={open}

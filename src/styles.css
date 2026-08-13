@@ -341,6 +341,73 @@ body {
   transition: opacity 160ms ease, transform 160ms ease;
 }
 
+.employee-name-preview-trigger {
+  cursor: help;
+  display: block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.employee-preview-hero,
+.employee-preview-field,
+.employee-export-preview-table {
+  background: var(--hrm-surface);
+  border-color: var(--hrm-border);
+}
+
+.notification-center-panel {
+  background: var(--hrm-surface);
+  border-color: var(--hrm-border);
+  max-height: min(620px, calc(100dvh - 88px));
+  overflow: hidden;
+}
+
+.notification-center-scroll {
+  max-height: min(300px, calc(100dvh - 228px));
+}
+
+.notification-center-header {
+  background: var(--hrm-surface);
+  border-bottom: 1px solid var(--hrm-border-soft);
+}
+
+.notification-center-item {
+  background: var(--hrm-surface);
+  border-top: 1px solid var(--hrm-border-soft);
+  color: var(--hrm-text);
+  display: block;
+  padding: 12px 16px;
+  text-align: left;
+  transition: background-color 160ms ease, transform 160ms ease;
+  width: 100%;
+}
+
+.notification-center-item:hover,
+.notification-center-item:focus-visible {
+  background: var(--hrm-surface-subtle);
+  transform: translateY(-1px);
+}
+
+.notification-center-item.is-unread {
+  background: color-mix(in srgb, var(--mantine-color-blue-1), transparent 42%);
+}
+
+.notification-unread-dot {
+  background: var(--mantine-color-blue-6);
+  border-radius: 999px;
+  display: inline-block;
+  height: 7px;
+  width: 7px;
+}
+
+.notification-title,
+.notification-body,
+.notification-actor {
+  overflow-wrap: anywhere;
+}
+
 .data-table tbody tr:hover .employee-row-quick-actions,
 .employee-row-quick-actions:focus-within {
   opacity: 1;
@@ -1315,10 +1382,49 @@ body {
 
 .settings-panel,
 .settings-runtime-box,
-.settings-password-preview {
+.settings-policy-row,
+.settings-security-overview {
   background: var(--hrm-surface);
   border-color: var(--hrm-border);
   box-shadow: var(--hrm-shadow);
+}
+
+.settings-security-row {
+  padding: 14px 16px;
+}
+
+.settings-security-row + .settings-security-row {
+  border-top: 1px solid var(--hrm-border-soft);
+}
+
+.settings-security-icon {
+  align-items: center;
+  border-radius: 8px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 36px;
+  justify-content: center;
+  width: 36px;
+}
+
+.settings-security-icon.is-blue {
+  background: var(--mantine-color-blue-light);
+  color: var(--mantine-color-blue-7);
+}
+
+.settings-security-icon.is-grape {
+  background: var(--mantine-color-grape-light);
+  color: var(--mantine-color-grape-7);
+}
+
+.settings-security-icon.is-orange {
+  background: var(--mantine-color-orange-light);
+  color: var(--mantine-color-orange-7);
+}
+
+.settings-security-icon.is-green {
+  background: var(--mantine-color-green-light);
+  color: var(--mantine-color-green-7);
 }
 
 .settings-card-icon {
@@ -1733,7 +1839,8 @@ body {
 :root[data-mantine-color-scheme='dark'] .imports-history-row,
 :root[data-mantine-color-scheme='dark'] .settings-panel,
 :root[data-mantine-color-scheme='dark'] .settings-runtime-box,
-:root[data-mantine-color-scheme='dark'] .settings-password-preview,
+:root[data-mantine-color-scheme='dark'] .settings-policy-row,
+:root[data-mantine-color-scheme='dark'] .settings-security-overview,
 :root[data-mantine-color-scheme='dark'] .settings-theme-card,
 :root[data-mantine-color-scheme='dark'] .settings-unsaved-bar,
 :root[data-mantine-color-scheme='dark'] .employee-detail-empty,
@@ -1930,6 +2037,30 @@ body {
   color: #bfdbfe;
 }
 
+:root[data-mantine-color-scheme='dark'] .settings-security-row + .settings-security-row {
+  border-top-color: var(--hrm-border);
+}
+
+:root[data-mantine-color-scheme='dark'] .settings-security-icon.is-blue {
+  background: color-mix(in srgb, var(--mantine-color-blue-4), transparent 84%);
+  color: #bfdbfe;
+}
+
+:root[data-mantine-color-scheme='dark'] .settings-security-icon.is-grape {
+  background: color-mix(in srgb, var(--mantine-color-grape-4), transparent 84%);
+  color: #e9d5ff;
+}
+
+:root[data-mantine-color-scheme='dark'] .settings-security-icon.is-orange {
+  background: color-mix(in srgb, var(--mantine-color-orange-4), transparent 84%);
+  color: #fed7aa;
+}
+
+:root[data-mantine-color-scheme='dark'] .settings-security-icon.is-green {
+  background: color-mix(in srgb, var(--mantine-color-green-4), transparent 84%);
+  color: #bbf7d0;
+}
+
 :root[data-mantine-color-scheme='dark'] .settings-row {
   border-top-color: var(--hrm-border);
 }
@@ -1951,6 +2082,15 @@ body {
 :root[data-mantine-color-scheme='dark'] .settings-notification-table .mantine-Table-td {
   border-bottom-color: var(--hrm-border);
   color: var(--hrm-text);
+}
+
+:root[data-mantine-color-scheme='dark'] .notification-center-item.is-unread {
+  background: color-mix(in srgb, var(--mantine-color-blue-9), transparent 70%);
+}
+
+:root[data-mantine-color-scheme='dark'] .notification-center-item:hover,
+:root[data-mantine-color-scheme='dark'] .notification-center-item:focus-visible {
+  background: var(--mantine-color-dark-5);
 }
 
 :root[data-mantine-color-scheme='dark'] .empty-state-icon {

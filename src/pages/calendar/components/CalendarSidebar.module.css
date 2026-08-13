@@ -124,3 +124,17 @@
   font-size: 11px;
   color: var(--mantine-color-dimmed);
 }
+
+@media (max-width: 900px) {
+  .sidebar {
+    border-bottom: 1px solid var(--mantine-color-gray-2);
+    border-right: 0;
+    min-height: 260px;
+    min-width: 0;
+    width: 100%;
+  }
+
+  :global([data-mantine-color-scheme='dark']) .sidebar {
+    border-bottom-color: var(--hrm-border);
+  }
+}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActionIcon,
   Badge,
@@ -9,179 +9,314 @@ import {
   Loader,
   Popover,
   ScrollArea,
+  SegmentedControl,
   Stack,
   Text,
+  ThemeIcon,
+  Tooltip,
   UnstyledButton,
 } from '@mantine/core';
-import { IconBell, IconCheck } from '@tabler/icons-react';
-import dayjs from 'dayjs';
+import {
+  IconAlertTriangle,
+  IconBell,
+  IconBellCheck,
+  IconBriefcase,
+  IconCheck,
+  IconClock,
+  IconFileText,
+  IconUserPlus,
+} from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 
 import {
   useNotifications,
-  useUnreadNotificationCount,
   useNotificationMutations,
   useNotificationStream,
 } from './useNotifications';
+import { useAuth } from '../auth/useAuth';
 import type { AppNotification } from './notificationApi';
+import {
+  canReadNotificationEvent,
+  getReadableNotificationEvents,
+  notificationEventFromType,
+  type NotificationEvent,
+} from './notificationSettings';
 
-function relativeTime(iso: string): string {
-  const now = dayjs();
-  const then = dayjs(iso);
-  const diffMin = now.diff(then, 'minute');
-  if (diffMin < 1) return 'Vừa xong';
-  if (diffMin < 60) return `${diffMin} phút trước`;
-  const diffHour = now.diff(then, 'hour');
-  if (diffHour < 24) return `${diffHour} giờ trước`;
-  const diffDay = now.diff(then, 'day');
-  if (diffDay < 7) return `${diffDay} ngày trước`;
-  return then.format('DD/MM/YYYY HH:mm');
+type NotificationFilter = 'all' | NotificationEvent;
+
+const categoryMeta: Record<NotificationEvent, {
+  label: string;
+  color: string;
+  icon: typeof IconBell;
+}> = {
+  leave: { label: 'Đơn từ', color: 'blue', icon: IconFileText },
+  contract: { label: 'Nhắc nhở', color: 'orange', icon: IconBriefcase },
+  employee: { label: 'Nhân sự', color: 'green', icon: IconUserPlus },
+  system: { label: 'Hệ thống', color: 'violet', icon: IconAlertTriangle },
+};
+
+function parseNotificationDate(value: string): Date | null {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function actionUrlOf(n: AppNotification): string | null {
+function formatNotificationTime(value: string): string {
+  const date = parseNotificationDate(value);
+  if (!date) return '-';
+  return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
+}
+
+function relativeTime(value: string): string {
+  const date = parseNotificationDate(value);
+  if (!date) return '-';
+  const diffMs = Date.now() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60_000);
+  if (diffMin < 0) return 'Thời gian từ hệ thống';
+  if (diffMin < 1) return 'Vừa xong';
+  if (diffMin < 60) return `${diffMin} phút trước`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour} giờ trước`;
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 7) return `${diffDay} ngày trước`;
+  return formatNotificationTime(value);
+}
+
+function actionUrlOf(notification: AppNotification): string | null {
   const fromPayload =
-    n.payload && typeof n.payload['actionUrl'] === 'string'
-      ? (n.payload['actionUrl'] as string)
+    notification.payload && typeof notification.payload['actionUrl'] === 'string'
+      ? (notification.payload['actionUrl'] as string)
       : null;
   if (fromPayload) return fromPayload;
-  if (n.entityType === 'CALENDAR_EVENT' && n.entityId) {
-    return `/calendar?eventId=${n.entityId}`;
+  if (notification.entityType === 'CALENDAR_EVENT' && notification.entityId) {
+    return `/calendar?eventId=${notification.entityId}`;
+  }
+  if (notification.entityType === 'EMPLOYEE' && notification.entityId) {
+    return `/employees/${notification.entityId}`;
   }
   return null;
 }
 
+function categoryOf(notification: AppNotification): NotificationEvent {
+  return notificationEventFromType(notification.category ?? notification.type);
+}
+
+function truncateText(value: string | null | undefined, maxLength: number) {
+  if (!value) return '';
+  return value.length > maxLength ? `${value.slice(0, maxLength).trim()}...` : value;
+}
+
 export function NotificationBell() {
   const [opened, setOpened] = useState(false);
+  const [filter, setFilter] = useState<NotificationFilter>('all');
   const navigate = useNavigate();
+  const { user } = useAuth();
   useNotificationStream();
 
-  const { data: unreadCount = 0 } = useUnreadNotificationCount();
   const { data: notifications = [], isLoading } = useNotifications({
     page: 1,
-    pageSize: 20,
+    pageSize: 30,
   });
   const { markRead, markAllRead } = useNotificationMutations();
 
-  const handleOpen = (n: AppNotification) => {
-    if (!n.readAt) markRead.mutate(n.id);
-    const url = actionUrlOf(n);
+  const readableEvents = useMemo(() => getReadableNotificationEvents(user), [user]);
+  const readableEventSet = useMemo(
+    () => new Set(readableEvents.map((event) => event.key)),
+    [readableEvents],
+  );
+  const activeFilter: NotificationFilter =
+    filter === 'all' || readableEventSet.has(filter) ? filter : 'all';
+  const allowedNotifications = useMemo(
+    () =>
+      notifications.filter((notification) =>
+        canReadNotificationEvent(user, categoryOf(notification)),
+      ),
+    [notifications, user],
+  );
+
+  const filteredNotifications = useMemo(
+    () =>
+      activeFilter === 'all'
+        ? allowedNotifications
+        : allowedNotifications.filter((notification) => categoryOf(notification) === activeFilter),
+    [activeFilter, allowedNotifications],
+  );
+
+  const unreadByCategory = useMemo(() => {
+    const result: Record<NotificationFilter, number> = {
+      all: 0,
+      leave: 0,
+      contract: 0,
+      employee: 0,
+      system: 0,
+    };
+    allowedNotifications.forEach((notification) => {
+      if (notification.readAt) return;
+      const category = categoryOf(notification);
+      result.all += 1;
+      result[category] += 1;
+    });
+    return result;
+  }, [allowedNotifications]);
+
+  const visibleUnreadCount = unreadByCategory.all;
+
+  const handleOpen = (notification: AppNotification) => {
+    if (!notification.readAt) markRead.mutate(notification.id);
+    const url = actionUrlOf(notification);
     setOpened(false);
     if (url) navigate(url);
   };
+
+  const filterOptions = [
+    { value: 'all', label: `Tất cả ${unreadByCategory.all ? `(${unreadByCategory.all})` : ''}` },
+    ...readableEvents.map((event) => ({
+      value: event.key,
+      label: `${categoryMeta[event.key].label} ${unreadByCategory[event.key] ? `(${unreadByCategory[event.key]})` : ''}`,
+    })),
+  ];
 
   return (
     <Popover
       opened={opened}
       onChange={setOpened}
       position="bottom-end"
-      width={360}
-      shadow="md"
+      width={440}
+      shadow="xl"
       withArrow
     >
       <Popover.Target>
         <Indicator
-          disabled={unreadCount === 0}
-          label={unreadCount > 99 ? '99+' : unreadCount}
-          size={16}
+          disabled={visibleUnreadCount === 0}
+          label={visibleUnreadCount > 99 ? '99+' : visibleUnreadCount}
+          size={17}
           color="red"
           offset={4}
         >
-          <ActionIcon
-            variant="subtle"
-            color="gray"
-            size="lg"
-            aria-label="Thông báo"
-            onClick={() => setOpened((o) => !o)}
-          >
-            <IconBell size={20} />
-          </ActionIcon>
+          <Tooltip label="Trung tâm thông báo">
+            <ActionIcon
+              variant="default"
+              size="lg"
+              aria-label="Trung tâm thông báo"
+              onClick={() => setOpened((current) => !current)}
+            >
+              <IconBell size={20} />
+            </ActionIcon>
+          </Tooltip>
         </Indicator>
       </Popover.Target>
 
-      <Popover.Dropdown p={0}>
-        <Group justify="space-between" px="md" py="sm">
-          <Text fw={600} size="sm">
-            Thông báo
-          </Text>
-          <Badge variant="dot" color="green" size="xs">
-            Live
-          </Badge>
-          {unreadCount > 0 && (
-            <Button
-              variant="subtle"
-              size="compact-xs"
-              leftSection={<IconCheck size={13} />}
-              onClick={() => markAllRead.mutate()}
-              loading={markAllRead.isPending}
-            >
-              Đánh dấu đã đọc
-            </Button>
-          )}
+      <Popover.Dropdown p={0} className="notification-center-panel">
+        <Group justify="space-between" px="md" py="sm" className="notification-center-header">
+          <Box>
+            <Text fw={800} size="sm">Trung tâm thông báo</Text>
+            <Text size="xs" c="dimmed">Tự ẩn thông báo cũ sau 30 ngày</Text>
+          </Box>
+          <Group gap="xs">
+            <Badge variant="light" color={visibleUnreadCount > 0 ? 'red' : 'green'} size="sm">
+              {visibleUnreadCount} chưa đọc
+            </Badge>
+            {visibleUnreadCount > 0 ? (
+              <Button
+                variant="subtle"
+                size="compact-xs"
+                leftSection={<IconCheck size={13} />}
+                onClick={() => markAllRead.mutate()}
+                loading={markAllRead.isPending}
+              >
+                Đọc tất cả
+              </Button>
+            ) : null}
+          </Group>
         </Group>
 
-        <ScrollArea.Autosize mah={420} type="hover">
+        <Box px="md" pb="sm">
+          <SegmentedControl
+            size="xs"
+            fullWidth
+            value={activeFilter}
+            onChange={(value) => setFilter(value as NotificationFilter)}
+            data={filterOptions}
+          />
+        </Box>
+
+        <ScrollArea.Autosize className="notification-center-scroll" type="hover">
           {isLoading ? (
             <Group justify="center" py="xl">
               <Loader size="sm" />
             </Group>
-          ) : notifications.length === 0 ? (
-            <Text c="dimmed" size="sm" ta="center" py="xl">
-              Không có thông báo
-            </Text>
+          ) : filteredNotifications.length === 0 ? (
+            <Stack align="center" gap="xs" py="xl" px="md">
+              <ThemeIcon size={48} radius="xl" variant="light" color="green">
+                <IconBellCheck size={24} />
+              </ThemeIcon>
+              <Text fw={800} ta="center">Không có thông báo phù hợp</Text>
+              <Text c="dimmed" size="sm" ta="center">
+                Hệ thống sẽ tự cập nhật khi có đơn từ, hợp đồng hoặc thay đổi mới.
+              </Text>
+            </Stack>
           ) : (
             <Stack gap={0}>
-              {notifications.map((n) => (
-                <UnstyledButton
-                  key={n.id}
-                  onClick={() => handleOpen(n)}
-                  style={{
-                    padding: '10px 16px',
-                    borderTop: '1px solid var(--mantine-color-gray-2)',
-                    backgroundColor: n.readAt
-                      ? undefined
-                      : 'var(--mantine-color-blue-0)',
-                  }}
-                >
-                  <Group gap="xs" wrap="nowrap" align="flex-start">
-                    {!n.readAt && (
-                      <Box
-                        mt={6}
-                        style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          backgroundColor: 'var(--mantine-color-blue-6)',
-                          flexShrink: 0,
-                        }}
-                      />
-                    )}
-                    <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
-                      <Text size="sm" fw={n.readAt ? 400 : 600} lineClamp={1}>
-                        {n.title}
-                      </Text>
-                      {n.body && (
-                        <Text size="xs" c="dimmed" lineClamp={2}>
-                          {n.body}
+              {filteredNotifications.map((notification) => {
+                const category = categoryOf(notification);
+                const meta = categoryMeta[category];
+                const Icon = meta.icon;
+                const isUnread = !notification.readAt;
+                const title = truncateText(notification.title, 72);
+                const body = truncateText(notification.body, 140);
+                const actorName = truncateText(notification.actorName, 48);
+                const notificationTime = formatNotificationTime(notification.createdAt);
+                return (
+                  <UnstyledButton
+                    key={notification.id}
+                    onClick={() => handleOpen(notification)}
+                    className={`notification-center-item ${isUnread ? 'is-unread' : ''}`}
+                  >
+                    <Group gap="sm" wrap="nowrap" align="flex-start">
+                      <ThemeIcon radius="xl" variant="light" color={meta.color} size={34}>
+                        <Icon size={18} />
+                      </ThemeIcon>
+                      <Stack gap={4} style={{ minWidth: 0, flex: 1 }}>
+                        <Group gap={6} wrap="nowrap">
+                          <Badge size="xs" variant="light" color={meta.color}>{meta.label}</Badge>
+                          <Group gap={4} wrap="nowrap" ml="auto">
+                            {isUnread ? <span className="notification-unread-dot" aria-label="Chưa đọc" /> : null}
+                            <IconClock size={12} />
+                            <Tooltip label={relativeTime(notification.createdAt)}>
+                              <Text size="10px" c="dimmed" span>
+                                {notificationTime}
+                              </Text>
+                            </Tooltip>
+                          </Group>
+                        </Group>
+                        <Text size="sm" fw={isUnread ? 800 : 650} lineClamp={1} className="notification-title">
+                          {title}
                         </Text>
-                      )}
-                      <Text size="10px" c="dimmed">
-                        {relativeTime(n.createdAt)}
-                      </Text>
-                    </Stack>
-                  </Group>
-                </UnstyledButton>
-              ))}
+                        {body ? (
+                          <Text size="xs" c="dimmed" lineClamp={2} className="notification-body">
+                            {body}
+                          </Text>
+                        ) : null}
+                        {actorName ? (
+                          <Text size="10px" c="dimmed" lineClamp={1} className="notification-actor">
+                            Người thực hiện: {actorName}
+                          </Text>
+                        ) : null}
+                      </Stack>
+                    </Group>
+                  </UnstyledButton>
+                );
+              })}
             </Stack>
           )}
         </ScrollArea.Autosize>
 
-        {notifications.length > 0 && (
-          <Box px="md" py={6} style={{ borderTop: '1px solid var(--mantine-color-gray-2)' }}>
-            <Badge variant="light" color="gray" size="xs">
-              {unreadCount} chưa đọc
-            </Badge>
-          </Box>
-        )}
       </Popover.Dropdown>
     </Popover>
   );

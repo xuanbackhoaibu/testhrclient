@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AppShell, LoadingOverlay, Alert, Button, Group, Text } from '@mantine/core';
+import { LoadingOverlay, Alert, Button, Group, Text } from '@mantine/core';
 import { IconAlertCircle, IconCalendarEvent, IconPlus } from '@tabler/icons-react';
 
 import { CalendarHeader } from './components/CalendarHeader';
@@ -81,79 +81,77 @@ function CalendarPageInner() {
   const hasError = !!error && !isNoHrProfile;
 
   return (
-    <AppShell header={{ height: 60 }} padding={0}>
-      <AppShell.Header>
+    <div className={styles.shell}>
+      <div className={styles.header}>
         <CalendarHeader />
-      </AppShell.Header>
+      </div>
 
-      <AppShell.Main>
-        <div className={styles.layout}>
-          <CalendarSidebar />
+      <div className={styles.layout}>
+        <CalendarSidebar />
 
-          <div className={styles.mainContent}>
-            {/* Action bar — hide create button when HR not linked (would fail) */}
-            {!isViewingOthers && !isNoHrProfile && (
-              <div className={styles.actionBar}>
-                <Button
-                  leftSection={<IconPlus size={16} />}
-                  onClick={handleCreateEvent}
-                >
-                  Tạo sự kiện
+        <div className={styles.mainContent}>
+          {/* Action bar — hide create button when HR not linked (would fail) */}
+          {!isViewingOthers && !isNoHrProfile && (
+            <div className={styles.actionBar}>
+              <Button
+                leftSection={<IconPlus size={16} />}
+                onClick={handleCreateEvent}
+              >
+                Tạo sự kiện
+              </Button>
+            </div>
+          )}
+
+          {isLoading && <LoadingOverlay visible overlayProps={{ blur: 2 }} />}
+
+          {/* Soft notice — never blocks the calendar grid */}
+          {isNoHrProfile && (
+            <Alert
+              icon={<IconAlertCircle size={16} />}
+              title="Chưa liên kết hồ sơ nhân sự"
+              color="yellow"
+              m="md"
+              mb="xs"
+            >
+              Tài khoản chưa được liên kết với hồ sơ nhân sự. Lịch phòng ban và công ty sẽ khả dụng sau khi liên kết. Vui lòng liên hệ quản trị viên nếu cần hỗ trợ.
+            </Alert>
+          )}
+
+          {/* Hard error (network, 5xx, etc.) — not shown when it's just no HR profile */}
+          {hasError && (
+            <Alert
+              icon={<IconAlertCircle size={16} />}
+              title="Lỗi tải dữ liệu"
+              color="red"
+              m="md"
+              withCloseButton
+            >
+              {error instanceof Error ? error.message : 'Đã xảy ra lỗi khi tải dữ liệu lịch'}
+              <Group mt="sm">
+                <Button size="xs" variant="light" onClick={handleRefetch}>
+                  Thử lại
                 </Button>
-              </div>
-            )}
+              </Group>
+            </Alert>
+          )}
 
-            {isLoading && <LoadingOverlay visible overlayProps={{ blur: 2 }} />}
-
-            {/* Soft notice — never blocks the calendar grid */}
-            {isNoHrProfile && (
-              <Alert
-                icon={<IconAlertCircle size={16} />}
-                title="Chưa liên kết hồ sơ nhân sự"
-                color="yellow"
-                m="md"
-                mb="xs"
-              >
-                Tài khoản chưa được liên kết với hồ sơ nhân sự. Lịch phòng ban và công ty sẽ khả dụng sau khi liên kết. Vui lòng liên hệ quản trị viên nếu cần hỗ trợ.
-              </Alert>
-            )}
-
-            {/* Hard error (network, 5xx, etc.) — not shown when it's just no HR profile */}
-            {hasError && (
-              <Alert
-                icon={<IconAlertCircle size={16} />}
-                title="Lỗi tải dữ liệu"
-                color="red"
-                m="md"
-                withCloseButton
-              >
-                {error instanceof Error ? error.message : 'Đã xảy ra lỗi khi tải dữ liệu lịch'}
-                <Group mt="sm">
-                  <Button size="xs" variant="light" onClick={handleRefetch}>
-                    Thử lại
-                  </Button>
-                </Group>
-              </Alert>
-            )}
-
-            {/* Calendar view is always rendered — empty state when no events */}
-            {!hasError && (events.length === 0 && !isLoading ? (
-              <div className={styles.emptyState}>
-                <IconCalendarEvent size={48} className={styles.emptyStateIcon} />
-                <Text size="sm" className={styles.emptyStateText}>
-                  {selectedOwner
-                    ? `${selectedOwner.fullName} chưa có sự kiện nào trong tháng này.`
-                    : isNoHrProfile
-                      ? 'Chưa có sự kiện nào. Liên kết hồ sơ nhân sự để xem lịch phòng ban.'
-                      : 'Bạn chưa có sự kiện nào trong tháng này. Nhấn "Tạo sự kiện" để thêm mới.'}
-                </Text>
-              </div>
-            ) : (
-              <CalendarView events={events} onEventClick={handleEventClick} />
-            ))}
-          </div>
+          {/* Calendar view is always rendered — empty state when no events */}
+          {!hasError && (events.length === 0 && !isLoading ? (
+            <div className={styles.emptyState}>
+              <IconCalendarEvent size={48} className={styles.emptyStateIcon} />
+              <Text size="sm" className={styles.emptyStateText}>
+                {selectedOwner
+                  ? `${selectedOwner.fullName} chưa có sự kiện nào trong tháng này.`
+                  : isNoHrProfile
+                    ? 'Chưa có sự kiện nào. Liên kết hồ sơ nhân sự để xem lịch phòng ban.'
+                    : 'Bạn chưa có sự kiện nào trong tháng này. Nhấn "Tạo sự kiện" để thêm mới.'}
+              </Text>
+            </div>
+          ) : (
+            <CalendarView events={events} onEventClick={handleEventClick} />
+          ))}
         </div>
-      </AppShell.Main>
+      </div>
 
       <EventDetailModal
         eventId={selectedEventId}
@@ -167,7 +165,7 @@ function CalendarPageInner() {
         onClose={handleCloseCreate}
         editEvent={editingEvent}
       />
-    </AppShell>
+    </div>
   );
 }
 

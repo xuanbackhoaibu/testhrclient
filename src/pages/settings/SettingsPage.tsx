@@ -7,10 +7,8 @@ import {
   Card,
   Divider,
   Group,
-  NumberInput,
   Paper,
   SimpleGrid,
-  Slider,
   Stack,
   Switch,
   Table,
@@ -27,23 +25,34 @@ import {
   IconBuilding,
   IconCheck,
   IconDeviceFloppy,
+  IconFingerprint,
+  IconHistory,
+  IconLockCheck,
   IconMail,
   IconMoon,
   IconPalette,
   IconRefresh,
   IconShieldLock,
   IconSun,
+  IconUserShield,
 } from '@tabler/icons-react';
 
 import { AUTH_ADMIN_PERMISSIONS, HR_PERMISSIONS } from '../../features/auth/permissions';
 import type { AuthUser } from '../../features/auth/types';
 import { useAuth } from '../../features/auth/useAuth';
+import {
+  createDefaultNotificationSettings,
+  readNotificationSettings,
+  writeNotificationSettings,
+  getReadableNotificationEvents,
+  type NotificationChannel,
+  type NotificationEvent,
+  type NotificationSettings,
+} from '../../features/notifications/notificationSettings';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { formatList } from '../../shared/utils/format';
 
 type ThemeMode = 'light' | 'dark' | 'auto';
-type NotificationChannel = 'email' | 'push';
-type NotificationEvent = 'leave' | 'contract' | 'import' | 'security';
 
 type CompanySettings = {
   name: string;
@@ -57,37 +66,48 @@ type VisualSettings = {
   density: 'comfortable' | 'compact';
 };
 
-type NotificationSettings = {
-  matrix: Record<NotificationEvent, Record<NotificationChannel, boolean>>;
-  quietFrom: string;
-  quietTo: string;
-};
-
-type PasswordSettings = {
-  minLength: number;
-  requireSpecial: boolean;
-  requireNumber: boolean;
-  expireDays: number;
-};
-
 type SettingsSnapshot = {
   company: CompanySettings;
   visual: VisualSettings;
   notifications: NotificationSettings;
-  password: PasswordSettings;
 };
-
-const notificationEvents: Array<{ key: NotificationEvent; label: string; description: string }> = [
-  { key: 'leave', label: 'Đơn nghỉ phép', description: 'Có đơn mới, duyệt/từ chối đơn.' },
-  { key: 'contract', label: 'Hợp đồng', description: 'Sắp hết hạn, cần gia hạn hoặc đánh giá.' },
-  { key: 'import', label: 'Import Excel', description: 'Hoàn tất, lỗi một phần, thất bại.' },
-  { key: 'security', label: 'Bảo mật', description: 'Đăng nhập lạ, khóa tài khoản, đổi mật khẩu.' },
-];
 
 const themeCards: Array<{ key: ThemeMode; title: string; description: string; icon: typeof IconSun }> = [
   { key: 'light', title: 'Light', description: 'Nền sáng, tương phản cao cho ban ngày.', icon: IconSun },
   { key: 'dark', title: 'Dark', description: 'Nền tối dịu mắt khi làm việc buổi tối.', icon: IconMoon },
   { key: 'auto', title: 'Auto', description: 'Theo thiết lập hệ điều hành của người dùng.', icon: IconPalette },
+];
+
+const securityOverviewItems: Array<{
+  title: string;
+  description: string;
+  icon: typeof IconShieldLock;
+  color: string;
+}> = [
+  {
+    title: 'Xác thực tập trung',
+    description: 'Người dùng đăng nhập qua dịch vụ xác thực bên ngoài, HRM chỉ nhận hồ sơ và quyền đã xác minh.',
+    icon: IconFingerprint,
+    color: 'blue',
+  },
+  {
+    title: 'Quyền theo vai trò',
+    description: 'Mỗi tài khoản chỉ thấy dữ liệu và thao tác đúng phạm vi được cấp.',
+    icon: IconUserShield,
+    color: 'grape',
+  },
+  {
+    title: 'Nhật ký thao tác',
+    description: 'Các thay đổi quan trọng được ghi nhận để quản trị viên tra cứu khi cần đối chiếu.',
+    icon: IconHistory,
+    color: 'orange',
+  },
+  {
+    title: 'Bảo vệ phiên',
+    description: 'Khi phiên hết hạn hoặc quyền thay đổi, hệ thống yêu cầu xác thực lại để tiếp tục.',
+    icon: IconLockCheck,
+    color: 'green',
+  },
 ];
 
 function formatDataScopes(scopes: AuthUser['dataScopes'] | undefined) {
@@ -112,31 +132,10 @@ function createInitialSettings(themeMode: ThemeMode): SettingsSnapshot {
       themeMode,
       density: 'comfortable',
     },
-    notifications: {
-      matrix: {
-        leave: { email: true, push: true },
-        contract: { email: true, push: true },
-        import: { email: true, push: false },
-        security: { email: true, push: true },
-      },
-      quietFrom: '22:00',
-      quietTo: '07:00',
-    },
-    password: {
-      minLength: 10,
-      requireSpecial: true,
-      requireNumber: true,
-      expireDays: 90,
-    },
+    notifications: typeof window === 'undefined'
+      ? createDefaultNotificationSettings()
+      : readNotificationSettings(),
   };
-}
-
-function buildSamplePassword(settings: PasswordSettings) {
-  const base = 'HacomSecure';
-  const numberPart = settings.requireNumber ? '24' : '';
-  const specialPart = settings.requireSpecial ? '@' : '';
-  const sample = `${base}${numberPart}${specialPart}`;
-  return sample.padEnd(settings.minLength, 'x');
 }
 
 function canUseAdminSurface(user: AuthUser | null | undefined) {
@@ -179,10 +178,8 @@ export function SettingsPage() {
     AUTH_ADMIN_PERMISSIONS.USERS_UPDATE,
     AUTH_ADMIN_PERMISSIONS.ROLES_MANAGE,
   ]);
-  const canManageNotifications = isSystemAdmin || canAny([
-    HR_PERMISSIONS.AUDIT_READ,
-    AUTH_ADMIN_PERMISSIONS.USERS_UPDATE,
-  ]);
+  const readableNotificationEvents = getReadableNotificationEvents(user);
+  const canManageNotifications = readableNotificationEvents.length > 0;
   const canManagePasswordPolicy = isSystemAdmin || canAny([
     HR_PERMISSIONS.ACCOUNT_RESET_PASSWORD,
     AUTH_ADMIN_PERMISSIONS.USERS_UPDATE,
@@ -190,8 +187,6 @@ export function SettingsPage() {
   ]);
 
   const hasChanges = JSON.stringify(settings) !== JSON.stringify(saved);
-  const passwordPreview = buildSamplePassword(settings.password);
-
   function updateCompany(key: keyof CompanySettings, value: string) {
     setSettings((current) => ({
       ...current,
@@ -237,15 +232,17 @@ export function SettingsPage() {
     }));
   }
 
-  function updatePasswordRule(key: 'requireSpecial' | 'requireNumber', value: boolean) {
+  function updateQuietHoursEnabled(value: boolean) {
     setSettings((current) => ({
       ...current,
-      password: { ...current.password, [key]: value },
+      notifications: { ...current.notifications, quietHoursEnabled: value },
     }));
   }
 
   function saveSettings() {
     setSaved(settings);
+    writeNotificationSettings(settings.notifications);
+    window.dispatchEvent(new CustomEvent('hrm:notification-settings-updated'));
     notifications.show({ color: 'green', message: 'Đã lưu cấu hình giao diện cục bộ.' });
   }
 
@@ -265,7 +262,6 @@ export function SettingsPage() {
               icon={<IconBuilding size={18} />}
               title="Thông tin công ty"
               subtitle="Thông tin hiển thị trong báo cáo, email và hồ sơ nội bộ."
-              badge={canManageCompany ? 'Có quyền sửa' : 'Chỉ quản trị'}
             />
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
               <TextInput disabled={!canManageCompany} label="Tên công ty" value={settings.company.name} onChange={(event) => updateCompany('name', event.currentTarget.value)} />
@@ -347,18 +343,17 @@ export function SettingsPage() {
                 icon={<IconBell size={18} />}
                 title="Thông báo"
                 subtitle="Bật/tắt kênh nhận thông báo theo từng loại sự kiện."
-                badge="Có quyền sửa"
               />
               <Table className="settings-notification-table">
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>Sự kiện</Table.Th>
+                    <Table.Th><Group gap={6}><IconBell size={15} /> Trong app</Group></Table.Th>
                     <Table.Th><Group gap={6}><IconMail size={15} /> Email</Group></Table.Th>
-                    <Table.Th><Group gap={6}><IconBell size={15} /> Push</Group></Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {notificationEvents.map((event) => (
+                  {readableNotificationEvents.map((event) => (
                     <Table.Tr key={event.key}>
                       <Table.Td>
                         <Text fw={700}>{event.label}</Text>
@@ -366,14 +361,14 @@ export function SettingsPage() {
                       </Table.Td>
                       <Table.Td>
                         <Switch
-                          checked={settings.notifications.matrix[event.key].email}
-                          onChange={(change) => updateNotification(event.key, 'email', change.currentTarget.checked)}
+                          checked={settings.notifications.matrix[event.key].inApp}
+                          onChange={(change) => updateNotification(event.key, 'inApp', change.currentTarget.checked)}
                         />
                       </Table.Td>
                       <Table.Td>
                         <Switch
-                          checked={settings.notifications.matrix[event.key].push}
-                          onChange={(change) => updateNotification(event.key, 'push', change.currentTarget.checked)}
+                          checked={settings.notifications.matrix[event.key].email}
+                          onChange={(change) => updateNotification(event.key, 'email', change.currentTarget.checked)}
                         />
                       </Table.Td>
                     </Table.Tr>
@@ -383,13 +378,25 @@ export function SettingsPage() {
               <Group mt="md" grow align="flex-start">
                 <TimeInput
                   label="Bắt đầu"
+                  disabled={!settings.notifications.quietHoursEnabled}
                   value={settings.notifications.quietFrom}
                   onChange={(event) => updateQuietHours('quietFrom', event.currentTarget.value)}
                 />
                 <TimeInput
                   label="Kết thúc"
+                  disabled={!settings.notifications.quietHoursEnabled}
                   value={settings.notifications.quietTo}
                   onChange={(event) => updateQuietHours('quietTo', event.currentTarget.value)}
+                />
+              </Group>
+              <Group justify="space-between" mt="md" className="settings-row">
+                <Box>
+                  <Text fw={700}>Tắt thông báo ngoài giờ làm việc</Text>
+                  <Text size="sm" c="dimmed">Áp dụng cho thông báo trong app và email theo khung giờ yên lặng.</Text>
+                </Box>
+                <Switch
+                  checked={settings.notifications.quietHoursEnabled}
+                  onChange={(event) => updateQuietHoursEnabled(event.currentTarget.checked)}
                 />
               </Group>
             </Card>
@@ -399,70 +406,27 @@ export function SettingsPage() {
             <Card withBorder className="settings-panel">
               <SettingsCardHeader
                 icon={<IconShieldLock size={18} />}
-                title="Chính sách mật khẩu"
-                subtitle="Thiết lập yêu cầu tối thiểu để giảm rủi ro tài khoản yếu."
-                badge={`${settings.password.expireDays} ngày`}
+                title="Bảo mật tài khoản"
+                subtitle="Tóm tắt các lớp bảo vệ đang áp dụng cho người dùng HRM."
               />
-              <Stack gap="md">
-                <Box>
-                  <Group justify="space-between" mb={6}>
-                    <Text fw={700}>Độ dài tối thiểu</Text>
-                    <Badge variant="light">{settings.password.minLength} ký tự</Badge>
-                  </Group>
-                  <Slider
-                    min={8}
-                    max={20}
-                    step={1}
-                    value={settings.password.minLength}
-                    marks={[
-                      { value: 8, label: '8' },
-                      { value: 12, label: '12' },
-                      { value: 16, label: '16' },
-                      { value: 20, label: '20' },
-                    ]}
-                    onChange={(value) =>
-                      setSettings((current) => ({
-                        ...current,
-                        password: { ...current.password, minLength: value },
-                      }))
-                    }
-                  />
-                </Box>
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-                  <Switch
-                    checked={settings.password.requireSpecial}
-                    label="Yêu cầu ký tự đặc biệt"
-                    onChange={(event) => updatePasswordRule('requireSpecial', event.currentTarget.checked)}
-                  />
-                  <Switch
-                    checked={settings.password.requireNumber}
-                    label="Yêu cầu chữ số"
-                    onChange={(event) => updatePasswordRule('requireNumber', event.currentTarget.checked)}
-                  />
-                </SimpleGrid>
-                <NumberInput
-                  label="Chu kỳ hết hạn mật khẩu"
-                  min={30}
-                  max={180}
-                  suffix=" ngày"
-                  value={settings.password.expireDays}
-                  onChange={(value) =>
-                    setSettings((current) => ({
-                      ...current,
-                      password: { ...current.password, expireDays: Number(value) || 90 },
-                    }))
-                  }
-                />
-                <Paper withBorder p="md" className="settings-password-preview">
-                  <Text size="xs" c="dimmed" fw={800}>Preview mật khẩu mẫu</Text>
-                  <Group justify="space-between" mt={4}>
-                    <Text ff="monospace" fw={800}>{passwordPreview}</Text>
-                    <Badge color={passwordPreview.length >= settings.password.minLength ? 'green' : 'red'} variant="light">
-                      {passwordPreview.length} ký tự
-                    </Badge>
-                  </Group>
-                </Paper>
-              </Stack>
+              <Paper withBorder p={0} className="settings-security-overview">
+                <Stack gap={0}>
+                  {securityOverviewItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Group key={item.title} gap="sm" wrap="nowrap" className="settings-security-row">
+                        <span className={`settings-security-icon is-${item.color}`}>
+                          <Icon size={18} />
+                        </span>
+                        <Box>
+                          <Text fw={800}>{item.title}</Text>
+                          <Text size="sm" c="dimmed">{item.description}</Text>
+                        </Box>
+                      </Group>
+                    );
+                  })}
+                </Stack>
+              </Paper>
             </Card>
           ) : null}
         </SimpleGrid>

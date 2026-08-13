@@ -1,7 +1,6 @@
 import {
   AppShell,
   ActionIcon,
-  Button,
   Avatar,
   Burger,
   Group,
@@ -20,6 +19,7 @@ import {
   IconBriefcase,
   IconBuildingBank,
   IconCalendarCheck,
+  IconCalendarEvent,
   IconCalendarTime,
   IconChevronDown,
   IconClipboardList,
@@ -38,14 +38,12 @@ import {
   IconUserCheck,
   IconUsers,
   IconCalendarStats,
-  IconSearch,
   IconSun,
 } from "@tabler/icons-react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../features/auth/useAuth";
 import { canAccessRoute } from "../features/auth/routePolicies";
-import { GlobalCommandCenter } from "../features/command-center/GlobalCommandCenter";
 import { NotificationBell } from "../features/notifications/NotificationBell";
 import { BrandLogo } from "../shared/components/BrandLogo";
 import { ROUTES } from "../shared/constants/routes";
@@ -59,6 +57,7 @@ interface NavItem {
 const mainItems: NavItem[] = [
   { label: "Dashboard", path: ROUTES.dashboard, icon: IconDashboard },
   { label: "Nhân sự", path: ROUTES.employees, icon: IconUsers },
+  { label: "Lịch của tôi", path: ROUTES.calendar, icon: IconCalendarEvent },
   { label: "Điều chuyển", path: ROUTES.movements, icon: IconTransfer },
   // { label: "Hợp đồng", path: ROUTES.contracts, icon: IconBriefcase },
   // { label: "Nghỉ phép", path: ROUTES.leave, icon: IconCalendarCheck },
@@ -108,6 +107,7 @@ const routeTitles: Record<string, string> = {
   [ROUTES.workShifts]: "Ca làm việc",
   [ROUTES.holidays]: "Ngày lễ",
   [ROUTES.shiftAssignments]: "Phân ca",
+  [ROUTES.calendar]: "Lịch của tôi",
   [ROUTES.onboarding]: "Onboarding",
   [ROUTES.offboarding]: "Offboarding",
   [ROUTES.imports]: "Imports",
@@ -138,7 +138,6 @@ export function MainLayout() {
   const visibleMainItems = mainItems.filter((item) => canAccessRoute(user, item.path));
   const visibleOrgItems = orgItems.filter((item) => canAccessRoute(user, item.path));
   const visibleIamItems = iamItems.filter((item) => canAccessRoute(user, item.path));
-  const commandRoutes = [...visibleMainItems, ...visibleOrgItems, ...visibleIamItems];
 
   const showOrganizationMenu = visibleOrgItems.length > 0;
   const showIamMenu = visibleIamItems.length > 0;
@@ -187,15 +186,6 @@ export function MainLayout() {
               {isDarkMode ? <IconSun size={18} /> : <IconMoon size={18} />}
             </ActionIcon>
           </Tooltip>
-          <Button
-            variant="default"
-            size="xs"
-            leftSection={<IconSearch size={15} />}
-            visibleFrom="sm"
-            onClick={() => window.dispatchEvent(new CustomEvent("hrm:open-command-center"))}
-          >
-            Ctrl K
-          </Button>
           <NotificationBell />
           <Menu position="bottom-end" shadow="md" width={230}>
             <Menu.Target>
@@ -340,7 +330,6 @@ export function MainLayout() {
       <AppShell.Main className="app-shell-main">
         <Outlet />
       </AppShell.Main>
-      <GlobalCommandCenter routes={commandRoutes} />
     </AppShell>
   );
 }

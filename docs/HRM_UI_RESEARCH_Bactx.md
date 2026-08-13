@@ -1195,6 +1195,18 @@ http://127.0.0.1:5173/
   - Gửi Email.
   - Gia hạn hợp đồng.
   - Xem bảng công.
+- Bổ sung ghim dòng nhân sự:
+  - Mỗi dòng có icon ghim/bỏ ghim rõ ràng trong nhóm thao tác nhanh.
+  - Nhân sự đã ghim được đẩy lên đầu danh sách đang lọc/sắp xếp.
+  - Giới hạn tối đa 5 nhân sự được ghim, có notification cảnh báo khi vượt giới hạn.
+- Bổ sung xem nhanh nhân sự:
+  - Hover vào họ tên hiển thị tooltip gồm chức danh, phòng ban và thông tin liên hệ.
+  - Icon mắt mở drawer xem nhanh ở bên phải mà không rời khỏi danh sách.
+  - Drawer hiển thị avatar dạng nhận diện, mã nhân sự, trạng thái, chức danh, phòng ban, email, số điện thoại và mã chấm công.
+- Bổ sung xuất dữ liệu nâng cao:
+  - Menu `Xuất nâng cao` hỗ trợ Excel, CSV, PDF.
+  - Cho phép xuất theo phạm vi: danh sách đang lọc, tất cả dữ liệu đang tải, hoặc các dòng đang chọn.
+  - Có drawer preview trước khi xuất, hiển thị tổng số bản ghi và 5 dòng đầu để HR kiểm tra trước khi tải file.
 - URL filter đồng bộ thêm alias `dept` cho phòng ban để link chia sẻ dễ đọc hơn, vẫn giữ `departmentId` để tương thích code cũ.
 
 ### 21.2. LeavePage và MovementsPage
@@ -1252,20 +1264,13 @@ http://127.0.0.1:5173/
 
 ### 22.1. Global Command Palette
 
-Đã nâng cấp:
+Trạng thái hiện tại:
 
-- Thêm `GlobalCommandCenter` hoạt động toàn hệ thống.
-- Phím tắt `Ctrl + K` hoặc `Cmd + K` mở command palette ở bất kỳ màn hình nào trong `MainLayout`.
-- Có nút `Ctrl K` trên header để HR dễ phát hiện tính năng.
-- Command hỗ trợ:
-  - Tìm và mở nhanh các phân hệ HRM theo route người dùng có quyền truy cập.
-  - Tìm nhanh hồ sơ nhân sự demo/mocks để mở profile.
-  - `Tạo đơn nghỉ` điều hướng tới `/leave?action=create` và tự mở drawer tạo đơn.
-  - `Xuất Excel Bảng công` điều hướng tới `/attendance/timesheet?action=export` và tự tải file CSV bảng công hiện tại.
-
-Ghi chú:
-
-- Repo chưa cài `@mantine/spotlight`, nên triển khai command palette bằng Mantine `Modal + TextInput + ScrollArea` để tránh thêm dependency mới. Cấu trúc component vẫn tách riêng để có thể đổi sang `@mantine/spotlight` sau.
+- Đã loại bỏ tính năng `GlobalCommandCenter` khỏi UI theo yêu cầu mới.
+- Đã gỡ nút `Ctrl K` trên header.
+- Đã gỡ mount command palette khỏi `MainLayout`.
+- Đã xóa file component `src/features/command-center/GlobalCommandCenter.tsx`.
+- Không còn phím tắt/event `hrm:open-command-center` hoạt động trong layout hiện tại.
 
 ### 22.2. Notification Hub real-time ready
 
@@ -1744,15 +1749,19 @@ Ghi chú:
   - Bảo mật.
 - Thêm khung giờ yên lặng `quiet hours` với giờ bắt đầu và kết thúc.
 
-### 30.4. Chính sách mật khẩu
+### 30.4. Bảo mật tài khoản
 
 Đã nâng cấp:
 
-- Thêm slider độ dài tối thiểu từ 8 đến 20 ký tự.
-- Thêm toggle yêu cầu ký tự đặc biệt.
-- Thêm toggle yêu cầu chữ số.
-- Thêm cấu hình chu kỳ hết hạn mật khẩu theo ngày.
-- Thêm preview mật khẩu mẫu để HR/Admin thấy ngay chính sách đang tạo ra yêu cầu như thế nào.
+- Thay phần chính sách mật khẩu bằng card `Bảo mật tài khoản` dạng text/read-only.
+- Bỏ toàn bộ số liệu/rule mật khẩu như độ dài tối thiểu, chu kỳ hết hạn, ký tự đặc biệt và chữ số.
+- Hiển thị các thông tin bảo mật phù hợp hơn với HRM:
+  - Xác thực qua dịch vụ đăng nhập tập trung.
+  - Phân quyền theo vai trò và phạm vi dữ liệu.
+  - Theo dõi thay đổi qua nhật ký audit.
+  - Phiên làm việc tự yêu cầu đăng nhập lại khi hết hạn.
+- Bỏ các badge quyền dạng chữ trên Settings như `Có quyền sửa`, `Chỉ xem`, `Chỉ quản trị` để header card gọn hơn.
+- Giữ bố cục danh sách icon + mô tả để HR/Admin đọc nhanh trạng thái bảo mật mà không tạo thay đổi cấu hình ngoài ý muốn.
 
 ### 30.5. Trạng thái chưa lưu
 
@@ -1891,3 +1900,55 @@ Ghi chú:
   - `TableSkeleton`, `CardGridSkeleton`, `DetailSkeleton`, `ChartSkeleton`.
   - `ConfirmAction`, `ConfirmActionModal`.
   - `showActionToast`.
+
+## 33. Notification Center
+
+Đã nâng cấp:
+
+- Header có biểu tượng chuông mở `Trung tâm thông báo`, badge đếm số thông báo chưa đọc.
+- Panel thông báo hỗ trợ lọc theo nhóm:
+  - Tất cả.
+  - Đơn từ.
+  - Nhắc nhở hợp đồng.
+  - Nhân sự.
+  - Hệ thống / cảnh báo.
+- Mỗi thông báo hiển thị icon, badge loại, chấm xanh nhỏ khi chưa đọc, thời gian cụ thể, người thực hiện và nội dung tóm tắt.
+- Click vào thông báo tự đánh dấu đã đọc và điều hướng theo `payload.actionUrl` nếu backend trả về.
+- Có nút `Đọc tất cả`.
+- Mock mode có dữ liệu demo cho các luồng:
+  - Đơn nghỉ phép mới cần duyệt.
+  - Hợp đồng sắp hết hạn.
+  - Nhân viên mới được tạo.
+  - Thay đổi quan trọng trong hệ thống.
+- Frontend tự lọc bỏ thông báo cũ quá 30 ngày khi hiển thị.
+- Settings đã đồng bộ cấu hình thông báo:
+  - Chọn kênh `Trong app`.
+  - Chọn kênh `Email`.
+  - Bật/tắt theo từng loại sự kiện.
+  - Bật/tắt chế độ tắt thông báo ngoài giờ làm việc.
+  - Cấu hình giờ bắt đầu/kết thúc khung giờ yên lặng.
+- Khi đang trong khung giờ yên lặng, notification list và badge trong app không hiển thị thông báo mới.
+- Khi lưu Settings, Notification Center tự refetch ngay để áp dụng cấu hình mới.
+- Bổ sung phân quyền thông báo theo module:
+  - `Đơn từ` chỉ hiện với user có quyền nghỉ phép như `hr.leave.read/approve/update`.
+  - `Nhắc nhở hợp đồng` chỉ hiện với user có quyền hợp đồng như `hr.contract.read/update`.
+  - `Nhân sự` chỉ hiện với user có quyền hồ sơ nhân sự như `hr.employee.read/create/update`.
+  - `Hệ thống / cảnh báo` chỉ hiện với user có quyền audit hoặc auth-admin.
+- Badge chưa đọc trên chuông chỉ đếm các thông báo user được phép xem.
+- Trang Settings chỉ hiển thị các dòng cấu hình thông báo mà user có quyền tương ứng.
+
+Ghi chú kỹ thuật:
+
+- Backend thật dùng các endpoint `/notifications`, `/notifications/:id/read`, `/notifications/read-all` nếu có.
+- Badge chưa đọc được tính từ danh sách thông báo đã qua lọc quyền/cài đặt, không gọi endpoint unread-count riêng.
+- Nếu backend chưa có SSE, React Query polling 30 giây vẫn giữ badge thông báo tương đối realtime.
+
+## 34. Calendar Navigation
+
+Đã nâng cấp:
+
+- Thêm item `Lịch của tôi` vào sidebar chính của `MainLayout`.
+- Item trỏ tới route `/calendar`, dùng icon lịch và hiển thị theo policy `authenticated`.
+- Bổ sung title route `Lịch của tôi` để header trang đồng bộ khi vào CalendarPage.
+- Sửa CalendarPage không còn lồng `AppShell` riêng bên trong `MainLayout`, tránh lỗi layout/header/sidebar khi mở từ sidebar chính.
+- CalendarPage dùng shell nội bộ có chiều cao giới hạn theo viewport và responsive mobile.

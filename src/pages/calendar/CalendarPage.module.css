@@ -1,6 +1,24 @@
+.shell {
+  background: var(--hrm-surface);
+  border: 1px solid var(--hrm-border);
+  border-radius: 8px;
+  box-shadow: var(--hrm-shadow);
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 104px);
+  min-height: 640px;
+  overflow: hidden;
+}
+
+.header {
+  border-bottom: 1px solid var(--hrm-border);
+  flex: 0 0 auto;
+}
+
 .layout {
   display: flex;
-  height: calc(100vh - 60px);
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -43,4 +61,20 @@
 .emptyStateText {
   color: var(--mantine-color-dimmed);
   max-width: 300px;
+}
+
+@media (max-width: 900px) {
+  .shell {
+    height: auto;
+    min-height: 720px;
+  }
+
+  .layout {
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  .mainContent {
+    min-height: 620px;
+  }
 }

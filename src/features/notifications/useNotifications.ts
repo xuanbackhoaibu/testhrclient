@@ -20,18 +20,7 @@ export const notificationKeys = {
   all: ['notifications'] as const,
   list: (params?: ListNotificationsParams) =>
     ['notifications', 'list', params ?? {}] as const,
-  unreadCount: ['notifications', 'unread-count'] as const,
 };
-
-export function useUnreadNotificationCount() {
-  return useQuery({
-    queryKey: notificationKeys.unreadCount,
-    queryFn: () => notificationApi.unreadCount(),
-    refetchInterval: isMockMode ? false : POLL_INTERVAL_MS,
-    refetchOnWindowFocus: !isMockMode,
-    staleTime: 10_000,
-  });
-}
 
 export function useNotifications(params?: ListNotificationsParams) {
   return useQuery({
@@ -46,26 +35,30 @@ export function useNotificationStream() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    const refreshNotifications = () => {
+      void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+    };
+    window.addEventListener('hrm:notification-settings-updated', refreshNotifications);
+
     if (isMockMode || typeof EventSource === 'undefined') {
-      return undefined;
+      return () => window.removeEventListener('hrm:notification-settings-updated', refreshNotifications);
     }
 
     const source = new EventSource(notificationStreamUrl, { withCredentials: true });
 
-    source.onmessage = () => {
-      void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
-    };
+    source.onmessage = refreshNotifications;
 
-    source.addEventListener('notification', () => {
-      void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
-    });
+    source.addEventListener('notification', refreshNotifications);
 
     source.onerror = () => {
       // Keep the connection lifecycle simple. React Query polling remains the
       // fallback when the backend has not enabled SSE yet.
     };
 
-    return () => source.close();
+    return () => {
+      window.removeEventListener('hrm:notification-settings-updated', refreshNotifications);
+      source.close();
+    };
   }, [queryClient]);
 }
 
