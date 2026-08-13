@@ -53,6 +53,17 @@ test('workflow and audit routes use canonical read permissions', () => {
   assert.doesNotMatch(source, /canonical permission contract/);
 });
 
+test('global settings remains the final sidebar action after leave management', () => {
+  const source = read('../../layouts/MainLayout.tsx');
+  const leaveItem = source.indexOf('{ label: "Nghỉ phép"');
+  const approvalItem = source.indexOf('label: "Cấu hình duyệt phép"');
+  const settingsItem = source.indexOf('{ label: "Cài đặt"');
+
+  assert.ok(leaveItem >= 0, 'leave navigation item must exist');
+  assert.ok(approvalItem > leaveItem, 'approval configuration follows leave');
+  assert.ok(settingsItem > approvalItem, 'settings must be the final main item');
+});
+
 test('employee account controls use canonical Auth actor permissions', () => {
   const tab = read('../../pages/employees/tabs/AccountTab.tsx');
   const drawer = read('../employees/AccountDetailDrawer.tsx');

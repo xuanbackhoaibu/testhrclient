@@ -35,7 +35,7 @@ export function AuditLogsPage() {
     <>
       <PageHeader title="Nhật ký audit" subtitle="Theo dõi ai thay đổi thực thể nào và trước/sau ra sao." />
       <Card className="page-card">
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
           <Row gutter={12}>
             <Col xs={24} md={6}>
               <Select allowClear placeholder="Loại thực thể" style={{ width: '100%' }} options={['EMPLOYEE', 'LEAVE_REQUEST', 'DEPARTMENT', 'UNIT', 'CONTRACT', 'IMPORT_BATCH'].map((item) => ({ value: item, label: item }))} onChange={(value) => setParams((current) => ({ ...current, entityType: value }))} />
@@ -81,7 +81,7 @@ export function AuditLogsPage() {
       </Card>
 
       <Modal open={Boolean(selected)} title="Chi tiết nhật ký audit" footer={null} width={900} onCancel={() => setSelected(null)}>
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space orientation="vertical" style={{ width: '100%' }}>
           <div>
             <strong>Trước</strong>
             <pre className="json-block">{JSON.stringify(selected?.beforeJson ?? {}, null, 2)}</pre>

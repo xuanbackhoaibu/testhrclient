@@ -223,7 +223,7 @@ export function OnboardingPage() {
         width={760}
         onCancel={() => setSelected(null)}
       >
-        <Space direction="vertical" style={{ width: "100%" }}>
+        <Space orientation="vertical" style={{ width: "100%" }}>
           <Table
             rowKey="id"
             dataSource={selected?.items ?? []}

@@ -55,7 +55,7 @@ export function ContractsPage() {
     <>
       <PageHeader title="Hợp đồng" subtitle="Demo metadata hợp đồng cho HRM phase 1." actions={<Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Tạo mới</Button>} />
       <Card className="page-card">
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
           <Row gutter={12}>
             <Col xs={24} md={10}>
               <Select allowClear placeholder="Nhân viên" style={{ width: '100%' }} options={mockEmployees.map((item) => ({ value: item.id, label: item.fullName }))} onChange={(value) => setParams((current) => ({ ...current, employeeId: value }))} />

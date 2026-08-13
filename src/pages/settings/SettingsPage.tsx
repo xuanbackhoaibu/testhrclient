@@ -21,7 +21,7 @@ export function SettingsPage() {
   return (
     <>
       <PageHeader title="Settings" subtitle="Hiển thị runtime config và session context hiện tại." />
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Space orientation="vertical" size={16} style={{ width: '100%' }}>
         <Card className="page-card">
           <Descriptions column={1} title="Application config">
             <Descriptions.Item label="API base URL">{import.meta.env.VITE_API_BASE_URL}</Descriptions.Item>

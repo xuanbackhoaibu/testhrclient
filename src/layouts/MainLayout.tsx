@@ -62,13 +62,14 @@ const mainItems: NavItem[] = [
   // { label: "Onboarding", path: ROUTES.onboarding, icon: IconFolderOpen },
   // { label: "Offboarding", path: ROUTES.offboarding, icon: IconFileImport },
   // { label: "Audit logs", path: ROUTES.auditLogs, icon: IconFileAnalytics },
-  { label: "Cài đặt", path: ROUTES.settings, icon: IconSettings },
   { label: "Nghỉ phép", path: ROUTES.leave, icon: IconCalendarCheck },
   {
     label: "Cấu hình duyệt phép",
     path: ROUTES.leaveApprovalAssignments,
     icon: IconUserCheck,
   },
+  // Keep global settings as the final action in the sidebar.
+  { label: "Cài đặt", path: ROUTES.settings, icon: IconSettings },
 ];
 
 const orgItems: NavItem[] = [
