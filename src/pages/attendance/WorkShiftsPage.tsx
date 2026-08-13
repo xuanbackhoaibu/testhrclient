@@ -100,6 +100,12 @@ export function WorkShiftsPage() {
     initialValues: emptyForm,
     validate: {
       code: (value) => (value.trim() ? null : "Nhập mã ca."),
+      breakEnd: (value, values) =>
+        !value || TIME_PATTERN.test(value)
+          ? Boolean(value) === Boolean(values.breakStart)
+            ? null
+            : "Khai đủ cả giờ bắt đầu và kết thúc nghỉ trưa."
+          : "Giờ nghỉ trưa phải theo dạng HH:mm.",
       name: (value) => (value.trim() ? null : "Nhập tên ca."),
       startTime: (value) =>
         TIME_PATTERN.test(value) ? null : "Giờ vào phải theo dạng HH:mm.",

@@ -143,9 +143,9 @@ export function ShiftAssignmentsPage() {
   );
   // Chỉ tải danh sách nhân viên khi thực sự cần — tránh kéo cả công ty về
   // mỗi lần mở trang.
-  const employeesQuery = useAllEmployees(
-    targetKind === "employee" ? {} : { search: "\u0000" },
-  );
+  const employeesQuery = useAllEmployees({}, {
+    enabled: targetKind === "employee",
+  });
 
   const shiftOptions = useMemo(
     () =>
