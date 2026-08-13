@@ -51,9 +51,8 @@ export function useRecomputeTimesheet() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: RecomputePayload) => recomputeTimesheet(payload),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: timesheetKeys.all });
-    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: timesheetKeys.all }),
   });
 }
 
