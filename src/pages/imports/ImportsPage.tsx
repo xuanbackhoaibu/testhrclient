@@ -163,7 +163,7 @@ export function ImportsPage() {
   return (
     <>
       <PageHeader title="Import / Export Excel HRM" subtitle="Tách Đơn vị, Phòng ban, Nhân sự và Phân công nhân sự." />
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Space orientation="vertical" size={16} style={{ width: '100%' }}>
         <Card className="page-card">
           <Steps current={currentStep} items={steps} />
         </Card>
@@ -236,7 +236,7 @@ export function ImportsPage() {
 
         {canImport && preview ? (
           <Card className="page-card" title={`Preview ${activeConfig.title}`}>
-            <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Space orientation="vertical" size={16} style={{ width: '100%' }}>
               <Space wrap>
                 <Statistic title="Tổng dòng" value={preview.totalRows} />
                 <Statistic title="Hợp lệ" value={preview.validRows} />

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Alert,
   Badge,
@@ -24,6 +25,8 @@ import {
   useShiftAssignments,
   useWorkShifts,
 } from "../../features/attendance/useWorkSchedule";
+import { formatVietnamBusinessDate } from "../../features/attendance/shiftAssignmentDate";
+import { getActiveShiftPrefillId } from "../../features/attendance/shiftAssignmentNavigation";
 import type { ShiftAssignment } from "../../features/attendance/workScheduleTypes";
 import { useAllEmployees } from "../../features/employees/useEmployees";
 import { useDepartmentsSelect } from "../../features/organization/useDepartments";
@@ -35,6 +38,7 @@ import {
 import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
+import { ROUTES } from "../../shared/constants/routes";
 
 type TargetKind = "employee" | "department" | "unit";
 
@@ -52,14 +56,32 @@ interface AssignmentFormValues {
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function todayIso(): string {
-  return new Date().toISOString().split("T")[0];
+  return formatVietnamBusinessDate(new Date());
+}
+
+function createAssignmentFormValues(shiftId = ""): AssignmentFormValues {
+  return {
+    targetKind: "department",
+    shiftId,
+    employeeId: "",
+    departmentId: "",
+    unitId: "",
+    effectiveFrom: todayIso(),
+    effectiveTo: "",
+    note: "",
+  };
 }
 
 export function ShiftAssignmentsPage() {
   const { can } = useAuth();
   const canEdit = can(HR_PERMISSIONS.ATTENDANCE_UPDATE);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedShiftId = searchParams.get("assignShiftId");
+  const shouldOpenPrefilledDrawer = searchParams.get("open") === "1";
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(
+    () => canEdit && Boolean(requestedShiftId && shouldOpenPrefilledDrawer),
+  );
   const [ending, setEnding] = useState<ShiftAssignment | null>(null);
 
   const assignmentsQuery = useShiftAssignments();
@@ -69,16 +91,7 @@ export function ShiftAssignmentsPage() {
   const endAssignment = useEndShiftAssignment();
 
   const form = useForm<AssignmentFormValues>({
-    initialValues: {
-      targetKind: "department",
-      shiftId: "",
-      employeeId: "",
-      departmentId: "",
-      unitId: "",
-      effectiveFrom: todayIso(),
-      effectiveTo: "",
-      note: "",
-    },
+    initialValues: createAssignmentFormValues(requestedShiftId ?? ""),
     validate: {
       shiftId: (value) => (value ? null : "Chọn ca làm việc."),
       effectiveFrom: (value) =>
@@ -96,15 +109,43 @@ export function ShiftAssignmentsPage() {
     },
   });
 
+  function clearAssignmentIntent() {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete("assignShiftId");
+        next.delete("open");
+        return next;
+      },
+      { replace: true },
+    );
+  }
+
+  function resetAssignmentForm() {
+    form.setValues(createAssignmentFormValues());
+    form.clearErrors();
+  }
+
+  function openCreate() {
+    resetAssignmentForm();
+    setDrawerOpen(true);
+  }
+
+  function closeCreateDrawer() {
+    setDrawerOpen(false);
+    resetAssignmentForm();
+    clearAssignmentIntent();
+  }
+
   const targetKind = form.values.targetKind;
   const departmentsQuery = useDepartmentsSelect(
     form.values.unitId || undefined,
   );
   // Chỉ tải danh sách nhân viên khi thực sự cần — tránh kéo cả công ty về
   // mỗi lần mở trang.
-  const employeesQuery = useAllEmployees(
-    targetKind === "employee" ? {} : { search: "\u0000" },
-  );
+  const employeesQuery = useAllEmployees({}, {
+    enabled: targetKind === "employee",
+  });
 
   const shiftOptions = useMemo(
     () =>
@@ -115,6 +156,15 @@ export function ShiftAssignmentsPage() {
           label: `${shift.code} — ${shift.name} (${shift.startTime}–${shift.endTime})`,
         })),
     [shiftsQuery.data],
+  );
+
+  const hasUnavailableRequestedShift =
+    Boolean(requestedShiftId) &&
+    form.values.shiftId === requestedShiftId &&
+    shiftsQuery.isSuccess &&
+    getActiveShiftPrefillId(shiftsQuery.data, requestedShiftId) === null;
+  const hasSelectedActiveShift = shiftOptions.some(
+    (shift) => shift.value === form.values.shiftId,
   );
 
   const employeeOptions = useMemo(
@@ -145,6 +195,15 @@ export function ShiftAssignmentsPage() {
   );
 
   async function handleSubmit(values: AssignmentFormValues) {
+    if (!hasSelectedActiveShift) {
+      notifications.show({
+        color: "yellow",
+        title: "Ca làm việc không còn áp dụng",
+        message: "Chọn một ca đang áp dụng trước khi lưu phân ca.",
+      });
+      return;
+    }
+
     try {
       await createAssignment.mutateAsync({
         shiftId: values.shiftId,
@@ -161,10 +220,9 @@ export function ShiftAssignmentsPage() {
         color: "green",
         title: "Đã phân ca",
         message:
-          "Bộ tính công sẽ áp ca mới cho các ngày trong khoảng hiệu lực.",
+          "Mở Bảng công, chọn đúng tháng rồi Cập nhật bảng công. Ngày đã chốt hoặc HR sửa tay vẫn được giữ nguyên.",
       });
-      setDrawerOpen(false);
-      form.reset();
+      closeCreateDrawer();
     } catch {
       notifications.show({
         color: "red",
@@ -181,7 +239,7 @@ export function ShiftAssignmentsPage() {
         color: "green",
         title: "Đã kết thúc phân ca",
         message:
-          "Các ngày sau hiệu lực sẽ ở trạng thái chưa phân ca cho đến khi HR gán ca mới.",
+          "Mở Bảng công, chọn đúng tháng rồi Cập nhật bảng công nếu cần phản ánh thay đổi; ngày đã chốt hoặc HR sửa tay vẫn được giữ nguyên.",
       });
       setEnding(null);
     } catch {
@@ -284,13 +342,7 @@ export function ShiftAssignmentsPage() {
         subtitle="Gán ca cho cá nhân, phòng ban hoặc đơn vị. Nhân sự không có phân ca hiệu lực sẽ hiển thị “chưa phân ca” và không tự tính BCC."
         actions={
           canEdit ? (
-            <Button
-              leftSection={<IconPlus size={18} />}
-              onClick={() => {
-                form.reset();
-                setDrawerOpen(true);
-              }}
-            >
+            <Button leftSection={<IconPlus size={18} />} onClick={openCreate}>
               Phân ca
             </Button>
           ) : null
@@ -308,6 +360,9 @@ export function ShiftAssignmentsPage() {
           cấu hình/preview. Ngày lễ luôn phủ lên lịch đã phân. Nhóm chưa xác
           định được ca (bảo vệ, lái xe…) nên <b>để trống</b> — hệ thống đánh dấu
           “chưa phân ca” thay vì tự áp ca hành chính rồi chấm sai âm thầm.
+          <br />
+          Một phân ca dùng cùng một mẫu ca trong toàn bộ khoảng hiệu lực; không
+          dùng một phân ca để mô phỏng lịch T2–T6 và T7 có giờ khác nhau.
         </Alert>
 
         <DataTable
@@ -324,16 +379,52 @@ export function ShiftAssignmentsPage() {
 
       <Drawer
         opened={drawerOpen}
-        onClose={() => {
-          setDrawerOpen(false);
-          form.reset();
-        }}
+        onClose={closeCreateDrawer}
         title="Phân ca"
         position="right"
         size="lg"
       >
         <form onSubmit={form.onSubmit((values) => void handleSubmit(values))}>
           <Stack gap="sm">
+            {hasUnavailableRequestedShift ? (
+              <Alert
+                color="yellow"
+                variant="light"
+                title="Ca được chọn không còn áp dụng"
+              >
+                Link này trỏ tới ca đã tạm ngưng hoặc không còn tồn tại. Hãy
+                chọn một ca đang áp dụng trước khi lưu.
+              </Alert>
+            ) : null}
+            {shiftsQuery.isError ? (
+              <Alert color="red" variant="light" title="Không tải được ca làm việc">
+                Tải lại danh sách ca trước khi lưu phân ca.{" "}
+                <Button
+                  size="compact-sm"
+                  variant="subtle"
+                  onClick={() => void shiftsQuery.refetch()}
+                >
+                  Tải lại
+                </Button>
+              </Alert>
+            ) : null}
+            {shiftOptions.length === 0 && shiftsQuery.isSuccess ? (
+              <Alert
+                color="yellow"
+                variant="light"
+                title="Chưa có ca đang áp dụng"
+              >
+                Tạo hoặc kích hoạt ca làm việc trước khi phân ca.{" "}
+                <Button
+                  component={Link}
+                  to={ROUTES.workShifts}
+                  size="compact-sm"
+                  variant="subtle"
+                >
+                  Quản lý ca làm việc
+                </Button>
+              </Alert>
+            ) : null}
             <div>
               <Text size="sm" fw={500} mb={6}>
                 Áp dụng cho
@@ -429,7 +520,7 @@ export function ShiftAssignmentsPage() {
             />
 
             <Group justify="flex-end" mt="md">
-              <Button variant="default" onClick={() => setDrawerOpen(false)}>
+              <Button variant="default" onClick={closeCreateDrawer}>
                 Hủy
               </Button>
               <Button

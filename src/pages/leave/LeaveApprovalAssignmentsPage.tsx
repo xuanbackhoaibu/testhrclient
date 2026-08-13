@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Alert,
   Button,
@@ -57,11 +57,8 @@ export function LeaveApprovalAssignmentsPage() {
   const [departmentId, setDepartmentId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string | null>>({});
 
-  useEffect(() => {
-    if (!departmentId && departments.data?.[0]) {
-      setDepartmentId(departments.data[0].id);
-    }
-  }, [departmentId, departments.data]);
+  const selectedDepartmentId =
+    departmentId ?? departments.data?.[0]?.id ?? null;
 
   const reviewerOptions = useMemo(
     () => (reviewers.data ?? []).map((reviewer) => ({
@@ -166,8 +163,8 @@ export function LeaveApprovalAssignmentsPage() {
         <Card withBorder padding="lg" radius="md">
           <Stack gap="md">
             <div><Title order={3} size="h5">Cấp theo phòng ban</Title><Text size="sm" c="dimmed">Mỗi phòng phải có người theo dõi chấm công và trưởng bộ phận.</Text></div>
-            <Select label="Phòng ban" placeholder="Chọn phòng ban" data={departmentOptions} value={departmentId} searchable disabled={!canUpdate || departmentOptions.length === 0} onChange={setDepartmentId} />
-            {departmentId ? <SimpleGrid cols={{ base: 1, md: 2 }}>{DEPARTMENT_STAGES.map((stage) => stageCard(stage, departmentId))}</SimpleGrid> : <Text size="sm" c="dimmed">Chưa có phòng ban hoạt động để cấu hình.</Text>}
+            <Select label="Phòng ban" placeholder="Chọn phòng ban" data={departmentOptions} value={selectedDepartmentId} searchable disabled={!canUpdate || departmentOptions.length === 0} onChange={setDepartmentId} />
+            {selectedDepartmentId ? <SimpleGrid cols={{ base: 1, md: 2 }}>{DEPARTMENT_STAGES.map((stage) => stageCard(stage, selectedDepartmentId))}</SimpleGrid> : <Text size="sm" c="dimmed">Chưa có phòng ban hoạt động để cấu hình.</Text>}
           </Stack>
         </Card>
       </Stack>
