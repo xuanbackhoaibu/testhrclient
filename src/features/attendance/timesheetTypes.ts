@@ -45,6 +45,9 @@ export interface BccSummary {
 
 export interface TimesheetGridRow {
   employeeId: string;
+  /** Mã thô từ BioTime/MCB, luôn được ưu tiên hiển thị trên BCC. */
+  attendanceCode?: string | null;
+  /** Mã HR nội bộ: chỉ giữ làm định danh/tie-break, không hiển thị trên BCC. */
   employeeCode: string;
   fullName: string;
   /** HR bật cho lãnh đạo/nhân sự đặc thù không cần log chấm công. */
