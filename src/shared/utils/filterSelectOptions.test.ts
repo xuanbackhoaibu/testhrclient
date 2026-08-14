@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { test } from 'vitest';
 import { filterSelectOptions } from './filterSelectOptions.ts';
 
 test('filterSelectOptions matches Vietnamese labels without mutating labels or grouped input', () => {
