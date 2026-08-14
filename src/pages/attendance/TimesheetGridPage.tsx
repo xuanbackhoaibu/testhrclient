@@ -1,6 +1,7 @@
 import { Fragment, memo, useCallback, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Badge,
   Button,
   Checkbox,
   Group,
@@ -8,6 +9,7 @@ import {
   NumberInput,
   Paper,
   Pagination,
+  Progress,
   ScrollArea,
   Select,
   Stack,
@@ -18,10 +20,12 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
+  IconCalendarStats,
   IconDownload,
   IconFilter,
   IconInfoCircle,
   IconRefresh,
+  IconPlayerStop,
   IconTrash,
 } from "@tabler/icons-react";
 
@@ -35,10 +39,14 @@ import {
 import { downloadTimesheetGridExport } from "../../features/attendance/timesheetApi";
 import {
   useAdjustTimesheetDay,
-  useRecomputeTimesheet,
   useSetAutoFullAttendance,
   useTimesheetGrid,
 } from "../../features/attendance/useTimesheet";
+import { useTimesheetRecomputeJob } from "../../features/attendance/useTimesheetRecomputeJob";
+import {
+  listTimesheetMonths,
+  type TimesheetMonth,
+} from "../../features/attendance/timesheetRecomputeRange";
 import {
   SYMBOL_OPTIONS,
   type TimesheetGridDay,
@@ -226,6 +234,36 @@ interface PreparedTimesheetGroup {
 
 function lastDayOfMonth(year: number, month: number): string {
   return new Date(Date.UTC(year, month, 0)).toISOString().split("T")[0];
+}
+
+function formatTimesheetMonth({ year, month }: TimesheetMonth): string {
+  return `Tháng ${String(month).padStart(2, "0")}/${year}`;
+}
+
+function recomputeJobStatusLabel(status: string): string {
+  switch (status) {
+    case "QUEUED":
+      return "Đang xếp hàng";
+    case "RUNNING":
+      return "Đang cập nhật";
+    case "SUCCEEDED":
+      return "Đã hoàn tất";
+    case "CANCELLED":
+      return "Đã dừng";
+    case "FAILED":
+      return "Có lỗi";
+    default:
+      return status;
+  }
+}
+
+function recomputeJobStatusColor(
+  status: string,
+): "blue" | "green" | "orange" | "red" {
+  if (status === "SUCCEEDED") return "green";
+  if (status === "FAILED") return "red";
+  if (status === "CANCELLED") return "orange";
+  return "blue";
 }
 
 function makeDayMeta(year: number, month: number, day: number): DayMeta {
@@ -440,7 +478,12 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
           aria-label={`Thiết lập đủ công mặc định cho ${row.fullName}`}
           title={`Mở thiết lập đủ công mặc định cho ${row.fullName}`}
           onClick={() => onOpenAutoFullAttendance(row)}
-          style={{ display: "block", minWidth: 0, textAlign: "left", width: "100%" }}
+          style={{
+            display: "block",
+            minWidth: 0,
+            textAlign: "left",
+            width: "100%",
+          }}
         >
           <Text size="xs" fw={600} truncate="end" td="underline">
             {row.fullName}
@@ -532,6 +575,20 @@ export function TimesheetGridPage() {
   const [scopeModalOpened, setScopeModalOpened] = useState(false);
   const [draftDepartmentIds, setDraftDepartmentIds] = useState<string[]>([]);
   const [draftUnitIds, setDraftUnitIds] = useState<string[]>([]);
+  const [recomputeRangeModalOpened, setRecomputeRangeModalOpened] =
+    useState(false);
+  const [recomputeRangeStart, setRecomputeRangeStart] =
+    useState<TimesheetMonth>({
+      month: now.getMonth() + 1,
+      year: now.getFullYear(),
+    });
+  const [recomputeRangeEnd, setRecomputeRangeEnd] = useState<TimesheetMonth>({
+    month: now.getMonth() + 1,
+    year: now.getFullYear(),
+  });
+  const [runningRecomputeScopeLabel, setRunningRecomputeScopeLabel] = useState<
+    string | null
+  >(null);
   const [editing, setEditing] = useState<EditingCell | null>(null);
   const [autoFullAttendanceRow, setAutoFullAttendanceRow] =
     useState<TimesheetGridRow | null>(null);
@@ -562,12 +619,14 @@ export function TimesheetGridPage() {
     [departmentIds, employeeId, month, unitIds, year],
   );
   const gridQuery = useTimesheetGrid(query);
+  const isGridPlaceholderData = gridQuery.isPlaceholderData;
+  const isGridScopeLoading = gridQuery.isLoading || isGridPlaceholderData;
   const adjustDay = useAdjustTimesheetDay();
-  const recompute = useRecomputeTimesheet();
+  const recomputeJob = useTimesheetRecomputeJob();
   const autoFullAttendance = useSetAutoFullAttendance();
   const rows = useMemo(
-    () => gridQuery.data?.rows ?? [],
-    [gridQuery.data?.rows],
+    () => (isGridPlaceholderData ? [] : (gridQuery.data?.rows ?? [])),
+    [gridQuery.data?.rows, isGridPlaceholderData],
   );
   const rememberTimesheetScroll = useCallback(() => {
     const viewport = tableViewportRef.current;
@@ -590,10 +649,15 @@ export function TimesheetGridPage() {
   }, []);
   const dayMetas = useMemo(
     () =>
-      Array.from({ length: gridQuery.data?.daysInMonth ?? 31 }, (_, index) =>
-        makeDayMeta(year, month, index + 1),
+      Array.from(
+        {
+          length: isGridPlaceholderData
+            ? 0
+            : (gridQuery.data?.daysInMonth ?? 31),
+        },
+        (_, index) => makeDayMeta(year, month, index + 1),
       ),
-    [gridQuery.data?.daysInMonth, month, year],
+    [gridQuery.data?.daysInMonth, isGridPlaceholderData, month, year],
   );
 
   const unitNameById = useMemo(
@@ -809,21 +873,66 @@ export function TimesheetGridPage() {
       .join(" · ");
   }, [departmentIds.length, unitIds.length]);
 
+  const recomputeScopeLabel = useMemo(() => {
+    if (!employeeId) return scopeLabel;
+    return `${scopeLabel} · ${selectedEmployee?.label ?? "1 nhân sự"}`;
+  }, [employeeId, scopeLabel, selectedEmployee]);
+  const recomputeRangePreview = useMemo(() => {
+    try {
+      return {
+        months: listTimesheetMonths(recomputeRangeStart, recomputeRangeEnd),
+        error: null as string | null,
+      };
+    } catch (error) {
+      return {
+        months: [] as TimesheetMonth[],
+        error:
+          error instanceof Error ? error.message : "Dải kỳ công không hợp lệ.",
+      };
+    }
+  }, [recomputeRangeEnd, recomputeRangeStart]);
+
+  function openRecomputeRangeModal() {
+    if (recomputeJob.isRunning || isGridScopeLoading) return;
+    const currentMonth = { month, year };
+    setRecomputeRangeStart(currentMonth);
+    setRecomputeRangeEnd(currentMonth);
+    setRecomputeRangeModalOpened(true);
+  }
+
+  function snapshotRecomputeScope() {
+    return {
+      employeeId: employeeId ?? undefined,
+      departmentIds: departmentIds.length ? [...departmentIds] : undefined,
+      unitIds: unitIds.length ? [...unitIds] : undefined,
+    };
+  }
   const openCell = useCallback(
     (row: TimesheetGridRow, day: TimesheetGridDay) => {
-      if (!canEdit || day.isLocked || day.isDerived) return;
+      if (
+        !canEdit ||
+        isGridScopeLoading ||
+        recomputeJob.isRunning ||
+        day.isLocked ||
+        day.isDerived
+      )
+        return;
       setEditing({ row, day });
       setEditSymbol(day.displaySymbol.split(";")[0] || null);
       setEditPortion(day.paidDays || 1);
       setEditReason("");
     },
-    [canEdit],
+    [canEdit, isGridScopeLoading, recomputeJob.isRunning],
   );
 
-  const openAutoFullAttendanceSettings = useCallback((row: TimesheetGridRow) => {
-    setAutoFullAttendanceRow(row);
-    setAutoFullAttendanceEnabled(Boolean(row.attendanceAutoFullDay));
-  }, []);
+  const openAutoFullAttendanceSettings = useCallback(
+    (row: TimesheetGridRow) => {
+      if (isGridScopeLoading || recomputeJob.isRunning) return;
+      setAutoFullAttendanceRow(row);
+      setAutoFullAttendanceEnabled(Boolean(row.attendanceAutoFullDay));
+    },
+    [isGridScopeLoading, recomputeJob.isRunning],
+  );
 
   function openScopeModal() {
     setDraftUnitIds(unitIds);
@@ -871,7 +980,7 @@ export function TimesheetGridPage() {
   }
 
   async function handleSaveCell() {
-    if (!editing) return;
+    if (!editing || isGridScopeLoading || recomputeJob.isRunning) return;
     if (editReason.trim().length < 3) {
       notifications.show({
         color: "red",
@@ -906,24 +1015,62 @@ export function TimesheetGridPage() {
     }
   }
 
-  async function handleRecompute() {
+  async function handleStartRecomputeRange() {
+    if (
+      !recomputeRangePreview.months.length ||
+      isGridScopeLoading ||
+      recomputeJob.isRunning
+    )
+      return;
+
+    const start = recomputeRangeStart;
+    const end = recomputeRangeEnd;
+    const rangeLabel =
+      start.year === end.year && start.month === end.month
+        ? formatTimesheetMonth(start)
+        : `${formatTimesheetMonth(start)} – ${formatTimesheetMonth(end)}`;
+    setRecomputeRangeModalOpened(false);
+    setRunningRecomputeScopeLabel(recomputeScopeLabel);
     rememberTimesheetScroll();
+
     try {
-      const result = await recompute.mutateAsync({
-        fromDate: `${year}-${String(month).padStart(2, "0")}-01`,
-        toDate: lastDayOfMonth(year, month),
-        employeeId: employeeId ?? undefined,
-        departmentIds: departmentIds.length ? departmentIds : undefined,
-        unitIds: unitIds.length ? unitIds : undefined,
+      const job = await recomputeJob.start({
+        start,
+        end,
+        scope: snapshotRecomputeScope(),
       });
-      notifications.show({
-        color: "green",
-        title: `Đã cập nhật ${result.processed} ô ngày công`,
-        message:
-          result.skippedLocked + result.skippedAdjusted > 0
-            ? `Giữ nguyên ${result.skippedLocked} ngày đã chốt và ${result.skippedAdjusted} ngày HR đã sửa tay.`
-            : "Bảng công đã được tạo/cập nhật theo phân công hiệu lực của kỳ đang xem, kể cả tháng lịch sử.",
-      });
+      const eligibleMonthCount =
+        job.eligibleMonths ?? job.sourceMonths?.length ?? job.totalMonths;
+      const requestedSourceCoverage = `${eligibleMonthCount}/${job.totalMonths} tháng có dữ liệu nguồn`;
+      const sourceCoverage = `${job.completedMonths}/${eligibleMonthCount} tháng có dữ liệu nguồn đã xử lý (${requestedSourceCoverage}).`;
+      const noSourceCoverage = job.skippedNoSourceMonths
+        ? ` ${job.skippedNoSourceMonths} tháng không có dữ liệu nguồn vẫn chỉ để xem.`
+        : "";
+      const protectedDays =
+        job.skippedLocked + job.skippedAdjusted + job.skippedClosed;
+
+      if (job.status === "SUCCEEDED") {
+        notifications.show({
+          color: "green",
+          title: `Đã cập nhật bảng công: ${rangeLabel}`,
+          message:
+            protectedDays > 0
+              ? `Đã xử lý ${job.processed} ô ngày công. ${sourceCoverage}${noSourceCoverage} Giữ nguyên ${job.skippedLocked + job.skippedClosed} ngày đã khóa/chốt và ${job.skippedAdjusted} ngày HR sửa tay.`
+              : `Đã xử lý ${job.processed} ô ngày công. ${sourceCoverage}${noSourceCoverage}`,
+        });
+      } else if (job.status === "CANCELLED") {
+        notifications.show({
+          color: "orange",
+          title: "Đã dừng cập nhật bảng công",
+          message: `Đã hoàn tất ${sourceCoverage}${noSourceCoverage} Các dữ liệu đã hoàn tất vẫn được giữ.`,
+        });
+      } else {
+        notifications.show({
+          color: "red",
+          title: "Không tính lại được",
+          message: job.errorMessage || "Vui lòng thử lại sau.",
+        });
+      }
     } catch (error) {
       const message =
         error instanceof Error && error.message.trim()
@@ -931,16 +1078,46 @@ export function TimesheetGridPage() {
           : "Vui lòng thử lại sau.";
       notifications.show({
         color: "red",
-        title: "Không tính lại được",
+        title: "Không thể tạo job cập nhật bảng công",
         message,
       });
     } finally {
+      // The job hook invalidates once at terminal state. Two animation frames in
+      // restoreTimesheetScroll retain the HR viewport if that refetch swaps rows.
       restoreTimesheetScroll();
     }
   }
 
+  async function handleCancelRecomputeJob() {
+    try {
+      const job = await recomputeJob.cancel();
+      if (!job) return;
+      notifications.show({
+        color: "blue",
+        title: "Đã gửi yêu cầu dừng",
+        message:
+          "Máy chủ sẽ dừng an toàn sau đơn vị xử lý hiện tại; các tháng đã hoàn tất vẫn được giữ.",
+      });
+    } catch (error) {
+      notifications.show({
+        color: "red",
+        title: "Chưa gửi được yêu cầu dừng",
+        message:
+          error instanceof Error && error.message.trim()
+            ? error.message
+            : "Vui lòng thử lại sau.",
+      });
+    }
+  }
+
   async function handleSaveAutoFullAttendance() {
-    if (!canEdit || !autoFullAttendanceRow || recompute.isPending) return;
+    if (
+      !canEdit ||
+      !autoFullAttendanceRow ||
+      isGridScopeLoading ||
+      recomputeJob.isRunning
+    )
+      return;
     const row = autoFullAttendanceRow;
     const enabled = autoFullAttendanceEnabled;
     rememberTimesheetScroll();
@@ -983,6 +1160,7 @@ export function TimesheetGridPage() {
   }
 
   async function handleExport() {
+    if (isGridScopeLoading || isExporting) return;
     setIsExporting(true);
     try {
       const result = await downloadTimesheetGridExport(query);
@@ -1029,6 +1207,7 @@ export function TimesheetGridPage() {
                   variant="default"
                   leftSection={<IconDownload size={16} />}
                   loading={isExporting}
+                  disabled={isGridScopeLoading || isExporting}
                   onClick={() => void handleExport()}
                 >
                   Xuất Excel
@@ -1038,9 +1217,13 @@ export function TimesheetGridPage() {
                 <Button
                   size="sm"
                   leftSection={<IconRefresh size={16} />}
-                  loading={recompute.isPending}
-                  disabled={autoFullAttendance.isPending}
-                  onClick={() => void handleRecompute()}
+                  loading={recomputeJob.isRunning}
+                  disabled={
+                    isGridScopeLoading ||
+                    autoFullAttendance.isPending ||
+                    recomputeJob.isRunning
+                  }
+                  onClick={openRecomputeRangeModal}
                 >
                   Cập nhật bảng công
                 </Button>
@@ -1064,13 +1247,130 @@ export function TimesheetGridPage() {
             <b> 08:00–12:00</b>; Chủ nhật luôn là <b> ngày nghỉ</b>, không cảnh
             báo muộn hay thiếu chấm công. Nhân sự chưa được phân ca hiển thị
             riêng và chưa tự tính công. Nhấn vào <b>họ tên</b> để thiết lập{" "}
-            <b>Đủ công mặc định</b> theo từng người đặc thù; khi bật, bảng hiển thị
-            <b> V</b> ở cột đầu. Bỏ tick sẽ khôi phục đúng bảng công trước khi bật.
-            Khi chọn tháng cũ, hệ thống xét
-            đúng phân công hiệu lực của tháng đó, kể cả nhân sự đã nghỉ hoặc
-            chuyển đơn vị sau này.
+            <b>Đủ công mặc định</b> theo từng người đặc thù; khi bật, bảng hiển
+            thị
+            <b> V</b> ở cột đầu. Bỏ tick sẽ khôi phục đúng bảng công trước khi
+            bật. Khi chọn tháng cũ, hệ thống xét đúng phân công hiệu lực của
+            tháng đó, kể cả nhân sự đã nghỉ hoặc chuyển đơn vị sau này.
           </Text>
         </Alert>
+
+        {recomputeJob.status !== "IDLE" ? (
+          <Paper withBorder radius="sm" p="sm">
+            <Stack gap="xs">
+              <Group justify="space-between" align="flex-start" wrap="wrap">
+                <Group gap="xs" wrap="nowrap">
+                  <IconCalendarStats size={18} />
+                  <div>
+                    <Text size="sm" fw={700}>
+                      Cập nhật bảng công nền
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {runningRecomputeScopeLabel ??
+                        "Đang khôi phục trạng thái job đã tạo trước đó."}
+                    </Text>
+                  </div>
+                </Group>
+                <Badge color={recomputeJobStatusColor(recomputeJob.status)}>
+                  {recomputeJobStatusLabel(recomputeJob.status)}
+                </Badge>
+              </Group>
+
+              <Progress
+                value={
+                  typeof recomputeJob.progressPercent === "number"
+                    ? Math.max(0, Math.min(100, recomputeJob.progressPercent))
+                    : recomputeJob.status === "SUCCEEDED"
+                      ? 100
+                      : 0
+                }
+                animated={recomputeJob.isRunning}
+                aria-label="Tiến độ cập nhật bảng công"
+              />
+              <Group justify="space-between" gap="xs" wrap="wrap">
+                <Text size="xs" c="dimmed">
+                  Đã xử lý {recomputeJob.completedMonths}/
+                  {recomputeJob.eligibleMonths ??
+                    recomputeJob.sourceMonths?.length ??
+                    recomputeJob.totalMonths}{" "}
+                  tháng có dữ liệu nguồn
+                  {recomputeJob.eligibleMonths !== null ||
+                  recomputeJob.sourceMonths !== null
+                    ? ` (${recomputeJob.eligibleMonths ?? recomputeJob.sourceMonths?.length ?? 0}/${recomputeJob.totalMonths} kỳ được yêu cầu)`
+                    : ""}
+                </Text>
+                {recomputeJob.completedBatches !== null &&
+                recomputeJob.totalBatches !== null ? (
+                  <Text size="xs" c="dimmed">
+                    {recomputeJob.completedBatches}/{recomputeJob.totalBatches}{" "}
+                    lô
+                  </Text>
+                ) : null}
+                {recomputeJob.estimatedCells !== null ? (
+                  <Text size="xs" c="dimmed">
+                    Ước tính{" "}
+                    {recomputeJob.estimatedCells.toLocaleString("vi-VN")} ô-ngày
+                    cần tính
+                  </Text>
+                ) : null}
+              </Group>
+              <Text size="xs" c="dimmed">
+                {recomputeJob.currentMonth
+                  ? `Đang xử lý ${formatTimesheetMonth(recomputeJob.currentMonth)}. `
+                  : ""}
+                {(recomputeJob.eligibleEmployees ?? recomputeJob.totalEmployees)
+                  ? `${recomputeJob.eligibleEmployees ?? recomputeJob.totalEmployees} nhân sự thuộc phạm vi cần tính. `
+                  : ""}
+                {recomputeJob.skippedNoSourceMonths !== null
+                  ? `${recomputeJob.skippedNoSourceMonths} tháng không có dữ liệu nguồn chỉ để xem.`
+                  : "Máy chủ sẽ xác nhận số tháng có dữ liệu nguồn."}
+              </Text>
+              <Alert color="blue" variant="light" p="xs">
+                Chỉ các tháng có dữ liệu nguồn mới được xử lý. Tháng không có dữ
+                liệu nguồn vẫn chỉ để xem, không tự tạo thiếu công. Ngày đã
+                chốt/ khóa và ngày HR sửa tay luôn được giữ nguyên.
+              </Alert>
+              {recomputeJob.cancellationRequested ? (
+                <Text size="xs" c="orange.8">
+                  Đã gửi yêu cầu dừng; máy chủ sẽ dừng an toàn sau đơn vị xử lý
+                  hiện tại. Các tháng đã hoàn tất vẫn được giữ.
+                </Text>
+              ) : null}
+              {recomputeJob.error ? (
+                <Alert color="red" variant="light" p="xs">
+                  {recomputeJob.error}
+                </Alert>
+              ) : null}
+              {recomputeJob.pollingError ? (
+                <Alert color="orange" variant="light" p="xs">
+                  {recomputeJob.pollingError}
+                </Alert>
+              ) : null}
+              <Group justify="flex-end">
+                {recomputeJob.isRunning ? (
+                  <Button
+                    size="xs"
+                    color="orange"
+                    variant="light"
+                    leftSection={<IconPlayerStop size={15} />}
+                    loading={recomputeJob.cancellationRequested}
+                    onClick={() => void handleCancelRecomputeJob()}
+                  >
+                    Dừng an toàn
+                  </Button>
+                ) : (
+                  <Button
+                    size="xs"
+                    variant="subtle"
+                    onClick={recomputeJob.clear}
+                  >
+                    Ẩn trạng thái
+                  </Button>
+                )}
+              </Group>
+            </Stack>
+          </Paper>
+        ) : null}
 
         <Paper withBorder radius="sm" p="xs">
           <Group justify="space-between" align="end" wrap="wrap">
@@ -1140,14 +1440,20 @@ export function TimesheetGridPage() {
             <TimesheetColorLegend />
             <Group gap="xs" pb={2}>
               <Text size="xs" c="dimmed">
-                {rows.length} nhân viên · {groupedRows.length} phòng ban
+                {isGridScopeLoading
+                  ? "Đang tải đúng phạm vi đã chọn…"
+                  : `${rows.length} nhân viên · ${groupedRows.length} phòng ban`}
               </Text>
             </Group>
           </Group>
         </Paper>
 
-        {gridQuery.isLoading ? (
-          <Text c="dimmed">Đang tải bảng công…</Text>
+        {isGridScopeLoading ? (
+          <Alert color="blue" variant="light" title="Đang tải bảng công">
+            {isGridPlaceholderData
+              ? "Dữ liệu của kỳ hoặc phạm vi trước đã được ẩn để tránh nhầm lẫn."
+              : "Đang tải đúng kỳ và phạm vi đã chọn."}
+          </Alert>
         ) : rows.length === 0 ? (
           <Alert
             color="gray"
@@ -1293,7 +1599,7 @@ export function TimesheetGridPage() {
                           item={item}
                           employeeNumber={group.startIndex + rowIndex + 1}
                           dayMetas={dayMetas}
-                          canEdit={canEdit}
+                          canEdit={canEdit && !isGridScopeLoading}
                           onOpenCell={openCell}
                           onOpenAutoFullAttendance={
                             openAutoFullAttendanceSettings
@@ -1445,6 +1751,119 @@ export function TimesheetGridPage() {
       </Modal>
 
       <Modal
+        opened={recomputeRangeModalOpened}
+        onClose={() => setRecomputeRangeModalOpened(false)}
+        title="Cập nhật bảng công"
+        size="lg"
+        centered
+      >
+        <Stack gap="md">
+          <Alert color="blue" variant="light">
+            Tạo một job chạy nền để cập nhật bảng công theo dải kỳ đã chọn. Bạn
+            vẫn có thể xem, lọc và xuất bảng trong lúc job chạy; job không tự
+            chạy cho đến khi bấm <b>Bắt đầu cập nhật</b>.
+          </Alert>
+          <Alert color="violet" variant="light">
+            Chỉ các tháng có dữ liệu nguồn mới được xử lý. Tháng không có dữ
+            liệu nguồn vẫn chỉ để xem, không tự tạo thiếu công. Ngày kỳ đã
+            chốt/khóa và ngày HR sửa tay luôn được giữ nguyên.
+          </Alert>
+
+          <Group align="end" grow wrap="wrap">
+            <Select
+              label="Từ kỳ"
+              data={monthOptions}
+              value={String(recomputeRangeStart.month)}
+              onChange={(value) =>
+                setRecomputeRangeStart((current) => ({
+                  ...current,
+                  month: Number(value ?? current.month),
+                }))
+              }
+            />
+            <Select
+              label="Năm bắt đầu"
+              data={yearOptions}
+              value={String(recomputeRangeStart.year)}
+              onChange={(value) =>
+                setRecomputeRangeStart((current) => ({
+                  ...current,
+                  year: Number(value ?? current.year),
+                }))
+              }
+            />
+            <Select
+              label="Đến kỳ"
+              data={monthOptions}
+              value={String(recomputeRangeEnd.month)}
+              onChange={(value) =>
+                setRecomputeRangeEnd((current) => ({
+                  ...current,
+                  month: Number(value ?? current.month),
+                }))
+              }
+            />
+            <Select
+              label="Năm kết thúc"
+              data={yearOptions}
+              value={String(recomputeRangeEnd.year)}
+              onChange={(value) =>
+                setRecomputeRangeEnd((current) => ({
+                  ...current,
+                  year: Number(value ?? current.year),
+                }))
+              }
+            />
+          </Group>
+
+          {recomputeRangePreview.error ? (
+            <Alert color="red" variant="light">
+              {recomputeRangePreview.error}
+            </Alert>
+          ) : (
+            <Paper withBorder radius="sm" p="sm">
+              <Stack gap={4}>
+                <Text size="sm" fw={600}>
+                  Xem trước: {recomputeRangePreview.months.length} kỳ được yêu
+                  cầu
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {formatTimesheetMonth(recomputeRangeStart)} –{" "}
+                  {formatTimesheetMonth(recomputeRangeEnd)}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Phạm vi giữ nguyên khi tạo job: {recomputeScopeLabel}. Máy chủ
+                  sẽ xác nhận số tháng/nhân sự thực sự có dữ liệu nguồn ngay sau
+                  khi tạo job.
+                </Text>
+              </Stack>
+            </Paper>
+          )}
+
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => setRecomputeRangeModalOpened(false)}
+            >
+              Hủy
+            </Button>
+            <Button
+              leftSection={<IconRefresh size={16} />}
+              disabled={
+                !recomputeRangePreview.months.length ||
+                isGridScopeLoading ||
+                recomputeJob.isRunning ||
+                autoFullAttendance.isPending
+              }
+              onClick={() => void handleStartRecomputeRange()}
+            >
+              Bắt đầu cập nhật
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
         opened={autoFullAttendanceRow !== null}
         onClose={() => setAutoFullAttendanceRow(null)}
         title={
@@ -1464,14 +1883,18 @@ export function TimesheetGridPage() {
             description="Ngày làm việc trong kỳ sẽ tự đủ công; Chủ nhật vẫn là ngày nghỉ."
             checked={autoFullAttendanceEnabled}
             disabled={
-              !canEdit || autoFullAttendance.isPending || recompute.isPending
+              !canEdit ||
+              isGridScopeLoading ||
+              autoFullAttendance.isPending ||
+              recomputeJob.isRunning
             }
             onChange={(event) =>
               setAutoFullAttendanceEnabled(event.currentTarget.checked)
             }
           />
           <Alert color="blue" variant="light">
-            Khi đã bật, bảng công hiển thị ký hiệu V cạnh họ và tên nhân viên.
+            Khi đã bật, bảng công hiển thị ký hiệu V ở cột đầu tiên của nhân
+            viên.
           </Alert>
           <Group justify="flex-end" mt="md">
             <Button
@@ -1485,7 +1908,8 @@ export function TimesheetGridPage() {
                 disabled={
                   autoFullAttendanceEnabled ===
                     Boolean(autoFullAttendanceRow?.attendanceAutoFullDay) ||
-                  recompute.isPending
+                  isGridScopeLoading ||
+                  recomputeJob.isRunning
                 }
                 loading={autoFullAttendance.isPending}
                 onClick={() => void handleSaveAutoFullAttendance()}
@@ -1528,6 +1952,7 @@ export function TimesheetGridPage() {
               label: `${option.code} — ${option.name}`,
             }))}
             value={editSymbol}
+            disabled={isGridScopeLoading || recomputeJob.isRunning}
             onChange={(value) => {
               setEditSymbol(value);
               const option = SYMBOL_OPTIONS.find((item) => item.code === value);
@@ -1543,7 +1968,9 @@ export function TimesheetGridPage() {
             decimalScale={1}
             value={editPortion}
             onChange={(value) => setEditPortion(Number(value))}
-            disabled={!editSymbol}
+            disabled={
+              !editSymbol || isGridScopeLoading || recomputeJob.isRunning
+            }
           />
           <Textarea
             label="Lý do sửa"
@@ -1551,6 +1978,7 @@ export function TimesheetGridPage() {
             withAsterisk
             minRows={2}
             value={editReason}
+            disabled={isGridScopeLoading || recomputeJob.isRunning}
             onChange={(event) => setEditReason(event.currentTarget.value)}
           />
           <Alert color="orange" variant="light" icon={<IconTrash size={16} />}>
@@ -1561,6 +1989,7 @@ export function TimesheetGridPage() {
               Hủy
             </Button>
             <Button
+              disabled={isGridScopeLoading || recomputeJob.isRunning}
               loading={adjustDay.isPending}
               onClick={() => void handleSaveCell()}
             >

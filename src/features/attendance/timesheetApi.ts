@@ -6,6 +6,7 @@ import type {
   AdjustTimesheetDayPayload,
   RecomputePayload,
   RecomputeResult,
+  TimesheetRecomputeJob,
   SetAutoFullAttendancePayload,
   SetAutoFullAttendanceResult,
   OpenTimesheetPeriodPayload,
@@ -18,6 +19,7 @@ import type {
 import { longRunningAttendanceMutationConfig } from './longRunningMutation';
 
 const BASE = '/attendance/timesheet';
+const RECOMPUTE_JOB_BASE = `${BASE}/recompute-jobs`;
 const PERIOD_BASE = '/timesheet/periods';
 
 /** API nhận các bộ lọc nhiều lựa chọn dạng CSV để Nest xử lý ổn định ở cả
@@ -57,11 +59,42 @@ export async function adjustTimesheetDay(
 
 export async function recomputeTimesheet(
   payload: RecomputePayload,
+  signal?: AbortSignal,
 ): Promise<RecomputeResult> {
   return api.post<RecomputeResult>(
     `${BASE}/recompute`,
     payload,
+    signal
+      ? { ...longRunningAttendanceMutationConfig, signal }
+      : longRunningAttendanceMutationConfig,
+  );
+}
+
+export async function startTimesheetRecomputeJob(
+  payload: RecomputePayload,
+): Promise<TimesheetRecomputeJob> {
+  return api.post<TimesheetRecomputeJob>(
+    RECOMPUTE_JOB_BASE,
+    payload,
     longRunningAttendanceMutationConfig,
+  );
+}
+
+export async function getTimesheetRecomputeJob(
+  id: string,
+  signal?: AbortSignal,
+): Promise<TimesheetRecomputeJob> {
+  return api.get<TimesheetRecomputeJob>(
+    `${RECOMPUTE_JOB_BASE}/${id}`,
+    signal ? { signal } : undefined,
+  );
+}
+
+export async function cancelTimesheetRecomputeJob(
+  id: string,
+): Promise<TimesheetRecomputeJob> {
+  return api.post<TimesheetRecomputeJob>(
+    `${RECOMPUTE_JOB_BASE}/${id}/cancel`,
   );
 }
 
