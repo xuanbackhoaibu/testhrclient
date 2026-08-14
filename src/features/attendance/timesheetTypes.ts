@@ -15,6 +15,12 @@ export interface TimesheetGridDay {
   id: string;
   date: string;
   day: number;
+  /**
+   * Ô được backend dựng để xem trước bảng công cũ chưa có bản ghi lưu trữ.
+   * Chỉ dùng để hiển thị, không được cho HR sửa tay như dữ liệu TimesheetDay.
+   */
+  isDerived?: boolean;
+
   displaySymbol: string;
   paidDays: number;
   leaveDays: number;
@@ -100,6 +106,10 @@ export interface RecomputePayload {
   fromDate: string;
   toDate: string;
   employeeId?: string;
+  departmentId?: string;
+  unitId?: string;
+  departmentIds?: string[];
+  unitIds?: string[];
 }
 
 export interface RecomputeResult {

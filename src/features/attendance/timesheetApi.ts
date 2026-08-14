@@ -15,6 +15,7 @@ import type {
   TimesheetConfirmation,
   TimesheetPeriod,
 } from './timesheetTypes';
+import { longRunningAttendanceMutationConfig } from './longRunningMutation';
 
 const BASE = '/attendance/timesheet';
 const PERIOD_BASE = '/timesheet/periods';
@@ -57,7 +58,11 @@ export async function adjustTimesheetDay(
 export async function recomputeTimesheet(
   payload: RecomputePayload,
 ): Promise<RecomputeResult> {
-  return api.post<RecomputeResult>(`${BASE}/recompute`, payload);
+  return api.post<RecomputeResult>(
+    `${BASE}/recompute`,
+    payload,
+    longRunningAttendanceMutationConfig,
+  );
 }
 
 export async function setAutoFullAttendance(
