@@ -50,15 +50,23 @@ import { useUnitsSelect } from "../../features/organization/useUnits";
 import { PageHeader } from "../../shared/components/PageHeader";
 
 const now = new Date();
+const earliestTimesheetYear = 2020;
+const latestTimesheetYear = Math.max(
+  now.getFullYear() + 1,
+  earliestTimesheetYear,
+);
 const weekdayLabels = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 const monthOptions = Array.from({ length: 12 }, (_, index) => ({
   value: String(index + 1),
   label: `Tháng ${index + 1}`,
 }));
-const yearOptions = Array.from({ length: 5 }, (_, index) => {
-  const year = now.getFullYear() - 2 + index;
-  return { value: String(year), label: String(year) };
-});
+const yearOptions = Array.from(
+  { length: latestTimesheetYear - earliestTimesheetYear + 1 },
+  (_, index) => {
+    const year = latestTimesheetYear - index;
+    return { value: String(year), label: String(year) };
+  },
+);
 const fixedColumns = [
   { key: "number", label: "TT", left: 0, width: 42 },
   { key: "code", label: "Mã chấm công", left: 42, width: 104 },
