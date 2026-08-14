@@ -291,8 +291,8 @@ export function OnboardingPage() {
           >
             <Select
               options={[
-                { value: "2026-04-25", label: "2026-04-25" },
-                { value: "2026-05-01", label: "2026-05-01" },
+                { value: "2026-04-25", label: formatDate("2026-04-25") },
+                { value: "2026-05-01", label: formatDate("2026-05-01") },
               ]}
             />
           </Form.Item>

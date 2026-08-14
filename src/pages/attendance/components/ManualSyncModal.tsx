@@ -3,6 +3,7 @@ import { useState } from 'react';
 import dayjs from 'dayjs';
 import { AttendanceNativeDateInput } from './AttendanceNativeDateInput';
 import styles from './ManualSyncModal.module.css';
+import { formatDate } from '../../../shared/utils/date';
 
 interface ManualSyncModalProps {
   opened: boolean;
@@ -17,7 +18,7 @@ export function ManualSyncModal({ opened, onClose, onSync, isLoading }: ManualSy
   const today = dayjs();
   const [startDate, setStartDate] = useState<string | undefined>(today.subtract(1, 'day').format('YYYY-MM-DD'));
   const [endDate, setEndDate] = useState<string | undefined>(today.format('YYYY-MM-DD'));
-  const [refreshDepartments, setRefreshDepartments] = useState(true);
+  const [refreshDepartments, setRefreshDepartments] = useState(false);
 
   const diffDays = startDate && endDate
     ? dayjs(endDate, 'YYYY-MM-DD').diff(dayjs(startDate, 'YYYY-MM-DD'), 'day') + 1
@@ -43,7 +44,7 @@ export function ManualSyncModal({ opened, onClose, onSync, isLoading }: ManualSy
     if (!isLoading) {
       setStartDate(today.subtract(1, 'day').format('YYYY-MM-DD'));
       setEndDate(today.format('YYYY-MM-DD'));
-      setRefreshDepartments(true);
+      setRefreshDepartments(false);
       onClose();
     }
   };
@@ -97,13 +98,13 @@ export function ManualSyncModal({ opened, onClose, onSync, isLoading }: ManualSy
 
         {diffDays > 0 && diffDays <= MAX_DAYS && startDate && endDate && (
           <Text size="xs" c="dimmed">
-            Khoảng cách: {diffDays} ngày ({startDate} → {endDate})
+            Khoảng cách: {diffDays} ngày ({formatDate(startDate)} → {formatDate(endDate)})
           </Text>
         )}
 
         <Checkbox
-          label="Làm mới danh sách phòng ban trước khi đồng bộ"
-          description="Nên bật nếu cấu trúc phòng ban BioTime có thay đổi"
+          label="Làm mới danh sách phòng ban BioTime trước khi đồng bộ"
+          description="Chỉ bật khi cấu trúc phòng ban BioTime thay đổi; bật tùy chọn này làm đồng bộ lâu hơn."
           checked={refreshDepartments}
           onChange={(e) => setRefreshDepartments(e.currentTarget.checked)}
           size="sm"

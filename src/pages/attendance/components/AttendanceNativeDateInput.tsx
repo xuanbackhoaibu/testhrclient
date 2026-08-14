@@ -1,4 +1,5 @@
-import type { ChangeEvent } from 'react';
+import { IconCalendar } from '@tabler/icons-react';
+import { HrmDateInput } from '../../../shared/components/HrmDateInput';
 import styles from './AttendanceNativeDateInput.module.css';
 
 type AttendanceNativeDateInputProps = {
@@ -16,25 +17,23 @@ export function AttendanceNativeDateInput({
   value,
   onChange,
   disabled,
+  placeholder,
   min,
   max,
   className,
   ariaLabel,
 }: AttendanceNativeDateInputProps) {
-  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    onChange(event.target.value || undefined);
-  };
-
   return (
-    <input
-      type="date"
-      value={value || ''}
-      onChange={handleChange}
+    <HrmDateInput
+      value={value || null}
+      onChange={(nextValue) => onChange(nextValue ?? undefined)}
       disabled={disabled}
-      min={min}
-      max={max}
+      minDate={min}
+      maxDate={max}
+      placeholder={placeholder || 'dd/mm/yyyy'}
       aria-label={ariaLabel || 'Chọn ngày'}
-      className={`${styles.input} ${className || ''}`}
+      classNames={{ input: `${styles.input} ${className || ''}` }}
+      rightSection={<IconCalendar size={16} aria-hidden />}
     />
   );
 }

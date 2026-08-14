@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { Button, Checkbox, Group, Stack, TextInput } from '@mantine/core';
-import { message } from 'antd';
+import { Button, Checkbox, Input, Space, Table, message } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { BaseTable } from '../../shared/ui';
 import {
   commitHrmCoreImport,
   listHrmCoreRows,
@@ -43,7 +41,7 @@ function renderSuggestedCodes(
   showUnit = false,
 ) {
   return (
-    <BaseTable
+    <Table
       rowKey="key"
       size="small"
       dataSource={items}
@@ -62,9 +60,9 @@ function renderSuggestedCodes(
         {
           title: 'Mã đề xuất',
           render: (_, record) => (
-            <TextInput
+            <Input
               value={drafts[record.key] ?? record.code}
-              onChange={(event) => setDrafts({ ...drafts, [record.key]: event.currentTarget.value })}
+              onChange={(event) => setDrafts({ ...drafts, [record.key]: event.target.value })}
             />
           ),
         },
@@ -133,7 +131,8 @@ export function HrmCoreExcelImportModal({
       await queryClient.invalidateQueries({ queryKey: ['import-batches'] });
       await onCommitted?.();
       message.success('Import dữ liệu thành công.');
-      handleClose();
+      setPreview((current) => (current ? { ...current, status: 'COMMITTED' } : current));
+      onClose();
     },
     onError: () => message.error('Import dữ liệu thất bại.'),
   });
@@ -148,23 +147,6 @@ export function HrmCoreExcelImportModal({
     onError: (error) => showDownloadError(error, 'Tải file lỗi thất bại.'),
   });
 
-  function handleResetPreview() {
-    setPreview(null);
-    setRows([]);
-    setAllowWarnings(false);
-    setUnitCodeDrafts({});
-    setDepartmentCodeDrafts({});
-    previewMutation.reset();
-    updateCodesMutation.reset();
-    commitMutation.reset();
-    errorFileMutation.reset();
-  }
-
-  function handleClose() {
-    handleResetPreview();
-    onClose();
-  }
-
   const hasErrors = Boolean(preview && preview.summary.errors > 0);
   const hasWarnings = Boolean(preview && preview.summary.warnings > 0);
   const canCommit = Boolean(
@@ -175,7 +157,7 @@ export function HrmCoreExcelImportModal({
   );
 
   const rowsTable = (
-    <BaseTable
+    <Table
       rowKey="id"
       size="small"
       dataSource={rows}
@@ -194,7 +176,7 @@ export function HrmCoreExcelImportModal({
   return (
     <ExcelImportModal
       open={open}
-      onClose={handleClose}
+      onClose={onClose}
       description="Mẫu này hỗ trợ đơn vị, phòng ban, nhân sự và phân công. Vui lòng tải mẫu Excel, điền dữ liệu và upload lại file đã hoàn thiện."
       onDownloadTemplate={() => templateMutation.mutateAsync()}
       onUpload={async (file) => {
@@ -204,7 +186,6 @@ export function HrmCoreExcelImportModal({
         await commitMutation.mutateAsync();
       }}
       onDownloadErrors={() => errorFileMutation.mutateAsync()}
-      onResetPreview={preview ? handleResetPreview : undefined}
       hasPreview={Boolean(preview)}
       hasErrors={hasErrors}
       hasWarnings={hasWarnings}
@@ -226,32 +207,33 @@ export function HrmCoreExcelImportModal({
           : []
       }
       previewContent={
-        <Stack gap="md">
+        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
           <Checkbox
-            label="Chấp nhận cảnh báo"
             checked={allowWarnings}
             disabled={!hasWarnings}
-            onChange={(event) => setAllowWarnings(event.currentTarget.checked)}
-          />
+            onChange={(event) => setAllowWarnings(event.target.checked)}
+          >
+            Chấp nhận cảnh báo
+          </Checkbox>
           {preview ? (
             <>
               {renderSuggestedCodes(preview.suggestedCodes.units, unitCodeDrafts, setUnitCodeDrafts)}
               {renderSuggestedCodes(preview.suggestedCodes.departments, departmentCodeDrafts, setDepartmentCodeDrafts, true)}
-              <Group>
+              <Space>
                 <Button
                   loading={updateCodesMutation.isPending}
                   onClick={() => updateCodesMutation.mutate()}
                 >
                   Lưu mã đề xuất
                 </Button>
-              </Group>
+              </Space>
             </>
           ) : null}
           {rowsTable}
-        </Stack>
+        </Space>
       }
       errorsContent={
-        <BaseTable
+        <Table
           rowKey="id"
           size="small"
           dataSource={rows.filter((row) => row.validationStatus === 'ERROR')}
@@ -263,7 +245,7 @@ export function HrmCoreExcelImportModal({
         />
       }
       warningsContent={
-        <BaseTable
+        <Table
           rowKey="id"
           size="small"
           dataSource={rows.filter((row) => row.validationStatus === 'WARNING')}

@@ -1,34 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import {
-  Badge,
-  Box,
-  Button,
-  Card,
-  Checkbox,
-  FileButton,
-  Group,
-  Modal,
-  Paper,
-  Progress,
-  ScrollArea,
-  SegmentedControl,
-  SimpleGrid,
-  Stack,
-  Table,
-  Text,
-  Title,
-} from '@mantine/core';
-import { notifications } from '@mantine/notifications';
-import {
-  IconAlertTriangle,
-  IconCheck,
-  IconDownload,
-  IconEye,
-  IconFileSpreadsheet,
-  IconPlayerPlay,
-  IconSearch,
-  IconUpload,
-} from '@tabler/icons-react';
+import { useMemo, useState } from 'react';
+import { Button, Card, Checkbox, Space, Statistic, Steps, Table, Tabs, Upload, message } from 'antd';
+import { DownloadOutlined, UploadOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { HR_PERMISSIONS } from '../../features/auth/permissions';
@@ -39,7 +11,7 @@ import {
   listDomainImportRows,
   previewDomainImport,
 } from '../../features/imports/importsApi';
-import type { DomainImportPreview, HrmCoreStagingRow, ImportBatch, ImportErrorSummary } from '../../features/imports/importTypes';
+import type { DomainImportPreview, HrmCoreStagingRow, ImportBatch } from '../../features/imports/importTypes';
 import {
   downloadDomainExport,
   downloadImportErrorReport,
@@ -69,16 +41,19 @@ const domainConfigs: DomainConfig[] = [
   { key: 'employee-assignments', title: 'Phân công nhân sự', importType: 'EMPLOYEE_ASSIGNMENTS_EXCEL', order: 4 },
 ];
 
-const wizardSteps = [
-  { key: 'upload', title: 'Tải file', icon: IconUpload },
-  { key: 'preview', title: 'Xem trước', icon: IconEye },
-  { key: 'validate', title: 'Kiểm tra', icon: IconSearch },
-  { key: 'confirm', title: 'Xác nhận', icon: IconPlayerPlay },
-  { key: 'result', title: 'Kết quả', icon: IconCheck },
+const steps = [
+  { title: 'Chọn loại dữ liệu' },
+  { title: 'Tải mẫu' },
+  { title: 'Upload' },
+  { title: 'Preview' },
+  { title: 'Commit' },
+  { title: 'Kết quả' },
 ];
 
 function renderMessages(value: unknown): string {
-  if (!Array.isArray(value)) return '-';
+  if (!Array.isArray(value)) {
+    return '-';
+  }
   return value
     .map((item) => {
       if (typeof item === 'object' && item !== null && 'message' in item) {
@@ -88,130 +63,6 @@ function renderMessages(value: unknown): string {
     })
     .filter(Boolean)
     .join('; ') || '-';
-}
-
-function getErrorFields(row: HrmCoreStagingRow) {
-  const errors = row.validationErrorsJson ?? [];
-  return new Set(errors.map((item) => item.field).filter(Boolean));
-}
-
-function readRawValue(row: HrmCoreStagingRow, key: string) {
-  const value = row.normalizedDataJson?.[key] ?? row.rawDataJson?.[key];
-  if (value === undefined || value === null || value === '') return '-';
-  if (typeof value === 'object') return JSON.stringify(value);
-  return String(value);
-}
-
-function batchStatusColor(status: string) {
-  const normalized = status.toUpperCase();
-  if (normalized.includes('COMPLETED') || normalized.includes('SUCCESS') || normalized.includes('COMMITTED')) return 'green';
-  if (normalized.includes('PARTIAL') || normalized.includes('WARNING')) return 'orange';
-  if (normalized.includes('FAILED') || normalized.includes('ERROR')) return 'red';
-  return 'hacomRed';
-}
-
-function ImportWizard({ currentStep }: { currentStep: number }) {
-  return (
-    <Card withBorder className="imports-wizard-card">
-      <div className="imports-wizard">
-        {wizardSteps.map((step, index) => {
-          const Icon = step.icon;
-          const state = index < currentStep ? 'done' : index === currentStep ? 'current' : 'pending';
-          return (
-            <div key={step.key} className={`imports-wizard-step is-${state}`}>
-              <span className="imports-wizard-icon"><Icon size={18} /></span>
-              <Text size="sm" fw={700}>{step.title}</Text>
-            </div>
-          );
-        })}
-      </div>
-    </Card>
-  );
-}
-
-function SummaryCards({ preview }: { preview: DomainImportPreview }) {
-  const duplicateCount = preview.errors.filter((error) =>
-    `${error.message} ${error.errorCode ?? ''}`.toLowerCase().includes('duplic'),
-  ).length;
-
-  const cards = [
-    { label: 'Hợp lệ', value: preview.validRows, color: 'green' },
-    { label: 'Trùng', value: duplicateCount, color: 'orange' },
-    { label: 'Lỗi', value: preview.invalidRows, color: 'red' },
-    { label: 'Cảnh báo', value: preview.warningRows || preview.warnings, color: 'yellow' },
-  ];
-
-  return (
-    <SimpleGrid cols={{ base: 2, md: 4 }} spacing="sm">
-      {cards.map((card) => (
-        <Card key={card.label} withBorder className="imports-summary-card">
-          <Text size="xs" c="dimmed" fw={800}>{card.label}</Text>
-          <Title order={3} c={card.color}>{card.value}</Title>
-        </Card>
-      ))}
-    </SimpleGrid>
-  );
-}
-
-function PreviewTable({ rows }: { rows: HrmCoreStagingRow[] }) {
-  const columns = useMemo(() => {
-    const keys = new Set<string>();
-    rows.slice(0, 20).forEach((row) => {
-      Object.keys(row.normalizedDataJson ?? row.rawDataJson ?? {}).slice(0, 6).forEach((key) => keys.add(key));
-    });
-    return Array.from(keys).slice(0, 6);
-  }, [rows]);
-
-  return (
-    <ScrollArea type="auto">
-      <Table miw={860} className="imports-preview-table">
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>Dòng</Table.Th>
-            <Table.Th>Trạng thái</Table.Th>
-            {columns.map((column) => <Table.Th key={column}>{column}</Table.Th>)}
-            <Table.Th>Lý do lỗi / cảnh báo</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {rows.map((row) => {
-            const hasError = (row.validationErrorsJson ?? []).length > 0 || row.validationStatus === 'INVALID';
-            const hasWarning = (row.validationWarningsJson ?? []).length > 0;
-            const errorFields = getErrorFields(row);
-            return (
-              <Table.Tr key={row.id} className={hasError ? 'imports-row-error' : hasWarning ? 'imports-row-warning' : undefined}>
-                <Table.Td>{row.rowNumber}</Table.Td>
-                <Table.Td>
-                  <Badge color={hasError ? 'red' : hasWarning ? 'yellow' : 'green'} variant="light">
-                    {row.validationStatus}
-                  </Badge>
-                </Table.Td>
-                {columns.map((column) => (
-                  <Table.Td key={column} className={errorFields.has(column) ? 'imports-cell-error' : undefined}>
-                    {readRawValue(row, column)}
-                  </Table.Td>
-                ))}
-                <Table.Td>
-                  <Text size="sm" c={hasError ? 'red' : hasWarning ? 'orange' : 'dimmed'}>
-                    {renderMessages(row.validationErrorsJson) !== '-'
-                      ? renderMessages(row.validationErrorsJson)
-                      : renderMessages(row.validationWarningsJson)}
-                  </Text>
-                </Table.Td>
-              </Table.Tr>
-            );
-          })}
-          {rows.length === 0 ? (
-            <Table.Tr>
-              <Table.Td colSpan={columns.length + 3}>
-                <Text c="dimmed" ta="center" py="lg">API chưa trả staging rows cho batch này.</Text>
-              </Table.Td>
-            </Table.Tr>
-          ) : null}
-        </Table.Tbody>
-      </Table>
-    </ScrollArea>
-  );
 }
 
 export function ImportsPage() {
@@ -224,7 +75,6 @@ export function ImportsPage() {
   const [rows, setRows] = useState<HrmCoreStagingRow[]>([]);
   const [allowWarnings, setAllowWarnings] = useState(false);
   const [selected, setSelected] = useState<ImportBatch | null>(null);
-  const [parseProgress, setParseProgress] = useState(0);
   const { data, isLoading, error, refetch } = useImportBatches(
     { page: 1, pageSize: 20 },
     canImport,
@@ -245,63 +95,62 @@ export function ImportsPage() {
   const previewMutation = useMutation({
     mutationFn: async ({ domainKey, file }: { domainKey: ExcelDomainKey; file: File }) =>
       previewDomainImport(domainKey, file),
-    onMutate: () => {
-      setParseProgress(8);
-    },
     onSuccess: async (result, variables) => {
       setActiveDomain(variables.domainKey);
       setPreview(result);
       setAllowWarnings(false);
       setRows(await listDomainImportRows(result.batchId, variables.domainKey));
-      setParseProgress(100);
       await queryClient.invalidateQueries({ queryKey: ['import-batches'] });
-      notifications.show({ color: 'green', message: 'Đã kiểm tra dữ liệu Excel.' });
+      message.success('Đã kiểm tra dữ liệu Excel.');
     },
-    onError: () => {
-      setParseProgress(0);
-      notifications.show({ color: 'red', message: 'Kiểm tra dữ liệu Excel thất bại.' });
-    },
+    onError: () => message.error('Kiểm tra dữ liệu Excel thất bại.'),
   });
 
   const commitMutation = useMutation({
     mutationFn: async () => {
-      if (!preview) throw new Error('Missing preview');
+      if (!preview) {
+        throw new Error('Missing preview');
+      }
       return commitDomainImport(activeDomain, preview.batchId, allowWarnings);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['import-batches'] });
       setPreview((current) => (current ? { ...current, status: 'COMMITTED', canCommit: false } : current));
-      notifications.show({ color: 'green', message: 'Import dữ liệu thành công.' });
+      message.success('Import dữ liệu thành công.');
     },
-    onError: () => notifications.show({ color: 'red', message: 'Import dữ liệu thất bại.' }),
+    onError: () => message.error('Import dữ liệu thất bại.'),
   });
 
   const errorFileMutation = useMutation({
     mutationFn: async () => {
-      if (!preview) throw new Error('Missing preview');
+      if (!preview) {
+        throw new Error('Missing preview');
+      }
       return downloadImportErrorReport(preview.batchId);
     },
     onError: (error) => showDownloadError(error, 'Tải file lỗi thất bại.'),
   });
 
-  useEffect(() => {
-    if (!previewMutation.isPending) return;
-    const timer = window.setInterval(() => {
-      setParseProgress((current) => Math.min(current + 12, 92));
-    }, 280);
-    return () => window.clearInterval(timer);
-  }, [previewMutation.isPending]);
-
   const currentStep = useMemo(() => {
-    if (!preview && previewMutation.isPending) return 0;
-    if (!preview) return 0;
-    if (preview.status === 'COMMITTED') return 4;
-    if (preview.invalidRows > 0 || preview.warnings > 0) return 2;
-    return 3;
-  }, [preview, previewMutation.isPending]);
+    if (!preview) {
+      return 1;
+    }
+    if (preview.status === 'COMMITTED') {
+      return 5;
+    }
+    if (preview.invalidRows > 0) {
+      return 3;
+    }
+    return 4;
+  }, [preview]);
 
-  if (canImport && isLoading) return <LoadingState />;
-  if (canImport && (error || !data)) return <ErrorState onRetry={() => void refetch()} />;
+  if (canImport && isLoading) {
+    return <LoadingState />;
+  }
+
+  if (canImport && (error || !data)) {
+    return <ErrorState onRetry={() => void refetch()} />;
+  }
 
   const hasWarnings = Boolean(preview && preview.warnings > 0);
   const commitDisabled =
@@ -309,206 +158,148 @@ export function ImportsPage() {
     !preview.canCommit ||
     preview.status === 'COMMITTED' ||
     commitMutation.isPending ||
-    preview.invalidRows > 0 ||
     (hasWarnings && !allowWarnings);
 
   return (
     <>
-      <PageHeader title="Import / Export Excel HRM" subtitle="Wizard nhập liệu trực quan cho Đơn vị, Phòng ban, Nhân sự và Phân công nhân sự." />
-      <Stack gap="md">
-        <ImportWizard currentStep={currentStep} />
-
-        <Card withBorder className="imports-control-card">
-          <Stack gap="md">
-            <SegmentedControl
-              value={activeDomain}
-              onChange={(key) => {
-                setActiveDomain(key as ExcelDomainKey);
-                setPreview(null);
-                setRows([]);
-                setAllowWarnings(false);
-                setParseProgress(0);
-              }}
-              data={domainConfigs.map((config) => ({ value: config.key, label: `${config.order}. ${config.title}` }))}
-            />
-
-            <Group gap="xs">
-              {canImport ? (
-                <Button
-                  variant="default"
-                  leftSection={<IconDownload size={16} />}
-                  loading={templateMutation.isPending}
-                  onClick={() => void templateMutation.mutateAsync(activeDomain)}
-                >
-                  Tải mẫu {activeConfig.title}
-                </Button>
-              ) : null}
-              {canImport ? (
-                <FileButton
-                  accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                  onChange={(file) => {
-                    if (!file) return;
-                    if (!isExcelFile(file)) {
-                      notifications.show({ color: 'red', message: 'Chỉ chấp nhận file Excel .xlsx hoặc .xlsm.' });
-                      return;
-                    }
-                    previewMutation.mutate({ domainKey: activeDomain, file });
-                  }}
-                >
-                  {(props) => (
-                    <Button {...props} leftSection={<IconUpload size={16} />} loading={previewMutation.isPending}>
-                      Tải file & kiểm tra
-                    </Button>
-                  )}
-                </FileButton>
-              ) : null}
-              {canImport ? (
-                <Checkbox
-                  checked={allowWarnings}
-                  disabled={!hasWarnings}
-                  label="Chấp nhận cảnh báo"
-                  onChange={(event) => setAllowWarnings(event.currentTarget.checked)}
-                />
-              ) : null}
-              {canImport ? (
-                <Button disabled={commitDisabled} loading={commitMutation.isPending} onClick={() => commitMutation.mutate()}>
-                  Xác nhận import
-                </Button>
-              ) : null}
-              {canImport ? (
-                <Button
-                  variant="light"
-                  leftSection={<IconAlertTriangle size={16} />}
-                  disabled={!preview}
-                  loading={errorFileMutation.isPending}
-                  onClick={() => void errorFileMutation.mutateAsync()}
-                >
-                  Tải file lỗi
-                </Button>
-              ) : null}
-              {canExport ? (
-                <Button
-                  variant="light"
-                  leftSection={<IconFileSpreadsheet size={16} />}
-                  loading={exportMutation.isPending}
-                  onClick={() => void exportMutation.mutateAsync(activeDomain)}
-                >
-                  Export {activeConfig.title}
-                </Button>
-              ) : null}
-            </Group>
-
-            {previewMutation.isPending || parseProgress > 0 ? (
-              <Box>
-                <Group justify="space-between" mb={4}>
-                  <Text size="xs" c="dimmed" fw={700}>Tiến trình xử lý file</Text>
-                  <Text size="xs" fw={700}>{parseProgress}%</Text>
-                </Group>
-                <Progress value={parseProgress} animated={previewMutation.isPending} radius="xl" />
-              </Box>
-            ) : null}
-          </Stack>
+      <PageHeader title="Import / Export Excel HRM" subtitle="Tách Đơn vị, Phòng ban, Nhân sự và Phân công nhân sự." />
+      <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+        <Card className="page-card">
+          <Steps current={currentStep} items={steps} />
         </Card>
 
+        <Tabs
+          activeKey={activeDomain}
+          onChange={(key) => {
+            setActiveDomain(key as ExcelDomainKey);
+            setPreview(null);
+            setRows([]);
+            setAllowWarnings(false);
+          }}
+          items={domainConfigs.map((config) => ({
+            key: config.key,
+            label: `${config.order}. ${config.title}`,
+            children: (
+              <Card className="page-card" title={`Import ${config.title}`}>
+                <Space wrap>
+                  {canImport ? <Button
+                    icon={<DownloadOutlined />}
+                    loading={templateMutation.isPending}
+                    disabled={templateMutation.isPending}
+                    onClick={() => void templateMutation.mutateAsync(config.key)}
+                  >
+                    Tải mẫu {config.title}
+                  </Button> : null}
+                  {canImport ? <Upload
+                    accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    showUploadList={false}
+                    beforeUpload={(file) => {
+                      if (!isExcelFile(file)) {
+                        message.error('Chỉ chấp nhận file Excel .xlsx hoặc .xlsm.');
+                        return Upload.LIST_IGNORE;
+                      }
+                      previewMutation.mutate({ domainKey: config.key, file });
+                      return false;
+                    }}
+                  >
+                    <Button icon={<UploadOutlined />} loading={previewMutation.isPending}>
+                      Kiểm tra dữ liệu
+                    </Button>
+                  </Upload> : null}
+                  {canImport ? <Checkbox checked={allowWarnings} disabled={!hasWarnings} onChange={(event) => setAllowWarnings(event.target.checked)}>
+                    Chấp nhận cảnh báo
+                  </Checkbox> : null}
+                  {canImport ? <Button type="primary" disabled={commitDisabled} loading={commitMutation.isPending} onClick={() => commitMutation.mutate()}>
+                    Import
+                  </Button> : null}
+                  {canImport ? <Button
+                    icon={<DownloadOutlined />}
+                    disabled={!preview}
+                    loading={errorFileMutation.isPending}
+                    onClick={() => void errorFileMutation.mutateAsync()}
+                  >
+                    Tải file lỗi
+                  </Button> : null}
+                  {canExport ? <Button
+                    icon={<DownloadOutlined />}
+                    loading={exportMutation.isPending}
+                    disabled={exportMutation.isPending}
+                    onClick={() => void exportMutation.mutateAsync(config.key)}
+                  >
+                    Export {config.title}
+                  </Button> : null}
+                </Space>
+              </Card>
+            ),
+          }))}
+        />
+
         {canImport && preview ? (
-          <Card withBorder className="imports-preview-card">
-            <Stack gap="md">
-              <Group justify="space-between">
-                <Box>
-                  <Title order={4}>Xem trước & kiểm tra {activeConfig.title}</Title>
-                  <Text size="sm" c="dimmed">Batch: {preview.batchId}</Text>
-                </Box>
+          <Card className="page-card" title={`Preview ${activeConfig.title}`}>
+            <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+              <Space wrap>
+                <Statistic title="Tổng dòng" value={preview.totalRows} />
+                <Statistic title="Hợp lệ" value={preview.validRows} />
+                <Statistic title="Lỗi" value={preview.invalidRows} />
+                <Statistic title="Cảnh báo" value={preview.warnings} />
                 <StatusTag status={preview.status} />
-              </Group>
-              <SummaryCards preview={preview} />
-              <PreviewTable rows={rows} />
-            </Stack>
+              </Space>
+              <Table
+                rowKey="id"
+                size="small"
+                dataSource={rows}
+                pagination={{ pageSize: 8 }}
+                columns={[
+                  { title: 'Dòng', dataIndex: 'rowNumber', width: 80 },
+                  { title: 'Trạng thái', dataIndex: 'validationStatus', width: 140 },
+                  { title: 'Dữ liệu', render: (_, row) => JSON.stringify(row.rawDataJson) },
+                  { title: 'Lỗi', render: (_, row) => renderMessages(row.validationErrorsJson) },
+                  { title: 'Cảnh báo', render: (_, row) => renderMessages(row.validationWarningsJson) },
+                ]}
+              />
+            </Space>
           </Card>
         ) : null}
 
-        {canImport ? (
-          <Card withBorder className="imports-history-card">
-            <Group justify="space-between" mb="md">
-              <Title order={4}>Lịch sử import</Title>
-              <Badge variant="light">{data?.pagination.total ?? data?.items.length ?? 0} batch</Badge>
-            </Group>
-            <Stack gap="xs">
-              {(data?.items ?? []).map((batch) => (
-                <Paper key={batch.id} withBorder p="md" className="imports-history-row" onClick={async () => setSelected(await getImportBatch(batch.id))}>
-                  <Group justify="space-between" align="flex-start">
-                    <Box>
-                      <Group gap="xs">
-                        <Text fw={800}>{batch.fileName}</Text>
-                        <Badge color={batchStatusColor(batch.status)} variant="light">{batch.status}</Badge>
-                      </Group>
-                      <Text size="xs" c="dimmed" ff="monospace">{batch.batchCode}</Text>
-                      <Text size="sm" c="dimmed">Người thực hiện: Chưa có dữ liệu từ API</Text>
-                    </Box>
-                    <Box ta="right">
-                      <Text size="sm" fw={700}>{formatDateTime(batch.createdAt)}</Text>
-                      <Text size="xs" c="dimmed">{batch.importType}</Text>
-                    </Box>
-                  </Group>
-                  <Group gap="xs" mt="sm">
-                    <Badge variant="light">Tổng {batch.totalRows}</Badge>
-                    <Badge color="green" variant="light">Thành công {batch.successRows}</Badge>
-                    <Badge color={batch.failedRows ? 'red' : 'gray'} variant="light">Thất bại {batch.failedRows}</Badge>
-                  </Group>
-                </Paper>
-              ))}
-              {!(data?.items ?? []).length ? (
-                <Text c="dimmed" ta="center" py="lg">Chưa có lịch sử import.</Text>
-              ) : null}
-            </Stack>
+        {canImport ? <Card className="page-card" title="Lịch sử batch">
+          <Table
+            rowKey="id"
+            dataSource={data?.items ?? []}
+            pagination={false}
+            columns={[
+              { title: 'Batch code', dataIndex: 'batchCode' },
+              { title: 'Import type', dataIndex: 'importType' },
+              { title: 'Tên file', dataIndex: 'fileName' },
+              { title: 'Tổng', dataIndex: 'totalRows' },
+              { title: 'Thành công', dataIndex: 'successRows' },
+              { title: 'Thất bại', dataIndex: 'failedRows' },
+              { title: 'Trạng thái', render: (_, record) => <StatusTag status={record.status} /> },
+              { title: 'Ngày tạo', render: (_, record) => formatDateTime(record.createdAt) },
+              {
+                title: 'Thao tác',
+                render: (_, record) => (
+                  <Button
+                    onClick={async () => {
+                      const detail = await getImportBatch(record.id);
+                      setSelected(detail);
+                    }}
+                  >
+                    Chi tiết
+                  </Button>
+                ),
+              },
+            ]}
+          />
+        </Card> : null}
+
+        {canImport && selected ? (
+          <Card className="page-card" title="Chi tiết batch">
+            <p>Batch code: {selected.batchCode}</p>
+            <p>File: {selected.fileName}</p>
+            <p>Status: <StatusTag status={selected.status} /></p>
           </Card>
         ) : null}
-      </Stack>
-
-      <Modal opened={Boolean(selected)} onClose={() => setSelected(null)} title="Chi tiết kết quả import" size="lg">
-        {selected ? (
-          <Stack gap="md">
-            <Group justify="space-between">
-              <Box>
-                <Text fw={800}>{selected.fileName}</Text>
-                <Text size="xs" c="dimmed" ff="monospace">{selected.batchCode}</Text>
-              </Box>
-              <StatusTag status={selected.status} />
-            </Group>
-            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
-              <Card withBorder><Text size="xs" c="dimmed">Tổng dòng</Text><Title order={3}>{selected.totalRows}</Title></Card>
-              <Card withBorder><Text size="xs" c="dimmed">Thành công</Text><Title order={3} c="green">{selected.successRows}</Title></Card>
-              <Card withBorder><Text size="xs" c="dimmed">Thất bại</Text><Title order={3} c="red">{selected.failedRows}</Title></Card>
-            </SimpleGrid>
-            <Table withTableBorder>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Dòng</Table.Th>
-                  <Table.Th>Trường</Table.Th>
-                  <Table.Th>Lỗi</Table.Th>
-                  <Table.Th>Gợi ý</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {(selected.errorSummary ?? []).map((error: ImportErrorSummary, index) => (
-                  <Table.Tr key={`${error.field}-${index}`}>
-                    <Table.Td>{error.rowNumber ?? error.rowNo ?? '-'}</Table.Td>
-                    <Table.Td>{error.field}</Table.Td>
-                    <Table.Td>{error.message}</Table.Td>
-                    <Table.Td>{error.suggestion ?? '-'}</Table.Td>
-                  </Table.Tr>
-                ))}
-                {selected.errorSummary.length === 0 ? (
-                  <Table.Tr>
-                    <Table.Td colSpan={4}>
-                      <Text c="dimmed" ta="center">Batch này không có lỗi.</Text>
-                    </Table.Td>
-                  </Table.Tr>
-                ) : null}
-              </Table.Tbody>
-            </Table>
-          </Stack>
-        ) : null}
-      </Modal>
+      </Space>
     </>
   );
 }

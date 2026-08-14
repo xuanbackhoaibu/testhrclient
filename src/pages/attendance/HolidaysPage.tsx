@@ -6,11 +6,8 @@ import {
   Group,
   Modal,
   NumberInput,
-  Paper,
-  ScrollArea,
   Select,
   Stack,
-  Table,
   Switch,
   Text,
   TextInput,
@@ -32,7 +29,13 @@ import {
   WEEKDAY_LABELS,
   type Holiday,
 } from "../../features/attendance/workScheduleTypes";
+import {
+  DataTable,
+  type DataTableColumn,
+} from "../../shared/components/DataTable";
 import { PageHeader } from "../../shared/components/PageHeader";
+import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
+import { HrmDateInput } from "../../shared/components/HrmDateInput";
 
 interface HolidayFormValues {
   date: string;
@@ -57,17 +60,6 @@ function formatDisplayDate(isoDate: string): string {
   return `${day}/${month}/${date.getUTCFullYear()} (${weekday})`;
 }
 
-function holidayCalendarType(holiday: Pick<Holiday, "name" | "note">) {
-  const source = `${holiday.name} ${holiday.note ?? ""}`.toLowerCase();
-  return source.includes("tết") || source.includes("giỗ tổ") || source.includes("âm lịch")
-    ? { label: "Âm lịch", color: "violet" }
-    : { label: "Dương lịch", color: "hacomRed" };
-}
-
-function needsHolidayReview(holiday: Holiday) {
-  return holiday.note?.includes("kiểm tra") || holiday.note?.includes("soát") || false;
-}
-
 export function HolidaysPage() {
   const { can } = useAuth();
   const canEdit = can(HR_PERMISSIONS.ATTENDANCE_UPDATE);
@@ -80,7 +72,6 @@ export function HolidaysPage() {
   const [cloneToYear, setCloneToYear] = useState(currentYear + 1);
 
   const holidaysQuery = useHolidays(year);
-  const clonePreviewQuery = useHolidays(cloneFromYear);
   const createHoliday = useCreateHoliday();
   const deleteHoliday = useDeleteHoliday();
   const cloneHolidays = useCloneHolidays();
@@ -89,7 +80,7 @@ export function HolidaysPage() {
     initialValues: { date: "", name: "", isPaid: true, note: "" },
     validate: {
       date: (value) =>
-        DATE_PATTERN.test(value) ? null : "Ngày phải theo dạng YYYY-MM-DD.",
+        DATE_PATTERN.test(value) ? null : "Nhập ngày theo dạng DD/MM/YYYY.",
       name: (value) => (value.trim() ? null : "Nhập tên ngày lễ."),
     },
   });
@@ -171,9 +162,58 @@ export function HolidaysPage() {
     }
   }
 
-  const sortedHolidays = useMemo(
-    () => [...(holidaysQuery.data ?? [])].sort((a, b) => a.date.localeCompare(b.date)),
-    [holidaysQuery.data],
+  const columns = useMemo<DataTableColumn<Holiday>[]>(
+    () => [
+      {
+        key: "date",
+        header: "Ngày",
+        width: 200,
+        render: (record) => <Text fw={600}>{formatDisplayDate(record.date)}</Text>,
+      },
+      { key: "name", header: "Tên ngày lễ", render: (record) => record.name },
+      {
+        key: "isPaid",
+        header: "Hưởng lương",
+        width: 130,
+        render: (record) => (
+          <Badge variant="light" color={record.isPaid ? "green" : "gray"}>
+            {record.isPaid ? "Có" : "Không"}
+          </Badge>
+        ),
+      },
+      {
+        key: "note",
+        header: "Ghi chú",
+        render: (record) =>
+          record.note ? (
+            <Text size="sm" c={record.note.includes("kiểm tra") ? "orange" : undefined}>
+              {record.note}
+            </Text>
+          ) : (
+            "-"
+          ),
+      },
+      {
+        key: "actions",
+        header: "",
+        width: 80,
+        align: "right",
+        render: (record) => (
+          <TableActionsMenu
+            actions={[
+              {
+                label: "Xóa",
+                icon: <IconTrash size={16} />,
+                color: "red",
+                disabled: !canEdit,
+                onClick: () => setDeleting(record),
+              },
+            ]}
+          />
+        ),
+      },
+    ],
+    [canEdit],
   );
 
   return (
@@ -229,76 +269,16 @@ export function HolidaysPage() {
           />
         </Group>
 
-        <Paper withBorder radius="md" className="holiday-table-shell">
-          <ScrollArea type="auto">
-            <Table miw={760} className="holiday-table">
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Ngày</Table.Th>
-                  <Table.Th>Tên ngày lễ</Table.Th>
-                  <Table.Th>Loại lịch</Table.Th>
-                  <Table.Th>Hưởng lương</Table.Th>
-                  <Table.Th>Ghi chú</Table.Th>
-                  <Table.Th />
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {holidaysQuery.isLoading ? (
-                  <Table.Tr>
-                    <Table.Td colSpan={6}>
-                      <Text c="dimmed" ta="center" py="lg">Đang tải ngày lễ...</Text>
-                    </Table.Td>
-                  </Table.Tr>
-                ) : sortedHolidays.length === 0 ? (
-                  <Table.Tr>
-                    <Table.Td colSpan={6}>
-                      <Text c="dimmed" ta="center" py="lg">
-                        Chưa khai báo ngày lễ năm {year}. Thêm từng ngày, hoặc nhân bản từ năm trước rồi sửa lại các lễ âm lịch.
-                      </Text>
-                    </Table.Td>
-                  </Table.Tr>
-                ) : (
-                  sortedHolidays.map((holiday) => {
-                    const type = holidayCalendarType(holiday);
-                    const needsReview = needsHolidayReview(holiday);
-                    return (
-                      <Table.Tr key={holiday.id} className={needsReview ? "holiday-row-review" : undefined}>
-                        <Table.Td><Text fw={700}>{formatDisplayDate(holiday.date)}</Text></Table.Td>
-                        <Table.Td>
-                          <Group gap="xs">
-                            <Text fw={650}>{holiday.name}</Text>
-                            {needsReview ? <Badge size="xs" color="orange">Cần HR soát lại</Badge> : null}
-                          </Group>
-                        </Table.Td>
-                        <Table.Td><Badge variant="light" color={type.color}>{type.label}</Badge></Table.Td>
-                        <Table.Td>
-                          <Badge variant="light" color={holiday.isPaid ? "green" : "gray"}>
-                            {holiday.isPaid ? "Có" : "Không"}
-                          </Badge>
-                        </Table.Td>
-                        <Table.Td>
-                          <Text size="sm" c={needsReview ? "orange" : undefined}>{holiday.note || "-"}</Text>
-                        </Table.Td>
-                        <Table.Td ta="right">
-                          <Button
-                            size="xs"
-                            variant="subtle"
-                            color="red"
-                            leftSection={<IconTrash size={14} />}
-                            disabled={!canEdit}
-                            onClick={() => setDeleting(holiday)}
-                          >
-                            Xóa
-                          </Button>
-                        </Table.Td>
-                      </Table.Tr>
-                    );
-                  })
-                )}
-              </Table.Tbody>
-            </Table>
-          </ScrollArea>
-        </Paper>
+        <DataTable
+          data={holidaysQuery.data ?? []}
+          columns={columns}
+          rowKey={(record) => record.id}
+          loading={holidaysQuery.isLoading}
+          error={holidaysQuery.error}
+          onRetry={() => void holidaysQuery.refetch()}
+          emptyTitle={`Chưa khai báo ngày lễ năm ${year}`}
+          emptyDescription="Thêm từng ngày, hoặc nhân bản từ năm trước rồi sửa lại các lễ âm lịch."
+        />
       </Stack>
 
       <Modal
@@ -309,11 +289,13 @@ export function HolidaysPage() {
       >
         <form onSubmit={form.onSubmit((values) => void handleCreate(values))}>
           <Stack gap="sm">
-            <TextInput
+            <HrmDateInput
               label="Ngày"
-              placeholder="2026-09-02"
+              placeholder="DD/MM/YYYY"
               withAsterisk
-              {...form.getInputProps("date")}
+              value={form.values.date || null}
+              onChange={(value) => form.setFieldValue("date", value ?? "")}
+              error={form.errors.date}
             />
             <TextInput
               label="Tên ngày lễ"
@@ -365,30 +347,6 @@ export function HolidaysPage() {
             Chỉ đúng với <b>lễ dương lịch</b>. Tết và Giỗ Tổ phải sửa lại ngày
             sau khi nhân bản — mỗi dòng chép sang sẽ được đánh dấu nhắc.
           </Alert>
-          <Paper withBorder p="sm" className="holiday-clone-preview">
-            <Text size="sm" fw={700} mb="xs">Danh sách dự kiến tạo</Text>
-            <Stack gap={6}>
-              {(clonePreviewQuery.data ?? []).slice(0, 8).map((holiday) => {
-                const type = holidayCalendarType(holiday);
-                const nextDate = holiday.date.replace(String(cloneFromYear), String(cloneToYear));
-                return (
-                  <Group key={holiday.id} justify="space-between" gap="sm">
-                    <Text size="sm">{holiday.name}</Text>
-                    <Group gap="xs">
-                      <Badge size="xs" color={type.color} variant="light">{type.label}</Badge>
-                      <Text size="xs" c="dimmed">{nextDate}</Text>
-                    </Group>
-                  </Group>
-                );
-              })}
-              {!clonePreviewQuery.isLoading && !(clonePreviewQuery.data ?? []).length ? (
-                <Text size="sm" c="dimmed">Năm nguồn chưa có ngày lễ để nhân bản.</Text>
-              ) : null}
-              {(clonePreviewQuery.data ?? []).length > 8 ? (
-                <Text size="xs" c="dimmed">Còn {(clonePreviewQuery.data ?? []).length - 8} ngày lễ khác.</Text>
-              ) : null}
-            </Stack>
-          </Paper>
           <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={() => setCloneOpen(false)}>
               Hủy

@@ -89,6 +89,7 @@ import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
 import { focusFirstFormError, zodMantineValidate } from "../../shared/forms/zodMantine";
 import { exportRowsToExcel } from "../../shared/utils/excel";
 import { compareCode } from "../../shared/utils/sort";
+import { HrmDateInput } from "../../shared/components/HrmDateInput";
 
 const employmentStatusOptions = [
   { value: "ACTIVE", label: "Đang làm việc" },
@@ -1868,16 +1869,18 @@ export function EmployeesPage() {
               ]}
               {...form.getInputProps("gender")}
             />
-            <TextInput
+            <HrmDateInput
               label="Ngày sinh"
-              type="date"
-              {...form.getInputProps("dateOfBirth")}
+              value={form.values.dateOfBirth || null}
+              onChange={(value) => form.setFieldValue("dateOfBirth", value ?? "")}
+              error={form.errors.dateOfBirth}
             />
-            <TextInput
+            <HrmDateInput
               label="Ngày vào làm"
-              type="date"
               withAsterisk
-              {...form.getInputProps("hireDate")}
+              value={form.values.hireDate || null}
+              onChange={(value) => form.setFieldValue("hireDate", value ?? "")}
+              error={form.errors.hireDate}
             />
             <TextInput
               label="CCCD/CMND"

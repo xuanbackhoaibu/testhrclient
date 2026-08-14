@@ -10,11 +10,13 @@ import { ErrorState } from '../../shared/components/ErrorState';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { ROUTES } from '../../shared/constants/routes';
 import { formatDate } from '../../shared/utils/date';
+import { api } from '../../shared/api/httpClient';
 import {
   useAttendanceDailyRecords,
   useAttendanceSyncStatus,
   useManualAttendanceSync,
 } from '../../features/attendance/useAttendanceSync';
+import { buildAttendanceDailyExportParams } from '../../features/attendance/attendanceDailyExport';
 import { useAuth } from '../../features/auth/useAuth';
 import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import { DataTable } from '../../shared/components/DataTable';
@@ -93,10 +95,11 @@ function buildQueryParams(
 
   if (filters.status) params.status = filters.status;
   if (filters.mappingStatus) params.mappingStatus = filters.mappingStatus;
-  if (filters.biotimeDepartmentId) params.biotimeDepartmentId = filters.biotimeDepartmentId;
+  if (filters.biotimeDepartmentId !== null) params.biotimeDepartmentId = filters.biotimeDepartmentId;
 
   return params;
 }
+
 
 const DEFAULT_FILTERS: AttendanceFilters = {
   search: '',
@@ -222,45 +225,26 @@ export function AttendancePage() {
 
   // Export handler
   const handleExport = async () => {
-    const params = new URLSearchParams();
-    if (filters.search) params.set('search', filters.search);
-    if (filters.from || filters.to) {
-      if (filters.from) params.set('from', filters.from);
-      if (filters.to) params.set('to', filters.to);
-    } else if (filters.date) {
-      params.set('date', filters.date);
-    }
-    if (filters.status) params.set('status', filters.status);
-    if (filters.mappingStatus) params.set('mappingStatus', filters.mappingStatus);
+    const params = buildAttendanceDailyExportParams(
+      buildQueryParams({ ...filters, page: 1, pageSize: PAGE_SIZE }),
+    );
+    // Export all matching records, not just the page visible in the table.
+    // Reusing the list-query builder keeps date/range and BioTime department
+    // filters identical between the screen and downloaded CSV.
 
-    const baseUrl = import.meta.env.VITE_API_URL ?? '';
-    const token = localStorage.getItem('accessToken') ?? '';
-    const url = `${baseUrl}/attendance/daily/export?${params.toString()}`;
-
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
+    try {
+      await api.download(
+        '/attendance/daily/export',
+        `attendance_${dayjs().format('YYYYMMDD_HHmmss')}.csv`,
+        { ...params },
+      );
+    } catch {
       notifications.show({
         title: 'Xuất thất bại',
-        message: 'Không thể tải file xuất',
+        message: 'Không thể tải file xuất. Vui lòng thử lại sau.',
         color: 'red',
       });
-      return;
     }
-
-    const blob = await response.blob();
-    const downloadUrl = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.download = `attendance_${dayjs().format('YYYYMMDD_HHmmss')}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(downloadUrl);
   };
 
   // Determine empty state reason

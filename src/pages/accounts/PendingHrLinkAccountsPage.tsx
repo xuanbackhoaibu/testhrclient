@@ -50,6 +50,7 @@ import { PageHeader } from "../../shared/components/PageHeader";
 import { useImeSafeSearch } from "../../shared/hooks/useImeSafeSearch";
 import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
 import { sortByCode } from "../../shared/utils/sort";
+import { formatDateTime } from "../../shared/utils/date";
 
 const PAGE_SIZE = 20;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -65,13 +66,6 @@ interface LinkFormState {
   selectedEmployeeCode: string | null;
   syncEmailFromHr: boolean;
   reason: string;
-}
-
-function formatDate(value?: string | null) {
-  if (!value) return "-";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString("vi-VN");
 }
 
 function shortId(value: string) {
@@ -428,9 +422,9 @@ export function PendingHrLinkAccountsPage() {
       minWidth: 180,
       render: (user) => (
         <Stack gap={2}>
-          <Text size="xs">Tạo: {formatDate(user.createdAt)}</Text>
+          <Text size="xs">Tạo: {formatDateTime(user.createdAt)}</Text>
           <Text size="xs" c="dimmed">
-            Cập nhật: {formatDate(user.updatedAt)}
+            Cập nhật: {formatDateTime(user.updatedAt)}
           </Text>
         </Stack>
       ),
@@ -522,7 +516,7 @@ export function PendingHrLinkAccountsPage() {
                 <Text size="sm" fw={700}>Nhân viên đề xuất</Text>
                 <Text size="sm">Mã claim: {codeValue(user)}</Text>
                 <Text size="sm">Email claim: {emailValue(user)}</Text>
-                <Text size="xs" c="dimmed">Tạo: {formatDate(user.createdAt)}</Text>
+                <Text size="xs" c="dimmed">Tạo: {formatDateTime(user.createdAt)}</Text>
               </Alert>
 
               <Group gap="xs">

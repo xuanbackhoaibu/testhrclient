@@ -59,7 +59,6 @@ const mainItems: NavItem[] = [
   { label: "Lịch của tôi", path: ROUTES.calendar, icon: IconCalendarEvent },
   { label: "Điều chuyển", path: ROUTES.movements, icon: IconTransfer },
   // { label: "Hợp đồng", path: ROUTES.contracts, icon: IconBriefcase },
-  // { label: "Nghỉ phép", path: ROUTES.leave, icon: IconCalendarCheck },
   { label: "Chấm công", path: ROUTES.attendance, icon: IconClipboardList },
   { label: "Xử lý mapping", path: ROUTES.attendanceMapping, icon: IconLink },
   { label: "Bảng công tháng", path: ROUTES.timesheetGrid, icon: IconTable },
@@ -70,6 +69,12 @@ const mainItems: NavItem[] = [
   // { label: "Onboarding", path: ROUTES.onboarding, icon: IconFolderOpen },
   // { label: "Offboarding", path: ROUTES.offboarding, icon: IconFileImport },
   { label: "Nhật ký audit", path: ROUTES.auditLogs, icon: IconFileAnalytics },
+  { label: "Nghỉ phép", path: ROUTES.leave, icon: IconCalendarCheck },
+  {
+    label: "Cấu hình duyệt phép",
+    path: ROUTES.leaveApprovalAssignments,
+    icon: IconUserCheck,
+  },
   { label: "Cài đặt", path: ROUTES.settings, icon: IconSettings },
 ];
 
@@ -82,11 +87,19 @@ const orgItems: NavItem[] = [
 
 const iamItems: NavItem[] = [
   { label: "Danh sách tài khoản", path: ROUTES.accounts, icon: IconUserCheck },
-  { label: "Tài khoản chờ liên kết", path: ROUTES.pendingHrLinkAccounts, icon: IconLink },
+  {
+    label: "Tài khoản chờ liên kết",
+    path: ROUTES.pendingHrLinkAccounts,
+    icon: IconLink,
+  },
   { label: "Vai trò", path: ROUTES.roles, icon: IconShield },
   { label: "Nhóm quyền", path: ROUTES.permissionGroups, icon: IconShield },
   { label: "Danh mục quyền", path: ROUTES.permissions, icon: IconKey },
-  { label: "Phân quyền báo cáo công việc", path: ROUTES.workReportAuthorizations, icon: IconClipboardList },
+  {
+    label: "Phân quyền báo cáo công việc",
+    path: ROUTES.workReportAuthorizations,
+    icon: IconClipboardList,
+  },
 ];
 
 const routeTitles: Record<string, string> = {
@@ -99,6 +112,7 @@ const routeTitles: Record<string, string> = {
   [ROUTES.movements]: "Điều chuyển",
   [ROUTES.contracts]: "Hợp đồng",
   [ROUTES.leave]: "Nghỉ phép",
+  [ROUTES.leaveApprovalAssignments]: "Cấu hình duyệt phép",
   [ROUTES.attendance]: "Chấm công",
   [ROUTES.attendanceMapping]: "Xử lý mapping",
   [ROUTES.timesheetGrid]: "Bảng chấm công tháng",
@@ -137,13 +151,21 @@ export function MainLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const visibleMainItems = mainItems.filter((item) => canAccessRoute(user, item.path));
-  const visibleOrgItems = orgItems.filter((item) => canAccessRoute(user, item.path));
-  const visibleIamItems = iamItems.filter((item) => canAccessRoute(user, item.path));
+  const visibleMainItems = mainItems.filter((item) =>
+    canAccessRoute(user, item.path),
+  );
+  const visibleOrgItems = orgItems.filter((item) =>
+    canAccessRoute(user, item.path),
+  );
+  const visibleIamItems = iamItems.filter((item) =>
+    canAccessRoute(user, item.path),
+  );
 
   const showOrganizationMenu = visibleOrgItems.length > 0;
   const showIamMenu = visibleIamItems.length > 0;
-  const isIamRoute = visibleIamItems.some((item) => isActive(location.pathname, item.path));
+  const isIamRoute = visibleIamItems.some((item) =>
+    isActive(location.pathname, item.path),
+  );
   const selectedPath = location.pathname.startsWith("/employees/")
     ? ROUTES.employees
     : location.pathname;
@@ -293,21 +315,58 @@ export function MainLayout() {
                   defaultOpened={isIamRoute}
                   className="app-nav-link"
                 >
-                  <NavLink label="Người dùng và tài khoản" defaultOpened={visibleIamItems.slice(0, 2).some((item) => isActive(location.pathname, item.path))}>
+                  <NavLink
+                    label="Người dùng và tài khoản"
+                    defaultOpened={visibleIamItems
+                      .slice(0, 2)
+                      .some((item) => isActive(location.pathname, item.path))}
+                  >
                     {visibleIamItems.slice(0, 2).map((item) => {
                       const Icon = item.icon;
-                      return <NavLink key={item.path} label={item.label} leftSection={<Icon size={17} />} active={isActive(location.pathname, item.path)} onClick={() => goTo(item.path)} className="app-nav-link" />;
+                      return (
+                        <NavLink
+                          key={item.path}
+                          label={item.label}
+                          leftSection={<Icon size={17} />}
+                          active={isActive(location.pathname, item.path)}
+                          onClick={() => goTo(item.path)}
+                          className="app-nav-link"
+                        />
+                      );
                     })}
                   </NavLink>
-                  <NavLink label="Vai trò và quyền" defaultOpened={visibleIamItems.slice(2, 5).some((item) => isActive(location.pathname, item.path))}>
+                  <NavLink
+                    label="Vai trò và quyền"
+                    defaultOpened={visibleIamItems
+                      .slice(2, 5)
+                      .some((item) => isActive(location.pathname, item.path))}
+                  >
                     {visibleIamItems.slice(2, 5).map((item) => {
                       const Icon = item.icon;
-                      return <NavLink key={item.path} label={item.label} leftSection={<Icon size={17} />} active={isActive(location.pathname, item.path)} onClick={() => goTo(item.path)} className="app-nav-link" />;
+                      return (
+                        <NavLink
+                          key={item.path}
+                          label={item.label}
+                          leftSection={<Icon size={17} />}
+                          active={isActive(location.pathname, item.path)}
+                          onClick={() => goTo(item.path)}
+                          className="app-nav-link"
+                        />
+                      );
                     })}
                   </NavLink>
                   {visibleIamItems.slice(5).map((item) => {
                     const Icon = item.icon;
-                    return <NavLink key={item.path} label="Báo cáo công việc" leftSection={<Icon size={17} />} active={isActive(location.pathname, item.path)} onClick={() => goTo(item.path)} className="app-nav-link" />;
+                    return (
+                      <NavLink
+                        key={item.path}
+                        label="Báo cáo công việc"
+                        leftSection={<Icon size={17} />}
+                        active={isActive(location.pathname, item.path)}
+                        onClick={() => goTo(item.path)}
+                        className="app-nav-link"
+                      />
+                    );
                   })}
                 </NavLink>
                 </>

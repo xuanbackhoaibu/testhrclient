@@ -40,6 +40,7 @@ export const ROUTE_POLICIES: Record<string, RoutePolicy> = {
   [ROUTES.movements]: { kind: 'permission', permissions: [HR_PERMISSIONS.MOVEMENT_READ] },
   [ROUTES.contracts]: { kind: 'permission', permissions: [HR_PERMISSIONS.CONTRACT_READ] },
   [ROUTES.leave]: { kind: 'permission', permissions: [HR_PERMISSIONS.LEAVE_READ] },
+  [ROUTES.leaveApprovalAssignments]: { kind: 'permission', permissions: [HR_PERMISSIONS.LEAVE_UPDATE] },
   [ROUTES.onboarding]: { kind: 'permission', permissions: [HR_PERMISSIONS.ONBOARDING_READ] },
   [ROUTES.offboarding]: { kind: 'permission', permissions: [HR_PERMISSIONS.OFFBOARDING_READ] },
 };

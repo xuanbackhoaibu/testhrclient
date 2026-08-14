@@ -15,6 +15,12 @@ export interface TimesheetGridDay {
   id: string;
   date: string;
   day: number;
+  /**
+   * Ô được backend dựng để xem trước bảng công cũ chưa có bản ghi lưu trữ.
+   * Chỉ dùng để hiển thị, không được cho HR sửa tay như dữ liệu TimesheetDay.
+   */
+  isDerived?: boolean;
+
   displaySymbol: string;
   paidDays: number;
   leaveDays: number;
@@ -22,11 +28,13 @@ export interface TimesheetGridDay {
   holidayName: string | null;
   firstPunch: string | null;
   lastPunch: string | null;
+  totalMinutes?: number | null;
   lateMinutes: number;
   earlyLeaveMinutes: number;
   needsExplanation: boolean;
   hasAdjustment: boolean;
   isLocked: boolean;
+  source?: string;
 }
 
 export interface BccSummary {
@@ -44,13 +52,20 @@ export interface BccSummary {
 
 export interface TimesheetGridRow {
   employeeId: string;
+  /** Mã thô từ BioTime/MCB, luôn được ưu tiên hiển thị trên BCC. */
+  attendanceCode?: string | null;
+  /** Mã HR nội bộ: chỉ giữ làm định danh/tie-break, không hiển thị trên BCC. */
   employeeCode: string;
   fullName: string;
   /** HR bật cho lãnh đạo/nhân sự đặc thù không cần log chấm công. */
   attendanceAutoFullDay: boolean;
   departmentId: string | null;
+  /** Mã phòng ban tại thời điểm của kỳ công, dùng để nhóm/sắp xếp BCC ổn định. */
+  departmentCode?: string | null;
   departmentName: string | null;
   unitId: string | null;
+  /** Mã đơn vị tại thời điểm của kỳ công, dùng để nhóm/sắp xếp BCC ổn định. */
+  unitCode?: string | null;
   unitName: string | null;
   jobTitle: string | null;
   days: TimesheetGridDay[];
@@ -92,12 +107,54 @@ export interface RecomputePayload {
   fromDate: string;
   toDate: string;
   employeeId?: string;
+  departmentId?: string;
+  unitId?: string;
+  departmentIds?: string[];
+  unitIds?: string[];
 }
 
 export interface RecomputeResult {
   processed: number;
   skippedLocked: number;
   skippedAdjusted: number;
+  skippedClosed?: number;
+}
+
+export type TimesheetRecomputeJobStatus =
+  | "QUEUED"
+  | "RUNNING"
+  | "SUCCEEDED"
+  | "FAILED"
+  | "CANCELLED";
+
+export interface TimesheetRecomputeJob {
+  id: string;
+  status: TimesheetRecomputeJobStatus;
+  fromDate: string;
+  toDate: string;
+  totalEmployees: number;
+  /** Number of employees that have source attendance data in the selected range. */
+  eligibleEmployees?: number;
+  totalMonths: number;
+  /** Months in the requested range that contain source attendance data. */
+  eligibleMonths?: number;
+  skippedNoSourceMonths?: number;
+  /** Source-bearing calendar months, returned for a truthful range preview. */
+  sourceMonths?: { year: number; month: number }[];
+  estimatedCells?: number;
+  totalBatches?: number;
+  completedBatches?: number;
+  /** Server-calculated progress; do not infer it from requested calendar months. */
+  progressPercent?: number;
+  completedMonths: number;
+  currentMonth: { year: number; month: number } | null;
+  processed: number;
+  skippedLocked: number;
+  skippedAdjusted: number;
+  skippedClosed: number;
+  cancelRequestedAt: string | null;
+  errorMessage: string | null;
+  monitorUrl: string;
 }
 
 export interface SetAutoFullAttendancePayload {

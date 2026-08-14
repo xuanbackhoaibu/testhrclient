@@ -19,6 +19,7 @@ import dayjs from 'dayjs';
 import { calendarApi, CalendarVisibility, CalendarEventType, type CalendarEvent } from '../../../features/calendar/calendarApi';
 import { useAuth } from '../../../features/auth/useAuth';
 import { ParticipantPicker, type SelectedParticipant } from './ParticipantPicker';
+import { HrmDateTimeInput } from '../../../shared/components/HrmDateInput';
 
 const PERSONAL_VISIBILITY_OPTIONS = [
   { value: CalendarVisibility.PRIVATE, label: 'Riêng tư' },
@@ -45,9 +46,9 @@ const EVENT_TYPE_OPTIONS = [
   { value: CalendarEventType.OTHER, label: 'Khác' },
 ];
 
-const LOCAL_FORMAT = 'YYYY-MM-DDTHH:mm';
+const LOCAL_FORMAT = 'YYYY-MM-DD HH:mm:ss';
 
-/** ISO string → value for <input type="datetime-local"> (local wall-clock). */
+/** ISO string → local wall-clock value used by the date-time picker. */
 function toLocalInput(iso: string | null | undefined): string {
   if (!iso) return '';
   const d = dayjs(iso);
@@ -248,18 +249,16 @@ export function CreateEventModal({ opened, onClose, editEvent }: CreateEventModa
         />
 
         <Group grow>
-          <TextInput
-            type="datetime-local"
+          <HrmDateTimeInput
             label="Bắt đầu"
-            value={startAt}
-            onChange={(e) => setStartAt(e.currentTarget.value)}
+            value={startAt || null}
+            onChange={(value) => setStartAt(value ?? '')}
             required
           />
-          <TextInput
-            type="datetime-local"
+          <HrmDateTimeInput
             label="Kết thúc"
-            value={endAt}
-            onChange={(e) => setEndAt(e.currentTarget.value)}
+            value={endAt || null}
+            onChange={(value) => setEndAt(value ?? '')}
             required
           />
         </Group>

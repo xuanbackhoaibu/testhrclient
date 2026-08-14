@@ -1,8 +1,11 @@
 import type { PropsWithChildren } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { MantineProvider } from '@mantine/core';
+import { DatesProvider } from '@mantine/dates';
 import { Notifications } from '@mantine/notifications';
 import { ConfigProvider } from 'antd';
+import dayjs from 'dayjs';
+import 'dayjs/locale/vi';
 
 import { antdTheme, mantineTheme } from './theme';
 import { queryClient } from './queryClient';
@@ -10,6 +13,8 @@ import { getCurrentUser } from '../features/auth/authApi';
 import { clearSession, getAccessToken, setSessionUser } from '../features/auth/authClient';
 import { useAuthStore } from '../features/auth/authStore';
 import { QueryClientProvider } from '@tanstack/react-query';
+
+dayjs.locale('vi');
 
 function readHttpStatus(error: unknown): number | undefined {
   return (
@@ -101,10 +106,12 @@ export function AppProviders({ children }: PropsWithChildren) {
   return (
     <ConfigProvider theme={antdTheme}>
       <MantineProvider theme={mantineTheme} defaultColorScheme="light">
-        <Notifications position="top-right" zIndex={4000} />
-        <QueryClientProvider client={queryClient}>
-          <AuthBootstrap>{children}</AuthBootstrap>
-        </QueryClientProvider>
+        <DatesProvider settings={{ locale: 'vi', firstDayOfWeek: 1, weekendDays: [0] }}>
+          <Notifications position="top-right" zIndex={4000} />
+          <QueryClientProvider client={queryClient}>
+            <AuthBootstrap>{children}</AuthBootstrap>
+          </QueryClientProvider>
+        </DatesProvider>
       </MantineProvider>
     </ConfigProvider>
   );

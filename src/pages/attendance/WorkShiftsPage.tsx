@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Alert,
   Badge,
@@ -22,7 +23,12 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconEdit, IconInfoCircle, IconPlus } from "@tabler/icons-react";
+import {
+  IconCalendarTime,
+  IconEdit,
+  IconInfoCircle,
+  IconPlus,
+} from "@tabler/icons-react";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
@@ -33,6 +39,7 @@ import {
   useWorkCalendar,
   useWorkShifts,
 } from "../../features/attendance/useWorkSchedule";
+import { buildShiftAssignmentUrl } from "../../features/attendance/shiftAssignmentNavigation";
 import {
   WEEKDAY_LABELS,
   type WorkShift,
@@ -67,13 +74,13 @@ const emptyForm: ShiftFormValues = {
   code: "",
   name: "",
   startTime: "08:00",
-  endTime: "17:30",
+  endTime: "17:00",
   breakStart: "12:00",
   breakEnd: "13:00",
   breakDeducted: true,
-  standardMinutes: 510,
+  standardMinutes: 480,
   dayValue: 1,
-  lateThresholdMinutes: 15,
+  lateThresholdMinutes: 10,
   earlyLeaveThresholdMinutes: 10,
   note: "",
   status: "ACTIVE",
@@ -167,6 +174,7 @@ function ShiftVisualCard({ shift, onEdit, canEdit }: { shift: WorkShift; onEdit:
 }
 
 export function WorkShiftsPage() {
+  const navigate = useNavigate();
   const { can } = useAuth();
   const canEdit = can(HR_PERMISSIONS.ATTENDANCE_UPDATE);
 
@@ -183,6 +191,12 @@ export function WorkShiftsPage() {
     initialValues: emptyForm,
     validate: {
       code: (value) => (value.trim() ? null : "Nhập mã ca."),
+      breakEnd: (value, values) =>
+        !value || TIME_PATTERN.test(value)
+          ? Boolean(value) === Boolean(values.breakStart)
+            ? null
+            : "Khai đủ cả giờ bắt đầu và kết thúc nghỉ trưa."
+          : "Giờ nghỉ trưa phải theo dạng HH:mm.",
       name: (value) => (value.trim() ? null : "Nhập tên ca."),
       startTime: (value) =>
         TIME_PATTERN.test(value) ? null : "Giờ vào phải theo dạng HH:mm.",
@@ -216,25 +230,28 @@ export function WorkShiftsPage() {
     setDrawerOpen(true);
   }
 
-  function openEdit(shift: WorkShift) {
-    setEditing(shift);
-    form.setValues({
-      code: shift.code,
-      name: shift.name,
-      startTime: shift.startTime,
-      endTime: shift.endTime,
-      breakStart: shift.breakStart ?? "",
-      breakEnd: shift.breakEnd ?? "",
-      breakDeducted: shift.breakDeducted,
-      standardMinutes: shift.standardMinutes,
-      dayValue: shift.dayValue,
-      lateThresholdMinutes: shift.lateThresholdMinutes,
-      earlyLeaveThresholdMinutes: shift.earlyLeaveThresholdMinutes,
-      note: shift.note ?? "",
-      status: shift.status,
-    });
-    setDrawerOpen(true);
-  }
+  const openEdit = useCallback(
+    (shift: WorkShift) => {
+      setEditing(shift);
+      form.setValues({
+        code: shift.code,
+        name: shift.name,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        breakStart: shift.breakStart ?? "",
+        breakEnd: shift.breakEnd ?? "",
+        breakDeducted: shift.breakDeducted,
+        standardMinutes: shift.standardMinutes,
+        dayValue: shift.dayValue,
+        lateThresholdMinutes: shift.lateThresholdMinutes,
+        earlyLeaveThresholdMinutes: shift.earlyLeaveThresholdMinutes,
+        note: shift.note ?? "",
+        status: shift.status,
+      });
+      setDrawerOpen(true);
+    },
+    [form],
+  );
 
   async function handleSubmit(values: ShiftFormValues) {
     const payload = {
@@ -264,7 +281,9 @@ export function WorkShiftsPage() {
       notifications.show({
         color: "green",
         title: editing ? "Đã cập nhật ca" : "Đã tạo ca",
-        message: "Bộ tính công sẽ dùng giờ mới ngay, không cần deploy lại.",
+        message: editing
+          ? "Mở Bảng công, chọn đúng tháng rồi Cập nhật bảng công. Ngày đã chốt hoặc HR sửa tay vẫn được giữ nguyên."
+          : "Dùng biểu tượng Phân ca này ở dòng ca để gán theo đối tượng và thời hạn.",
       });
       setDrawerOpen(false);
       setEditing(null);
@@ -362,11 +381,17 @@ export function WorkShiftsPage() {
       {
         key: "actions",
         header: "",
-        width: 80,
+        width: 104,
         align: "right",
         render: (record) => (
           <TableActionsMenu
             actions={[
+              {
+                label: "Phân ca này",
+                icon: <IconCalendarTime size={16} />,
+                disabled: !canEdit || record.status !== "ACTIVE",
+                onClick: () => navigate(buildShiftAssignmentUrl(record.id)),
+              },
               {
                 label: "Chỉnh sửa",
                 icon: <IconEdit size={16} />,
@@ -378,16 +403,14 @@ export function WorkShiftsPage() {
         ),
       },
     ],
-    // openEdit chỉ đọc setState + form (ổn định), nên không cần vào deps.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [canEdit],
+    [canEdit, navigate, openEdit],
   );
 
   return (
     <>
       <PageHeader
         title="Ca làm việc"
-        subtitle="Khai báo ca và lịch tuần. Bộ tính công đọc thẳng từ đây — sửa giờ ca là áp dụng ngay, không cần deploy lại."
+        subtitle="Khai báo mẫu giờ công tái sử dụng. Sau đó dùng “Phân ca này” để gán mẫu cho đúng đối tượng theo khoảng hiệu lực."
         actions={
           canEdit ? (
             <Button leftSection={<IconPlus size={18} />} onClick={openCreate}>
@@ -402,12 +425,12 @@ export function WorkShiftsPage() {
           icon={<IconInfoCircle size={18} />}
           color="hacomRed"
           variant="light"
-          title="Quy tắc chấm công: sau 08:15 mới tính đi muộn"
+          title="Quy tắc chấm công: quá ngưỡng ca mới tính đi muộn"
         >
-          Mốc 15 phút được tính theo điều kiện <b>quá mốc</b>: vào lúc
-          08:15 vẫn đúng giờ, 08:16 mới bị đánh dấu muộn. Hệ thống hiện chỉ ghi nhận, <b>chưa trừ
-          công</b>. Thứ Bảy dùng ca sáng 08:00–12:00; Chủ nhật luôn là ngày
-          nghỉ, không báo muộn hoặc thiếu chấm công.
+          Ca hành chính mặc định dùng mốc <b>10 phút</b>: vào lúc 08:10 vẫn đúng
+          giờ, 08:11 mới bị đánh dấu muộn. HR có thể cấu hình ngưỡng theo từng
+          ca; hệ thống hiện chỉ ghi nhận, <b>chưa trừ công</b>. Thứ Bảy dùng ca
+          sáng 08:00–12:00; Chủ nhật luôn là ngày nghỉ.
         </Alert>
 
         <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }} spacing="md">
@@ -424,7 +447,7 @@ export function WorkShiftsPage() {
           error={shiftsQuery.error}
           onRetry={() => void shiftsQuery.refetch()}
           emptyTitle="Chưa khai báo ca làm việc"
-          emptyDescription="Tạo ca hành chính trước, sau đó gán vào lịch tuần bên dưới."
+          emptyDescription="Tạo ca trước, rồi dùng “Phân ca này” để gán cho nhóm đã được HR chốt giờ làm."
         />
 
         <Card withBorder padding="lg" radius="md" className="work-week-card">
@@ -434,8 +457,9 @@ export function WorkShiftsPage() {
                 Lịch tuần mặc định
               </Title>
               <Text c="dimmed" size="sm">
-                Áp dụng cho toàn công ty khi nhân viên không có phân ca riêng.
-                Ngày lễ luôn phủ lên lịch này.
+                Là mẫu lịch để HR tham chiếu khi phân ca. Nhân sự thực tế cần
+                được gán ca hiệu lực; nếu chưa gán, BCC hiển thị “chưa phân ca”
+                và không tự tính công. Ngày lễ luôn phủ lên lịch này.
               </Text>
             </div>
 
@@ -465,7 +489,9 @@ export function WorkShiftsPage() {
                           void handleCalendarChange(
                             day.weekday,
                             nextWorking,
-                            nextWorking ? (day.shiftId ?? shiftOptions[0]?.value ?? null) : null,
+                            nextWorking
+                              ? (day.shiftId ?? shiftOptions[0]?.value ?? null)
+                              : null,
                           );
                         }}
                       />
@@ -475,7 +501,9 @@ export function WorkShiftsPage() {
                         data={shiftOptions}
                         value={day.shiftId}
                         disabled={
-                          !canEdit || !day.isWorkingDay || updateCalendarDay.isPending
+                          !canEdit ||
+                          !day.isWorkingDay ||
+                          updateCalendarDay.isPending
                         }
                         onChange={(value) => {
                           if (!value) {
@@ -532,7 +560,7 @@ export function WorkShiftsPage() {
               />
               <TextInput
                 label="Giờ ra"
-                placeholder="17:30"
+                placeholder="17:00"
                 withAsterisk
                 {...form.getInputProps("endTime")}
               />
@@ -571,11 +599,10 @@ export function WorkShiftsPage() {
                 {...form.getInputProps("dayValue")}
               />
               <NumberInput
-                label="Ngưỡng đi muộn theo quy định (phút)"
-                description="Cố định toàn công ty: check-in sau 08:15 mới tính đi muộn"
+                label="Ngưỡng đánh dấu đi muộn (phút)"
+                description="Mặc định 10; chỉ quá ngưỡng mới bị đánh dấu, chưa trừ công"
                 min={0}
                 max={240}
-                disabled
                 {...form.getInputProps("lateThresholdMinutes")}
               />
               <NumberInput
@@ -586,7 +613,11 @@ export function WorkShiftsPage() {
               />
             </SimpleGrid>
 
-            <Textarea label="Ghi chú" minRows={2} {...form.getInputProps("note")} />
+            <Textarea
+              label="Ghi chú"
+              minRows={2}
+              {...form.getInputProps("note")}
+            />
 
             {editing ? (
               <Select

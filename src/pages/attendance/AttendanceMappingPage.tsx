@@ -12,7 +12,6 @@ import {
   Stack,
   Table,
   Text,
-  TextInput,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
@@ -43,6 +42,8 @@ import type { MappingStats, UnmappedAttendanceItem } from '../../features/attend
 import { sortByCode } from '../../shared/utils/sort';
 import { NormalizedSearchInput } from '../../shared/components/NormalizedSearchInput';
 import { includesNormalizedSearch } from '../../shared/utils/normalizeSearchText';
+import { formatDate } from '../../shared/utils/date';
+import { HrmDateInput } from '../../shared/components/HrmDateInput';
 
 const PAGE_SIZE = 20;
 
@@ -207,10 +208,10 @@ function UnmappedTable({
                   </Badge>
                 </Table.Td>
                 <Table.Td>
-                  <Text size="sm">{item.firstWorkDate}</Text>
+                  <Text size="sm">{formatDate(item.firstWorkDate)}</Text>
                 </Table.Td>
                 <Table.Td>
-                  <Text size="sm">{item.lastWorkDate}</Text>
+                  <Text size="sm">{formatDate(item.lastWorkDate)}</Text>
                 </Table.Td>
                 <Table.Td ta="center">
                   <Badge color="orange" variant="light" size="sm">
@@ -503,18 +504,16 @@ function RemapModal({
 
         <Text size="sm" fw={500}>Giới hạn theo ngày (tùy chọn)</Text>
         <Group grow>
-          <TextInput
+          <HrmDateInput
             label="Từ ngày"
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.currentTarget.value)}
+            value={fromDate || null}
+            onChange={(value) => setFromDate(value ?? '')}
             size="sm"
           />
-          <TextInput
+          <HrmDateInput
             label="Đến ngày"
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.currentTarget.value)}
+            value={toDate || null}
+            onChange={(value) => setToDate(value ?? '')}
             size="sm"
           />
         </Group>
