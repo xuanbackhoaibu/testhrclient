@@ -12,6 +12,7 @@ import { ErrorState } from '../../shared/components/ErrorState';
 import { LoadingState } from '../../shared/components/LoadingState';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
+import { HrmDateInput } from '../../shared/components/HrmDateInput';
 import { formatDate } from '../../shared/utils/date';
 
 export function ContractsPage() {
@@ -103,11 +104,11 @@ export function ContractsPage() {
           <Form.Item name="contractType" label="Loại hợp đồng" rules={[{ required: true }]}>
             <Select options={CONTRACT_TYPE_OPTIONS.map((item) => ({ value: item, label: item }))} />
           </Form.Item>
-          <Form.Item name="startDate" label="Ngày bắt đầu" rules={[{ required: true }]}>
-            <Input type="date" />
+          <Form.Item name="startDate" label="Ngày bắt đầu" rules={[{ required: true }]} getValueFromEvent={(value: string | null) => value ?? undefined}>
+            <HrmDateInput style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="endDate" label="Ngày kết thúc">
-            <Input type="date" />
+          <Form.Item name="endDate" label="Ngày kết thúc" getValueFromEvent={(value: string | null) => value ?? undefined}>
+            <HrmDateInput style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="status" label="Trạng thái" rules={[{ required: true }]}>
             <Select options={['ACTIVE', 'COMPLETED'].map((item) => ({ value: item, label: item }))} />
@@ -117,8 +118,8 @@ export function ContractsPage() {
 
       <Modal open={Boolean(terminateId)} title="Chấm dứt hợp đồng" onCancel={() => setTerminateId(null)} onOk={() => void terminateForm.submit()} confirmLoading={terminateMutation.isPending}>
         <Form form={terminateForm} layout="vertical" onFinish={(values) => terminateId && terminateMutation.mutate({ id: terminateId, endDate: values.endDate })}>
-          <Form.Item name="endDate" label="Ngày kết thúc" rules={[{ required: true }]}>
-            <Input type="date" />
+          <Form.Item name="endDate" label="Ngày kết thúc" rules={[{ required: true }]} getValueFromEvent={(value: string | null) => value ?? undefined}>
+            <HrmDateInput style={{ width: '100%' }} />
           </Form.Item>
         </Form>
       </Modal>

@@ -7,6 +7,7 @@ import { ErrorState } from '../../shared/components/ErrorState';
 import { LoadingState } from '../../shared/components/LoadingState';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { formatDateTime } from '../../shared/utils/date';
+import { HrmDateInput } from '../../shared/components/HrmDateInput';
 
 export function AuditLogsPage() {
   const [selected, setSelected] = useState<AuditLog | null>(null);
@@ -50,10 +51,20 @@ export function AuditLogsPage() {
               <Input placeholder="ID người thao tác" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, actorUserId: value })); }} />
             </Col>
             <Col xs={24} md={3}>
-              <Input type="date" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, fromDate: value })); }} />
+              <HrmDateInput
+                value={params.fromDate ?? null}
+                onChange={(value) => setParams((current) => ({ ...current, fromDate: value ?? undefined }))}
+                placeholder="Từ ngày"
+                style={{ width: '100%' }}
+              />
             </Col>
             <Col xs={24} md={3}>
-              <Input type="date" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, toDate: value })); }} />
+              <HrmDateInput
+                value={params.toDate ?? null}
+                onChange={(value) => setParams((current) => ({ ...current, toDate: value ?? undefined }))}
+                placeholder="Đến ngày"
+                style={{ width: '100%' }}
+              />
             </Col>
           </Row>
 

@@ -44,6 +44,7 @@ import {
   type TimesheetGridDay,
   type TimesheetGridRow,
 } from "../../features/attendance/timesheetTypes";
+import { formatDate } from "../../shared/utils/date";
 import { useEmployees } from "../../features/employees/useEmployees";
 import { useDepartmentsSelect } from "../../features/organization/useDepartments";
 import { useUnitsSelect } from "../../features/organization/useUnits";
@@ -1501,7 +1502,7 @@ export function TimesheetGridPage() {
         onClose={() => setEditing(null)}
         title={
           editing
-            ? `Sửa ô: ${editing.row.fullName} — ngày ${editing.day.date}`
+            ? `Sửa ô: ${editing.row.fullName} — ngày ${formatDate(editing.day.date)}`
             : "Sửa ô chấm công"
         }
         centered

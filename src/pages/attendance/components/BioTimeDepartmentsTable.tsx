@@ -164,7 +164,7 @@ export function BioTimeDepartmentsTable() {
             width: 130,
             render: (dept) => (
               <Text size="xs" c="dimmed">
-                {dayjs(dept.syncedAt).format('HH:mm DD/MM/YYYY')}
+                {dayjs(dept.syncedAt).format('DD/MM/YYYY HH:mm')}
               </Text>
             ),
           },
