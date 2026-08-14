@@ -6,6 +6,7 @@ type AttendanceEventDay = Pick<
   | "firstPunch"
   | "lastPunch"
   | "needsExplanation"
+  | "source"
   | "totalMinutes"
 >;
 
@@ -26,5 +27,9 @@ export function timesheetDayDisplayValue(
 ): string {
   const symbol = day?.displaySymbol || "";
   if (symbol) return symbol;
+  // A default-full decision is an explicit HR outcome. Older responses may
+  // omit its redundant displaySymbol, but must still render the same `+`
+  // used by the BCC and Excel contract. Do not infer a symbol for UNASSIGNED.
+  if (day?.source === "DEFAULT_FULL_ATTENDANCE") return "+";
   return day?.needsExplanation && hasTimesheetAttendanceEvent(day) ? "?" : "";
 }

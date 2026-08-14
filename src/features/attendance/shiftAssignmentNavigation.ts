@@ -3,12 +3,12 @@ import { ROUTES } from "../../shared/constants/routes";
 import type { WorkShift } from "./workScheduleTypes";
 
 /**
- * Keeps the handoff from the reusable shift catalogue to an effective-dated
- * assignment explicit. A shift is never assigned until HR chooses a target
- * and submits the assignment form.
+ * Keeps the handoff from the reusable shift catalogue to the monthly
+ * assignment grid explicit. A shift is never assigned until HR chooses CBNV
+ * and submits the assignment.
  */
 export function buildShiftAssignmentUrl(shiftId: string): string {
-  const params = new URLSearchParams({ assignShiftId: shiftId, open: "1" });
+  const params = new URLSearchParams({ assignShiftId: shiftId });
   return `${ROUTES.shiftAssignments}?${params.toString()}`;
 }
 

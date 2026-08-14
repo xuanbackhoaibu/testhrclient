@@ -48,4 +48,25 @@ describe("timesheet day presentation", () => {
       }),
     ).toBe("+");
   });
+
+  it("keeps the default-full marker visible without inferring a symbol for an unassigned day", () => {
+    expect(
+      timesheetDayDisplayValue({
+        displaySymbol: "",
+        firstPunch: null,
+        lastPunch: null,
+        needsExplanation: false,
+        source: "DEFAULT_FULL_ATTENDANCE",
+      }),
+    ).toBe("+");
+    expect(
+      timesheetDayDisplayValue({
+        displaySymbol: "",
+        firstPunch: null,
+        lastPunch: null,
+        needsExplanation: false,
+        source: "UNASSIGNED",
+      }),
+    ).toBe("");
+  });
 });

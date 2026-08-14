@@ -6,9 +6,9 @@ import {
 } from "./shiftAssignmentNavigation";
 
 describe("shift assignment navigation", () => {
-  it("builds an explicit one-time handoff to the assignment form", () => {
+  it("builds an explicit handoff to the monthly assignment grid", () => {
     expect(buildShiftAssignmentUrl("shift HC/01")).toBe(
-      "/attendance/assignments?assignShiftId=shift+HC%2F01&open=1",
+      "/attendance/assignments?assignShiftId=shift+HC%2F01",
     );
   });
 

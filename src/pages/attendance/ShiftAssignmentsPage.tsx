@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
+  Accordion,
   Alert,
   Badge,
   Button,
@@ -41,6 +42,7 @@ import { ROUTES } from "../../shared/constants/routes";
 import { formatDate } from "../../shared/utils/date";
 
 import { HrmDateInput } from "../../shared/components/HrmDateInput";
+import { MonthlyShiftAssignmentGrid } from "./MonthlyShiftAssignmentGrid";
 type TargetKind = "employee" | "department" | "unit";
 
 interface AssignmentFormValues {
@@ -144,9 +146,12 @@ export function ShiftAssignmentsPage() {
   );
   // Chỉ tải danh sách nhân viên khi thực sự cần — tránh kéo cả công ty về
   // mỗi lần mở trang.
-  const employeesQuery = useAllEmployees({}, {
-    enabled: targetKind === "employee",
-  });
+  const employeesQuery = useAllEmployees(
+    {},
+    {
+      enabled: targetKind === "employee",
+    },
+  );
 
   const shiftOptions = useMemo(
     () =>
@@ -340,42 +345,65 @@ export function ShiftAssignmentsPage() {
     <>
       <PageHeader
         title="Phân ca"
-        subtitle="Gán ca cho cá nhân, phòng ban hoặc đơn vị. Nhân sự không có phân ca hiệu lực sẽ hiển thị “chưa phân ca” và không tự tính BCC."
+        subtitle="Tick CBNV, chọn ca đã tạo và áp dụng theo ngày. BCC dùng đúng ca kế hoạch này sau khi được cập nhật lại."
         actions={
           canEdit ? (
-            <Button leftSection={<IconPlus size={18} />} onClick={openCreate}>
-              Phân ca
+            <Button
+              variant="default"
+              leftSection={<IconPlus size={18} />}
+              onClick={openCreate}
+            >
+              Thêm quy tắc
             </Button>
           ) : null
         }
       />
 
       <Stack gap="md">
-        <Alert
-          icon={<IconInfoCircle size={18} />}
-          color="blue"
-          variant="light"
-          title="Độ ưu tiên khi một người trúng nhiều phân ca"
-        >
-          Cá nhân <b>&gt;</b> phòng ban <b>&gt;</b> đơn vị. Lịch tuần chỉ là mẫu
-          cấu hình/preview. Ngày lễ luôn phủ lên lịch đã phân. Nhóm chưa xác
-          định được ca (bảo vệ, lái xe…) nên <b>để trống</b> — hệ thống đánh dấu
-          “chưa phân ca” thay vì tự áp ca hành chính rồi chấm sai âm thầm.
-          <br />
-          Một phân ca dùng cùng một mẫu ca trong toàn bộ khoảng hiệu lực; không
-          dùng một phân ca để mô phỏng lịch T2–T6 và T7 có giờ khác nhau.
-        </Alert>
-
-        <DataTable
-          data={assignmentsQuery.data ?? []}
-          columns={columns}
-          rowKey={(record) => record.id}
-          loading={assignmentsQuery.isLoading}
-          error={assignmentsQuery.error}
-          onRetry={() => void assignmentsQuery.refetch()}
-          emptyTitle="Chưa có phân ca riêng"
-          emptyDescription="Tạo phân ca cho các nhóm đã được HR chốt giờ làm trước khi chạy BCC."
+        <MonthlyShiftAssignmentGrid
+          onOpenRules={openCreate}
+          requestedShiftId={requestedShiftId}
         />
+
+        <Accordion variant="contained" radius="md">
+          <Accordion.Item value="assignment-rules">
+            <Accordion.Control>
+              Quy tắc phân ca theo phòng ban / đơn vị
+            </Accordion.Control>
+            <Accordion.Panel>
+              <Stack gap="md">
+                <Alert
+                  icon={<IconInfoCircle size={18} />}
+                  color="blue"
+                  variant="light"
+                  title="Độ ưu tiên khi một người trúng nhiều phân ca"
+                >
+                  Cá nhân <b>&gt;</b> phòng ban <b>&gt;</b> đơn vị. Lịch tuần
+                  chỉ là mẫu cấu hình/preview. Ngày lễ luôn phủ lên lịch đã
+                  phân. Nhóm chưa xác định được ca (bảo vệ, lái xe…) nên{" "}
+                  <b>để trống</b>
+                  — hệ thống đánh dấu “chưa phân ca” thay vì tự áp ca hành chính
+                  rồi chấm sai âm thầm.
+                  <br />
+                  Một phân ca dùng cùng một mẫu ca trong toàn bộ khoảng hiệu
+                  lực; không dùng một phân ca để mô phỏng lịch T2–T6 và T7 có
+                  giờ khác nhau.
+                </Alert>
+
+                <DataTable
+                  data={assignmentsQuery.data ?? []}
+                  columns={columns}
+                  rowKey={(record) => record.id}
+                  loading={assignmentsQuery.isLoading}
+                  error={assignmentsQuery.error}
+                  onRetry={() => void assignmentsQuery.refetch()}
+                  emptyTitle="Chưa có quy tắc phân ca riêng"
+                  emptyDescription="Tạo quy tắc cho phòng ban hoặc đơn vị khi cần một ca mặc định theo tổ chức."
+                />
+              </Stack>
+            </Accordion.Panel>
+          </Accordion.Item>
+        </Accordion>
       </Stack>
 
       <Drawer
@@ -398,7 +426,11 @@ export function ShiftAssignmentsPage() {
               </Alert>
             ) : null}
             {shiftsQuery.isError ? (
-              <Alert color="red" variant="light" title="Không tải được ca làm việc">
+              <Alert
+                color="red"
+                variant="light"
+                title="Không tải được ca làm việc"
+              >
                 Tải lại danh sách ca trước khi lưu phân ca.{" "}
                 <Button
                   size="compact-sm"
