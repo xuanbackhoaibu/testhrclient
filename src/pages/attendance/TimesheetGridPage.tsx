@@ -52,6 +52,10 @@ import {
   type TimesheetGridDay,
   type TimesheetGridRow,
 } from "../../features/attendance/timesheetTypes";
+import {
+  hasTimesheetAttendanceEvent,
+  timesheetDayDisplayValue,
+} from "../../features/attendance/timesheetDayPresentation";
 import { formatDate } from "../../shared/utils/date";
 import { useEmployees } from "../../features/employees/useEmployees";
 import { useDepartmentsSelect } from "../../features/organization/useDepartments";
@@ -376,7 +380,9 @@ function cellDescription(
       : null,
     day.lateMinutes > 0 ? `Muộn ${day.lateMinutes}'` : null,
     day.earlyLeaveMinutes > 0 ? `Về sớm ${day.earlyLeaveMinutes}'` : null,
-    day.needsExplanation ? "Chờ giải trình" : null,
+    day.needsExplanation && hasTimesheetAttendanceEvent(day)
+      ? "Chờ giải trình"
+      : null,
     day.hasAdjustment ? "HR đã sửa tay" : null,
     day.isLocked ? "Đã chốt kỳ" : null,
   ]
@@ -492,7 +498,10 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
       </Table.Td>
       {dayMetas.map((meta) => {
         const day = daysByNumber.get(meta.day);
-        const label = day?.displaySymbol || "";
+        const label = timesheetDayDisplayValue(day);
+        const hasExplanationEvent = Boolean(
+          day?.needsExplanation && hasTimesheetAttendanceEvent(day),
+        );
         const background =
           day?.source === "UNASSIGNED"
             ? "#e5e7eb"
@@ -507,7 +516,7 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
                   ? "#f1f3f5"
                   : day?.hasAdjustment
                     ? "#dbeafe"
-                    : day?.needsExplanation
+                    : hasExplanationEvent
                       ? "#fee2e2"
                       : (day?.lateMinutes ?? 0) > 0
                         ? "#ffedd5"
@@ -533,7 +542,7 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
               size="xs"
               c={label.includes("KL") ? "red.9" : undefined}
             >
-              {label || (day?.needsExplanation ? "?" : "")}
+              {label}
             </Text>
           </Table.Td>
         );
