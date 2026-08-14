@@ -4,14 +4,19 @@
  * Quy tắc nguồn: zcong-ca-phep-docx/05-QUY-TAC-NGHIEP-VU-CHOT.md
  */
 
-export type RecordStatus = 'ACTIVE' | 'INACTIVE';
+export type RecordStatus = "ACTIVE" | "INACTIVE";
 
 export interface WorkShift {
   id: string;
   code: string;
   name: string;
+  groupName: string | null;
+  checkInStart: string | null;
   startTime: string;
+  checkInEnd: string | null;
   endTime: string;
+  checkOutStart: string | null;
+  checkOutEnd: string | null;
   breakStart: string | null;
   breakEnd: string | null;
   breakDeducted: boolean;
@@ -34,17 +39,22 @@ export interface WorkShift {
 export interface WorkShiftPayload {
   code: string;
   name: string;
+  groupName?: string | null;
+  checkInStart?: string | null;
   startTime: string;
+  checkInEnd?: string | null;
   endTime: string;
-  breakStart?: string;
-  breakEnd?: string;
+  checkOutStart?: string | null;
+  checkOutEnd?: string | null;
+  breakStart?: string | null;
+  breakEnd?: string | null;
   breakDeducted?: boolean;
   standardMinutes: number;
   dayValue?: number;
   lateThresholdMinutes?: number;
   earlyLeaveThresholdMinutes?: number;
   maxOvertimeMinutes?: number;
-  note?: string;
+  note?: string | null;
   status?: RecordStatus;
 }
 
@@ -100,6 +110,81 @@ export interface ShiftAssignmentPayload {
   note?: string;
 }
 
+/**
+ * Lưới phân ca tháng. Khác với BCC: đây là ca kế hoạch được resolver tính
+ * theo đúng thứ tự cá nhân > phòng ban > đơn vị, chưa phải ký hiệu công.
+ */
+export interface ShiftAssignmentGridQuery {
+  month: number;
+  year: number;
+  unitId: string;
+  departmentId?: string;
+  search?: string;
+}
+
+export interface ShiftAssignmentGridDay {
+  date: string;
+  day: number;
+  /** Ngoài ngày vào làm/ngày nghỉ việc nên không được áp ca trong kỳ này. */
+  inAttendanceWindow: boolean;
+  isWorkingDay: boolean;
+  holidayName: string | null;
+  source: string;
+  shift: { id: string; code: string; name: string } | null;
+}
+
+export interface ShiftAssignmentGridRow {
+  employeeId: string;
+  includedInTimesheet: boolean;
+  canInclude: boolean;
+  eligibilityReason: string | null;
+  lifecycle: "ACTIVE" | "NEW_HIRE" | "TERMINATED_IN_MONTH" | "NOT_ELIGIBLE";
+  employeeCode: string;
+  attendanceCode: string | null;
+  fullName: string;
+  jobTitle: string | null;
+  departmentId: string | null;
+  departmentCode: string | null;
+  departmentName: string | null;
+  unitCode: string | null;
+  unitName: string | null;
+  hireDate: string | null;
+  attendanceFrom: string | null;
+  attendanceTo: string | null;
+  terminationEffectiveDate: string | null;
+  days: ShiftAssignmentGridDay[];
+}
+
+export interface ShiftAssignmentGrid {
+  month: number;
+  year: number;
+  daysInMonth: number;
+  rosterConfigured: boolean;
+  isClosed: boolean;
+  rows: ShiftAssignmentGridRow[];
+}
+
+export interface BulkShiftAssignmentPayload {
+  month: number;
+  year: number;
+  unitId: string;
+  employeeIds: string[];
+  shiftId: string;
+  effectiveFrom: string;
+  effectiveTo: string;
+  note?: string;
+}
+
+export interface BulkShiftAssignmentResult {
+  created: number;
+  affected: Array<{
+    employeeId: string;
+    effectiveFrom: string;
+    effectiveTo: string;
+  }>;
+  recomputeRequired: boolean;
+}
+
 export interface WorkCalendarDay {
   id: string;
   weekday: number;
@@ -116,11 +201,11 @@ export interface WorkCalendarDayPayload {
 
 /** weekday theo JS Date.getDay(): 0 = Chủ nhật … 6 = Thứ 7. */
 export const WEEKDAY_LABELS: Record<number, string> = {
-  0: 'Chủ nhật',
-  1: 'Thứ 2',
-  2: 'Thứ 3',
-  3: 'Thứ 4',
-  4: 'Thứ 5',
-  5: 'Thứ 6',
-  6: 'Thứ 7',
+  0: "Chủ nhật",
+  1: "Thứ 2",
+  2: "Thứ 3",
+  3: "Thứ 4",
+  4: "Thứ 5",
+  5: "Thứ 6",
+  6: "Thứ 7",
 };

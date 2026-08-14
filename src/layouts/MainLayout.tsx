@@ -47,27 +47,36 @@ interface NavItem {
   icon: typeof IconDashboard;
 }
 
-const mainItems: NavItem[] = [
+const primaryItems: NavItem[] = [
   { label: "Dashboard", path: ROUTES.dashboard, icon: IconDashboard },
   { label: "Nhân sự", path: ROUTES.employees, icon: IconUsers },
+];
+
+const preAttendanceItems: NavItem[] = [
   { label: "Điều chuyển", path: ROUTES.movements, icon: IconTransfer },
-  // { label: "Hợp đồng", path: ROUTES.contracts, icon: IconBriefcase },
-  { label: "Chấm công", path: ROUTES.attendance, icon: IconClipboardList },
-  { label: "Xử lý mapping", path: ROUTES.attendanceMapping, icon: IconLink },
+];
+
+const attendanceItems: NavItem[] = [
+  { label: "Dữ liệu chấm công", path: ROUTES.attendance, icon: IconClipboardList },
+  { label: "Ca làm việc", path: ROUTES.workShifts, icon: IconClock },
+  { label: "Sắp ca tháng", path: ROUTES.monthlyTimesheetRoster, icon: IconCalendarTime },
+  { label: "Phân ca", path: ROUTES.shiftAssignments, icon: IconCalendarTime },
   { label: "Bảng công tháng", path: ROUTES.timesheetGrid, icon: IconTable },
   { label: "Kỳ công", path: ROUTES.timesheetPeriods, icon: IconCalendarStats },
-  { label: "Ca làm việc", path: ROUTES.workShifts, icon: IconClock },
   { label: "Ngày lễ", path: ROUTES.holidays, icon: IconCalendarCheck },
-  { label: "Phân ca", path: ROUTES.shiftAssignments, icon: IconCalendarTime },
-  // { label: "Onboarding", path: ROUTES.onboarding, icon: IconFolderOpen },
-  // { label: "Offboarding", path: ROUTES.offboarding, icon: IconFileImport },
-  // { label: "Audit logs", path: ROUTES.auditLogs, icon: IconFileAnalytics },
   { label: "Nghỉ phép", path: ROUTES.leave, icon: IconCalendarCheck },
   {
     label: "Cấu hình duyệt phép",
     path: ROUTES.leaveApprovalAssignments,
     icon: IconUserCheck,
   },
+];
+
+const postAttendanceItems: NavItem[] = [
+  { label: "Xử lý mapping", path: ROUTES.attendanceMapping, icon: IconLink },
+];
+
+const finalItems: NavItem[] = [
   // Keep global settings as the final action in the sidebar.
   { label: "Cài đặt", path: ROUTES.settings, icon: IconSettings },
 ];
@@ -109,6 +118,7 @@ const routeTitles: Record<string, string> = {
   [ROUTES.leaveApprovalAssignments]: "Cấu hình duyệt phép",
   [ROUTES.attendance]: "Chấm công",
   [ROUTES.attendanceMapping]: "Xử lý mapping",
+  [ROUTES.monthlyTimesheetRoster]: "Sắp ca tháng",
   [ROUTES.timesheetGrid]: "Bảng công tháng",
   [ROUTES.timesheetPeriods]: "Kỳ công",
   [ROUTES.workShifts]: "Ca làm việc",
@@ -140,7 +150,19 @@ export function MainLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const visibleMainItems = mainItems.filter((item) =>
+  const visiblePrimaryItems = primaryItems.filter((item) =>
+    canAccessRoute(user, item.path),
+  );
+  const visiblePreAttendanceItems = preAttendanceItems.filter((item) =>
+    canAccessRoute(user, item.path),
+  );
+  const visibleAttendanceItems = attendanceItems.filter((item) =>
+    canAccessRoute(user, item.path),
+  );
+  const visiblePostAttendanceItems = postAttendanceItems.filter((item) =>
+    canAccessRoute(user, item.path),
+  );
+  const visibleFinalItems = finalItems.filter((item) =>
     canAccessRoute(user, item.path),
   );
   const visibleOrgItems = orgItems.filter((item) =>
@@ -153,6 +175,9 @@ export function MainLayout() {
   const showOrganizationMenu = visibleOrgItems.length > 0;
   const showIamMenu = visibleIamItems.length > 0;
   const isIamRoute = visibleIamItems.some((item) =>
+    isActive(location.pathname, item.path),
+  );
+  const isAttendanceRoute = visibleAttendanceItems.some((item) =>
     isActive(location.pathname, item.path),
   );
   const selectedPath = location.pathname.startsWith("/employees/")
@@ -231,7 +256,7 @@ export function MainLayout() {
 
           <ScrollArea flex={1}>
             <Stack gap={4}>
-              {visibleMainItems.slice(0, 2).map((item) => {
+              {visiblePrimaryItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <NavLink
@@ -331,7 +356,58 @@ export function MainLayout() {
                 </NavLink>
               ) : null}
 
-              {visibleMainItems.slice(2).map((item) => {
+              {visiblePreAttendanceItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.path}
+                    label={item.label}
+                    leftSection={<Icon size={18} />}
+                    active={isActive(location.pathname, item.path)}
+                    onClick={() => goTo(item.path)}
+                    className="app-nav-link"
+                  />
+                );
+              })}
+
+              {visibleAttendanceItems.length ? (
+                <NavLink
+                  label="Chấm công"
+                  leftSection={<IconClipboardList size={18} />}
+                  defaultOpened={isAttendanceRoute}
+                  className="app-nav-link"
+                >
+                  {visibleAttendanceItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <NavLink
+                        key={item.path}
+                        label={item.label}
+                        leftSection={<Icon size={17} />}
+                        active={isActive(location.pathname, item.path)}
+                        onClick={() => goTo(item.path)}
+                        className="app-nav-link"
+                      />
+                    );
+                  })}
+                </NavLink>
+              ) : null}
+
+              {visiblePostAttendanceItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.path}
+                    label={item.label}
+                    leftSection={<Icon size={18} />}
+                    active={isActive(location.pathname, item.path)}
+                    onClick={() => goTo(item.path)}
+                    className="app-nav-link"
+                  />
+                );
+              })}
+
+              {visibleFinalItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <NavLink

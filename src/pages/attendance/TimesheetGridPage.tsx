@@ -1,4 +1,5 @@
 import { Fragment, memo, useCallback, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Alert,
   Badge,
@@ -65,7 +66,7 @@ import { PageHeader } from "../../shared/components/PageHeader";
 const now = new Date();
 const earliestTimesheetYear = 2020;
 const latestTimesheetYear = Math.max(
-  now.getFullYear() + 1,
+  now.getFullYear() + 4,
   earliestTimesheetYear,
 );
 const weekdayLabels = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
@@ -81,10 +82,10 @@ const yearOptions = Array.from(
   },
 );
 const fixedColumns = [
-  { key: "autoFull", label: "V", left: 0, width: 34 },
-  { key: "number", label: "TT", left: 34, width: 42 },
-  { key: "code", label: "Mã chấm công", left: 76, width: 104 },
-  { key: "name", label: "Họ và tên", left: 180, width: 210 },
+  { key: "number", label: "TT", left: 0, width: 42 },
+  { key: "name", label: "Họ và tên", left: 42, width: 210 },
+  { key: "autoFull", label: "V", left: 252, width: 34 },
+  { key: "code", label: "MCB", left: 286, width: 104 },
 ] as const;
 const dayColumnWidth = 44;
 const rowsPerPageOptions = [20, 50, 100].map((value) => ({
@@ -238,6 +239,22 @@ interface PreparedTimesheetGroup {
 
 function lastDayOfMonth(year: number, month: number): string {
   return new Date(Date.UTC(year, month, 0)).toISOString().split("T")[0];
+}
+
+function validMonth(value: string | null, fallback: number): number {
+  const month = Number(value);
+  return Number.isInteger(month) && month >= 1 && month <= 12
+    ? month
+    : fallback;
+}
+
+function validYear(value: string | null, fallback: number): number {
+  const year = Number(value);
+  return Number.isInteger(year) &&
+    year >= earliestTimesheetYear &&
+    year <= latestTimesheetYear
+    ? year
+    : fallback;
 }
 
 function formatTimesheetMonth({ year, month }: TimesheetMonth): string {
@@ -449,6 +466,31 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
           ...fixedStyle(fixedColumns[0].left, fixedColumns[0].width),
           textAlign: "center",
         }}
+      >
+        {employeeNumber}
+      </Table.Td>
+      <Table.Td style={fixedStyle(fixedColumns[1].left, fixedColumns[1].width)}>
+        <UnstyledButton
+          aria-label={`Thiết lập đủ công mặc định cho ${row.fullName}`}
+          title={`Mở thiết lập đủ công mặc định cho ${row.fullName}`}
+          onClick={() => onOpenAutoFullAttendance(row)}
+          style={{
+            display: "block",
+            minWidth: 0,
+            textAlign: "left",
+            width: "100%",
+          }}
+        >
+          <Text size="xs" fw={600} truncate="end" td="underline">
+            {row.fullName}
+          </Text>
+        </UnstyledButton>
+      </Table.Td>
+      <Table.Td
+        style={{
+          ...fixedStyle(fixedColumns[2].left, fixedColumns[2].width),
+          textAlign: "center",
+        }}
         title={
           row.attendanceAutoFullDay
             ? "Đã đánh dấu đủ công mặc định"
@@ -466,35 +508,10 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
           </Text>
         ) : null}
       </Table.Td>
-      <Table.Td
-        style={{
-          ...fixedStyle(fixedColumns[1].left, fixedColumns[1].width),
-          textAlign: "center",
-        }}
-      >
-        {employeeNumber}
-      </Table.Td>
-      <Table.Td style={fixedStyle(fixedColumns[2].left, fixedColumns[2].width)}>
+      <Table.Td style={fixedStyle(fixedColumns[3].left, fixedColumns[3].width)}>
         <Text size="xs" fw={600} title="Mã chấm công BioTime/MCB">
           {formatAttendanceCode(row.attendanceCode)}
         </Text>
-      </Table.Td>
-      <Table.Td style={fixedStyle(fixedColumns[3].left, fixedColumns[3].width)}>
-        <UnstyledButton
-          aria-label={`Thiết lập đủ công mặc định cho ${row.fullName}`}
-          title={`Mở thiết lập đủ công mặc định cho ${row.fullName}`}
-          onClick={() => onOpenAutoFullAttendance(row)}
-          style={{
-            display: "block",
-            minWidth: 0,
-            textAlign: "left",
-            width: "100%",
-          }}
-        >
-          <Text size="xs" fw={600} truncate="end" td="underline">
-            {row.fullName}
-          </Text>
-        </UnstyledButton>
       </Table.Td>
       {dayMetas.map((meta) => {
         const day = daysByNumber.get(meta.day);
@@ -569,12 +586,20 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
 
 export function TimesheetGridPage() {
   const { can } = useAuth();
+  const [searchParams] = useSearchParams();
   const canEdit = can(HR_PERMISSIONS.ATTENDANCE_UPDATE);
   const canExport = can(HR_PERMISSIONS.ATTENDANCE_EXPORT);
-  const [month, setMonth] = useState(now.getMonth() + 1);
-  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(() =>
+    validMonth(searchParams.get("month"), now.getMonth() + 1),
+  );
+  const [year, setYear] = useState(() =>
+    validYear(searchParams.get("year"), now.getFullYear()),
+  );
   const [departmentIds, setDepartmentIds] = useState<string[]>([]);
-  const [unitIds, setUnitIds] = useState<string[]>([]);
+  const [unitIds, setUnitIds] = useState<string[]>(() => {
+    const unitId = searchParams.get("unitId")?.trim();
+    return unitId ? [unitId] : [];
+  });
   const [employeeId, setEmployeeId] = useState<string | null>(null);
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [selectedEmployee, setSelectedEmployee] =
@@ -1258,7 +1283,7 @@ export function TimesheetGridPage() {
             riêng và chưa tự tính công. Nhấn vào <b>họ tên</b> để thiết lập{" "}
             <b>Đủ công mặc định</b> theo từng người đặc thù; khi bật, bảng hiển
             thị
-            <b> V</b> ở cột đầu. Bỏ tick sẽ khôi phục đúng bảng công trước khi
+            <b> V</b> cạnh họ tên. Bỏ tick sẽ khôi phục đúng bảng công trước khi
             bật. Khi chọn tháng cũ, hệ thống xét đúng phân công hiệu lực của
             tháng đó, kể cả nhân sự đã nghỉ hoặc chuyển đơn vị sau này.
           </Text>
@@ -1902,8 +1927,7 @@ export function TimesheetGridPage() {
             }
           />
           <Alert color="blue" variant="light">
-            Khi đã bật, bảng công hiển thị ký hiệu V ở cột đầu tiên của nhân
-            viên.
+            Khi đã bật, bảng công hiển thị ký hiệu V cạnh họ tên của nhân viên.
           </Alert>
           <Group justify="flex-end" mt="md">
             <Button
