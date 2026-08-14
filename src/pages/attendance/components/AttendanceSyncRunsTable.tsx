@@ -9,6 +9,7 @@ import dayjs from 'dayjs';
 import { useAttendanceSyncRuns } from '../../../features/attendance/useAttendanceSync';
 import { DataTable } from '../../../shared/components/DataTable';
 import { EmptyState } from '../../../shared/components/EmptyState';
+import { formatDate } from '../../../shared/utils/date';
 
 interface SyncRun {
   id: string;
@@ -84,7 +85,7 @@ export function AttendanceSyncRunsTable() {
               width: 160,
               render: (run) => (
                 <Stack gap={0}>
-                  <Text size="sm">{dayjs(run.startedAt).format('HH:mm DD/MM/YYYY')}</Text>
+                  <Text size="sm">{dayjs(run.startedAt).format('DD/MM/YYYY HH:mm')}</Text>
                   <Text size="xs" c="dimmed">{formatDuration(run.startedAt, run.finishedAt)}</Text>
                 </Stack>
               ),
@@ -113,7 +114,7 @@ export function AttendanceSyncRunsTable() {
               header: 'Khoảng ngày',
               width: 140,
               render: (run) => (
-                <Text size="xs">{run.startDate} → {run.endDate}</Text>
+                <Text size="xs">{formatDate(run.startDate)} → {formatDate(run.endDate)}</Text>
               ),
             },
             {

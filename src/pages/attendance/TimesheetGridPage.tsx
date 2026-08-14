@@ -44,6 +44,7 @@ import {
   type TimesheetGridDay,
   type TimesheetGridRow,
 } from "../../features/attendance/timesheetTypes";
+import { formatDate } from "../../shared/utils/date";
 import { useEmployees } from "../../features/employees/useEmployees";
 import { useDepartmentsSelect } from "../../features/organization/useDepartments";
 import { useUnitsSelect } from "../../features/organization/useUnits";
@@ -68,9 +69,10 @@ const yearOptions = Array.from(
   },
 );
 const fixedColumns = [
-  { key: "number", label: "TT", left: 0, width: 42 },
-  { key: "code", label: "Mã chấm công", left: 42, width: 104 },
-  { key: "name", label: "Họ và tên", left: 146, width: 210 },
+  { key: "autoFull", label: "V", left: 0, width: 34 },
+  { key: "number", label: "TT", left: 34, width: 42 },
+  { key: "code", label: "Mã chấm công", left: 76, width: 104 },
+  { key: "name", label: "Họ và tên", left: 180, width: 210 },
 ] as const;
 const dayColumnWidth = 44;
 const rowsPerPageOptions = [20, 50, 100].map((value) => ({
@@ -403,38 +405,47 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
           ...fixedStyle(fixedColumns[0].left, fixedColumns[0].width),
           textAlign: "center",
         }}
+        title={
+          row.attendanceAutoFullDay
+            ? "Đã đánh dấu đủ công mặc định"
+            : "Chưa đánh dấu đủ công mặc định"
+        }
+      >
+        {row.attendanceAutoFullDay ? (
+          <Text
+            aria-label={`${row.fullName} đã được đánh dấu đủ công mặc định`}
+            c="green.7"
+            fw={800}
+            size="sm"
+          >
+            V
+          </Text>
+        ) : null}
+      </Table.Td>
+      <Table.Td
+        style={{
+          ...fixedStyle(fixedColumns[1].left, fixedColumns[1].width),
+          textAlign: "center",
+        }}
       >
         {employeeNumber}
       </Table.Td>
-      <Table.Td style={fixedStyle(fixedColumns[1].left, fixedColumns[1].width)}>
+      <Table.Td style={fixedStyle(fixedColumns[2].left, fixedColumns[2].width)}>
         <Text size="xs" fw={600} title="Mã chấm công BioTime/MCB">
           {formatAttendanceCode(row.attendanceCode)}
         </Text>
       </Table.Td>
-      <Table.Td style={fixedStyle(fixedColumns[2].left, fixedColumns[2].width)}>
-        <Group gap={6} wrap="nowrap">
-          <UnstyledButton
-            aria-label={`Thiết lập đủ công mặc định cho ${row.fullName}`}
-            title={`Mở thiết lập đủ công mặc định cho ${row.fullName}`}
-            onClick={() => onOpenAutoFullAttendance(row)}
-            style={{ flex: 1, minWidth: 0, textAlign: "left" }}
-          >
-            <Text size="xs" fw={600} truncate="end" td="underline">
-              {row.fullName}
-            </Text>
-          </UnstyledButton>
-          {row.attendanceAutoFullDay ? (
-            <Text
-              aria-label={`${row.fullName} đã được đánh dấu đủ công mặc định`}
-              c="green.7"
-              fw={800}
-              size="sm"
-              title="Đã đánh dấu đủ công mặc định"
-            >
-              V
-            </Text>
-          ) : null}
-        </Group>
+      <Table.Td style={fixedStyle(fixedColumns[3].left, fixedColumns[3].width)}>
+        <UnstyledButton
+          aria-label={`Thiết lập đủ công mặc định cho ${row.fullName}`}
+          title={`Mở thiết lập đủ công mặc định cho ${row.fullName}`}
+          onClick={() => onOpenAutoFullAttendance(row)}
+          style={{ display: "block", minWidth: 0, textAlign: "left", width: "100%" }}
+        >
+          <Text size="xs" fw={600} truncate="end" td="underline">
+            {row.fullName}
+          </Text>
+        </UnstyledButton>
       </Table.Td>
       {dayMetas.map((meta) => {
         const day = daysByNumber.get(meta.day);
@@ -1054,7 +1065,7 @@ export function TimesheetGridPage() {
             báo muộn hay thiếu chấm công. Nhân sự chưa được phân ca hiển thị
             riêng và chưa tự tính công. Nhấn vào <b>họ tên</b> để thiết lập{" "}
             <b>Đủ công mặc định</b> theo từng người đặc thù; khi bật, bảng hiển thị
-            <b> V</b> cạnh tên. Bỏ tick sẽ khôi phục đúng bảng công trước khi bật.
+            <b> V</b> ở cột đầu. Bỏ tick sẽ khôi phục đúng bảng công trước khi bật.
             Khi chọn tháng cũ, hệ thống xét
             đúng phân công hiệu lực của tháng đó, kể cả nhân sự đã nghỉ hoặc
             chuyển đơn vị sau này.
@@ -1178,7 +1189,7 @@ export function TimesheetGridPage() {
                         rowSpan={2}
                         style={{
                           ...fixedStyle(column.left, column.width, true),
-                          textAlign: column.key === "number" ? "center" : "left",
+                          textAlign: column.key === "name" ? "left" : "center",
                           verticalAlign: "middle",
                           padding: "5px 7px",
                         }}
@@ -1491,7 +1502,7 @@ export function TimesheetGridPage() {
         onClose={() => setEditing(null)}
         title={
           editing
-            ? `Sửa ô: ${editing.row.fullName} — ngày ${editing.day.date}`
+            ? `Sửa ô: ${editing.row.fullName} — ngày ${formatDate(editing.day.date)}`
             : "Sửa ô chấm công"
         }
         centered

@@ -144,7 +144,7 @@ export function AttendanceFilterBar({
           size="sm"
         />
 
-        {/* Date filter with native inputs */}
+        {/* Date filter */}
         <AttendanceDateFilter
           value={dateFilterValue}
           onChange={handleDateFilterChange}

@@ -73,7 +73,7 @@ function SyncJobCard({ title, icon: Icon, job }: SyncJobCardProps) {
         <Text size="xs" c="red.6" lineClamp={2}>{job.lastError}</Text>
         {job.lastErrorAt && (
           <Text size="xs" c="dimmed" mt={2}>
-            Lúc {dayjs(job.lastErrorAt).format('HH:mm DD/MM/YYYY')}
+            Lúc {dayjs(job.lastErrorAt).format('DD/MM/YYYY HH:mm')}
           </Text>
         )}
       </Card>
@@ -89,7 +89,7 @@ function SyncJobCard({ title, icon: Icon, job }: SyncJobCardProps) {
           <Badge size="xs" color="green" variant="light">Thành công</Badge>
         </Group>
         <Text size="xs" c="green.6">
-          {dayjs(job.lastSuccessAt).format('HH:mm DD/MM/YYYY')} ·{' '}
+          {dayjs(job.lastSuccessAt).format('DD/MM/YYYY HH:mm')} ·{' '}
           {job.totalSynced.toLocaleString('vi-VN')} bản ghi
         </Text>
       </Card>

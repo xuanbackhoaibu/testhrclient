@@ -3,6 +3,7 @@ import { useState } from 'react';
 import dayjs from 'dayjs';
 import { AttendanceNativeDateInput } from './AttendanceNativeDateInput';
 import styles from './ManualSyncModal.module.css';
+import { formatDate } from '../../../shared/utils/date';
 
 interface ManualSyncModalProps {
   opened: boolean;
@@ -97,7 +98,7 @@ export function ManualSyncModal({ opened, onClose, onSync, isLoading }: ManualSy
 
         {diffDays > 0 && diffDays <= MAX_DAYS && startDate && endDate && (
           <Text size="xs" c="dimmed">
-            Khoảng cách: {diffDays} ngày ({startDate} → {endDate})
+            Khoảng cách: {diffDays} ngày ({formatDate(startDate)} → {formatDate(endDate)})
           </Text>
         )}
 

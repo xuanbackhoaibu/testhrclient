@@ -1,13 +1,18 @@
 import type { PropsWithChildren } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { MantineProvider, createTheme } from '@mantine/core';
+import { DatesProvider } from '@mantine/dates';
 import { Notifications } from '@mantine/notifications';
+import dayjs from 'dayjs';
+import 'dayjs/locale/vi';
 
 import { queryClient } from './queryClient';
 import { getCurrentUser } from '../features/auth/authApi';
 import { clearSession, getAccessToken, setSessionUser } from '../features/auth/authClient';
 import { useAuthStore } from '../features/auth/authStore';
 import { QueryClientProvider } from '@tanstack/react-query';
+
+dayjs.locale('vi');
 
 function readHttpStatus(error: unknown): number | undefined {
   return (
@@ -124,10 +129,12 @@ function AuthBootstrap({ children }: PropsWithChildren) {
 export function AppProviders({ children }: PropsWithChildren) {
   return (
     <MantineProvider theme={theme}>
-      <Notifications position="top-right" zIndex={4000} />
+      <DatesProvider settings={{ locale: 'vi', firstDayOfWeek: 1, weekendDays: [0] }}>
+        <Notifications position="top-right" zIndex={4000} />
         <QueryClientProvider client={queryClient}>
           <AuthBootstrap>{children}</AuthBootstrap>
         </QueryClientProvider>
+      </DatesProvider>
     </MantineProvider>
   );
 }
