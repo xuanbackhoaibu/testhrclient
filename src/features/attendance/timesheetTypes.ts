@@ -106,6 +106,10 @@ export interface RecomputePayload {
   fromDate: string;
   toDate: string;
   employeeId?: string;
+  departmentId?: string;
+  unitId?: string;
+  departmentIds?: string[];
+  unitIds?: string[];
 }
 
 export interface RecomputeResult {

@@ -901,6 +901,9 @@ export function TimesheetGridPage() {
       const result = await recompute.mutateAsync({
         fromDate: `${year}-${String(month).padStart(2, "0")}-01`,
         toDate: lastDayOfMonth(year, month),
+        employeeId: employeeId ?? undefined,
+        departmentIds: departmentIds.length ? departmentIds : undefined,
+        unitIds: unitIds.length ? unitIds : undefined,
       });
       notifications.show({
         color: "green",
@@ -910,11 +913,15 @@ export function TimesheetGridPage() {
             ? `Giữ nguyên ${result.skippedLocked} ngày đã chốt và ${result.skippedAdjusted} ngày HR đã sửa tay.`
             : "Bảng công đã được tạo/cập nhật theo phân công hiệu lực của kỳ đang xem, kể cả tháng lịch sử.",
       });
-    } catch {
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : "Vui lòng thử lại sau.";
       notifications.show({
         color: "red",
         title: "Không tính lại được",
-        message: "Vui lòng thử lại sau.",
+        message,
       });
     } finally {
       restoreTimesheetScroll();

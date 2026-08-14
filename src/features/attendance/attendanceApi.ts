@@ -25,6 +25,7 @@ import type {
   MapAttendanceResult,
   RemapResult,
 } from './attendanceTypes';
+import { longRunningAttendanceMutationConfig } from './longRunningMutation';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
 
@@ -53,7 +54,11 @@ export async function manualAttendanceSync(body: {
   endDate?: string;
   refreshDepartments?: boolean;
 }): Promise<ManualSyncResponse> {
-  return api.post('/attendance/sync/manual', body);
+  return api.post(
+    '/attendance/sync/manual',
+    body,
+    longRunningAttendanceMutationConfig,
+  );
 }
 
 // ─── BioTime Departments ─────────────────────────────────────────────────────
