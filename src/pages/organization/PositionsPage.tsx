@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import {
-  Badge,
   Button,
   Drawer,
   Group,
@@ -195,7 +194,6 @@ export function PositionsPage() {
     () => sortByCode(allPositions),
     [allPositions],
   );
-  const activeCount = sortedPositions.filter((item) => item.status === "ACTIVE").length;
   const treeRows = useMemo<OrganizationHierarchyRow<PositionTreeRecord>[]>(() => {
     const groups = new Map<string, Position[]>();
     sortedPositions.forEach((position) => {
@@ -262,7 +260,6 @@ export function PositionsPage() {
         subtitle="Danh mục chức danh, nhóm công việc, grade và import Excel ngay trong modal."
         actions={
           <>
-            <Badge variant="light">{activeCount} active</Badge>
             <ImportExportToolbar
               onDownloadTemplate={templateDownload.downloadTemplate}
               onImport={

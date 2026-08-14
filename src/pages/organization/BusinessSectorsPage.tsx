@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import {
-  Badge,
   Button,
   Drawer,
   Group,
@@ -178,7 +177,6 @@ export function BusinessSectorsPage() {
 
   // Sắp xếp toàn bộ lĩnh vực theo mã tăng dần rồi phân trang ở client.
   const sortedSectors = useMemo(() => sortByCode(allSectors), [allSectors]);
-  const activeCount = sortedSectors.filter((item) => item.status === "ACTIVE").length;
   const treeRows = useMemo<OrganizationHierarchyRow<SectorTreeRecord>[]>(() => {
     return sortedSectors.flatMap((sector) => {
       const sectorUnits = allUnits.filter((unit) => {
@@ -240,7 +238,6 @@ export function BusinessSectorsPage() {
         subtitle="Danh mục lĩnh vực dùng cho đơn vị và import Excel. Cột linh_vuc trong file import phải khớp mã lĩnh vực tại đây."
         actions={
           <>
-            <Badge variant="light">{activeCount} active</Badge>
             {canCreateBusinessSector ? (
               <Button
                 leftSection={<IconPlus size={18} />}

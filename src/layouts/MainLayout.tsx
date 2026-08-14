@@ -12,15 +12,16 @@ import {
   Title,
   Tooltip,
   UnstyledButton,
-  useMantineColorScheme,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+import { useDisclosure, useLocalStorage } from "@mantine/hooks";
 import {
   IconBriefcase,
   IconBuildingBank,
   IconCalendarCheck,
   IconCalendarEvent,
   IconCalendarTime,
+  IconChevronLeft,
+  IconChevronRight,
   IconChevronDown,
   IconClipboardList,
   IconClock,
@@ -29,7 +30,6 @@ import {
   IconKey,
   IconLink,
   IconLogout,
-  IconMoon,
   IconSettings,
   IconShield,
   IconSitemap,
@@ -38,7 +38,6 @@ import {
   IconUserCheck,
   IconUsers,
   IconCalendarStats,
-  IconSun,
 } from "@tabler/icons-react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
@@ -102,7 +101,7 @@ const routeTitles: Record<string, string> = {
   [ROUTES.leave]: "Nghỉ phép",
   [ROUTES.attendance]: "Chấm công",
   [ROUTES.attendanceMapping]: "Xử lý mapping",
-  [ROUTES.timesheetGrid]: "Bảng công tháng",
+  [ROUTES.timesheetGrid]: "Bảng chấm công tháng",
   [ROUTES.timesheetPeriods]: "Kỳ công",
   [ROUTES.workShifts]: "Ca làm việc",
   [ROUTES.holidays]: "Ngày lễ",
@@ -130,7 +129,10 @@ function isActive(pathname: string, path: string) {
 
 export function MainLayout() {
   const [opened, { toggle, close }] = useDisclosure();
-  const { colorScheme, setColorScheme } = useMantineColorScheme();
+  const [desktopCollapsed, setDesktopCollapsed] = useLocalStorage({
+    key: "hr-web-client.sidebar-collapsed",
+    defaultValue: false,
+  });
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -145,21 +147,20 @@ export function MainLayout() {
   const selectedPath = location.pathname.startsWith("/employees/")
     ? ROUTES.employees
     : location.pathname;
+  const headerTitle = routeTitles[selectedPath] ?? "HACOM HRM";
 
   function goTo(path: string) {
     navigate(path);
     close();
   }
 
-  const isDarkMode = colorScheme === "dark";
-
   return (
     <AppShell
       header={{ height: 64 }}
-      navbar={{ width: 260, breakpoint: "md", collapsed: { mobile: !opened } }}
+      navbar={{ width: 260, breakpoint: "md", collapsed: { mobile: !opened, desktop: desktopCollapsed } }}
       padding="lg"
       bg="var(--hrm-bg)"
-      className="app-shell"
+      className={`app-shell ${desktopCollapsed ? "is-sidebar-collapsed" : ""}`}
     >
       <AppShell.Header className="app-shell-header">
         <Group h="100%" px="lg" justify="space-between" wrap="nowrap">
@@ -170,22 +171,25 @@ export function MainLayout() {
               hiddenFrom="md"
               size="sm"
             />
+            {desktopCollapsed ? (
+              <Tooltip label="Mở rộng thanh bên">
+                <ActionIcon
+                  variant="default"
+                  size="lg"
+                  aria-label="Mở rộng thanh bên"
+                  visibleFrom="md"
+                  onClick={() => setDesktopCollapsed(false)}
+                >
+                  <IconChevronRight size={18} />
+                </ActionIcon>
+              </Tooltip>
+            ) : null}
             <Title order={1} size="h3" className="app-shell-title">
-              {routeTitles[selectedPath] ?? "HACOM HRM"}
+              {headerTitle}
             </Title>
           </Group>
 
           <Group gap="sm" wrap="nowrap" className="app-shell-user-tools">
-          <Tooltip label={isDarkMode ? "Tắt Dark Mode" : "Bật Dark Mode"}>
-            <ActionIcon
-              variant="default"
-              size="lg"
-              aria-label={isDarkMode ? "Tắt Dark Mode" : "Bật Dark Mode"}
-              onClick={() => setColorScheme(isDarkMode ? "light" : "dark")}
-            >
-              {isDarkMode ? <IconSun size={18} /> : <IconMoon size={18} />}
-            </ActionIcon>
-          </Tooltip>
           <NotificationBell />
           <Menu position="bottom-end" shadow="md" width={230}>
             <Menu.Target>
@@ -324,6 +328,19 @@ export function MainLayout() {
               })}
             </Stack>
           </ScrollArea>
+          <Group justify="center" className="app-sidebar-footer">
+            <Tooltip label="Thu gọn thanh bên">
+              <ActionIcon
+                variant="default"
+                size="lg"
+                aria-label="Thu gọn thanh bên"
+                visibleFrom="md"
+                onClick={() => setDesktopCollapsed(true)}
+              >
+                <IconChevronLeft size={18} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
         </Stack>
       </AppShell.Navbar>
 

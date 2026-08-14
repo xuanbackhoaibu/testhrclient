@@ -2158,3 +2158,46 @@ Cập nhật bổ sung:
   - Bỏ `Xem hợp đồng` khỏi hero; chuyển nút này xuống khối/tab `Hợp đồng` bên dưới cạnh nút `Gia hạn nhanh`.
   - Thanh tab chi tiết nhân viên giữ một hàng ngang, không wrap; giảm text xuống 12px/padding nhỏ hơn và khi thiếu chiều rộng sẽ cuộn ngang.
   - Mobile vẫn tự xếp dọc để không tràn màn hình.
+
+## 40. Khôi Phục MainLayout Theo Sidebar Cũ
+
+Đã điều chỉnh lại theo yêu cầu mới:
+
+- Hủy layout custom `Icon Rail` / `Navigation Panel` / `Main Content`.
+- Khôi phục `MainLayout` về đúng AppShell sidebar cũ:
+  - Header 64px.
+  - Navbar 260px.
+  - Có nút `Burger` trên mobile để bấm mở/đóng sidebar như trước.
+  - Logo dùng lại `BrandLogo`.
+  - Menu dùng lại `NavLink` của Mantine.
+- Khôi phục đúng cách sắp xếp module cũ:
+  - `Vận hành`: `Dashboard`, `Nhân sự`.
+  - `Danh mục`: nhóm `Tổ chức` gồm `Lĩnh vực`, `Đơn vị`, `Phòng ban`, `Chức danh`.
+  - `Quản trị`: nhóm phân quyền như cũ.
+  - Các module còn lại tiếp tục hiển thị phía dưới theo thứ tự cũ.
+- Bỏ nút đổi giao diện khỏi header theo yêu cầu.
+- Thêm nút thu gọn sidebar ở đáy vùng menu trên desktop.
+- Khi sidebar đã thu gọn, header hiển thị nút mở rộng lại sidebar.
+- Chỉnh vùng sidebar/navbar cao kín toàn màn hình `100vh`.
+- Header trên desktop bắt đầu từ mép phải sidebar khi sidebar mở, nên logo Hacom vẫn hiện ở đầu vùng module và không bị header che.
+- Khi sidebar thu gọn, header kéo lại full width để nút mở sidebar nằm đúng vị trí.
+- Điều chỉnh lại luồng tiêu đề/mô tả:
+  - Header chung chỉ hiển thị title trang.
+  - Text mô tả nhỏ của từng trang hiển thị ở đầu nội dung bên dưới.
+  - Riêng PageHeader trong body tự ẩn title khi route đã có title trên header chung, nhưng vẫn giữ subtitle và actions.
+- Đồng bộ cho các trang module khác:
+  - `PageHeader` dùng chung tự ẩn title khi route đã có header chung phía trên.
+  - Subtitle vẫn hiển thị dưới nội dung để người dùng đọc mô tả trang.
+  - Nếu trang có actions trong `PageHeader`, chỉ giữ lại cụm nút thao tác ở bên phải nội dung.
+  - Các trang chi tiết không trùng route chính, ví dụ `/employees/:id`, vẫn giữ PageHeader riêng.
+- Bỏ badge đếm dạng `{n} active` khỏi các trang danh mục tổ chức: `Lĩnh vực`, `Đơn vị`, `Phòng ban`, `Chức danh`.
+- Chuẩn hóa cụm actions trong `PageHeader`:
+  - Actions bám góc trên bên phải trên desktop, không bị đẩy xuống dưới subtitle.
+  - Nút trong actions được thu nhỏ về chiều cao 30px/font 12px để phù hợp với mật độ trang quản trị.
+  - `ImportExportToolbar` dùng button `xs` và icon 14px cho các nút `Tải mẫu Excel`, `Import Excel`, `Xuất Excel`.
+- Nhóm `Chấm công` vẫn giữ title trên header chung; mô tả nhỏ của từng bảng nằm dưới nội dung như các trang khác.
+- Bỏ PageHeader lặp trong trang chi tiết nhân viên:
+  - Không còn breadcrumb `Nhân sự / {mã nhân viên}`.
+  - Không còn title `Chi tiết nhân viên` và subtitle `{mã} · {họ tên}` phía trên hero.
+  - Hero hồ sơ trở thành phần đầu tiên của trang chi tiết.
+- Giữ NotificationBell và menu tài khoản trên header như bản cũ.

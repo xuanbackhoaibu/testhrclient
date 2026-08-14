@@ -47,6 +47,8 @@ body {
   border-bottom: 1px solid var(--hrm-border);
   box-shadow: var(--hrm-shadow);
   backdrop-filter: saturate(130%) blur(10px);
+  z-index: 200;
+  transition: padding-left 180ms ease;
 }
 
 :root[data-mantine-color-scheme='dark'] .app-shell-header {
@@ -56,6 +58,28 @@ body {
 .app-shell-navbar {
   background: var(--bg-surface);
   border-right: 1px solid var(--hrm-border);
+  height: 100vh;
+  min-height: 100vh;
+  overflow: hidden;
+  top: 0;
+  z-index: 100;
+}
+
+.app-sidebar-footer {
+  border-top: 1px solid var(--hrm-border);
+  padding-top: 10px;
+}
+
+@media (min-width: 48em) {
+  .app-shell:not(.is-sidebar-collapsed) .app-shell-header {
+    left: 260px;
+    width: calc(100% - 260px);
+  }
+
+  .app-shell.is-sidebar-collapsed .app-shell-header {
+    left: 0;
+    width: 100%;
+  }
 }
 
 :root[data-mantine-color-scheme='dark'] .app-shell-navbar {
@@ -71,6 +95,13 @@ body {
 .app-shell-title {
   color: var(--hrm-text);
   letter-spacing: 0;
+}
+
+.app-shell-subtitle {
+  max-width: min(680px, 54vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-user-menu-button {
@@ -91,6 +122,45 @@ body {
 
 .mantine-Button-root {
   font-weight: 600;
+}
+
+.page-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: start;
+  gap: var(--mantine-spacing-md);
+  margin-bottom: var(--mantine-spacing-lg);
+}
+
+.page-header.is-compact {
+  gap: var(--mantine-spacing-sm);
+  margin-bottom: var(--mantine-spacing-md);
+}
+
+.page-header-actions {
+  justify-self: end;
+  max-width: min(520px, 48vw);
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.page-header-actions .mantine-Button-root {
+  min-height: 30px;
+  height: 30px;
+  padding-inline: 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+@media (max-width: 48em) {
+  .page-header {
+    grid-template-columns: 1fr;
+  }
+
+  .page-header-actions {
+    justify-self: start;
+    max-width: 100%;
+  }
 }
 
 .ant-btn {

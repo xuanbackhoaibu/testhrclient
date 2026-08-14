@@ -59,7 +59,6 @@ import type { LeaveRequest } from '../../features/leave/leaveTypes';
 import type { Movement } from '../../features/movements/movementTypes';
 import { LoadingState } from '../../shared/components/LoadingState';
 import { ErrorState } from '../../shared/components/ErrorState';
-import { PageHeader } from '../../shared/components/PageHeader';
 import { StatusTag } from '../../shared/components/StatusTag';
 import { ROUTES } from '../../shared/constants/routes';
 import { formatDate, formatDateTime } from '../../shared/utils/date';
@@ -494,17 +493,6 @@ export function EmployeeDetailPage() {
 
   return (
     <>
-      <PageHeader
-        title="Chi tiết nhân viên"
-        subtitle={`${employee.employeeCode} · ${employee.fullName}`}
-        breadcrumbs={['Nhân sự', employee.employeeCode]}
-        actions={
-          <Button variant="default" onClick={() => navigate(-1)}>
-            Quay lại
-          </Button>
-        }
-      />
-
       <Paper withBorder p="lg" mb="md" className="employee-detail-hero">
         <div className="employee-detail-hero-content">
           <Group align="center" gap="lg" className="employee-detail-hero-main">

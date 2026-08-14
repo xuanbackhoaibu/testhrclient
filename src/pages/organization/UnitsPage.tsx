@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
 import {
-  Badge,
   Button,
   Drawer,
   Group,
@@ -312,7 +311,6 @@ export function UnitsPage() {
 
   // Sắp xếp toàn bộ đơn vị theo mã tăng dần rồi phân trang ở client.
   const sortedUnits = useMemo(() => sortByCode(allUnits), [allUnits]);
-  const activeCount = sortedUnits.filter((item) => item.status === "ACTIVE").length;
   const treeRows = useMemo<OrganizationHierarchyRow<UnitTreeRecord>[]>(() => {
     return sortedUnits.flatMap((unit) => {
       const departments = sortByCode(allDepartments.filter((department) => department.unitId === unit.id));
@@ -359,7 +357,6 @@ export function UnitsPage() {
         subtitle="Quản lý đơn vị, lĩnh vực, mã số thuế và thông tin danh mục dùng cho HRM."
         actions={
           <>
-            <Badge variant="light">{activeCount} active</Badge>
             <ImportExportToolbar
               onDownloadTemplate={templateDownload.downloadTemplate}
               onImport={canImportUnits ? () => setImportOpen(true) : undefined}

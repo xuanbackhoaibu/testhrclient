@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import {
-  Badge,
   Button,
   Drawer,
   Group,
@@ -217,7 +216,6 @@ export function DepartmentsPage() {
     () => sortByCode(allDepartments),
     [allDepartments],
   );
-  const activeCount = sortedDepartments.filter((item) => item.status === "ACTIVE").length;
   const treeRows = useMemo<OrganizationHierarchyRow<DepartmentTreeRecord>[]>(() => {
     const units = params.unitId
       ? (unitsSelect.data ?? []).filter((unit) => unit.id === params.unitId)
@@ -275,7 +273,6 @@ export function DepartmentsPage() {
         subtitle="Quản lý phòng ban theo đơn vị, trạng thái và import Excel ngay trên màn danh mục."
         actions={
           <>
-            <Badge variant="light">{activeCount} active</Badge>
             <ImportExportToolbar
               onDownloadTemplate={templateDownload.downloadTemplate}
               onImport={
