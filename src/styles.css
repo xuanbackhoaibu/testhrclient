@@ -1850,9 +1850,15 @@ body {
 
 /* AntD powers workflow/import tables; give it the same quiet table language. */
 .ant-table-wrapper .ant-table {
+  --ant-table-row-hover-bg: #f8fbff;
   border: 1px solid var(--hrm-border);
   border-radius: var(--hrm-radius);
   overflow: hidden;
+}
+
+.ant-table-tbody > tr.ant-table-row:hover > td,
+.ant-table-tbody > tr > td.ant-table-cell-row-hover {
+  background: #f8fbff !important;
 }
 
 .ant-table-wrapper .ant-table-thead > tr > th {

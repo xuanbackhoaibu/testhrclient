@@ -2206,3 +2206,7 @@ Cập nhật bổ sung:
   - Thông báo chưa đọc giữ nền trắng/surface như thông báo đã đọc.
   - Trạng thái chưa đọc chỉ còn chấm xanh nhỏ bên cạnh thời gian.
 - Giữ NotificationBell và menu tài khoản trên header như bản cũ.
+- Đồng bộ hover dòng table theo yêu cầu mới:
+  - Giữ lại nền hover xanh nhạt cũ `#f8fbff` cho các bảng ở light mode.
+  - Mantine DataTable, bảng chi tiết, bảng phân quyền, cây tổ chức, audit feed và AntD Table dùng cùng màu hover này.
+  - Dark mode giữ hover nền tối trung tính để không gây chói.
