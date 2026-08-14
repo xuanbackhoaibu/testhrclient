@@ -17,6 +17,7 @@ export function AttendanceNativeDateInput({
   value,
   onChange,
   disabled,
+  placeholder,
   min,
   max,
   className,
@@ -29,7 +30,7 @@ export function AttendanceNativeDateInput({
       disabled={disabled}
       minDate={min}
       maxDate={max}
-      placeholder="dd/mm/yyyy"
+      placeholder={placeholder || 'dd/mm/yyyy'}
       aria-label={ariaLabel || 'Chọn ngày'}
       classNames={{ input: `${styles.input} ${className || ''}` }}
       rightSection={<IconCalendar size={16} aria-hidden />}
