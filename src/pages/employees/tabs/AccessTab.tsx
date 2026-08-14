@@ -137,7 +137,7 @@ export function AccessTab({ employee }: Props) {
 
   if (!canReadRoles) {
     return (
-      <Alert color="blue" title="Không có quyền">
+      <Alert color="hacomRed" title="Không có quyền">
         Bạn không có quyền xem thông tin quyền truy cập nhân sự.
       </Alert>
     );
@@ -204,7 +204,7 @@ export function AccessTab({ employee }: Props) {
             {effectivePerms.roles.map((r) => (
               <Badge
                 key={r}
-                color={sensitiveRoleKeys.has(r) ? 'red' : 'blue'}
+                color={sensitiveRoleKeys.has(r) ? 'red' : 'hacomRed'}
                 variant="light"
               >
                 {r}

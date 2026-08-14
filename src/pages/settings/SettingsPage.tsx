@@ -90,7 +90,7 @@ const securityOverviewItems: Array<{
     description: 'Người dùng đăng nhập qua dịch vụ xác thực bên ngoài, HRM chỉ nhận hồ sơ và quyền đã xác minh.',
     detail: 'Không lưu mật khẩu nội bộ trong HRM.',
     icon: IconFingerprint,
-    color: 'blue',
+    color: 'hacomRed',
   },
   {
     title: 'Quyền theo vai trò',

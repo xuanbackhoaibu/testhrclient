@@ -56,7 +56,7 @@ export function CalendarSidebar() {
           <>
             <Divider label="Đang xem" labelPosition="left" />
             <div className={styles.viewingCard}>
-              <Avatar size="sm" radius="xl" color="blue" style={{ flexShrink: 0 }}>
+              <Avatar size="sm" radius="xl" color="hacomRed" style={{ flexShrink: 0 }}>
                 {displayName.charAt(0).toUpperCase()}
               </Avatar>
               <div className={styles.viewingCardInfo}>
@@ -135,7 +135,7 @@ export function CalendarSidebar() {
                     }
                     className={styles.employeeButton}
                     leftSection={
-                      <Avatar size="xs" radius="xl" color={isSelected ? 'white' : 'blue'} style={{ flexShrink: 0 }}>
+                      <Avatar size="xs" radius="xl" color={isSelected ? 'white' : 'hacomRed'} style={{ flexShrink: 0 }}>
                         {emp.fullName?.charAt(0).toUpperCase()}
                       </Avatar>
                     }

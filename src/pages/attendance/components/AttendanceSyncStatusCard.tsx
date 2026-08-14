@@ -50,14 +50,14 @@ function SyncJobCard({ title, icon: Icon, job }: SyncJobCardProps) {
 
   if (job.isRunning) {
     return (
-      <Card withBorder padding="sm" radius="md" bg="blue.0" style={{ borderColor: 'var(--mantine-color-blue-3)' }}>
+      <Card withBorder padding="sm" radius="md" bg="var(--hacom-primary-tint)" style={{ borderColor: 'color-mix(in srgb, var(--hacom-primary), transparent 65%)' }}>
         <Group gap="xs" mb={4}>
           <Icon size={14} />
-          <Text size="xs" fw={600} c="blue.7">{title}</Text>
-          <Badge size="xs" color="blue" variant="light">Đang chạy</Badge>
+          <Text size="xs" fw={600} c="var(--hacom-primary)">{title}</Text>
+          <Badge size="xs" color="hacomRed" variant="light">Đang chạy</Badge>
         </Group>
-        <Progress value={100} animated color="blue" size="xs" mb={4} />
-        <Text size="xs" c="blue.6">Đang đồng bộ dữ liệu...</Text>
+        <Progress value={100} animated color="hacomRed" size="xs" mb={4} />
+        <Text size="xs" c="var(--hacom-primary)">Đang đồng bộ dữ liệu...</Text>
       </Card>
     );
   }
@@ -153,7 +153,7 @@ export function AttendanceSyncStatusCard({
       <Card withBorder padding="sm" radius="md" mb="xs">
         <Group justify="space-between" wrap="wrap" gap="xs">
           <Group gap="xs">
-            <ThemeIcon size="sm" variant="light" color="blue" radius="xl">
+            <ThemeIcon size="sm" variant="light" color="hacomRed" radius="xl">
               <IconDatabase size={12} />
             </ThemeIcon>
             <Text size="xs">
@@ -171,7 +171,7 @@ export function AttendanceSyncStatusCard({
           {mayViewSyncLog && (
             <Text
               size="xs"
-              c="blue"
+              c="var(--hacom-primary)"
               style={{ cursor: 'pointer' }}
               onClick={onViewSyncHistory}
             >

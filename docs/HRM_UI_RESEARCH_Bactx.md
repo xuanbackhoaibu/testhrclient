@@ -2107,3 +2107,54 @@ Cập nhật bổ sung:
   - Không dùng lại bố cục cột cũ; chuyển sang cột đứng dạng compact chart.
   - Cột có track nền, fill animate theo chiều cao, số lượng trên đầu cột và phần trăm dưới nhãn.
   - Mobile vẫn giữ cột đứng nhưng giảm chiều cao track để tránh tràn khung.
+
+## 39. Giai Đoạn 1 - Hệ Thống Màu Hacom
+
+Đã nâng cấp:
+
+- Tạo file `src/styles/design-tokens.css` làm nguồn token màu tập trung.
+- Khai báo đầy đủ nhóm token:
+  - Brand color Hacom đỏ/vàng.
+  - Neutral background/surface/border.
+  - Text primary/secondary/placeholder.
+  - Chart palette 7 màu cố định.
+  - Dark mode override cho toàn bộ token chính.
+- Import `design-tokens.css` trong `src/main.tsx` trước `src/styles.css`.
+- Rút gọn token cũ trong `src/styles.css`:
+  - Không còn khai báo màu Hacom trực tiếp trong `styles.css`.
+  - `--hrm-*` được map lại qua token mới để các component cũ vẫn chạy ổn.
+- Thay các màu xanh Mantine/hardcode trong `src`:
+  - `color="blue"` / `color='blue'` đổi sang `hacomRed`.
+  - `c="blue"` đổi sang `var(--hacom-primary)`.
+  - `mantine-color-blue-*` đổi sang `--hacom-primary`, `--hacom-primary-tint` hoặc tint tương ứng.
+  - Các selected row / calendar / sync status / data table không còn phụ thuộc palette xanh Mantine.
+- Giữ lưu ý tương phản:
+  - Không dùng vàng `#D8C764` làm chữ chính trên nền trắng.
+  - Chữ màu vàng dùng `--hacom-accent-text`.
+  - Vàng chỉ dùng cho tint, progress, icon, border hoặc chart.
+
+Kết quả kiểm tra:
+
+- `rg` không còn tìm thấy hardcode xanh Mantine theo các pattern: `#228be6`, `#339af0`, `#1c7ed6`, `#e7f5ff`, `#d0ebff`, `mantine-color-blue`, `color="blue"`, `c="blue"`.
+- `npm run typecheck` pass.
+- `npm run lint` pass.
+
+Cập nhật bổ sung:
+
+- Shared `ErrorState` đổi từ màu đỏ sang màu vàng:
+  - Alert `Không tải được dữ liệu` dùng `color="yellow"`.
+  - Nút `Thử lại` dùng tone vàng light.
+  - Các màn đang dùng `ErrorState` sẽ đồng bộ kiểu cảnh báo thay vì hiển thị như lỗi nghiêm trọng màu đỏ.
+- Badge đếm nhân sự trong nhóm cơ cấu tổ chức đổi sang nền trắng/viền xám:
+  - Không còn nền đỏ nhạt cho badge `{n} nhân sự`.
+  - Dark mode dùng surface tối và chữ sáng, không dùng tint đỏ.
+- Hero chi tiết nhân viên:
+  - Đổi layout header sang grid 2 cột trên desktop.
+  - Nhóm nút `Sửa hồ sơ`, `Gửi email`, `Xem bảng công` luôn nằm phía trên bên phải, không bị đẩy xuống dưới khi thông tin nhân viên dài.
+  - Thu nhỏ nút thao tác nhanh về size `xs`, giảm icon/padding/gap và giữ `nowrap` để nằm trên cùng một hàng ở desktop.
+  - Nút `Sửa hồ sơ` mở drawer sửa ngay trong trang chi tiết nhân viên, không điều hướng về danh sách.
+  - Form sửa tại chỗ cho phép cập nhật thông tin hồ sơ chính: họ tên, email, SĐT, giới tính, ngày sinh, ngày vào làm và trạng thái nhân sự.
+  - Lưu thành công sẽ invalidate `employee-detail` và `employees`, sau đó giữ nguyên người dùng tại trang chi tiết.
+  - Bỏ `Xem hợp đồng` khỏi hero; chuyển nút này xuống khối/tab `Hợp đồng` bên dưới cạnh nút `Gia hạn nhanh`.
+  - Thanh tab chi tiết nhân viên giữ một hàng ngang, không wrap; giảm text xuống 12px/padding nhỏ hơn và khi thiếu chiều rộng sẽ cuộn ngang.
+  - Mobile vẫn tự xếp dọc để không tràn màn hình.

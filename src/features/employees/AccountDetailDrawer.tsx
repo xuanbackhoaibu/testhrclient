@@ -229,7 +229,7 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
         size="md"
       >
         {!canRead ? (
-          <Alert color="blue">
+          <Alert color="hacomRed">
             Bạn không có quyền xem thông tin tài khoản.
           </Alert>
         ) : isLoading ? (
@@ -457,7 +457,7 @@ export function AccountDetailDrawer({ employee, opened, onClose }: Props) {
                 {({ copied, copy }) => (
                   <Button
                     variant={copied ? 'filled' : 'light'}
-                    color={copied ? 'teal' : 'blue'}
+                    color={copied ? 'teal' : 'hacomRed'}
                     onClick={copy}
                   >
                     {copied ? 'Đã sao chép' : 'Sao chép mật khẩu'}

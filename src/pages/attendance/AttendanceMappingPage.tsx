@@ -75,7 +75,7 @@ function MappingStatsSection({
       <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="xs">
         <Card withBorder padding="sm">
           <Group gap="xs">
-            <IconUsers size={18} color="blue" />
+            <IconUsers size={18} color="hacomRed" />
             <Text size="xs" c="dimmed">Tổng bản ghi</Text>
             <Text size="lg" fw={700}>{stats.total.toLocaleString('vi-VN')}</Text>
           </Group>
@@ -221,7 +221,7 @@ function UnmappedTable({
                   <Button
                     size="xs"
                     variant="light"
-                    color="blue"
+                    color="hacomRed"
                     leftSection={<IconLink size={14} />}
                     onClick={() => onMap(item)}
                   >
@@ -323,7 +323,7 @@ function MapEmployeeModal({
 
   const scoreColor = (score: number) => {
     if (score >= 0.95) return 'green';
-    if (score >= 0.7) return 'blue';
+    if (score >= 0.7) return 'hacomRed';
     return 'gray';
   };
 
@@ -380,11 +380,11 @@ function MapEmployeeModal({
                     cursor: 'pointer',
                     borderColor:
                       selectedEmployeeId === s.employeeId
-                        ? 'var(--mantine-color-blue-5)'
+                        ? 'var(--hacom-primary)'
                         : undefined,
                     background:
                       selectedEmployeeId === s.employeeId
-                        ? 'var(--mantine-color-blue-0)'
+                        ? 'var(--hacom-primary-tint)'
                         : undefined,
                   }}
                 >
@@ -408,7 +408,7 @@ function MapEmployeeModal({
                         {scoreLabel(s.score)} {Math.round(s.score * 100)}%
                       </Badge>
                       {selectedEmployeeId === s.employeeId && (
-                        <IconCheck size={16} color="var(--mantine-color-blue-6)" />
+                        <IconCheck size={16} color="var(--hacom-primary)" />
                       )}
                     </Stack>
                   </Group>
@@ -430,7 +430,7 @@ function MapEmployeeModal({
               Hủy
             </Button>
             <Button
-              color="blue"
+              color="hacomRed"
               leftSection={<IconLink size={16} />}
               disabled={!selectedEmployeeId}
               loading={mapMutation.isPending}

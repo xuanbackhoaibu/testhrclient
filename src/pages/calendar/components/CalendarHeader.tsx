@@ -14,7 +14,7 @@ export function CalendarHeader() {
         {isViewingOthers ? (
           <>
             {/* Avatar */}
-            <Avatar size="md" radius="xl" color="blue" style={{ flexShrink: 0 }}>
+            <Avatar size="md" radius="xl" color="hacomRed" style={{ flexShrink: 0 }}>
               {displayName.charAt(0).toUpperCase()}
             </Avatar>
 

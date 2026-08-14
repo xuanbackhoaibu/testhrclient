@@ -145,7 +145,7 @@ export function ParticipantPicker({
                   style={{ padding: '8px 12px' }}
                 >
                   <Group gap="sm" wrap="nowrap">
-                    <Avatar size="sm" radius="xl" color="blue">
+                    <Avatar size="sm" radius="xl" color="hacomRed">
                       {emp.fullName?.charAt(0).toUpperCase()}
                     </Avatar>
                     <Stack gap={0} style={{ minWidth: 0 }}>

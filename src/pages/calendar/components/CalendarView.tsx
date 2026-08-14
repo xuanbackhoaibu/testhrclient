@@ -8,7 +8,7 @@ import styles from './CalendarView.module.css';
 
 const EVENT_COLORS: Record<string, string> = {
   PERSONAL: 'grape',
-  MEETING: 'blue',
+  MEETING: 'hacomRed',
   TASK: 'green',
   DEADLINE: 'red',
   LEAVE: 'orange',

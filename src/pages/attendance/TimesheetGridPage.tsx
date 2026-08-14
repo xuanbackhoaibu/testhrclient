@@ -888,7 +888,7 @@ export function TimesheetGridPage() {
       });
       if (result.recompute.skippedLocked + result.recompute.skippedAdjusted > 0) {
         notifications.show({
-          color: "blue",
+          color: "hacomRed",
           title: "Giữ nguyên quyết định đã có",
           message: `Không thay đổi ${result.recompute.skippedLocked} ngày đã chốt và ${result.recompute.skippedAdjusted} ngày HR đã sửa tay.`,
         });
@@ -977,7 +977,7 @@ export function TimesheetGridPage() {
           p="xs"
           radius="sm"
           icon={<IconInfoCircle size={15} />}
-          color="blue"
+          color="hacomRed"
           variant="light"
         >
           <Text size="xs">

@@ -298,7 +298,7 @@ export function PermissionGroupsPage() {
           <Group justify="center" py="xl"><Loader /></Group>
         ) : (
           <Stack>
-            <Text size="sm" ff="monospace" c="blue">{detail.key}</Text>
+            <Text size="sm" ff="monospace" c="var(--hacom-primary)">{detail.key}</Text>
 
             {canManage && editGroup && (
               <Stack gap="xs">
@@ -376,7 +376,7 @@ export function PermissionGroupsPage() {
               {(detail.permissions ?? []).map((perm) => (
                 <Group key={perm.id} justify="space-between" p="xs" style={{ border: '1px solid #eee', borderRadius: 6 }}>
                   <Stack gap={2}>
-                    <Text size="xs" ff="monospace" c="blue">{perm.key}</Text>
+                    <Text size="xs" ff="monospace" c="var(--hacom-primary)">{perm.key}</Text>
                     {perm.description && <Text size="xs" c="dimmed">{perm.description}</Text>}
                   </Stack>
                   {canManage && (

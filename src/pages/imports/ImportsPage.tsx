@@ -107,7 +107,7 @@ function batchStatusColor(status: string) {
   if (normalized.includes('COMPLETED') || normalized.includes('SUCCESS') || normalized.includes('COMMITTED')) return 'green';
   if (normalized.includes('PARTIAL') || normalized.includes('WARNING')) return 'orange';
   if (normalized.includes('FAILED') || normalized.includes('ERROR')) return 'red';
-  return 'blue';
+  return 'hacomRed';
 }
 
 function ImportWizard({ currentStep }: { currentStep: number }) {

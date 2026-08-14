@@ -518,7 +518,7 @@ export function PendingHrLinkAccountsPage() {
                 </Badge>
               </Group>
 
-              <Alert color="blue" variant="light" className="pending-link-suggestion">
+              <Alert color="hacomRed" variant="light" className="pending-link-suggestion">
                 <Text size="sm" fw={700}>Nhân viên đề xuất</Text>
                 <Text size="sm">Mã claim: {codeValue(user)}</Text>
                 <Text size="sm">Email claim: {emailValue(user)}</Text>
@@ -628,7 +628,7 @@ export function PendingHrLinkAccountsPage() {
                 }))
               }
             />
-            <Alert color="blue" variant="light">
+            <Alert color="hacomRed" variant="light">
               Xác nhận lưu sẽ thay đổi claim dùng để admin đối chiếu trước khi
               link. Tài khoản vẫn ở trạng thái PENDING_HR_LINK.
             </Alert>

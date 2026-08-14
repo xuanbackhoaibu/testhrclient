@@ -28,7 +28,7 @@ interface SyncRun {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  RUNNING: 'blue',
+  RUNNING: 'hacomRed',
   SUCCESS: 'green',
   FAILED: 'red',
   SKIPPED: 'yellow',

@@ -160,7 +160,7 @@ export function OrganizationHierarchyList<T>({
       <Paper withBorder radius="md" className="organization-tree-shell" data-loading={loading ? "true" : undefined}>
         {loading ? (
           <Group px="md" py={6} className="data-table-refreshing">
-            <Text size="xs" c="blue" fw={650}>
+            <Text size="xs" c="var(--hacom-primary)" fw={650}>
               Đang cập nhật dữ liệu...
             </Text>
           </Group>
@@ -217,7 +217,7 @@ export function OrganizationHierarchyList<T>({
                       </Text>
                     </Table.Td>
                     <Table.Td>
-                      <Badge variant="light" leftSection={<IconUser size={12} />}>
+                      <Badge variant="default" className="organization-employee-count-badge" leftSection={<IconUser size={12} />}>
                         {row.employeeCount} nhân sự
                       </Badge>
                     </Table.Td>
@@ -303,7 +303,7 @@ export function OrganizationHierarchyList<T>({
                 <Stack gap="xs">
                   {selectedEmployees.slice(0, 12).map((employee) => (
                     <Group key={employee.id} gap="sm" className="organization-employee-row">
-                      <Avatar size={34} radius="xl" color="blue">{getInitials(employee.fullName)}</Avatar>
+                      <Avatar size={34} radius="xl" color="hacomRed">{getInitials(employee.fullName)}</Avatar>
                       <Box style={{ flex: 1 }}>
                         <Text size="sm" fw={700}>{employee.fullName}</Text>
                         <Text size="xs" c="dimmed">{employee.employeeCode}</Text>

@@ -317,7 +317,7 @@ export function AttendancePage() {
             {mayViewSyncLog && (
               <Text
                 size="sm"
-                c="blue"
+                c="var(--hacom-primary)"
                 style={{ cursor: 'pointer' }}
                 onClick={openBiotimeDepts}
               >
@@ -327,7 +327,7 @@ export function AttendancePage() {
             {mayViewSyncLog && (
               <Text
                 size="sm"
-                c="blue"
+                c="var(--hacom-primary)"
                 style={{ cursor: 'pointer' }}
                 onClick={openSyncHistory}
               >
@@ -337,7 +337,7 @@ export function AttendancePage() {
             {mayExport && (
               <Text
                 size="sm"
-                c="blue"
+                c="var(--hacom-primary)"
                 style={{ cursor: 'pointer' }}
                 onClick={handleExport}
               >
@@ -347,7 +347,7 @@ export function AttendancePage() {
             {maySync && (
               <Text
                 size="sm"
-                c="blue"
+                c="var(--hacom-primary)"
                 style={{ cursor: 'pointer' }}
                 onClick={handleSync}
               >

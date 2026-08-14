@@ -100,7 +100,7 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
           </Stack>
 
           {!hasEmail && (
-            <Alert color="blue" title="Không có email (không bắt buộc)">
+            <Alert color="hacomRed" title="Không có email (không bắt buộc)">
               Nhân sự chưa có email — vẫn cấp được tài khoản. Tài khoản đăng nhập là mã nhân viên và sẽ ở trạng thái Hoạt động ngay. (Không thể gửi OTP kích hoạt khi chưa có email.)
             </Alert>
           )}
@@ -113,13 +113,13 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
           />
 
           {!sendOtp && (
-            <Alert color="blue" variant="light">
+            <Alert color="hacomRed" variant="light">
               Tài khoản sẽ ở trạng thái <strong>Hoạt động</strong> ngay sau khi tạo, sử dụng mật khẩu mặc định <Code>Hacomholdings@88</Code> và bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.
             </Alert>
           )}
 
           {sendOtp && (
-            <Alert color="blue" variant="light">
+            <Alert color="hacomRed" variant="light">
               Tài khoản vẫn được tạo với mật khẩu mặc định <Code>Hacomholdings@88</Code>; email kích hoạt sẽ được gửi đến <strong>{email}</strong>.
             </Alert>
           )}
@@ -146,7 +146,7 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
               Nhân sự <strong>{employee.fullName}</strong> đã có tài khoản đăng nhập.
             </Alert>
           ) : (
-            <Alert color="blue" title="Nhân sự đã có tài khoản">
+            <Alert color="hacomRed" title="Nhân sự đã có tài khoản">
               Nhân sự <strong>{employee.fullName}</strong> đã có tài khoản đăng nhập từ trước.{' '}
               {result.status === 'updated' && 'Đã đồng bộ email/thông tin từ HRM. '}
               Không tạo trùng và không thay đổi mật khẩu hiện tại.
@@ -176,7 +176,7 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
                     <Tooltip label={copied ? 'Đã copy' : 'Copy mật khẩu'}>
                       <Button
                         variant={copied ? 'filled' : 'light'}
-                        color={copied ? 'teal' : 'blue'}
+                        color={copied ? 'teal' : 'hacomRed'}
                         onClick={copy}
                         leftSection={copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
                       >
@@ -190,7 +190,7 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
           )}
 
           {sendOtp && result.status === 'created' && result.email && (
-            <Alert color="blue">
+            <Alert color="hacomRed">
               Email kích hoạt đã được gửi đến <strong>{result.email}</strong>.
             </Alert>
           )}

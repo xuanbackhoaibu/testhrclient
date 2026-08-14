@@ -22,7 +22,7 @@ const variantConfig = {
   },
   '404': {
     icon: IconSearchOff,
-    color: 'blue',
+    color: 'hacomRed',
     eyebrow: 'Không tìm thấy',
   },
   error: {

@@ -826,7 +826,7 @@ function Results({
                   </Table.Td>
                   <Table.Td>
                     <ActionIcon
-                      color={x ? "red" : "blue"}
+                      color={x ? "red" : "hacomRed"}
                       variant={x ? "subtle" : "filled"}
                       aria-label={
                         x ? `Bỏ quyền của ${n}` : `Thêm quyền cho ${n}`

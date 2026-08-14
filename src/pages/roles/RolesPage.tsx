@@ -260,9 +260,9 @@ export function RolesPage() {
                   {role.description || "Chưa có mô tả vai trò."}
                 </Text>
                 <Group gap={6}>
-                  <Badge variant="light" color="blue">User: chưa có số liệu</Badge>
+                  <Badge variant="light" color="hacomRed">User: chưa có số liệu</Badge>
                   {role.isSensitive && <Badge color="red" variant="light">Nhạy cảm</Badge>}
-                  {role.isSystem && <Badge color="blue" variant="light">System</Badge>}
+                  {role.isSystem && <Badge color="hacomRed" variant="light">System</Badge>}
                   {(role as RoleDefinition & { inheritedFrom?: string }).inheritedFrom ? (
                     <Badge color="grape" variant="light">Kế thừa từ {(role as RoleDefinition & { inheritedFrom?: string }).inheritedFrom}</Badge>
                   ) : null}
@@ -385,7 +385,7 @@ export function RolesPage() {
                 </Box>
                 <Group gap="xs">
                   {detail.isSensitive && <Badge color="red" variant="light">Nhạy cảm</Badge>}
-                  {detail.isSystem && <Badge color="blue" variant="light">System</Badge>}
+                  {detail.isSystem && <Badge color="hacomRed" variant="light">System</Badge>}
                   <Badge color={STATUS_COLOR[detail.status ?? 'active']} variant="light">
                     {STATUS_LABEL[detail.status ?? 'active']}
                   </Badge>
@@ -447,7 +447,7 @@ export function RolesPage() {
                   <Group key={g.id} justify="space-between" p="xs" className="resource-list-row">
                     <Stack gap={2}>
                       <Text size="sm" fw={500}>{g.name}</Text>
-                      <Text size="xs" ff="monospace" c="blue">{g.key}</Text>
+                      <Text size="xs" ff="monospace" c="var(--hacom-primary)">{g.key}</Text>
                     </Stack>
                     {canManage && (
                       <ActionIcon variant="subtle" color="red" size="sm" loading={removeGroupMutation.isPending}
@@ -489,7 +489,7 @@ export function RolesPage() {
                       <Text size="sm" fw={500}>{getPermissionBusinessLabel(p.key).label}</Text>
                       {p.description && <Text size="xs" c="dimmed">{p.description}</Text>}
                       <Text size="xs" c="dimmed">{getPermissionBusinessLabel(p.key).moduleLabel}</Text>
-                      {canReadTechnicalCatalog && <Text size="xs" ff="monospace" c="blue">{p.key}</Text>}
+                      {canReadTechnicalCatalog && <Text size="xs" ff="monospace" c="var(--hacom-primary)">{p.key}</Text>}
                     </Stack>
                     {canManage && (
                       <ActionIcon variant="subtle" color="red" size="sm" loading={removePermMutation.isPending}

@@ -147,7 +147,7 @@ function ShiftVisualCard({ shift, onEdit, canEdit }: { shift: WorkShift; onEdit:
       <Group gap="xs" mt="sm">
         <Badge variant="light">{shift.startTime} - {shift.endTime}</Badge>
         <Badge variant="light" color="gray">{shift.standardMinutes} phút</Badge>
-        <Badge variant="light" color="blue">{shift.dayValue} công</Badge>
+        <Badge variant="light" color="hacomRed">{shift.dayValue} công</Badge>
       </Group>
 
       <Divider my="sm" />
@@ -400,7 +400,7 @@ export function WorkShiftsPage() {
       <Stack gap="lg">
         <Alert
           icon={<IconInfoCircle size={18} />}
-          color="blue"
+          color="hacomRed"
           variant="light"
           title="Quy tắc chấm công: sau 08:15 mới tính đi muộn"
         >

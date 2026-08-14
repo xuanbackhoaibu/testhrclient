@@ -158,7 +158,7 @@ export function ShiftAssignmentsPage() {
       {
         key: "department",
         title: "2. Phòng ban",
-        color: "blue",
+        color: "hacomRed",
         priority: "Sau cá nhân",
         items: activeAssignments.filter((assignment) => assignment.department),
       },
@@ -250,7 +250,7 @@ export function ShiftAssignmentsPage() {
           if (record.department) {
             return (
               <Group gap={6} wrap="nowrap">
-                <Badge size="sm" variant="light" color="blue">
+                <Badge size="sm" variant="light" color="hacomRed">
                   Phòng ban
                 </Badge>
                 <Text>{record.department.name}</Text>
@@ -334,7 +334,7 @@ export function ShiftAssignmentsPage() {
       <Stack gap="md">
         <Alert
           icon={<IconInfoCircle size={18} />}
-          color={unclearEmployees.length > 0 ? "yellow" : "blue"}
+          color={unclearEmployees.length > 0 ? "yellow" : "hacomRed"}
           variant="light"
           title={unclearEmployees.length > 0 ? `${unclearEmployees.length} nhân sự chưa có phân ca riêng` : "Độ ưu tiên khi một người trúng nhiều phân ca"}
         >

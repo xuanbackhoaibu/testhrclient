@@ -1677,7 +1677,7 @@ export function EmployeesPage() {
               variant="light"
               onClick={() => {
                 notifications.show({
-                  color: "blue",
+                  color: "hacomRed",
                   title: "Đổi trạng thái hàng loạt",
                   message: "Đã sẵn sàng UI chọn nhiều dòng; API đổi trạng thái hàng loạt cần backend cung cấp endpoint.",
                 });
@@ -1704,7 +1704,7 @@ export function EmployeesPage() {
           <Stack gap="md">
             <Paper withBorder p="md" className="employee-preview-hero">
               <Group align="flex-start" wrap="nowrap">
-                <ThemeIcon size={56} radius="xl" color="blue" variant="light">
+                <ThemeIcon size={56} radius="xl" color="hacomRed" variant="light">
                   <IconIdBadge2 size={28} />
                 </ThemeIcon>
                 <Stack gap={2}>
@@ -1750,7 +1750,7 @@ export function EmployeesPage() {
       >
         {exportPreview ? (
           <Stack gap="md">
-            <Alert color="blue" variant="light" icon={<IconInfoCircle size={18} />}>
+            <Alert color="hacomRed" variant="light" icon={<IconInfoCircle size={18} />}>
               Xuất định dạng <b>{exportPreview.format.toUpperCase()}</b> với phạm vi <b>{exportPreview.scope}</b>. Preview chỉ hiển thị 5 dòng đầu.
             </Alert>
             <Group>

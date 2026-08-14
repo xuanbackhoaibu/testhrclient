@@ -49,7 +49,7 @@ const categoryMeta: Record<NotificationEvent, {
   color: string;
   icon: typeof IconBell;
 }> = {
-  leave: { label: 'Đơn từ', color: 'blue', icon: IconFileText },
+  leave: { label: 'Đơn từ', color: 'hacomRed', icon: IconFileText },
   contract: { label: 'Nhắc nhở', color: 'orange', icon: IconBriefcase },
   employee: { label: 'Nhân sự', color: 'green', icon: IconUserPlus },
   system: { label: 'Hệ thống', color: 'violet', icon: IconAlertTriangle },

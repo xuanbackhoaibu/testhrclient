@@ -110,7 +110,7 @@ export function DataTable<T>({
     <Paper radius="md" p={0} className="data-table-shell" withBorder data-loading={loading ? 'true' : undefined}>
       {loading ? (
         <Group px="md" py={6} className="data-table-refreshing" justify="space-between">
-          <Text size="xs" c="blue" fw={650}>
+          <Text size="xs" c="var(--hacom-primary)" fw={650}>
             Đang cập nhật dữ liệu...
           </Text>
         </Group>
@@ -158,7 +158,7 @@ export function DataTable<T>({
                   key={id}
                   className={onRowClick ? 'data-table-row-clickable' : undefined}
                   onClick={onRowClick ? () => onRowClick(record) : undefined}
-                  bg={isSelected ? 'var(--mantine-color-blue-light)' : undefined}
+                  bg={isSelected ? 'var(--hacom-primary-tint)' : undefined}
                 >
                   {selectable && (
                     <Table.Td onClick={(e) => e.stopPropagation()}>

@@ -86,7 +86,7 @@
 }
 
 .today {
-  background-color: var(--mantine-color-blue-0);
+  background-color: var(--hacom-primary-tint);
 }
 
 :global([data-mantine-color-scheme='dark']) .today {
@@ -95,7 +95,7 @@
 
 .todayText {
   font-weight: 700;
-  color: var(--mantine-color-blue-6);
+  color: var(--hacom-primary);
 }
 
 :global([data-mantine-color-scheme='dark']) .todayText {
@@ -110,7 +110,7 @@
 
 .eventItem {
   cursor: pointer;
-  border-left: 3px solid var(--mantine-color-blue-5);
+  border-left: 3px solid var(--hacom-primary);
   transition: transform 0.1s ease;
 }
 
@@ -119,7 +119,7 @@
 }
 
 .eventItem[data-type="MEETING"] {
-  border-left-color: var(--mantine-color-blue-5);
+  border-left-color: var(--hacom-primary);
 }
 
 .eventItem[data-type="TASK"] {

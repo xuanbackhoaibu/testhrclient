@@ -460,7 +460,7 @@ export function AccountsPage() {
             </Text>
           ) : (
             row.roles.slice(0, 2).map((role) => (
-              <Badge key={role.code} size="sm" variant="light" color="blue">
+              <Badge key={role.code} size="sm" variant="light" color="hacomRed">
                 {role.code}
               </Badge>
             ))
@@ -953,7 +953,7 @@ export function AccountsPage() {
               {({ copied, copy }) => (
                 <Button
                   variant={copied ? "filled" : "light"}
-                  color={copied ? "teal" : "blue"}
+                  color={copied ? "teal" : "hacomRed"}
                   onClick={copy}
                 >
                   {copied ? "Đã copy" : "Copy mật khẩu"}
@@ -1031,7 +1031,7 @@ export function AccountsPage() {
                   </Text>
                 ) : (
                   detailRoles.map((role) => (
-                    <Badge key={role.code} color="blue" variant="light">
+                    <Badge key={role.code} color="hacomRed" variant="light">
                       {role.code}
                     </Badge>
                   ))

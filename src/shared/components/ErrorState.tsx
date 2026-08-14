@@ -15,11 +15,11 @@ export function ErrorState({
   return (
     <Paper p="md" radius="md" className="error-state-surface">
       <Stack align="flex-start" gap="sm">
-      <Alert color="red" title={title} icon={<IconAlertTriangle size={18} />} className="error-state-alert">
+      <Alert color="yellow" title={title} icon={<IconAlertTriangle size={18} />} className="error-state-alert">
         {description}
       </Alert>
       {onRetry ? (
-        <Button variant="light" onClick={onRetry}>
+        <Button color="yellow" variant="light" onClick={onRetry}>
           Thử lại
         </Button>
       ) : null}

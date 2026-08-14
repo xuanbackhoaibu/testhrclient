@@ -20,7 +20,7 @@ const emptyStatePresets: Record<EmptyStateVariant, { title: string; description:
     title: 'Chưa có dữ liệu',
     description: 'Chưa có bản ghi nào trong khu vực này.',
     actionLabel: 'Tạo mới',
-    color: 'blue',
+    color: 'hacomRed',
     icon: <IconInbox size={22} />,
   },
   search: {

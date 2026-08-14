@@ -59,7 +59,7 @@ function ContractExpiryBadge({ record }: { record: Contract }) {
   }
   const days = daysUntil(record.endDate);
   if (days === null) {
-    return <Badge color="blue" variant="light">Không thời hạn</Badge>;
+    return <Badge color="hacomRed" variant="light">Không thời hạn</Badge>;
   }
   if (days < 0) {
     return <Badge color="red" variant="filled" className="contract-expiry-critical">Quá hạn {Math.abs(days)} ngày</Badge>;

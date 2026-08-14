@@ -191,7 +191,7 @@ export function MainLayout() {
             <Menu.Target>
               <UnstyledButton className="app-user-menu-button">
                 <Group gap="xs" wrap="nowrap">
-                  <Avatar size={32} radius="xl" color="blue">
+                  <Avatar size={32} radius="xl" color="hacomRed">
                     {(user?.fullName ?? user?.email ?? "U")
                       .slice(0, 1)
                       .toUpperCase()}

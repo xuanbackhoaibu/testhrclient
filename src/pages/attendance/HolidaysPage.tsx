@@ -61,7 +61,7 @@ function holidayCalendarType(holiday: Pick<Holiday, "name" | "note">) {
   const source = `${holiday.name} ${holiday.note ?? ""}`.toLowerCase();
   return source.includes("tết") || source.includes("giỗ tổ") || source.includes("âm lịch")
     ? { label: "Âm lịch", color: "violet" }
-    : { label: "Dương lịch", color: "blue" };
+    : { label: "Dương lịch", color: "hacomRed" };
 }
 
 function needsHolidayReview(holiday: Holiday) {

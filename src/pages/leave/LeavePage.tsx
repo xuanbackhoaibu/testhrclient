@@ -258,7 +258,7 @@ export function LeavePage() {
                       <IconCalendarMonth size={16} />
                       <Text fw={700}>{formatDate(date)}</Text>
                     </Group>
-                    <Badge color={items.length >= 3 ? 'red' : 'blue'} variant="light">{items.length} đơn</Badge>
+                    <Badge color={items.length >= 3 ? 'red' : 'hacomRed'} variant="light">{items.length} đơn</Badge>
                   </Group>
                   <Stack gap={6}>
                     {items.map((item) => (

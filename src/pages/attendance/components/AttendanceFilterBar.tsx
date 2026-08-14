@@ -209,7 +209,7 @@ export function AttendanceFilterBar({
               disabled={isSyncing}
               size="sm"
               variant="light"
-              color="blue"
+              color="hacomRed"
             >
               Đồng bộ
             </Button>
@@ -233,7 +233,7 @@ export function AttendanceFilterBar({
               color="gray"
               onClick={handleClear}
               leftSection={
-                <Badge size="xs" circle color="blue">
+                <Badge size="xs" circle color="hacomRed">
                   {activeCount}
                 </Badge>
               }

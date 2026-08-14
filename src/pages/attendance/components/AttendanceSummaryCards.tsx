@@ -66,7 +66,7 @@ export function AttendanceSummaryCards({ summary }: AttendanceSummaryCardsProps)
     <>
       <Grid gap="xs">
         <Grid.Col span={{ base: 6, sm: 4, md: 3 }}>
-          <StatCard label="Tổng bản ghi" value={summary.total} icon={IconUsers} color="blue" />
+          <StatCard label="Tổng bản ghi" value={summary.total} icon={IconUsers} color="hacomRed" />
         </Grid.Col>
         <Grid.Col span={{ base: 6, sm: 4, md: 3 }}>
           <StatCard label="Đủ công" value={summary.present} icon={IconCheck} color="green" />

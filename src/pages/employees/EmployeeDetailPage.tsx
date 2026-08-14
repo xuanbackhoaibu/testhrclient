@@ -9,6 +9,7 @@ import {
   Card,
   CopyButton,
   Divider,
+  Drawer,
   Group,
   Paper,
   Progress,
@@ -19,11 +20,13 @@ import {
   Tabs,
   Text,
   TextInput,
+  Select,
   ThemeIcon,
   Timeline,
   Title,
   Tooltip,
 } from '@mantine/core';
+import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -50,8 +53,8 @@ import type { AuditLog } from '../../features/audit/auditTypes';
 import { useAuth } from '../../features/auth/useAuth';
 import type { Contract } from '../../features/contracts/contractTypes';
 import { useEmployeeDetail } from '../../features/employees/useEmployeeDetail';
-import type { Employee } from '../../features/employees/employeeTypes';
-import { updateEmployeeBioTimeCode } from '../../features/employees/employeesApi';
+import type { Employee, EmployeePayload } from '../../features/employees/employeeTypes';
+import { updateEmployee, updateEmployeeBioTimeCode } from '../../features/employees/employeesApi';
 import type { LeaveRequest } from '../../features/leave/leaveTypes';
 import type { Movement } from '../../features/movements/movementTypes';
 import { LoadingState } from '../../shared/components/LoadingState';
@@ -62,6 +65,21 @@ import { ROUTES } from '../../shared/constants/routes';
 import { formatDate, formatDateTime } from '../../shared/utils/date';
 import { AccountTab } from './tabs/AccountTab';
 import { AccessTab } from './tabs/AccessTab';
+
+const emptyProfileFormValues: EmployeePayload = {
+  fullName: '',
+  companyEmail: '',
+  personalEmail: '',
+  phone: '',
+  gender: '',
+  dateOfBirth: '',
+  hireDate: '',
+  employmentStatus: 'ACTIVE',
+  citizenId: '',
+  unitId: '',
+  departmentId: '',
+  positionId: '',
+};
 
 const workStatusMap: Record<string, { color: string; label: string; dotClass: string }> = {
   ACTIVE: { color: 'green', label: 'Đang làm việc', dotClass: 'is-active' },
@@ -203,6 +221,32 @@ function daysUntil(date?: string) {
   return Math.ceil((end.getTime() - today.getTime()) / 86_400_000);
 }
 
+function toDateInputValue(value?: string | Date | null) {
+  if (!value) return '';
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function trimOptional(value?: string) {
+  return value?.trim() ?? '';
+}
+
+function normalizeProfilePayload(values: EmployeePayload): EmployeePayload {
+  return {
+    ...values,
+    fullName: values.fullName.trim(),
+    companyEmail: trimOptional(values.companyEmail).toLowerCase() || undefined,
+    personalEmail: trimOptional(values.personalEmail).toLowerCase() || undefined,
+    phone: trimOptional(values.phone) || undefined,
+    gender: trimOptional(values.gender),
+    dateOfBirth: trimOptional(values.dateOfBirth),
+    hireDate: values.hireDate.trim(),
+    citizenId: trimOptional(values.citizenId),
+    unitId: values.unitId.trim(),
+    departmentId: values.departmentId.trim(),
+    positionId: values.positionId.trim(),
+  };
+}
+
 function ContractExpiryBadge({ contract }: { contract: Contract }) {
   const remaining = daysUntil(contract.endDate);
   if (remaining === null) return <Badge color="gray" variant="light">Không thời hạn</Badge>;
@@ -305,7 +349,7 @@ function LeaveQuotaCard({ leaves }: { leaves: LeaveRequest[] }) {
           <Text fw={700}>Quỹ phép năm</Text>
           <Text size="sm" c="dimmed">Đã dùng / còn lại / sắp hết hạn</Text>
         </Box>
-        <Badge color={remaining <= 2 ? 'red' : 'blue'} variant="light">
+        <Badge color={remaining <= 2 ? 'red' : 'hacomRed'} variant="light">
           Còn {remaining} ngày
         </Badge>
       </Group>
@@ -332,6 +376,7 @@ export function EmployeeDetailPage() {
   const navigate = useNavigate();
   const { can } = useAuth();
   const canReadAccount = can('auth.user.read');
+  const canUpdateEmployee = can('hr.employee.update');
 
   const { data, isLoading, error, refetch } = useEmployeeDetail(employeeId, {
     includeAccount: canReadAccount,
@@ -340,7 +385,21 @@ export function EmployeeDetailPage() {
   const queryClient = useQueryClient();
   const [bioTimeEditing, { open: openBioTimeEdit, close: closeBioTimeEdit }] =
     useDisclosure(false);
+  const [profileEditOpen, { open: openProfileEdit, close: closeProfileEdit }] =
+    useDisclosure(false);
   const [bioTimeInput, setBioTimeInput] = useState('');
+  const profileForm = useForm<EmployeePayload>({
+    initialValues: emptyProfileFormValues,
+    validateInputOnBlur: true,
+    validate: {
+      fullName: (value) => (value.trim() ? null : 'Nhập họ tên.'),
+      phone: (value) => (!value || /^0[0-9]{9}$/.test(value) ? null : 'Số điện thoại không đúng định dạng.'),
+      companyEmail: (value) => (!value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? null : 'Email không đúng định dạng.'),
+      personalEmail: (value) => (!value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? null : 'Email không đúng định dạng.'),
+      hireDate: (value) => (value ? null : 'Chọn ngày vào làm.'),
+      employmentStatus: (value) => (value ? null : 'Chọn trạng thái nhân sự.'),
+    },
+  });
 
   const bioTimeMutation = useMutation({
     mutationFn: (code: string | null) =>
@@ -360,6 +419,28 @@ export function EmployeeDetailPage() {
         color: 'red',
         title: 'Không cập nhật được mã chấm công',
         message: err instanceof Error ? err.message : 'Lỗi không xác định.',
+      });
+    },
+  });
+
+  const profileMutation = useMutation({
+    mutationFn: (values: EmployeePayload) =>
+      updateEmployee(employeeId!, normalizeProfilePayload(values)),
+    onSuccess: () => {
+      closeProfileEdit();
+      void queryClient.invalidateQueries({ queryKey: ['employee-detail'] });
+      void queryClient.invalidateQueries({ queryKey: ['employees'] });
+      notifications.show({
+        color: 'green',
+        title: 'Đã cập nhật hồ sơ',
+        message: 'Thông tin nhân viên đã được lưu.',
+      });
+    },
+    onError: (err) => {
+      notifications.show({
+        color: 'red',
+        title: 'Không cập nhật được hồ sơ',
+        message: err instanceof Error ? err.message : 'Vui lòng kiểm tra dữ liệu và thử lại.',
       });
     },
   });
@@ -389,6 +470,27 @@ export function EmployeeDetailPage() {
   const recentLeaves = [...data.leaveRequests].sort((a, b) => b.startDate.localeCompare(a.startDate)).slice(0, 5);
   const movements = [...(data.movements as Movement[])].sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate));
   const auditLogs = [...data.auditLogs].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const openProfileEditDrawer = () => {
+    const values: EmployeePayload = {
+      fullName: employee.fullName,
+      companyEmail: employee.companyEmail ?? '',
+      personalEmail: employee.personalEmail ?? '',
+      phone: employee.phone ?? '',
+      gender: employee.gender ?? '',
+      dateOfBirth: toDateInputValue(employee.dateOfBirth),
+      hireDate: toDateInputValue(employee.hireDate),
+      employmentStatus: employee.employmentStatus,
+      citizenId: '',
+      unitId: assignment?.unitId ?? employee.unitId ?? '',
+      departmentId: assignment?.departmentId ?? employee.departmentId ?? '',
+      positionId: assignment?.positionId ?? employee.positionId ?? '',
+      jobTitle: assignment?.jobTitle ?? '',
+      managerName: assignment?.managerName ?? '',
+    };
+    profileForm.setValues(values);
+    profileForm.resetDirty(values);
+    openProfileEdit();
+  };
 
   return (
     <>
@@ -404,10 +506,10 @@ export function EmployeeDetailPage() {
       />
 
       <Paper withBorder p="lg" mb="md" className="employee-detail-hero">
-        <Group justify="space-between" align="flex-start" gap="lg">
+        <div className="employee-detail-hero-content">
           <Group align="center" gap="lg" className="employee-detail-hero-main">
             <Box className="employee-detail-avatar-wrap">
-              <Avatar size={92} radius={999} color="blue" className="employee-detail-avatar">
+              <Avatar size={92} radius={999} color="hacomRed" className="employee-detail-avatar">
                 {getInitials(employee.fullName)}
               </Avatar>
               <span className={`employee-detail-status-dot ${workStatus.dotClass}`} aria-label={workStatus.label} />
@@ -428,24 +530,21 @@ export function EmployeeDetailPage() {
           </Group>
 
           <Group gap="xs" className="employee-detail-actions">
-            <Button variant="light" leftSection={<IconEdit size={16} />} onClick={() => navigate(`${ROUTES.employees}?search=${encodeURIComponent(employee.employeeCode)}`)}>
+            <Button size="xs" variant="default" leftSection={<IconEdit size={14} />} disabled={!canUpdateEmployee} onClick={openProfileEditDrawer}>
               Sửa hồ sơ
             </Button>
-            <Button variant="light" leftSection={<IconMail size={16} />} component="a" href={`mailto:${employee.companyEmail ?? employee.personalEmail ?? ''}`}>
+            <Button size="xs" variant="default" leftSection={<IconMail size={14} />} component="a" href={`mailto:${employee.companyEmail ?? employee.personalEmail ?? ''}`}>
               Gửi email
             </Button>
-            <Button variant="light" leftSection={<IconCalendarTime size={16} />} onClick={() => navigate(`${ROUTES.timesheetGrid}?employeeId=${encodeURIComponent(employee.id)}`)}>
+            <Button size="xs" variant="default" leftSection={<IconCalendarTime size={14} />} onClick={() => navigate(`${ROUTES.timesheetGrid}?employeeId=${encodeURIComponent(employee.id)}`)}>
               Xem bảng công
             </Button>
-            <Button variant="light" leftSection={<IconFileText size={16} />} onClick={() => navigate(`${ROUTES.contracts}?employeeId=${encodeURIComponent(employee.id)}`)}>
-              Xem hợp đồng
-            </Button>
           </Group>
-        </Group>
+        </div>
       </Paper>
 
       <Tabs defaultValue="personal" className="employee-detail-tabs">
-        <Tabs.List mb="md">
+        <Tabs.List mb="md" className="employee-detail-tabs-list">
           <Tabs.Tab value="personal" leftSection={<IconUser size={15} />}>Thông tin cá nhân</Tabs.Tab>
           <Tabs.Tab value="assignment" leftSection={<IconBriefcase size={15} />}>Phân công</Tabs.Tab>
           <Tabs.Tab value="contracts" leftSection={<IconFileText size={15} />}>Hợp đồng</Tabs.Tab>
@@ -540,7 +639,16 @@ export function EmployeeDetailPage() {
         <Tabs.Panel value="contracts">
           <SectionCard
             title="Hợp đồng"
-            action={<Button size="xs" variant="light" onClick={() => navigate(`${ROUTES.contracts}?employeeId=${encodeURIComponent(employee.id)}&action=renew`)}>Gia hạn nhanh</Button>}
+            action={(
+              <Group gap="xs">
+                <Button size="xs" variant="default" leftSection={<IconFileText size={14} />} onClick={() => navigate(`${ROUTES.contracts}?employeeId=${encodeURIComponent(employee.id)}`)}>
+                  Xem hợp đồng
+                </Button>
+                <Button size="xs" variant="light" onClick={() => navigate(`${ROUTES.contracts}?employeeId=${encodeURIComponent(employee.id)}&action=renew`)}>
+                  Gia hạn nhanh
+                </Button>
+              </Group>
+            )}
           >
             {sortedContracts.length === 0 ? (
               <DetailEmpty>Chưa có hợp đồng cho nhân viên này.</DetailEmpty>
@@ -709,6 +817,64 @@ export function EmployeeDetailPage() {
           </SectionCard>
         </Tabs.Panel>
       </Tabs>
+
+      <Drawer
+        opened={profileEditOpen}
+        onClose={closeProfileEdit}
+        title="Sửa hồ sơ nhân viên"
+        position="right"
+        size="lg"
+        className="entity-drawer"
+      >
+        <form onSubmit={profileForm.onSubmit((values) => profileMutation.mutate(values))}>
+          <Stack gap="sm">
+            <TextInput label="Họ tên" withAsterisk {...profileForm.getInputProps('fullName')} />
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+              <TextInput label="Email công ty" {...profileForm.getInputProps('companyEmail')} />
+              <TextInput label="Email cá nhân" {...profileForm.getInputProps('personalEmail')} />
+              <TextInput label="Số điện thoại" {...profileForm.getInputProps('phone')} />
+              <Select
+                label="Giới tính"
+                data={[
+                  { value: 'MALE', label: 'Nam' },
+                  { value: 'FEMALE', label: 'Nữ' },
+                  { value: 'OTHER', label: 'Khác' },
+                ]}
+                clearable
+                {...profileForm.getInputProps('gender')}
+              />
+              <TextInput label="Ngày sinh" type="date" {...profileForm.getInputProps('dateOfBirth')} />
+              <TextInput label="Ngày vào làm" type="date" withAsterisk {...profileForm.getInputProps('hireDate')} />
+              <Select
+                label="Trạng thái nhân sự"
+                withAsterisk
+                data={[
+                  { value: 'ACTIVE', label: 'Đang làm việc' },
+                  { value: 'WORKING', label: 'Đang làm việc' },
+                  { value: 'PROBATION', label: 'Thử việc' },
+                  { value: 'TERMINATED', label: 'Đã nghỉ việc' },
+                  { value: 'INACTIVE', label: 'Ngừng làm việc' },
+                ]}
+                {...profileForm.getInputProps('employmentStatus')}
+              />
+            </SimpleGrid>
+            <Paper withBorder p="sm" radius="md">
+              <Text size="xs" c="dimmed" mb={4}>Phân công hiện tại</Text>
+              <Text size="sm" fw={600}>
+                {assignment?.unitName ?? employee.unitName ?? 'Chưa có đơn vị'} / {assignment?.departmentName ?? employee.departmentName ?? 'Chưa có phòng ban'} · {assignment?.jobTitle ?? assignment?.positionName ?? 'Chưa có chức danh'}
+              </Text>
+            </Paper>
+            <Group justify="flex-end" mt="sm">
+              <Button variant="default" onClick={closeProfileEdit}>
+                Hủy
+              </Button>
+              <Button type="submit" loading={profileMutation.isPending}>
+                Lưu hồ sơ
+              </Button>
+            </Group>
+          </Stack>
+        </form>
+      </Drawer>
     </>
   );
 }

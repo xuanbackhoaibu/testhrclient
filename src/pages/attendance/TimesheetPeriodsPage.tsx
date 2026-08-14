@@ -61,7 +61,7 @@ const periodStatusLabel: Record<TimesheetPeriodStatus, string> = {
 
 const periodStatusColor: Record<TimesheetPeriodStatus, string> = {
   DRAFT: "gray",
-  PENDING_EMPLOYEE: "blue",
+  PENDING_EMPLOYEE: "hacomRed",
   PENDING_HR: "orange",
   CLOSED: "green",
 };
@@ -240,7 +240,7 @@ export function TimesheetPeriodsPage() {
       />
 
       <Stack gap="md">
-        <Alert color="blue" variant="light">
+        <Alert color="hacomRed" variant="light">
           Nhánh quá hạn chưa xác nhận vẫn đang chờ HR trả lời. Màn này chỉ liệt
           kê trạng thái hiện tại để HR tự xử lý, không tự chuyển trạng thái hay
           tự xác nhận thay nhân viên.

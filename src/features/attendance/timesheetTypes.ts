@@ -202,7 +202,7 @@ export function symbolColor(displaySymbol: string): string | undefined {
   const first = displaySymbol.split(";")[0];
   if (first === "+") return "green";
   if (first === "-") return "teal";
-  if (first === "P") return "blue";
+  if (first === "P") return "hacomRed";
   if (first === "L") return "grape";
   if (first === "KL" || first === "N") return "gray";
   if (first === "Ô" || first === "Cô" || first === "TS") return "orange";

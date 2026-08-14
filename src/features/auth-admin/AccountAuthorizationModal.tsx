@@ -63,7 +63,7 @@ const PERMISSION_SOURCE_LABELS: Record<string, string> = {
 function badgeColorForSource(sourceType: string) {
   switch (sourceType) {
     case "ROLE":
-      return "blue";
+      return "hacomRed";
     case "ROLE_PERMISSION_GROUP":
       return "violet";
     case "DIRECT_ALLOW":
@@ -271,7 +271,7 @@ export function AccountAuthorizationModal({
     try {
       await refreshCurrentUser();
       notifications.show({
-        color: "blue",
+        color: "hacomRed",
         message: "Đã tải lại session hiện tại sau khi cập nhật quyền.",
       });
     } catch {
@@ -539,7 +539,7 @@ export function AccountAuthorizationModal({
         </Alert>
       ) : authzQuery.data ? (
         <Stack gap="md">
-          <Alert color="blue" title="Thong tin chung">
+          <Alert color="hacomRed" title="Thong tin chung">
             <Text size="sm">Account: {authzQuery.data.account.email}</Text>
             <Text size="sm">
               Username: {authzQuery.data.account.username ?? "-"}
@@ -615,7 +615,7 @@ export function AccountAuthorizationModal({
                 </ScrollArea>
 
                 {hasRoleChanges ? (
-                  <Alert color="blue" title="Thay đổi trước khi lưu">
+                  <Alert color="hacomRed" title="Thay đổi trước khi lưu">
                     <Text size="sm">Vai trò thêm: {roleDiff.added.join(", ") || "Không có"}</Text>
                     <Text size="sm">Vai trò thu hồi: {roleDiff.removed.join(", ") || "Không có"}</Text>
                   </Alert>
@@ -770,7 +770,7 @@ export function AccountAuthorizationModal({
                               <Text size="sm" fw={500}>{permissionLabel(permission)}</Text>
                               {permission.description ? <Text size="xs" c="dimmed">{permission.description}</Text> : null}
                               <Group gap="xs" mt={4}>
-                                {inherited ? <Badge color="blue" variant="light">Đã có từ vai trò/nhóm</Badge> : null}
+                                {inherited ? <Badge color="hacomRed" variant="light">Đã có từ vai trò/nhóm</Badge> : null}
                                 {permission.isSensitive ? <Badge color="red" variant="light">Nhạy cảm</Badge> : null}
                                 {managedByHrm ? <Badge color="grape" variant="light">HRM-managed</Badge> : null}
                                 {!isDirectlyAssignablePermission(permission) ? <Badge color="gray" variant="light">Not directly assignable</Badge> : null}
@@ -822,7 +822,7 @@ export function AccountAuthorizationModal({
                 </ScrollArea>
 
                 {hasDirectPermissionChanges ? (
-                  <Alert color="blue" title="Thay đổi direct override trước khi lưu">
+                  <Alert color="hacomRed" title="Thay đổi direct override trước khi lưu">
                     <Text size="sm">Allow thêm: {overrideDiff.allowAdded.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
                     <Text size="sm">Allow thu hồi: {overrideDiff.allowRemoved.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
                     <Text size="sm">Deny thêm: {overrideDiff.denyAdded.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>

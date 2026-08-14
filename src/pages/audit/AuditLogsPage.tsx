@@ -41,7 +41,7 @@ function actionMeta(action: string) {
   if (normalized.includes('CREATE') || normalized.includes('PROVISION')) return { color: 'green', label: 'Tạo', icon: IconPlus };
   if (normalized.includes('DELETE') || normalized.includes('REMOVE') || normalized.includes('DEACTIVATE')) return { color: 'red', label: 'Xóa', icon: IconTrash };
   if (normalized.includes('LOGIN') || normalized.includes('AUTH')) return { color: 'grape', label: 'Đăng nhập', icon: IconLogin };
-  return { color: 'blue', label: 'Sửa', icon: IconEdit };
+  return { color: 'hacomRed', label: 'Sửa', icon: IconEdit };
 }
 
 function relativeTime(value: string) {
@@ -153,7 +153,7 @@ export function AuditLogsPage() {
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
           {[
             { label: 'Tạo', value: stats.create, color: 'green', icon: IconPlus },
-            { label: 'Sửa', value: stats.update, color: 'blue', icon: IconEdit },
+            { label: 'Sửa', value: stats.update, color: 'hacomRed', icon: IconEdit },
             { label: 'Xóa', value: stats.delete, color: 'red', icon: IconTrash },
             { label: 'Đăng nhập', value: stats.login, color: 'grape', icon: IconLogin },
           ].map((card) => {

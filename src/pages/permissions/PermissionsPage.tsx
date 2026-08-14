@@ -301,7 +301,7 @@ export function PermissionsPage() {
                       <Group key={perm.id} justify="space-between" p="xs" className="resource-list-row">
                         <Stack gap={2}>
                           <Group gap="xs">
-                            <Text size="xs" ff="monospace" c="blue">{perm.key}</Text>
+                            <Text size="xs" ff="monospace" c="var(--hacom-primary)">{perm.key}</Text>
                             {perm.isSensitive && (
                               <Badge color="red" variant="dot" size="xs">Nhạy cảm</Badge>
                             )}
@@ -405,7 +405,7 @@ export function PermissionsPage() {
       >
         {editPerm && (
           <Stack>
-            <Text size="xs" ff="monospace" c="blue">{editPerm.key}</Text>
+            <Text size="xs" ff="monospace" c="var(--hacom-primary)">{editPerm.key}</Text>
             <TextInput
               label="Tên hiển thị"
               value={editForm.name ?? ''}

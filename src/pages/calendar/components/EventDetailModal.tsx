@@ -64,7 +64,7 @@ const RESPONSE_COLORS: Record<string, string> = {
   PENDING: 'gray',
   ACCEPTED: 'green',
   DECLINED: 'red',
-  MAYBE: 'blue',
+  MAYBE: 'hacomRed',
 };
 
 interface EventDetailModalProps {
@@ -198,7 +198,7 @@ export function EventDetailModal({ eventId, onClose, onEdit }: EventDetailModalP
       ) : event ? (
         <Stack gap="md">
           <Group gap="xs">
-            <Badge color="blue" variant="light">
+            <Badge color="hacomRed" variant="light">
               {EVENT_TYPE_LABELS[event.eventType] ?? event.eventType}
             </Badge>
             <Badge color="gray" variant="outline">
@@ -208,7 +208,7 @@ export function EventDetailModal({ eventId, onClose, onEdit }: EventDetailModalP
 
           {(event.owner || event.ownerName) && (
             <Group gap="sm">
-              <Avatar size="sm" radius="xl" color="blue">
+              <Avatar size="sm" radius="xl" color="hacomRed">
                 {(event.owner?.fullName ?? event.ownerName ?? '?')
                   .charAt(0)
                   .toUpperCase()}

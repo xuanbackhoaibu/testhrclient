@@ -4,7 +4,7 @@ import type { ThemeConfig } from 'antd';
 
 export const hrmThemeTokens = {
   colorPrimary: '#D71920',
-  colorPrimaryHover: '#B9151B',
+  colorPrimaryHover: '#B3141A',
   colorPrimarySoft: '#FCE9EA',
   colorPrimaryDarkText: '#F08A8F',
   colorAccent: '#D8C764',
@@ -40,7 +40,7 @@ export const mantineTheme: MantineThemeOverride = createTheme({
       '#EA5D64',
       '#E13E46',
       '#D71920',
-      '#B9151B',
+      '#B3141A',
       '#971015',
       '#780C10',
       '#5B080C',

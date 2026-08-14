@@ -874,7 +874,7 @@ export function DashboardPage() {
       title: "Tổng nhân sự",
       value: data.totalEmployees,
       meta: timeRangeLabel,
-      tone: "blue" as const,
+      tone: "red" as const,
       icon: <IconUsers size={20} />,
       detail: (
         <Text size="xs" c="dimmed" className={styles.metricDetailText}>
