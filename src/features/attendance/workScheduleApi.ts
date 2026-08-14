@@ -1,16 +1,20 @@
-import { api } from '../../shared/api/httpClient';
+import { api } from "../../shared/api/httpClient";
 import type {
   CloneHolidaysPayload,
   CloneHolidaysResult,
+  BulkShiftAssignmentPayload,
+  BulkShiftAssignmentResult,
   Holiday,
   HolidayPayload,
   ShiftAssignment,
+  ShiftAssignmentGrid,
+  ShiftAssignmentGridQuery,
   ShiftAssignmentPayload,
   WorkCalendarDay,
   WorkCalendarDayPayload,
   WorkShift,
   WorkShiftPayload,
-} from './workScheduleTypes';
+} from "./workScheduleTypes";
 
 /**
  * Cấu hình ca / ngày lễ / phân ca / lịch tuần.
@@ -20,7 +24,7 @@ import type {
  * Envelope đã được unwrap ở httpClient nên nhận thẳng data.
  */
 
-const BASE = '/attendance/work-schedule';
+const BASE = "/attendance/work-schedule";
 
 // ─── Ca làm việc ──────────────────────────────────────────────────────────────
 
@@ -28,7 +32,9 @@ export async function listWorkShifts(): Promise<WorkShift[]> {
   return api.get<WorkShift[]>(`${BASE}/shifts`);
 }
 
-export async function createWorkShift(payload: WorkShiftPayload): Promise<WorkShift> {
+export async function createWorkShift(
+  payload: WorkShiftPayload,
+): Promise<WorkShift> {
   return api.post<WorkShift>(`${BASE}/shifts`, payload);
 }
 
@@ -37,6 +43,12 @@ export async function updateWorkShift(
   payload: Partial<WorkShiftPayload>,
 ): Promise<WorkShift> {
   return api.patch<WorkShift>(`${BASE}/shifts/${id}`, payload);
+}
+
+export async function deleteWorkShift(
+  id: string,
+): Promise<{ deleted: boolean }> {
+  return api.delete<{ deleted: boolean }>(`${BASE}/shifts/${id}`);
 }
 
 // ─── Ngày lễ ──────────────────────────────────────────────────────────────────
@@ -61,11 +73,13 @@ export async function cloneHolidays(
 
 // ─── Phân ca ──────────────────────────────────────────────────────────────────
 
-export async function listShiftAssignments(params: {
-  employeeId?: string;
-  departmentId?: string;
-  unitId?: string;
-} = {}): Promise<ShiftAssignment[]> {
+export async function listShiftAssignments(
+  params: {
+    employeeId?: string;
+    departmentId?: string;
+    unitId?: string;
+  } = {},
+): Promise<ShiftAssignment[]> {
   return api.get<ShiftAssignment[]>(`${BASE}/assignments`, { params });
 }
 
@@ -77,6 +91,23 @@ export async function createShiftAssignment(
 
 export async function endShiftAssignment(id: string): Promise<ShiftAssignment> {
   return api.patch<ShiftAssignment>(`${BASE}/assignments/${id}/end`, {});
+}
+
+export async function getShiftAssignmentGrid(
+  query: ShiftAssignmentGridQuery,
+): Promise<ShiftAssignmentGrid> {
+  return api.get<ShiftAssignmentGrid>(`${BASE}/assignments/grid`, {
+    params: query,
+  });
+}
+
+export async function bulkAssignShifts(
+  payload: BulkShiftAssignmentPayload,
+): Promise<BulkShiftAssignmentResult> {
+  return api.post<BulkShiftAssignmentResult>(
+    `${BASE}/assignments/bulk`,
+    payload,
+  );
 }
 
 // ─── Lịch tuần ────────────────────────────────────────────────────────────────
