@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   adjustTimesheetDay,
@@ -33,6 +33,7 @@ export function useTimesheetGrid(query: TimesheetGridQuery) {
     queryKey: timesheetKeys.grid(query),
     queryFn: () => getTimesheetGrid(query),
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
 }
 

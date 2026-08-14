@@ -50,4 +50,26 @@ describe("long-running attendance mutations", () => {
       { timeout: 180_000 },
     );
   });
+
+  it("passes an abort signal for a historical range request", async () => {
+    const controller = new AbortController();
+    const payload = {
+      fromDate: "2026-07-01",
+      toDate: "2026-07-31",
+      departmentIds: ["dept-1"],
+    };
+    post.mockResolvedValue({
+      processed: 0,
+      skippedLocked: 0,
+      skippedAdjusted: 0,
+    });
+
+    await recomputeTimesheet(payload, controller.signal);
+
+    expect(post).toHaveBeenCalledWith(
+      "/attendance/timesheet/recompute",
+      payload,
+      { timeout: 180_000, signal: controller.signal },
+    );
+  });
 });
