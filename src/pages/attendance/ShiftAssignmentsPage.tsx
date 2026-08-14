@@ -10,7 +10,6 @@ import {
   Select,
   Stack,
   Text,
-  TextInput,
   Textarea,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
@@ -39,7 +38,9 @@ import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 import { ROUTES } from "../../shared/constants/routes";
+import { formatDate } from "../../shared/utils/date";
 
+import { HrmDateInput } from "../../shared/components/HrmDateInput";
 type TargetKind = "employee" | "department" | "unit";
 
 interface AssignmentFormValues {
@@ -95,11 +96,11 @@ export function ShiftAssignmentsPage() {
     validate: {
       shiftId: (value) => (value ? null : "Chọn ca làm việc."),
       effectiveFrom: (value) =>
-        DATE_PATTERN.test(value) ? null : "Ngày phải theo dạng YYYY-MM-DD.",
+        DATE_PATTERN.test(value) ? null : "Nhập ngày theo dạng DD/MM/YYYY.",
       effectiveTo: (value) =>
         !value || DATE_PATTERN.test(value)
           ? null
-          : "Ngày phải theo dạng YYYY-MM-DD.",
+          : "Nhập ngày theo dạng DD/MM/YYYY.",
       employeeId: (value, values) =>
         values.targetKind === "employee" && !value ? "Chọn nhân viên." : null,
       departmentId: (value, values) =>
@@ -300,9 +301,9 @@ export function ShiftAssignmentsPage() {
         header: "Hiệu lực",
         width: 220,
         render: (record) =>
-          `${record.effectiveFrom.split("T")[0]} → ${
+          `${formatDate(record.effectiveFrom)} → ${
             record.effectiveTo
-              ? record.effectiveTo.split("T")[0]
+              ? formatDate(record.effectiveTo)
               : "không thời hạn"
           }`,
       },
@@ -500,16 +501,24 @@ export function ShiftAssignmentsPage() {
             />
 
             <Group grow>
-              <TextInput
+              <HrmDateInput
                 label="Hiệu lực từ"
-                placeholder="2026-08-10"
+                placeholder="DD/MM/YYYY"
                 withAsterisk
-                {...form.getInputProps("effectiveFrom")}
+                value={form.values.effectiveFrom || null}
+                onChange={(value) =>
+                  form.setFieldValue("effectiveFrom", value ?? "")
+                }
+                error={form.errors.effectiveFrom}
               />
-              <TextInput
+              <HrmDateInput
                 label="Hiệu lực đến"
-                placeholder="Bỏ trống = không thời hạn"
-                {...form.getInputProps("effectiveTo")}
+                placeholder="DD/MM/YYYY (bỏ trống = không thời hạn)"
+                value={form.values.effectiveTo || null}
+                onChange={(value) =>
+                  form.setFieldValue("effectiveTo", value ?? "")
+                }
+                error={form.errors.effectiveTo}
               />
             </Group>
 

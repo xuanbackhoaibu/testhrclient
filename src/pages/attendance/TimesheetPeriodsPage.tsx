@@ -10,7 +10,6 @@ import {
   Stack,
   Table,
   Text,
-  TextInput,
   Textarea,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
@@ -39,6 +38,8 @@ import type {
 } from "../../features/attendance/timesheetTypes";
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { PageHeader } from "../../shared/components/PageHeader";
+import { formatDate } from "../../shared/utils/date";
+import { HrmDateInput } from "../../shared/components/HrmDateInput";
 
 const now = new Date();
 const monthOptions = Array.from({ length: 12 }, (_, index) => ({
@@ -77,7 +78,7 @@ const confirmationStatusColor: Record<TimesheetConfirmationStatus, string> = {
 };
 
 function toDateOnly(value: string | null | undefined) {
-  return value ? value.slice(0, 10) : "-";
+  return formatDate(value);
 }
 
 function confirmationCounts(
@@ -383,12 +384,11 @@ export function TimesheetPeriodsPage() {
             value={newUnitId}
             onChange={setNewUnitId}
           />
-          <TextInput
+          <HrmDateInput
             label="Hạn xác nhận"
             description="HR nhập theo lịch vận hành thực tế. Không tự suy ngày mở kỳ trong phần mềm."
-            type="date"
-            value={confirmDeadline}
-            onChange={(event) => setConfirmDeadline(event.currentTarget.value)}
+            value={confirmDeadline || null}
+            onChange={(value) => setConfirmDeadline(value ?? "")}
           />
           <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={() => setOpenModal(false)}>

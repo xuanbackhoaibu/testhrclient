@@ -55,6 +55,7 @@ import { includesNormalizedSearch } from "../../shared/utils/normalizeSearchText
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 import { sortByCode } from "../../shared/utils/sort";
 import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
+import { formatDateTime } from "../../shared/utils/date";
 const MANAGE = "admin.work_report_authorization.manage";
 type Kind = "department" | "unit";
 type Draft = (DepartmentOption | UnitOption) & { actions: BusinessAction[] };
@@ -250,12 +251,7 @@ export function WorkReportAuthorizationsPage() {
       minWidth: 120,
       render: (r) => (
         <Text size="xs">
-          {r.updatedAt
-            ? new Intl.DateTimeFormat("vi-VN", {
-                dateStyle: "short",
-                timeStyle: "short",
-              }).format(new Date(r.updatedAt))
-            : "—"}
+          {r.updatedAt ? formatDateTime(r.updatedAt) : "—"}
         </Text>
       ),
     },

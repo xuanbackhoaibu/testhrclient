@@ -35,6 +35,7 @@ import {
 } from "../../shared/components/DataTable";
 import { PageHeader } from "../../shared/components/PageHeader";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
+import { HrmDateInput } from "../../shared/components/HrmDateInput";
 
 interface HolidayFormValues {
   date: string;
@@ -79,7 +80,7 @@ export function HolidaysPage() {
     initialValues: { date: "", name: "", isPaid: true, note: "" },
     validate: {
       date: (value) =>
-        DATE_PATTERN.test(value) ? null : "Ngày phải theo dạng YYYY-MM-DD.",
+        DATE_PATTERN.test(value) ? null : "Nhập ngày theo dạng DD/MM/YYYY.",
       name: (value) => (value.trim() ? null : "Nhập tên ngày lễ."),
     },
   });
@@ -288,11 +289,13 @@ export function HolidaysPage() {
       >
         <form onSubmit={form.onSubmit((values) => void handleCreate(values))}>
           <Stack gap="sm">
-            <TextInput
+            <HrmDateInput
               label="Ngày"
-              placeholder="2026-09-02"
+              placeholder="DD/MM/YYYY"
               withAsterisk
-              {...form.getInputProps("date")}
+              value={form.values.date || null}
+              onChange={(value) => form.setFieldValue("date", value ?? "")}
+              error={form.errors.date}
             />
             <TextInput
               label="Tên ngày lễ"

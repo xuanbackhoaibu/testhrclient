@@ -31,6 +31,7 @@ import { useMovements } from "../../features/movements/useMovements";
 import { mockEmployees } from "../../shared/mocks/mockEmployees";
 import { ErrorState } from "../../shared/components/ErrorState";
 import { LoadingState } from "../../shared/components/LoadingState";
+import { HrmDateInput } from '../../shared/components/HrmDateInput';
 import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { MOVEMENT_TYPE_OPTIONS } from "../../shared/constants/statuses";
@@ -299,8 +300,9 @@ export function MovementsPage() {
             name="effectiveDate"
             label="Ngày hiệu lực"
             rules={[{ required: true }]}
+            getValueFromEvent={(value: string | null) => value ?? undefined}
           >
-            <Input type="date" />
+            <HrmDateInput style={{ width: "100%" }} />
           </Form.Item>
           <Form.Item name="reason" label="Lý do" rules={[{ required: true }]}>
             <Input.TextArea rows={3} />
