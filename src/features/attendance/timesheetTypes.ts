@@ -28,6 +28,7 @@ export interface TimesheetGridDay {
   holidayName: string | null;
   firstPunch: string | null;
   lastPunch: string | null;
+  totalMinutes?: number | null;
   lateMinutes: number;
   earlyLeaveMinutes: number;
   needsExplanation: boolean;
