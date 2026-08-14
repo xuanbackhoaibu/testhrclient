@@ -116,6 +116,44 @@ export interface RecomputeResult {
   processed: number;
   skippedLocked: number;
   skippedAdjusted: number;
+  skippedClosed?: number;
+}
+
+export type TimesheetRecomputeJobStatus =
+  | "QUEUED"
+  | "RUNNING"
+  | "SUCCEEDED"
+  | "FAILED"
+  | "CANCELLED";
+
+export interface TimesheetRecomputeJob {
+  id: string;
+  status: TimesheetRecomputeJobStatus;
+  fromDate: string;
+  toDate: string;
+  totalEmployees: number;
+  /** Number of employees that have source attendance data in the selected range. */
+  eligibleEmployees?: number;
+  totalMonths: number;
+  /** Months in the requested range that contain source attendance data. */
+  eligibleMonths?: number;
+  skippedNoSourceMonths?: number;
+  /** Source-bearing calendar months, returned for a truthful range preview. */
+  sourceMonths?: { year: number; month: number }[];
+  estimatedCells?: number;
+  totalBatches?: number;
+  completedBatches?: number;
+  /** Server-calculated progress; do not infer it from requested calendar months. */
+  progressPercent?: number;
+  completedMonths: number;
+  currentMonth: { year: number; month: number } | null;
+  processed: number;
+  skippedLocked: number;
+  skippedAdjusted: number;
+  skippedClosed: number;
+  cancelRequestedAt: string | null;
+  errorMessage: string | null;
+  monitorUrl: string;
 }
 
 export interface SetAutoFullAttendancePayload {
