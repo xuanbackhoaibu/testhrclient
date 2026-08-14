@@ -14,6 +14,7 @@ import {
   Table,
   Text,
   Textarea,
+  UnstyledButton,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -61,9 +62,7 @@ const yearOptions = Array.from({ length: 5 }, (_, index) => {
 const fixedColumns = [
   { key: "number", label: "TT", left: 0, width: 42 },
   { key: "code", label: "Mã chấm công", left: 42, width: 104 },
-  { key: "name", label: "Họ và tên", left: 146, width: 184 },
-  { key: "autoFull", label: "Đủ công\nmặc định", left: 330, width: 86 },
-  { key: "title", label: "Chức vụ", left: 416, width: 154 },
+  { key: "name", label: "Họ và tên", left: 146, width: 210 },
 ] as const;
 const dayColumnWidth = 44;
 const rowsPerPageOptions = [20, 50, 100].map((value) => ({
@@ -376,17 +375,15 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
   employeeNumber,
   dayMetas,
   canEdit,
-  updatingEmployeeId,
   onOpenCell,
-  onToggleAutoFullAttendance,
+  onOpenAutoFullAttendance,
 }: {
   item: PreparedTimesheetRow;
   employeeNumber: number;
   dayMetas: DayMeta[];
   canEdit: boolean;
-  updatingEmployeeId: string | null;
   onOpenCell: (row: TimesheetGridRow, day: TimesheetGridDay) => void;
-  onToggleAutoFullAttendance: (row: TimesheetGridRow, enabled: boolean) => void;
+  onOpenAutoFullAttendance: (row: TimesheetGridRow) => void;
 }) {
   const { row, daysByNumber } = item;
 
@@ -406,39 +403,29 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
         </Text>
       </Table.Td>
       <Table.Td style={fixedStyle(fixedColumns[2].left, fixedColumns[2].width)}>
-        <Text size="xs" fw={600}>
-          {row.fullName}
-        </Text>
-      </Table.Td>
-      <Table.Td
-        style={{
-          ...fixedStyle(fixedColumns[3].left, fixedColumns[3].width),
-          textAlign: "center",
-        }}
-      >
-        <Checkbox
-          aria-label={`Đủ công mặc định cho ${row.fullName}`}
-          checked={Boolean(row.attendanceAutoFullDay)}
-          disabled={!canEdit || updatingEmployeeId === row.employeeId}
-          title="HR tick cho nhân sự không cần chấm công; ngày làm việc tự đủ công. Bỏ tick để khôi phục đúng bảng công trước khi bật."
-          onClick={(event) => event.stopPropagation()}
-          onChange={(event) =>
-            onToggleAutoFullAttendance(row, event.currentTarget.checked)
-          }
-        />
-      </Table.Td>
-      <Table.Td style={fixedStyle(fixedColumns[4].left, fixedColumns[4].width)}>
-        {row.jobTitle ? (
-          <Text size="xs">{row.jobTitle}</Text>
-        ) : (
-          <Text
-            size="xs"
-            c="dimmed"
-            title="Hồ sơ chưa có phân công/chức danh hiệu lực"
+        <Group gap={6} wrap="nowrap">
+          <UnstyledButton
+            aria-label={`Thiết lập đủ công mặc định cho ${row.fullName}`}
+            title={`Mở thiết lập đủ công mặc định cho ${row.fullName}`}
+            onClick={() => onOpenAutoFullAttendance(row)}
+            style={{ flex: 1, minWidth: 0, textAlign: "left" }}
           >
-            —
-          </Text>
-        )}
+            <Text size="xs" fw={600} truncate="end" td="underline">
+              {row.fullName}
+            </Text>
+          </UnstyledButton>
+          {row.attendanceAutoFullDay ? (
+            <Text
+              aria-label={`${row.fullName} đã được đánh dấu đủ công mặc định`}
+              c="green.7"
+              fw={800}
+              size="sm"
+              title="Đã đánh dấu đủ công mặc định"
+            >
+              V
+            </Text>
+          ) : null}
+        </Group>
       </Table.Td>
       {dayMetas.map((meta) => {
         const day = daysByNumber.get(meta.day);
@@ -525,6 +512,10 @@ export function TimesheetGridPage() {
   const [draftDepartmentIds, setDraftDepartmentIds] = useState<string[]>([]);
   const [draftUnitIds, setDraftUnitIds] = useState<string[]>([]);
   const [editing, setEditing] = useState<EditingCell | null>(null);
+  const [autoFullAttendanceRow, setAutoFullAttendanceRow] =
+    useState<TimesheetGridRow | null>(null);
+  const [autoFullAttendanceEnabled, setAutoFullAttendanceEnabled] =
+    useState(false);
   const [editSymbol, setEditSymbol] = useState<string | null>(null);
   const [editPortion, setEditPortion] = useState(1);
   const [editReason, setEditReason] = useState("");
@@ -553,9 +544,6 @@ export function TimesheetGridPage() {
   const adjustDay = useAdjustTimesheetDay();
   const recompute = useRecomputeTimesheet();
   const autoFullAttendance = useSetAutoFullAttendance();
-  const [updatingEmployeeId, setUpdatingEmployeeId] = useState<string | null>(
-    null,
-  );
   const rows = useMemo(
     () => gridQuery.data?.rows ?? [],
     [gridQuery.data?.rows],
@@ -811,6 +799,11 @@ export function TimesheetGridPage() {
     [canEdit],
   );
 
+  const openAutoFullAttendanceSettings = useCallback((row: TimesheetGridRow) => {
+    setAutoFullAttendanceRow(row);
+    setAutoFullAttendanceEnabled(Boolean(row.attendanceAutoFullDay));
+  }, []);
+
   function openScopeModal() {
     setDraftUnitIds(unitIds);
     setDraftDepartmentIds(
@@ -918,12 +911,11 @@ export function TimesheetGridPage() {
     }
   }
 
-  async function handleToggleAutoFullAttendance(
-    row: TimesheetGridRow,
-    enabled: boolean,
-  ) {
+  async function handleSaveAutoFullAttendance() {
+    if (!canEdit || !autoFullAttendanceRow || recompute.isPending) return;
+    const row = autoFullAttendanceRow;
+    const enabled = autoFullAttendanceEnabled;
     rememberTimesheetScroll();
-    setUpdatingEmployeeId(row.employeeId);
     try {
       const result = await autoFullAttendance.mutateAsync({
         employeeId: row.employeeId,
@@ -940,6 +932,7 @@ export function TimesheetGridPage() {
           ? `${row.fullName} được tự đủ công ở các ngày làm việc của kỳ ${month}/${year}; Chủ nhật vẫn là ngày nghỉ.`
           : `${row.fullName} đã khôi phục ${result.recompute.processed} ô bảng công trước khi bật đủ công mặc định. Ô HR sửa tay hoặc kỳ đã chốt vẫn được giữ nguyên.`,
       });
+      setAutoFullAttendanceRow(null);
       if (
         result.recompute.skippedLocked + result.recompute.skippedAdjusted >
         0
@@ -957,7 +950,6 @@ export function TimesheetGridPage() {
         message: "Kiểm tra lại quyền HR và thử lại sau.",
       });
     } finally {
-      setUpdatingEmployeeId(null);
       restoreTimesheetScroll();
     }
   }
@@ -999,7 +991,7 @@ export function TimesheetGridPage() {
       <PageHeader
         compact
         title="Bảng chấm công tháng"
-        subtitle="Theo dõi theo công ty, phòng ban và nhân viên; chức vụ lấy từ phân công hiệu lực trong kỳ."
+        subtitle="Theo dõi theo công ty, phòng ban và nhân viên; nhấn họ tên để thiết lập đủ công mặc định."
         actions={
           canEdit || canExport ? (
             <Group gap="xs">
@@ -1019,6 +1011,7 @@ export function TimesheetGridPage() {
                   size="sm"
                   leftSection={<IconRefresh size={16} />}
                   loading={recompute.isPending}
+                  disabled={autoFullAttendance.isPending}
                   onClick={() => void handleRecompute()}
                 >
                   Cập nhật bảng công
@@ -1042,9 +1035,10 @@ export function TimesheetGridPage() {
             tính đi muộn. Ngưỡng thực tế lấy theo từng ca. Thứ Bảy làm buổi sáng
             <b> 08:00–12:00</b>; Chủ nhật luôn là <b> ngày nghỉ</b>, không cảnh
             báo muộn hay thiếu chấm công. Nhân sự chưa được phân ca hiển thị
-            riêng và chưa tự tính công. HR có thể tick <b>Đủ công mặc định</b>{" "}
-            theo từng người đặc thù: ngày làm việc tự đủ công, bỏ tick sẽ khôi
-            phục đúng bảng công trước khi bật. Khi chọn tháng cũ, hệ thống xét
+            riêng và chưa tự tính công. Nhấn vào <b>họ tên</b> để thiết lập{" "}
+            <b>Đủ công mặc định</b> theo từng người đặc thù; khi bật, bảng hiển thị
+            <b> V</b> cạnh tên. Bỏ tick sẽ khôi phục đúng bảng công trước khi bật.
+            Khi chọn tháng cũ, hệ thống xét
             đúng phân công hiệu lực của tháng đó, kể cả nhân sự đã nghỉ hoặc
             chuyển đơn vị sau này.
           </Text>
@@ -1167,14 +1161,9 @@ export function TimesheetGridPage() {
                         rowSpan={2}
                         style={{
                           ...fixedStyle(column.left, column.width, true),
-                          textAlign:
-                            column.key === "number" || column.key === "autoFull"
-                              ? "center"
-                              : "left",
+                          textAlign: column.key === "number" ? "center" : "left",
                           verticalAlign: "middle",
                           padding: "5px 7px",
-                          whiteSpace:
-                            column.key === "autoFull" ? "pre-line" : undefined,
                         }}
                       >
                         {column.label}
@@ -1277,10 +1266,9 @@ export function TimesheetGridPage() {
                           employeeNumber={group.startIndex + rowIndex + 1}
                           dayMetas={dayMetas}
                           canEdit={canEdit}
-                          updatingEmployeeId={updatingEmployeeId}
                           onOpenCell={openCell}
-                          onToggleAutoFullAttendance={
-                            handleToggleAutoFullAttendance
+                          onOpenAutoFullAttendance={
+                            openAutoFullAttendanceSettings
                           }
                         />
                       ))}
@@ -1424,6 +1412,59 @@ export function TimesheetGridPage() {
                 Áp dụng phạm vi
               </Button>
             </Group>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={autoFullAttendanceRow !== null}
+        onClose={() => setAutoFullAttendanceRow(null)}
+        title={
+          autoFullAttendanceRow
+            ? `Thiết lập đủ công: ${autoFullAttendanceRow.fullName}`
+            : "Thiết lập đủ công"
+        }
+        centered
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Mã chấm công:{" "}
+            {formatAttendanceCode(autoFullAttendanceRow?.attendanceCode)}
+          </Text>
+          <Checkbox
+            label="Đủ công mặc định"
+            description="Ngày làm việc trong kỳ sẽ tự đủ công; Chủ nhật vẫn là ngày nghỉ."
+            checked={autoFullAttendanceEnabled}
+            disabled={
+              !canEdit || autoFullAttendance.isPending || recompute.isPending
+            }
+            onChange={(event) =>
+              setAutoFullAttendanceEnabled(event.currentTarget.checked)
+            }
+          />
+          <Alert color="blue" variant="light">
+            Khi đã bật, bảng công hiển thị ký hiệu V cạnh họ và tên nhân viên.
+          </Alert>
+          <Group justify="flex-end" mt="md">
+            <Button
+              variant="default"
+              onClick={() => setAutoFullAttendanceRow(null)}
+            >
+              Đóng
+            </Button>
+            {canEdit ? (
+              <Button
+                disabled={
+                  autoFullAttendanceEnabled ===
+                    Boolean(autoFullAttendanceRow?.attendanceAutoFullDay) ||
+                  recompute.isPending
+                }
+                loading={autoFullAttendance.isPending}
+                onClick={() => void handleSaveAutoFullAttendance()}
+              >
+                Lưu thay đổi
+              </Button>
+            ) : null}
           </Group>
         </Stack>
       </Modal>
