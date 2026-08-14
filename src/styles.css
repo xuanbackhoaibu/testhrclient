@@ -6,31 +6,65 @@ body,
 }
 
 :root {
-  --hrm-bg: #f4f7fb;
-  --hrm-surface: #ffffff;
-  --hrm-surface-subtle: #f8fafc;
-  --hrm-border: #dfe6f0;
-  --hrm-border-soft: #edf1f6;
-  --hrm-text: #0f172a;
-  --hrm-muted: #64748b;
-  --hrm-accent: #0b5ed7;
-  --hrm-accent-soft: #eaf2ff;
+  --color-primary: #D71920;
+  --color-primary-text-dark: #F08A8F;
+  --color-primary-tint: #FCE9EA;
+  --color-accent: #D8C764;
+  --color-accent-text-dark: #E5D78A;
+  --color-accent-tint: #FBF7E4;
+  --color-bg-app: #F5F6F7;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-subtle: #F5F5F5;
+  --color-bg-hover: #F5F5F5;
+  --color-border: #E5E7EB;
+  --color-divider: #F0F0F0;
+  --color-text-primary: #1F2328;
+  --color-text-secondary: #595959;
+  --color-text-tertiary: #9AA0A6;
+  --chart-1: #D71920;
+  --chart-2: #D8C764;
+  --chart-3: #565A61;
+  --chart-4: #F08A8F;
+  --chart-5: #B8AA55;
+  --chart-6: #8A8F98;
+  --chart-7: #F3C4C6;
+  --hrm-bg: var(--color-bg-app);
+  --hrm-surface: var(--color-bg-surface);
+  --hrm-surface-subtle: var(--color-bg-subtle);
+  --hrm-border: var(--color-border);
+  --hrm-border-soft: var(--color-divider);
+  --hrm-text: var(--color-text-primary);
+  --hrm-muted: var(--color-text-secondary);
+  --hrm-accent: var(--color-primary);
+  --hrm-accent-soft: var(--color-primary-tint);
   --hrm-radius: 8px;
-  --hrm-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --hrm-shadow-raised: 0 14px 34px rgba(15, 23, 42, 0.08);
+  --hrm-shadow: none;
+  --hrm-shadow-raised: 0 12px 28px rgba(31, 35, 40, 0.12);
 }
 
 :root[data-mantine-color-scheme='dark'] {
-  --hrm-bg: #0f172a;
-  --hrm-surface: #111827;
-  --hrm-surface-subtle: #172033;
-  --hrm-border: #263244;
-  --hrm-border-soft: #1f2937;
-  --hrm-text: #e5e7eb;
-  --hrm-muted: #94a3b8;
-  --hrm-accent-soft: rgba(45, 123, 234, 0.18);
-  --hrm-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
-  --hrm-shadow-raised: 0 18px 40px rgba(0, 0, 0, 0.34);
+  --color-primary: #F08A8F;
+  --color-primary-tint: rgba(215, 25, 32, 0.18);
+  --color-accent: #E5D78A;
+  --color-accent-tint: rgba(216, 199, 100, 0.16);
+  --color-bg-app: #17171A;
+  --color-bg-surface: #202020;
+  --color-bg-subtle: #2A2A2E;
+  --color-bg-hover: #2A2A2E;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-divider: rgba(255, 255, 255, 0.05);
+  --color-text-primary: #EAEAEA;
+  --color-text-secondary: #A8A8AD;
+  --color-text-tertiary: #6E6E73;
+  --chart-1: #F08A8F;
+  --chart-2: #E5D78A;
+  --chart-3: #8A8F98;
+  --chart-4: #F3C4C6;
+  --chart-5: #B8AA55;
+  --chart-6: #565A61;
+  --chart-7: #D71920;
+  --hrm-shadow: none;
+  --hrm-shadow-raised: 0 12px 28px rgba(0, 0, 0, 0.34);
 }
 
 body {
@@ -41,6 +75,9 @@ body {
     BlinkMacSystemFont,
     'Segoe UI',
     sans-serif;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 * {
@@ -95,12 +132,24 @@ body {
 }
 
 .mantine-Button-root {
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .ant-btn {
-  font-weight: 650;
+  font-weight: 600;
   box-shadow: none;
+}
+
+.mantine-Button-root[data-variant='filled'],
+.ant-btn-primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.mantine-Button-root[data-variant='filled']:hover,
+.ant-btn-primary:not(:disabled):hover {
+  background: #B9151B;
+  border-color: #B9151B;
 }
 
 .ant-btn:active {
@@ -117,19 +166,25 @@ body {
 .mantine-PasswordInput-input,
 .mantine-Textarea-input {
   border-color: var(--hrm-border);
-  background: #ffffff;
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
 }
 
 :root[data-mantine-color-scheme='dark'] .mantine-Input-input,
 :root[data-mantine-color-scheme='dark'] .mantine-Select-input,
 :root[data-mantine-color-scheme='dark'] .mantine-PasswordInput-input,
 :root[data-mantine-color-scheme='dark'] .mantine-Textarea-input {
-  background: #0f172a;
+  background: var(--color-bg-surface);
 }
 
 .mantine-Input-label {
   color: var(--hrm-text);
-  font-weight: 650;
+  font-weight: 600;
+}
+
+.mantine-Input-input::placeholder,
+.mantine-Textarea-input::placeholder {
+  color: var(--color-text-tertiary);
 }
 
 .mantine-Drawer-content,
@@ -145,7 +200,7 @@ body {
 .mantine-Drawer-title,
 .mantine-Modal-title {
   color: var(--hrm-text);
-  font-weight: 750;
+  font-weight: 600;
 }
 
 .auth-page {

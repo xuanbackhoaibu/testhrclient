@@ -2002,3 +2002,108 @@ Ghi chú kỹ thuật:
   - Bảo vệ phiên.
 - Không còn hiển thị các nhãn gây hiểu nhầm như `Chỉ xem`, `Có quyền sửa`, `Bắt buộc`, `Đang bật`.
 - Đồng bộ giao diện Light/Dark mode cho card bảo mật, viền, màu icon và chữ phụ.
+
+## 37. Hacom Design Tokens Và Sidebar Quản Trị Đầy Đủ
+
+Đã nâng cấp:
+
+- Chuẩn hóa lại token core theo hướng Hacom đỏ-vàng:
+  - Primary đỏ: `#D71920`.
+  - Primary text trên nền tối: `#F08A8F`.
+  - Primary tint: `#FCE9EA` / `rgba(215,25,32,0.18)`.
+  - Accent vàng: `#D8C764`.
+  - Accent text trên nền tối: `#E5D78A`.
+  - Accent tint: `#FBF7E4` / `rgba(216,199,100,0.16)`.
+  - Nền app: `#F5F6F7` / `#17171A`.
+  - Surface: `#FFFFFF` / `#202020`.
+  - Hover: `#F5F5F5` / `#2A2A2E`.
+  - Border: `#E5E7EB` / `rgba(255,255,255,0.08)`.
+  - Divider: `#F0F0F0` / `rgba(255,255,255,0.05)`.
+  - Text 1/2/3 Light: `#1F2328`, `#595959`, `#9AA0A6`.
+  - Text 1/2/3 Dark: `#EAEAEA`, `#A8A8AD`, `#6E6E73`.
+- Thêm chart palette cố định:
+  - `#D71920`.
+  - `#D8C764`.
+  - `#565A61`.
+  - `#F08A8F`.
+  - `#B8AA55`.
+  - `#8A8F98`.
+  - `#F3C4C6`.
+- Đồng bộ `src/app/theme.ts` cho Mantine và AntD dùng primary đỏ Hacom, button/input radius 8px và font Inter.
+- Map token mới qua các biến cũ `--hrm-*` để không làm vỡ component đã xây trước đó.
+
+Điều chỉnh layout shell:
+
+- Giữ lại `MainLayout` dạng sidebar đầy đủ như giao diện cũ vì HRM là hệ thống xem báo cáo/quản trị dữ liệu, không phải app nhắn tin.
+- Không dùng bố cục icon rail + list panel kiểu chat cho trang báo cáo.
+- Sidebar tiếp tục hiển thị đầy đủ nhóm:
+  - Vận hành.
+  - Danh mục.
+  - Quản trị / phân quyền.
+- Active/hover/sidebar sẽ ăn theo token Hacom đỏ-vàng qua biến `--hrm-accent` và `--hrm-accent-soft`.
+- Header cũ vẫn có title trang, nút Dark Mode, Notification Bell và menu tài khoản.
+
+## 38. Dashboard Grid Và Chart Restyle Theo Token Hacom
+
+Đã nâng cấp:
+
+- Dashboard card chuyển về phong cách flat:
+  - Card trắng.
+  - Border 1px.
+  - Radius 12px.
+  - Không shadow.
+  - Không gradient trên KPI/chart.
+- KPI card:
+  - Thu nhỏ thành card compact để 5 KPI xếp thành 1 hàng trên desktop/tablet rộng.
+  - Cao khoảng 82px, padding nhỏ, radius 10px.
+  - Nhãn 10px uppercase, giá trị 20px/600, meta 11px.
+  - Icon 30px nền tint.
+  - Bỏ sparkline trong KPI card để thẻ sạch hơn, không còn dấu gạch nhỏ gây rối mắt.
+  - Card `Đơn chờ duyệt` đổi breakdown text thành mini stacked chart:
+    - Segment Nghỉ / Công / Điều chuyển theo tỷ trọng.
+    - Hover từng segment hiển thị số lượng và phần trăm.
+    - Legend nhỏ nằm dưới track để không làm card quá cao.
+- Thêm biểu đồ mới `Biến động nhân sự 6 tháng`:
+  - Tuyển mới dùng line đỏ Hacom.
+  - Nghỉ việc dùng line graphite nét đứt.
+  - Area đỏ opacity nhẹ.
+  - Grid ngang mảnh và nhãn trục nhỏ.
+- Donut chart:
+  - Đổi kích thước về 168px.
+  - Vành dày hơn.
+  - Tâm hiển thị tổng và nhãn.
+  - Legend bên phải có dot, tên, giá trị và phần trăm.
+  - Hover lát tăng độ dày nhẹ.
+- Biểu đồ `Nhân sự theo trạng thái`:
+  - Giữ dạng biểu đồ cột đúng yêu cầu.
+  - Đổi sang bố cục cột đứng gọn trong vùng plot có baseline, bỏ đường gạch giữa để giao diện sạch hơn.
+  - Mỗi cột có số lượng phía trên, cột tỷ lệ ở giữa, dot màu, nhãn trạng thái và phần trăm phía dưới.
+  - Màu theo ngữ nghĩa: đỏ Hacom / vàng / graphite / xám.
+- Stacked bar `Chuyên cần theo phòng ban`:
+  - Đưa lên ô trống ở hàng biểu đồ phân tích phía trên, cạnh `Nhân sự theo trạng thái`, để dashboard cân bố cục hơn.
+  - Đổi thành danh sách card nhỏ theo phòng ban, mỗi card có tên phòng, badge tỷ lệ, stacked track và mô tả số ngày.
+  - Header hiển thị tỷ lệ chuyên cần trung bình của các phòng ban đang xem.
+  - Segment đi làm màu vàng Hacom.
+  - Segment vắng/nghỉ màu đỏ nhạt.
+- Top đi muộn:
+  - Đổi sang row gọn gồm tên nhân sự, số lần, progress bar và tổng phút đi muộn.
+  - Bỏ badge thứ hạng để widget đỡ nặng và dễ đọc hơn.
+  - Thêm vạch ngưỡng nét đứt tại mốc 3 lần.
+- Widget cuối dashboard:
+  - `Công việc cần làm` đổi thành danh sách thao tác compact có count badge bên trái và nút hành động bên phải.
+  - `Cảnh báo nhân sự` có tiêu đề phụ, màu icon theo mức độ, trạng thái quỹ phép 0 cảnh báo được viết lại thành trạng thái ổn định.
+  - `Chuẩn bị bàn giao lương` đổi thành summary card 3 ô chỉ số và dòng trạng thái kiểm tra dữ liệu lương.
+- Empty state trong chart dùng màu xám/primary Hacom, giữ khung chart để layout không giật.
+- Dark mode chart dùng token nền/text/border mới, không còn hardcode xanh.
+
+Cập nhật bổ sung:
+
+- Sửa Donut chart không còn bị méo:
+  - Chuyển từ `circle + strokeDasharray` viewBox nhỏ sang `path arc` SVG thật với viewBox `168x168`.
+  - Giữ `aspect-ratio: 1`, thêm `width/height` và `preserveAspectRatio` để luôn tròn ở mọi viewport.
+  - Track và segment dùng cùng tâm/bán kính, không còn stretch theo container.
+- Viết lại biểu đồ trạng thái nhân sự:
+  - Quay lại đúng dạng biểu đồ cột theo yêu cầu mới.
+  - Không dùng lại bố cục cột cũ; chuyển sang cột đứng dạng compact chart.
+  - Cột có track nền, fill animate theo chiều cao, số lượng trên đầu cột và phần trăm dưới nhãn.
+  - Mobile vẫn giữ cột đứng nhưng giảm chiều cao track để tránh tràn khung.

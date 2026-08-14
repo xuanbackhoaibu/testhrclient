@@ -8,7 +8,7 @@
 .actionPanel {
   border: 1px solid var(--hrm-border);
   background: var(--hrm-surface);
-  box-shadow: var(--hrm-shadow);
+  box-shadow: none;
 }
 
 .filterControls {
@@ -17,34 +17,35 @@
 
 .metricCard {
   position: relative;
-  min-height: 92px;
+  min-height: 82px;
   overflow: hidden;
-  border-radius: var(--hrm-radius);
+  border-radius: 10px;
 }
 
 .metricCard_blue {
-  background: linear-gradient(180deg, #fff8f8 0%, #ffffff 100%);
+  background: var(--hrm-surface);
 }
 
 .metricCard_green {
-  background: linear-gradient(180deg, #fbfaf1 0%, #ffffff 100%);
+  background: var(--hrm-surface);
 }
 
 .metricCard_teal {
-  background: linear-gradient(180deg, #f7f7f8 0%, #ffffff 100%);
+  background: var(--hrm-surface);
 }
 
 .metricCard_red {
-  background: linear-gradient(180deg, #fff5f5 0%, #ffffff 100%);
+  background: var(--hrm-surface);
 }
 
 .metricCard_orange {
-  background: linear-gradient(180deg, #fbfaf1 0%, #ffffff 100%);
+  background: var(--hrm-surface);
 }
 
 .metricLabel {
   overflow: hidden;
-  letter-spacing: 0.01em;
+  font-size: 10px;
+  letter-spacing: 0;
   line-height: 1.15;
   text-overflow: ellipsis;
   text-transform: uppercase;
@@ -60,28 +61,30 @@
 
 .metricValue {
   color: var(--hrm-text);
-  font-size: 22px;
-  font-weight: 800;
+  font-size: 20px;
+  font-weight: 600;
   line-height: 1;
 }
 
 .metricMeta {
-  max-width: 86px;
+  max-width: 96px;
   font-size: 11px;
-  line-height: 1.15;
+  line-height: 1.2;
 }
 
 .metricIcon {
   flex: 0 0 auto;
+  background: var(--color-primary-tint);
+  color: var(--color-primary);
 }
 
 .metricDetail {
-  min-height: 14px;
+  min-height: 12px;
 }
 
 .metricDetailText {
   overflow: hidden;
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -96,108 +99,130 @@
 
 .kpiProgressTrack {
   overflow: hidden;
-  height: 6px;
+  height: 5px;
   border-radius: 999px;
-  background: #f1e8e8;
+  background: var(--color-bg-subtle);
 }
 
 .kpiProgressFill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #d71920, #d8c764);
+  background: var(--color-primary);
 }
 
-.miniStatGrid {
+.pendingMiniChart {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
 }
 
-.miniStatGrid span {
+.pendingMiniTrack {
+  display: flex;
+  width: 100%;
+  height: 6px;
   overflow: hidden;
-  border-radius: 6px;
-  background: rgba(216, 199, 100, 0.18);
-  color: #6b5f20;
-  font-size: 10px;
-  line-height: 1.2;
-  padding: 4px 5px;
+  border-radius: 999px;
+  background: var(--color-bg-subtle);
+}
+
+.pendingMiniSegment {
+  min-width: 3px;
+  height: 100%;
+  transition: width 0.6s ease-out, filter 150ms ease;
+}
+
+.pendingMiniSegment:hover {
+  filter: brightness(1.08);
+}
+
+.pendingMiniLegend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+  color: var(--color-text-secondary);
+  font-size: 9px;
+  line-height: 1.15;
+}
+
+.pendingMiniLegend span {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 3px;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.miniStatGrid strong {
-  margin-left: 2px;
-  font-size: 11px;
+.pendingMiniLegend i {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.pendingMiniLegend strong {
+  color: var(--color-text-primary);
+  font-size: 9px;
+  font-weight: 600;
 }
 
 .chartPanel,
 .actionPanel {
   min-height: 320px;
-  border-radius: var(--hrm-radius);
+  border-radius: 12px;
 }
 
 .chartPanel {
-  animation: chartReveal 420ms ease both;
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  padding: 20px;
+  transition: border-color 150ms ease;
 }
 
 .chartPanel:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
-  transform: translateY(-1px);
-}
-
-@keyframes chartReveal {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  border-color: var(--color-border);
 }
 
 .donutLayout {
-  min-height: 230px;
+  min-height: 220px;
 }
 
 .donutWrap {
   position: relative;
-  width: 230px;
-  height: 230px;
-  flex: 0 0 230px;
+  display: grid;
+  place-items: center;
+  width: 168px;
+  height: 168px;
+  aspect-ratio: 1;
+  flex: 0 0 168px;
 }
 
 .donut {
-  width: 100%;
-  height: 100%;
-  transform: rotate(-90deg);
+  width: 168px;
+  height: 168px;
+  max-width: 100%;
+  display: block;
+  overflow: visible;
+  shape-rendering: geometricPrecision;
 }
 
 .donutTrack {
   fill: none;
-  stroke: var(--mantine-color-gray-1);
-  stroke-width: 8;
+  stroke: var(--color-bg-subtle);
+  stroke-width: 14px;
 }
 
 .donutSegment {
   cursor: pointer;
   fill: none;
-  stroke-width: 8;
-  transition:
-    stroke-dasharray 0.8s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 180ms ease,
-    stroke-width 180ms ease,
-    filter 180ms ease;
+  stroke-linecap: butt;
+  stroke-width: 14px;
+  transition: opacity 180ms ease, stroke-width 180ms ease;
+  vector-effect: non-scaling-stroke;
 }
 
 .donutSegment:hover,
 .donutSegment:focus-visible {
-  filter: drop-shadow(0 3px 7px rgba(15, 23, 42, 0.18));
   opacity: 0.9;
-  stroke-width: 9.6;
+  stroke-width: 16px;
   outline: none;
 }
 
@@ -211,7 +236,8 @@
 
 .donutTotal {
   color: var(--hrm-text);
-  font-size: 28px;
+  font-size: 24px;
+  font-weight: 600;
   line-height: 1;
 }
 
@@ -240,8 +266,8 @@
 }
 
 .legendDot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 999px;
 }
 
@@ -253,77 +279,182 @@
 }
 
 .legendValue {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
   color: var(--hrm-muted);
   font-size: 12px;
 }
 
+.legendValue strong {
+  color: var(--hrm-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.legendValue small {
+  color: var(--hrm-muted);
+  font-size: 12px;
+}
+
+.lineChart {
+  width: 100%;
+  height: 240px;
+}
+
+.chartGridLine {
+  stroke: var(--color-divider);
+  stroke-width: 1;
+}
+
+.axisLabel {
+  fill: var(--color-text-tertiary);
+  font-size: 11px;
+}
+
+.lineArea {
+  fill: var(--color-primary);
+  opacity: 0.08;
+}
+
+.hireLine,
+.terminationLine {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.hireLine {
+  stroke: var(--color-primary);
+}
+
+.terminationLine {
+  stroke: var(--chart-3);
+  stroke-dasharray: 4 4;
+}
+
+.hireEndpoint {
+  fill: var(--color-primary);
+}
+
+.lineHoverDot {
+  fill: var(--color-primary);
+  opacity: 0;
+  stroke: var(--hrm-surface);
+  stroke-width: 2;
+}
+
+.lineChart:hover .lineHoverDot {
+  opacity: 1;
+}
+
+.chartLegendCompact {
+  color: var(--hrm-muted);
+  font-size: 12px;
+}
+
+.chartLegendCompact span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chartLegendCompact i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
 .barRow {
   display: grid;
-  grid-template-columns: minmax(96px, 170px) 1fr 40px;
+  grid-template-columns: 140px 1fr 56px;
   align-items: center;
   gap: 10px;
 }
 
-.verticalBarChart {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
-  align-items: end;
-  min-height: 230px;
-  gap: 12px;
-  padding-top: 12px;
+.statusColumnChart {
+  overflow-x: auto;
+  min-height: 232px;
+  padding-top: 6px;
 }
 
-.verticalBarItem {
+.statusColumnPlot {
+  position: relative;
   display: grid;
-  grid-template-rows: 1fr auto auto;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
   align-items: end;
-  height: 230px;
+  min-width: 360px;
+  min-height: 226px;
+  border-bottom: 1px solid var(--color-divider);
+  gap: 14px;
+  padding: 18px 2px 0;
+}
+
+.statusColumnItem {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: 20px 128px 8px 34px 16px;
+  justify-items: center;
+  min-width: 0;
   border: 0;
+  border-radius: 8px;
   background: transparent;
   color: inherit;
   cursor: pointer;
-  gap: 6px;
-  min-width: 0;
-  padding: 0;
-}
-
-.verticalBarItem:hover .verticalBarFill {
-  filter: brightness(1.05) saturate(1.08);
-  transform: scaleY(1.04);
-}
-
-.verticalBarTrack {
-  display: flex;
-  align-items: end;
-  justify-self: center;
-  width: min(46px, 72%);
-  height: 168px;
-  overflow: hidden;
-  border-radius: 10px 10px 6px 6px;
-  background: var(--mantine-color-gray-1);
-}
-
-.verticalBarFill {
-  width: 100%;
-  border-radius: inherit;
-  animation: barGrow 520ms ease both;
-  transition:
-    height 0.6s ease-out,
-    filter 180ms ease,
-    transform 180ms ease;
-  transform-origin: bottom;
-}
-
-.verticalBarValue,
-.verticalBarLabel {
+  padding: 8px 6px;
   text-align: center;
+  transition: background-color 150ms ease;
 }
 
-.verticalBarLabel {
+.statusColumnItem:hover {
+  background: var(--color-bg-subtle);
+}
+
+.statusColumnValue,
+.statusColumnPercent {
+  font-variant-numeric: tabular-nums;
+}
+
+.statusColumnValue {
+  color: var(--hrm-text);
+  line-height: 1;
+}
+
+.statusColumnTrack {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 32px;
+  height: 128px;
   overflow: hidden;
-  max-width: 100%;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  border-radius: 999px 999px 8px 8px;
+  background: var(--color-bg-subtle);
+}
+
+.statusColumnFill {
+  width: 100%;
+  min-height: 4px;
+  border-radius: inherit;
+  transition: height 0.6s ease-out, filter 150ms ease;
+}
+
+.statusColumnItem:hover .statusColumnFill {
+  filter: brightness(1.08);
+}
+
+.statusColumnDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.statusColumnLabel {
+  overflow: hidden;
+  width: 100%;
+  color: var(--hrm-text);
+  line-height: 1.25;
 }
 
 .barLabel {
@@ -332,72 +463,122 @@
   white-space: nowrap;
 }
 
+.attendanceList {
+  min-height: 230px;
+}
+
 .barTrack,
 .stackedTrack {
   overflow: hidden;
   border-radius: 999px;
-  background: var(--mantine-color-gray-1);
+  background: var(--color-bg-subtle);
 }
 
 .barTrack {
-  height: 14px;
+  position: relative;
+  height: 12px;
+}
+
+.barTrack::after {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  left: var(--threshold, 50%);
+  border-left: 1px dashed var(--chart-3);
+  content: '';
+}
+
+.topLateList::before {
+  align-self: end;
+  color: var(--color-text-tertiary);
+  content: 'ngưỡng';
+  font-size: 11px;
+  margin-right: 4px;
 }
 
 .barFill {
   height: 100%;
   border-radius: inherit;
-  animation: widthGrow 520ms ease both;
   transform-origin: left;
-  transition:
-    width 0.6s ease-out,
-    filter 180ms ease,
-    transform 180ms ease;
+  transition: width 200ms ease, filter 150ms ease;
 }
 
 .barFill_normal {
-  background: linear-gradient(90deg, #60a5fa, #3b82f6);
+  background: var(--color-primary);
 }
 
 .barFill_danger {
-  background: linear-gradient(90deg, #fb7185, #ef4444);
+  background: var(--color-primary);
 }
 
 .barRow:hover .barFill {
-  filter: brightness(1.05) saturate(1.08);
-  transform: scaleX(1.01);
+  filter: brightness(1.08);
 }
 
 .stackedRow {
   display: grid;
-  gap: 6px;
+  gap: 8px;
+  border: 1px solid var(--color-divider);
+  border-radius: 10px;
+  background: var(--hrm-surface);
+  padding: 10px;
+  transition: background-color 150ms ease, border-color 150ms ease;
 }
 
 .stackedTrack {
   display: flex;
-  height: 18px;
+  height: 12px;
 }
 
 .stackedAttend {
-  background: #10b981;
-  transition: filter 180ms ease;
+  background: var(--color-accent);
+  transition: filter 150ms ease;
 }
 
 .stackedAbsent {
-  background: #ef4444;
-  transition: filter 180ms ease;
+  background: var(--chart-7);
+  transition: filter 150ms ease;
 }
 
 .stackedRow:hover .stackedAttend,
 .stackedRow:hover .stackedAbsent {
-  filter: brightness(1.06) saturate(1.08);
+  filter: brightness(1.08);
+}
+
+.stackedRow:hover {
+  border-color: var(--color-border);
+  background: var(--color-bg-subtle);
+}
+
+.barRow {
+  grid-template-columns: minmax(0, 1fr);
+  border: 1px solid var(--color-divider);
+  border-radius: 10px;
+  background: var(--hrm-surface);
+  padding: 10px;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.barRow:hover {
+  border-color: var(--color-border);
+  background: var(--color-bg-subtle);
 }
 
 .todoRow {
-  min-height: 58px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 56px;
   border: 1px solid var(--hrm-border-soft);
   border-radius: 8px;
   background: var(--hrm-surface-subtle);
+  column-gap: 10px;
   padding: 10px;
+}
+
+.todoCount {
+  justify-self: start;
+  min-width: 30px;
 }
 
 .alertRow {
@@ -420,6 +601,37 @@
   border-color: var(--hrm-border);
 }
 
+.payrollGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.payrollGrid > div {
+  border: 1px solid var(--color-divider);
+  border-radius: 10px;
+  background: var(--hrm-surface-subtle);
+  padding: 10px;
+}
+
+.payrollStatus {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  margin-top: 12px;
+  border-top: 1px solid var(--color-divider);
+  padding-top: 10px;
+}
+
+.payrollStatus span {
+  width: 8px;
+  height: 8px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: var(--color-accent);
+}
+
 .emptyIllustration {
   width: 96px;
   height: 72px;
@@ -427,14 +639,14 @@
 
 .emptyIllustration rect,
 .emptyIllustration circle {
-  fill: #eff6ff;
-  stroke: #3b82f6;
+  fill: var(--color-bg-subtle);
+  stroke: var(--color-text-tertiary);
   stroke-width: 2;
 }
 
 .emptyIllustration path {
   fill: none;
-  stroke: #10b981;
+  stroke: var(--color-primary);
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 5;
@@ -444,14 +656,13 @@
 :global([data-mantine-color-scheme='dark']) .metricCard,
 :global([data-mantine-color-scheme='dark']) .chartPanel,
 :global([data-mantine-color-scheme='dark']) .actionPanel {
-  border-color: #253244;
-  background: #111827;
+  border-color: var(--color-border);
+  background: var(--color-bg-surface);
   box-shadow: none;
 }
 
 :global([data-mantine-color-scheme='dark']) .chartPanel:hover {
-  border-color: #334155;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+  border-color: var(--color-border);
 }
 
 :global([data-mantine-color-scheme='dark']) .metricCard_blue,
@@ -459,43 +670,35 @@
 :global([data-mantine-color-scheme='dark']) .metricCard_teal,
 :global([data-mantine-color-scheme='dark']) .metricCard_red,
 :global([data-mantine-color-scheme='dark']) .metricCard_orange {
-  background: #111827;
+  background: var(--color-bg-surface);
 }
 
 :global([data-mantine-color-scheme='dark']) .metricValue,
 :global([data-mantine-color-scheme='dark']) .donutTotal {
-  color: #f8fafc;
+  color: var(--color-text-primary);
 }
 
 :global([data-mantine-color-scheme='dark']) .todoRow,
 :global([data-mantine-color-scheme='dark']) .alertRow,
-:global([data-mantine-color-scheme='dark']) .legendItem:hover {
-  border-color: #253244;
-  background: #172033;
-}
-
-:global([data-mantine-color-scheme='dark']) .miniStatGrid span {
-  background: rgba(216, 199, 100, 0.18);
-  color: #e6d87f;
+:global([data-mantine-color-scheme='dark']) .legendItem:hover,
+:global([data-mantine-color-scheme='dark']) .stackedRow,
+:global([data-mantine-color-scheme='dark']) .barRow,
+:global([data-mantine-color-scheme='dark']) .payrollGrid > div {
+  border-color: var(--color-border);
+  background: var(--color-bg-subtle);
 }
 
 :global([data-mantine-color-scheme='dark']) .barTrack,
 :global([data-mantine-color-scheme='dark']) .stackedTrack,
 :global([data-mantine-color-scheme='dark']) .donutTrack,
-:global([data-mantine-color-scheme='dark']) .verticalBarTrack {
-  background: var(--mantine-color-dark-5);
-  stroke: var(--mantine-color-dark-5);
+:global([data-mantine-color-scheme='dark']) .statusColumnTrack {
+  background: var(--color-bg-subtle);
+  stroke: var(--color-bg-subtle);
 }
 
 @media (max-width: 900px) {
   .filterControls {
     width: 100%;
-  }
-
-  .donutWrap {
-    width: 190px;
-    height: 190px;
-    flex-basis: 190px;
   }
 }
 
@@ -518,16 +721,8 @@
     min-height: auto;
   }
 
-  .miniStatGrid {
-    grid-template-columns: 1fr;
-  }
-
   .barRow {
-    grid-template-columns: 1fr 42px;
-  }
-
-  .verticalBarChart {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .barTrack {
@@ -535,34 +730,29 @@
     grid-row: 2;
   }
 
+  .statusColumnPlot {
+    grid-template-columns: repeat(3, minmax(86px, 1fr));
+    min-width: 300px;
+    gap: 8px;
+  }
+
+  .statusColumnItem {
+    grid-template-rows: 20px 112px 8px 34px 16px;
+    padding-inline: 4px;
+  }
+
+  .statusColumnTrack {
+    height: 112px;
+  }
+
   .metricDetail {
     min-height: auto;
   }
 }
 
-@keyframes barGrow {
-  from {
-    transform: scaleY(0.1);
-  }
-
-  to {
-    transform: scaleY(1);
-  }
-}
-
-@keyframes widthGrow {
-  from {
-    transform: scaleX(0.1);
-  }
-
-  to {
-    transform: scaleX(1);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .chartPanel,
-  .verticalBarFill,
+  .statusColumnFill,
   .barFill {
     animation: none;
     transition: none;

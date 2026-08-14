@@ -16,7 +16,7 @@ export function BrandLogo({ compact = false }: BrandLogoProps) {
         className="brand-logo-image"
       />
       <Stack gap={0}>
-        <Text fw={800} lh={1.1} size={compact ? 'sm' : 'md'}>
+        <Text fw={600} lh={1.1} size={compact ? 'sm' : 'md'}>
           HACOM HRM
         </Text>
         {!compact ? (
