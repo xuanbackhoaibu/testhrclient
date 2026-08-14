@@ -1952,3 +1952,53 @@ Ghi chú kỹ thuật:
 - Bổ sung title route `Lịch của tôi` để header trang đồng bộ khi vào CalendarPage.
 - Sửa CalendarPage không còn lồng `AppShell` riêng bên trong `MainLayout`, tránh lỗi layout/header/sidebar khi mở từ sidebar chính.
 - CalendarPage dùng shell nội bộ có chiều cao giới hạn theo viewport và responsive mobile.
+- Bổ sung dữ liệu demo cho `calendarApi` khi `VITE_USE_MOCKS=true` để `Lịch của tôi` tải được sự kiện trong môi trường frontend/mock.
+- Mock calendar hỗ trợ list/get/create/update/delete cơ bản bằng localStorage, tránh gọi API thật khi backend calendar chưa sẵn sàng.
+- Parser danh sách calendar chấp nhận cả response dạng mảng trực tiếp và dạng `{ items/data, pagination/meta }`.
+
+## 35. Demo Data Fallback Cho Attendance
+
+Đã nâng cấp:
+
+- `WorkScheduleApi` đã có mock mode cho nhóm cấu hình chấm công:
+  - Ca làm việc.
+  - Ngày lễ.
+  - Phân ca.
+  - Lịch tuần làm việc.
+- `TimesheetApi` đã có mock mode cho nhóm bảng công:
+  - Bảng công tháng.
+  - Xuất bảng công demo dạng CSV.
+  - Sửa tay ô công.
+  - Tính lại bảng công.
+  - Bật/tắt đủ công mặc định.
+  - Danh sách kỳ công.
+  - Danh sách xác nhận kỳ công.
+  - Mở/chốt/mở lại kỳ công.
+- Dữ liệu mock bảng công được dựng từ danh sách nhân sự demo hiện có, có đủ các trạng thái UI cần kiểm tra:
+  - Ngày làm việc đủ công.
+  - Đi muộn / cần giải trình.
+  - Nghỉ phép.
+  - Nghỉ không lương.
+  - Ngày lễ.
+  - Ngày nghỉ cuối tuần.
+  - Ô đã khóa và ô đã sửa tay.
+- Khi `VITE_USE_MOCKS=true`, frontend dùng dữ liệu demo/localStorage để các màn vẫn chạy được trong môi trường chưa có backend.
+- Khi tắt mock mode, toàn bộ hàm vẫn gọi endpoint backend thật như cũ, nên khi backend trả dữ liệu thì UI sẽ hiển thị dữ liệu API.
+
+## 36. Settings - Bảo Mật Tài Khoản
+
+Đã nâng cấp:
+
+- Bỏ khối chính sách mật khẩu dạng chỉ số cũ:
+  - Độ dài tối thiểu.
+  - Chu kỳ hết hạn.
+  - Ký tự đặc biệt.
+  - Chữ số.
+  - Trạng thái `ĐANG BẬT`.
+- Thay bằng 4 card mô tả lớp bảo vệ tài khoản:
+  - Xác thực tập trung.
+  - Quyền theo vai trò.
+  - Nhật ký thao tác.
+  - Bảo vệ phiên.
+- Không còn hiển thị các nhãn gây hiểu nhầm như `Chỉ xem`, `Có quyền sửa`, `Bắt buộc`, `Đang bật`.
+- Đồng bộ giao diện Light/Dark mode cho card bảo mật, viền, màu icon và chữ phụ.

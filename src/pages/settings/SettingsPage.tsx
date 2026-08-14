@@ -81,30 +81,35 @@ const themeCards: Array<{ key: ThemeMode; title: string; description: string; ic
 const securityOverviewItems: Array<{
   title: string;
   description: string;
+  detail: string;
   icon: typeof IconShieldLock;
   color: string;
 }> = [
   {
     title: 'Xác thực tập trung',
     description: 'Người dùng đăng nhập qua dịch vụ xác thực bên ngoài, HRM chỉ nhận hồ sơ và quyền đã xác minh.',
+    detail: 'Không lưu mật khẩu nội bộ trong HRM.',
     icon: IconFingerprint,
     color: 'blue',
   },
   {
     title: 'Quyền theo vai trò',
     description: 'Mỗi tài khoản chỉ thấy dữ liệu và thao tác đúng phạm vi được cấp.',
+    detail: 'Ẩn các màn và chức năng ngoài quyền.',
     icon: IconUserShield,
     color: 'grape',
   },
   {
     title: 'Nhật ký thao tác',
     description: 'Các thay đổi quan trọng được ghi nhận để quản trị viên tra cứu khi cần đối chiếu.',
+    detail: 'Theo dõi người thực hiện và thời điểm thay đổi.',
     icon: IconHistory,
     color: 'orange',
   },
   {
     title: 'Bảo vệ phiên',
     description: 'Khi phiên hết hạn hoặc quyền thay đổi, hệ thống yêu cầu xác thực lại để tiếp tục.',
+    detail: 'Giữ an toàn khi tài khoản rời khỏi màn hình làm việc.',
     icon: IconLockCheck,
     color: 'green',
   },
@@ -407,14 +412,14 @@ export function SettingsPage() {
               <SettingsCardHeader
                 icon={<IconShieldLock size={18} />}
                 title="Bảo mật tài khoản"
-                subtitle="Tóm tắt các lớp bảo vệ đang áp dụng cho người dùng HRM."
+                subtitle="Các nguyên tắc bảo vệ phiên đăng nhập và quyền truy cập HRM."
               />
-              <Paper withBorder p={0} className="settings-security-overview">
-                <Stack gap={0}>
-                  {securityOverviewItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <Group key={item.title} gap="sm" wrap="nowrap" className="settings-security-row">
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" className="settings-security-grid">
+                {securityOverviewItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Paper key={item.title} withBorder className="settings-security-card">
+                      <Group gap="sm" align="flex-start" wrap="nowrap">
                         <span className={`settings-security-icon is-${item.color}`}>
                           <Icon size={18} />
                         </span>
@@ -423,10 +428,13 @@ export function SettingsPage() {
                           <Text size="sm" c="dimmed">{item.description}</Text>
                         </Box>
                       </Group>
-                    );
-                  })}
-                </Stack>
-              </Paper>
+                      <Text mt="sm" size="xs" fw={700} c="dimmed" className="settings-security-detail">
+                        {item.detail}
+                      </Text>
+                    </Paper>
+                  );
+                })}
+              </SimpleGrid>
             </Card>
           ) : null}
         </SimpleGrid>

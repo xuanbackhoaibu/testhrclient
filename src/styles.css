@@ -1383,14 +1383,30 @@ body {
 .settings-panel,
 .settings-runtime-box,
 .settings-policy-row,
-.settings-security-overview {
+.settings-security-overview,
+.settings-security-card {
   background: var(--hrm-surface);
   border-color: var(--hrm-border);
   box-shadow: var(--hrm-shadow);
 }
 
+.settings-security-grid {
+  align-items: stretch;
+}
+
+.settings-security-card {
+  border-radius: 8px;
+  min-height: 154px;
+  padding: 16px;
+}
+
 .settings-security-row {
   padding: 14px 16px;
+}
+
+.settings-security-detail {
+  border-top: 1px solid var(--hrm-border-soft);
+  padding-top: 10px;
 }
 
 .settings-security-row + .settings-security-row {
@@ -1841,6 +1857,7 @@ body {
 :root[data-mantine-color-scheme='dark'] .settings-runtime-box,
 :root[data-mantine-color-scheme='dark'] .settings-policy-row,
 :root[data-mantine-color-scheme='dark'] .settings-security-overview,
+:root[data-mantine-color-scheme='dark'] .settings-security-card,
 :root[data-mantine-color-scheme='dark'] .settings-theme-card,
 :root[data-mantine-color-scheme='dark'] .settings-unsaved-bar,
 :root[data-mantine-color-scheme='dark'] .employee-detail-empty,
@@ -2038,6 +2055,10 @@ body {
 }
 
 :root[data-mantine-color-scheme='dark'] .settings-security-row + .settings-security-row {
+  border-top-color: var(--hrm-border);
+}
+
+:root[data-mantine-color-scheme='dark'] .settings-security-detail {
   border-top-color: var(--hrm-border);
 }
 
