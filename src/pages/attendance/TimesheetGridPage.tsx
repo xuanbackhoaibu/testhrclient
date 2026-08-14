@@ -321,6 +321,7 @@ function cellDescription(
 ): string {
   if (!day) return "Chưa tạo dữ liệu ngày công";
   return [
+    day.isDerived ? "Dữ liệu xem trước, chưa lưu bảng công" : null,
     attendanceAutoFullDay &&
     day.isWorkingDay &&
     !day.hasAdjustment &&
@@ -457,7 +458,8 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
                       : (day?.lateMinutes ?? 0) > 0
                         ? "#ffedd5"
                         : undefined));
-        const isEditable = canEdit && day !== undefined && !day.isLocked;
+        const isEditable =
+          canEdit && day !== undefined && !day.isLocked && !day.isDerived;
 
         return (
           <Table.Td
@@ -470,14 +472,14 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
               background,
               cursor: isEditable ? "pointer" : "default",
             }}
-            onClick={() => day && onOpenCell(row, day)}
+            onClick={() => isEditable && day && onOpenCell(row, day)}
           >
             <Text
               fw={label ? 700 : undefined}
               size="xs"
               c={label.includes("KL") ? "red.9" : undefined}
             >
-              {label || (day?.needsExplanation ? "?" : "·")}
+              {label || (day?.needsExplanation ? "?" : "")}
             </Text>
           </Table.Td>
         );
@@ -798,7 +800,7 @@ export function TimesheetGridPage() {
 
   const openCell = useCallback(
     (row: TimesheetGridRow, day: TimesheetGridDay) => {
-      if (!canEdit || day.isLocked) return;
+      if (!canEdit || day.isLocked || day.isDerived) return;
       setEditing({ row, day });
       setEditSymbol(day.displaySymbol.split(";")[0] || null);
       setEditPortion(day.paidDays || 1);
