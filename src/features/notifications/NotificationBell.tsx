@@ -187,7 +187,7 @@ export function NotificationBell() {
       opened={opened}
       onChange={setOpened}
       position="bottom-end"
-      width={440}
+      width="min(440px, calc(100vw - 24px))"
       shadow="xl"
       withArrow
     >
@@ -268,8 +268,8 @@ export function NotificationBell() {
                 const meta = categoryMeta[category];
                 const Icon = meta.icon;
                 const isUnread = !notification.readAt;
-                const title = truncateText(notification.title, 72);
-                const body = truncateText(notification.body, 140);
+                const title = truncateText(notification.title, 120);
+                const body = truncateText(notification.body, 220);
                 const actorName = truncateText(notification.actorName, 48);
                 const notificationTime = formatNotificationTime(notification.createdAt);
                 return (
@@ -285,7 +285,7 @@ export function NotificationBell() {
                       <Stack gap={4} style={{ minWidth: 0, flex: 1 }}>
                         <Group gap={6} wrap="nowrap">
                           <Badge size="xs" variant="light" color={meta.color}>{meta.label}</Badge>
-                          <Group gap={4} wrap="nowrap" ml="auto">
+                          <Group gap={4} wrap="nowrap" ml="auto" className="notification-meta">
                             {isUnread ? <span className="notification-unread-dot" aria-label="Chưa đọc" /> : null}
                             <IconClock size={12} />
                             <Tooltip label={relativeTime(notification.createdAt)}>
@@ -295,11 +295,11 @@ export function NotificationBell() {
                             </Tooltip>
                           </Group>
                         </Group>
-                        <Text size="sm" fw={isUnread ? 800 : 650} lineClamp={1} className="notification-title">
+                        <Text size="sm" fw={isUnread ? 800 : 650} lineClamp={2} className="notification-title">
                           {title}
                         </Text>
                         {body ? (
-                          <Text size="xs" c="dimmed" lineClamp={2} className="notification-body">
+                          <Text size="xs" c="dimmed" lineClamp={3} className="notification-body">
                             {body}
                           </Text>
                         ) : null}

@@ -443,6 +443,8 @@ body {
 .notification-center-panel {
   background: var(--hrm-surface);
   border-color: var(--hrm-border);
+  width: min(440px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
   max-height: min(620px, calc(100dvh - 88px));
   overflow: hidden;
 }
@@ -474,21 +476,29 @@ body {
 }
 
 .notification-center-item.is-unread {
-  background: color-mix(in srgb, var(--hacom-primary), transparent 84%);
+  background: var(--hrm-surface);
 }
 
 .notification-unread-dot {
-  background: var(--hacom-primary);
+  background: #0ea5e9;
   border-radius: 999px;
   display: inline-block;
+  flex: 0 0 auto;
   height: 7px;
   width: 7px;
+}
+
+.notification-meta {
+  flex: 0 0 auto;
+  max-width: 150px;
 }
 
 .notification-title,
 .notification-body,
 .notification-actor {
+  max-width: 100%;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .data-table tbody tr:hover .employee-row-quick-actions,
@@ -2241,7 +2251,7 @@ body {
 }
 
 :root[data-mantine-color-scheme='dark'] .notification-center-item.is-unread {
-  background: color-mix(in srgb, var(--hacom-primary), transparent 84%);
+  background: var(--hrm-surface);
 }
 
 :root[data-mantine-color-scheme='dark'] .notification-center-item:hover,

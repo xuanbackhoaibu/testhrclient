@@ -2200,4 +2200,9 @@ Cập nhật bổ sung:
   - Không còn breadcrumb `Nhân sự / {mã nhân viên}`.
   - Không còn title `Chi tiết nhân viên` và subtitle `{mã} · {họ tên}` phía trên hero.
   - Hero hồ sơ trở thành phần đầu tiên của trang chi tiết.
+- Nâng cấp Notification Hub:
+  - Dropdown dùng width responsive `min(440px, 100vw - 24px)` để không tràn màn hình.
+  - Nội dung thông báo được bọc dòng/line clamp hợp lý, không làm giãn khung.
+  - Thông báo chưa đọc giữ nền trắng/surface như thông báo đã đọc.
+  - Trạng thái chưa đọc chỉ còn chấm xanh nhỏ bên cạnh thời gian.
 - Giữ NotificationBell và menu tài khoản trên header như bản cũ.
