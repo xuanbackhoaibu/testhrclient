@@ -198,3 +198,30 @@ export function rejectLeaveRequest(id: string) {
 export function cancelLeaveRequest(id: string) {
   return updateLeaveStatus(id, 'CANCELLED', 'CANCEL');
 }
+
+export async function deleteCancelledLeaveRequest(
+  id: string,
+): Promise<{ id: string }> {
+  if (isMockMode) {
+    await mockDelay();
+    const index = mockLeaveRequests.findIndex((item) => item.id === id);
+    const leave = mockLeaveRequests[index];
+    if (!leave) {
+      throw new Error('Leave request not found');
+    }
+    if (leave.status !== 'CANCELLED') {
+      throw new Error('Only cancelled leave requests can be deleted');
+    }
+
+    mockLeaveRequests.splice(index, 1);
+    appendAuditLog({
+      entityType: 'LEAVE_REQUEST',
+      entityId: id,
+      action: 'DELETE_CANCELLED',
+      beforeJson: leave as unknown as Record<string, unknown>,
+    });
+    return { id };
+  }
+
+  return api.delete<{ id: string }>('/leave/requests/' + id);
+}
