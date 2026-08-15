@@ -1,5 +1,7 @@
 import { api } from "../../shared/api/httpClient";
 import type {
+  CancelShiftAssignmentDayPayload,
+  CancelShiftAssignmentDayResult,
   CloneHolidaysPayload,
   CloneHolidaysResult,
   BulkShiftAssignmentPayload,
@@ -115,6 +117,16 @@ export async function replaceShiftAssignmentDay(
 ): Promise<ReplaceShiftAssignmentDayResult> {
   return api.post<ReplaceShiftAssignmentDayResult>(
     `${BASE}/assignments/replace-day`,
+    payload,
+  );
+}
+
+/** Cancels a direct employee ca on exactly one date without changing BCC. */
+export async function cancelShiftAssignmentDay(
+  payload: CancelShiftAssignmentDayPayload,
+): Promise<CancelShiftAssignmentDayResult> {
+  return api.post<CancelShiftAssignmentDayResult>(
+    `${BASE}/assignments/cancel-day`,
     payload,
   );
 }
