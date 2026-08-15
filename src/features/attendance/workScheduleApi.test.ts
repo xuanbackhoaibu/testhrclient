@@ -14,6 +14,7 @@ import {
   bulkAssignShifts,
   createShiftAssignment,
   getShiftAssignmentGrid,
+  replaceShiftAssignmentDay,
   updateShiftAssignmentWeekdays,
   includeShiftAssignmentRowsInTimesheet,
 } from "./workScheduleApi";
@@ -107,6 +108,34 @@ describe("monthly shift-assignment API", () => {
 
     expect(post).toHaveBeenCalledWith(
       "/attendance/work-schedule/assignments/bulk",
+      payload,
+    );
+  });
+
+  it("replaces one assigned day without sending a BCC inclusion flag", async () => {
+    const payload = {
+      month: 8,
+      year: 2026,
+      unitId: "unit-01",
+      employeeId: "employee-01",
+      shiftId: "shift-hc2",
+      date: "2026-08-08",
+    };
+    const result = {
+      changed: true,
+      strategy: "CREATED_EMPLOYEE_OVERRIDE",
+      employeeId: "employee-01",
+      date: "2026-08-08",
+      shiftId: "shift-hc2",
+      recomputeRequired: true,
+      affected: [{ employeeId: "employee-01", date: "2026-08-08" }],
+    };
+    post.mockResolvedValue(result);
+
+    await expect(replaceShiftAssignmentDay(payload)).resolves.toEqual(result);
+
+    expect(post).toHaveBeenCalledWith(
+      "/attendance/work-schedule/assignments/replace-day",
       payload,
     );
   });
