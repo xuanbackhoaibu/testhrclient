@@ -82,9 +82,9 @@ const yearOptions = Array.from(
   },
 );
 const fixedColumns = [
-  { key: "number", label: "TT", left: 0, width: 42 },
-  { key: "name", label: "Họ và tên", left: 42, width: 210 },
-  { key: "autoFull", label: "V", left: 252, width: 34 },
+  { key: "autoFull", label: "V", left: 0, width: 34 },
+  { key: "number", label: "TT", left: 34, width: 42 },
+  { key: "name", label: "Họ và tên", left: 76, width: 210 },
   { key: "code", label: "MCB", left: 286, width: 104 },
 ] as const;
 const dayColumnWidth = 44;
@@ -466,31 +466,6 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
           ...fixedStyle(fixedColumns[0].left, fixedColumns[0].width),
           textAlign: "center",
         }}
-      >
-        {employeeNumber}
-      </Table.Td>
-      <Table.Td style={fixedStyle(fixedColumns[1].left, fixedColumns[1].width)}>
-        <UnstyledButton
-          aria-label={`Thiết lập đủ công mặc định cho ${row.fullName}`}
-          title={`Mở thiết lập đủ công mặc định cho ${row.fullName}`}
-          onClick={() => onOpenAutoFullAttendance(row)}
-          style={{
-            display: "block",
-            minWidth: 0,
-            textAlign: "left",
-            width: "100%",
-          }}
-        >
-          <Text size="xs" fw={600} truncate="end" td="underline">
-            {row.fullName}
-          </Text>
-        </UnstyledButton>
-      </Table.Td>
-      <Table.Td
-        style={{
-          ...fixedStyle(fixedColumns[2].left, fixedColumns[2].width),
-          textAlign: "center",
-        }}
         title={
           row.attendanceAutoFullDay
             ? "Đã đánh dấu đủ công mặc định"
@@ -507,6 +482,31 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
             V
           </Text>
         ) : null}
+      </Table.Td>
+      <Table.Td
+        style={{
+          ...fixedStyle(fixedColumns[1].left, fixedColumns[1].width),
+          textAlign: "center",
+        }}
+      >
+        {employeeNumber}
+      </Table.Td>
+      <Table.Td style={fixedStyle(fixedColumns[2].left, fixedColumns[2].width)}>
+        <UnstyledButton
+          aria-label={`Thiết lập đủ công mặc định cho ${row.fullName}`}
+          title={`Mở thiết lập đủ công mặc định cho ${row.fullName}`}
+          onClick={() => onOpenAutoFullAttendance(row)}
+          style={{
+            display: "block",
+            minWidth: 0,
+            textAlign: "left",
+            width: "100%",
+          }}
+        >
+          <Text size="xs" fw={600} truncate="end" td="underline">
+            {row.fullName}
+          </Text>
+        </UnstyledButton>
       </Table.Td>
       <Table.Td style={fixedStyle(fixedColumns[3].left, fixedColumns[3].width)}>
         <Text size="xs" fw={600} title="Mã chấm công BioTime/MCB">
@@ -1283,8 +1283,8 @@ export function TimesheetGridPage() {
             riêng và chưa tự tính công. Nhấn vào <b>họ tên</b> để thiết lập{" "}
             <b>Đủ công mặc định</b> theo từng người đặc thù; khi bật, bảng hiển
             thị
-            <b> V</b> cạnh họ tên. Bỏ tick sẽ khôi phục đúng bảng công trước khi
-            bật. Khi chọn tháng cũ, hệ thống xét đúng phân công hiệu lực của
+            <b> V</b> ở cột đầu bảng. Bỏ tick sẽ khôi phục đúng bảng công trước
+            khi bật. Khi chọn tháng cũ, hệ thống xét đúng phân công hiệu lực của
             tháng đó, kể cả nhân sự đã nghỉ hoặc chuyển đơn vị sau này.
           </Text>
         </Alert>
@@ -1927,7 +1927,7 @@ export function TimesheetGridPage() {
             }
           />
           <Alert color="blue" variant="light">
-            Khi đã bật, bảng công hiển thị ký hiệu V cạnh họ tên của nhân viên.
+            Khi đã bật, bảng công hiển thị ký hiệu V ở cột đầu bảng.
           </Alert>
           <Group justify="flex-end" mt="md">
             <Button
