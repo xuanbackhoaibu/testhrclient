@@ -48,6 +48,7 @@ import {
 } from "../../features/attendance/workShiftCatalogOrder";
 import {
   useBulkAssignShifts,
+  useCancelShiftAssignmentDay,
   useIncludeShiftAssignmentRowsInTimesheet,
   useReplaceShiftAssignmentDay,
   useShiftAssignmentGrid,
@@ -351,6 +352,10 @@ export function MonthlyShiftAssignmentGrid({
   }>(() => ({ scope: "", employeeIds: new Set() }));
   const [cellShiftPicker, setCellShiftPicker] =
     useState<CellShiftPicker | null>(null);
+  const [cellShiftCancellation, setCellShiftCancellation] =
+    useState<CellShiftPicker | null>(null);
+  const [cellShiftCancellationError, setCellShiftCancellationError] =
+    useState<string | null>(null);
   const [cellShiftSearch, setCellShiftSearch] = useState("");
   const [cellShiftError, setCellShiftError] = useState<string | null>(null);
   const [cellShiftApplyingId, setCellShiftApplyingId] = useState<string | null>(
@@ -386,6 +391,7 @@ export function MonthlyShiftAssignmentGrid({
   const unitsQuery = useUnitsSelect();
   const shiftsQuery = useWorkShifts();
   const bulkAssign = useBulkAssignShifts();
+  const cancelShiftAssignmentDay = useCancelShiftAssignmentDay();
   const replaceShiftAssignmentDay = useReplaceShiftAssignmentDay();
   const includeInTimesheet = useIncludeShiftAssignmentRowsInTimesheet();
   const unitOptions = useMemo(
@@ -600,7 +606,9 @@ export function MonthlyShiftAssignmentGrid({
   const somePageSelected = selectedOnPage > 0 && !allPageSelected;
   const tableIsDisabled = !canEdit || Boolean(grid?.isClosed);
   const cellShiftMutationPending =
-    bulkAssign.isPending || replaceShiftAssignmentDay.isPending;
+    bulkAssign.isPending ||
+    cancelShiftAssignmentDay.isPending ||
+    replaceShiftAssignmentDay.isPending;
 
   function toggleEmployee(employeeId: string, checked: boolean) {
     setSelectionState((current) => {
@@ -628,6 +636,8 @@ export function MonthlyShiftAssignmentGrid({
 
   function closeCellShiftPicker() {
     setCellShiftPicker(null);
+    setCellShiftCancellation(null);
+    setCellShiftCancellationError(null);
     setCellShiftSearch("");
     setCellShiftError(null);
     setCellShiftApplyingId(null);
@@ -644,6 +654,8 @@ export function MonthlyShiftAssignmentGrid({
     row: ShiftAssignmentGridRow,
     day: ShiftAssignmentGridDay,
   ) {
+    setCellShiftCancellation(null);
+    setCellShiftCancellationError(null);
     setCellShiftPicker((current) =>
       current?.employeeId === row.employeeId && current.day.date === day.date
         ? null
@@ -655,6 +667,69 @@ export function MonthlyShiftAssignmentGrid({
     );
     setCellShiftSearch("");
     setCellShiftError(null);
+  }
+
+  function requestCellShiftCancellation() {
+    const picker = cellShiftPicker;
+    if (
+      !picker ||
+      !picker.day.shift ||
+      picker.day.source !== "ASSIGNMENT_EMPLOYEE"
+    ) {
+      return;
+    }
+    setCellShiftCancellation(picker);
+    setCellShiftCancellationError(null);
+  }
+
+  function closeCellShiftCancellation() {
+    if (cancelShiftAssignmentDay.isPending) return;
+    setCellShiftCancellation(null);
+    setCellShiftCancellationError(null);
+  }
+
+  async function confirmCellShiftCancellation() {
+    const cancellation = cellShiftCancellation;
+    if (
+      !cancellation ||
+      !selectedUnitId ||
+      !cancellation.day.shift ||
+      cancellation.day.source !== "ASSIGNMENT_EMPLOYEE"
+    ) {
+      return;
+    }
+
+    setCellShiftCancellationError(null);
+    try {
+      await cancelShiftAssignmentDay.mutateAsync({
+        month,
+        year,
+        unitId: selectedUnitId,
+        employeeId: cancellation.employeeId,
+        date: cancellation.day.date,
+      });
+      notifications.show({
+        color: "green",
+        title: "Đã hủy ca làm việc",
+        message:
+          "Đã hủy " +
+          cancellation.day.shift.code +
+          " cho " +
+          cancellation.fullName +
+          " ngày " +
+          formatDate(cancellation.day.date) +
+          ". BCC hiện có được giữ nguyên.",
+      });
+      setCellShiftCancellation(null);
+      setCellShiftCancellationError(null);
+      closeCellShiftPicker();
+    } catch (error) {
+      setCellShiftCancellationError(
+        error instanceof Error && error.message
+          ? error.message
+          : "Không thể hủy ca. Kiểm tra kỳ công rồi thử lại.",
+      );
+    }
   }
 
   async function applyShiftToCell(shift: WorkShift) {
@@ -1406,6 +1481,13 @@ export function MonthlyShiftAssignmentGrid({
                               day.source === "ASSIGNMENT_DEPARTMENT" ||
                               day.source === "ASSIGNMENT_UNIT" ||
                               day.source === "CALENDAR";
+                            const canCancelShift =
+                              day.source === "ASSIGNMENT_EMPLOYEE" &&
+                              Boolean(day.shift);
+                            const cancellationOpen =
+                              cellShiftCancellation?.employeeId ===
+                                item.row.employeeId &&
+                              cellShiftCancellation.day.date === day.date;
                             const pickerOpen =
                               canOpenPicker &&
                               isCellShiftPickerOpen(
@@ -1513,17 +1595,78 @@ export function MonthlyShiftAssignmentGrid({
                                                     " · Tự đưa vào BCC"}
                                               </Text>
                                             </Stack>
-                                            <Button
-                                              size="compact-xs"
-                                              variant="subtle"
-                                              color="gray"
-                                              leftSection={<IconX size={14} />}
-                                              disabled={cellShiftMutationPending}
-                                              onClick={closeCellShiftPicker}
-                                            >
-                                              Đóng
-                                            </Button>
+                                            <Group gap={2} wrap="nowrap">
+                                              {canCancelShift &&
+                                              !cancellationOpen ? (
+                                                <Button
+                                                  size="compact-xs"
+                                                  variant="subtle"
+                                                  color="red"
+                                                  disabled={cellShiftMutationPending}
+                                                  onClick={
+                                                    requestCellShiftCancellation
+                                                  }
+                                                >
+                                                  Hủy ca
+                                                </Button>
+                                              ) : null}
+                                              <Button
+                                                size="compact-xs"
+                                                variant="subtle"
+                                                color="gray"
+                                                leftSection={<IconX size={14} />}
+                                                disabled={cellShiftMutationPending}
+                                                onClick={closeCellShiftPicker}
+                                              >
+                                                Đóng
+                                              </Button>
+                                            </Group>
                                           </Group>
+                                          {cancellationOpen ? (
+                                            <Alert color="orange" variant="light">
+                                              <Stack gap="xs">
+                                                <Text size="xs">
+                                                  Hủy ca <b>{day.shift?.code ?? "—"}</b>{" "}
+                                                  của <b>{item.row.fullName}</b> ngày{" "}
+                                                  <b>{formatDate(day.date)}</b>?
+                                                </Text>
+                                                <Text size="xs">
+                                                  Chỉ hủy ca cá nhân của đúng ngày này. BCC
+                                                  hiện có vẫn được giữ nguyên.
+                                                </Text>
+                                                {cellShiftCancellationError ? (
+                                                  <Text size="xs" c="red">
+                                                    {cellShiftCancellationError}
+                                                  </Text>
+                                                ) : null}
+                                                <Group justify="flex-end" gap="xs">
+                                                  <Button
+                                                    size="compact-xs"
+                                                    variant="default"
+                                                    onClick={closeCellShiftCancellation}
+                                                    disabled={
+                                                      cancelShiftAssignmentDay.isPending
+                                                    }
+                                                  >
+                                                    Quay lại
+                                                  </Button>
+                                                  <Button
+                                                    size="compact-xs"
+                                                    color="red"
+                                                    loading={
+                                                      cancelShiftAssignmentDay.isPending
+                                                    }
+                                                    onClick={() =>
+                                                      void confirmCellShiftCancellation()
+                                                    }
+                                                  >
+                                                    Hủy ca
+                                                  </Button>
+                                                </Group>
+                                              </Stack>
+                                            </Alert>
+                                          ) : (
+                                            <>
                                           <NormalizedSearchInput
                                             size="xs"
                                             placeholder="Tìm ký hiệu, loại ca hoặc nhóm"
@@ -1703,6 +1846,8 @@ export function MonthlyShiftAssignmentGrid({
                                               Không tìm thấy ca phù hợp.
                                             </Text>
                                           )}
+                                            </>
+                                          )}
                                         </Stack>
                                       </Popover.Dropdown>
                                     ) : null}
@@ -1759,6 +1904,7 @@ export function MonthlyShiftAssignmentGrid({
           </Group>
         </Stack>
       ) : null}
+
     </Stack>
   );
 }

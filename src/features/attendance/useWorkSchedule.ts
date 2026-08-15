@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   bulkAssignShifts,
+  cancelShiftAssignmentDay,
   cloneHolidays,
   createHoliday,
   createShiftAssignment,
@@ -22,6 +23,7 @@ import {
 } from "./workScheduleApi";
 import type {
   BulkShiftAssignmentPayload,
+  CancelShiftAssignmentDayPayload,
   CloneHolidaysPayload,
   HolidayPayload,
   IncludeShiftAssignmentRowsInTimesheetPayload,
@@ -203,6 +205,19 @@ export function useBulkAssignShifts() {
       if (payload.includeInTimesheet) {
         void queryClient.invalidateQueries({ queryKey: ["timesheet"] });
       }
+    },
+  });
+}
+
+/** Cancels one direct employee day while preserving whether the employee is in BCC. */
+export function useCancelShiftAssignmentDay() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CancelShiftAssignmentDayPayload) =>
+      cancelShiftAssignmentDay(payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["timesheet"] });
     },
   });
 }

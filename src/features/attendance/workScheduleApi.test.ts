@@ -12,6 +12,7 @@ vi.mock("../../shared/api/httpClient", () => ({
 
 import {
   bulkAssignShifts,
+  cancelShiftAssignmentDay,
   createShiftAssignment,
   getShiftAssignmentGrid,
   replaceShiftAssignmentDay,
@@ -136,6 +137,33 @@ describe("monthly shift-assignment API", () => {
 
     expect(post).toHaveBeenCalledWith(
       "/attendance/work-schedule/assignments/replace-day",
+      payload,
+    );
+  });
+
+  it("cancels one direct assigned day without sending a BCC inclusion flag", async () => {
+    const payload = {
+      month: 8,
+      year: 2026,
+      unitId: "unit-01",
+      employeeId: "employee-01",
+      date: "2026-08-08",
+    };
+    const result = {
+      changed: true,
+      strategy: "SPLIT_DIRECT_RANGE",
+      employeeId: "employee-01",
+      date: "2026-08-08",
+      shiftId: null,
+      recomputeRequired: true,
+      affected: [{ employeeId: "employee-01", date: "2026-08-08" }],
+    };
+    post.mockResolvedValue(result);
+
+    await expect(cancelShiftAssignmentDay(payload)).resolves.toEqual(result);
+
+    expect(post).toHaveBeenCalledWith(
+      "/attendance/work-schedule/assignments/cancel-day",
       payload,
     );
   });
