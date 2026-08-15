@@ -25,8 +25,11 @@ describe("shift-assignment weekdays", () => {
 
   it("only exposes an eligible unassigned plan cell as selectable", () => {
     const availableDay = {
+      date: "2026-08-01",
       inAttendanceWindow: true,
-      isWorkingDay: true,
+      calendarIsWorkingDay: true,
+      // The API intentionally returns false before the first ca is assigned.
+      isWorkingDay: false,
       holidayName: null,
       source: "UNASSIGNED",
     };
@@ -57,7 +60,14 @@ describe("shift-assignment weekdays", () => {
     ).toBe(false);
     expect(
       canSelectShiftAssignmentGridDay(
-        { ...availableDay, isWorkingDay: false },
+        { ...availableDay, date: "2026-08-02" },
+        true,
+        false,
+      ),
+    ).toBe(false);
+    expect(
+      canSelectShiftAssignmentGridDay(
+        { ...availableDay, calendarIsWorkingDay: false },
         true,
         false,
       ),

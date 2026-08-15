@@ -265,7 +265,11 @@ function cellDescription(day: ShiftAssignmentGridDay): string {
     return `${day.holidayName} — không tính công theo ca`;
   }
   if (day.source === "UNASSIGNED") {
-    return "Chưa phân ca — BCC sẽ chưa tính công";
+    return weekdayForShiftAssignmentDate(day.date) === 0
+      ? "Chủ nhật không tính công theo ca"
+      : !day.calendarIsWorkingDay
+        ? "Ngày được cấu hình nghỉ — không áp ca tại đây"
+        : "Chưa phân ca — nhấn để chọn ca";
   }
   if (!day.isWorkingDay) {
     return "Ngày không làm việc theo lịch công";

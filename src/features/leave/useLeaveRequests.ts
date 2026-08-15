@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { ListQueryParams } from '../../shared/types/api';
-import { listLeaveRequests, listLeaveTypes } from './leaveApi';
+import { deleteCancelledLeaveRequest, listLeaveRequests, listLeaveTypes } from './leaveApi';
 
 export function useLeaveRequests(params: ListQueryParams) {
   return useQuery({
@@ -17,3 +17,14 @@ export function useLeaveTypes() {
   });
 }
 
+
+export function useDeleteCancelledLeaveRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteCancelledLeaveRequest,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
+      void queryClient.invalidateQueries({ queryKey: ['employee-detail'] });
+    },
+  });
+}

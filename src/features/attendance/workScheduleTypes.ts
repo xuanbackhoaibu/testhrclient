@@ -140,6 +140,8 @@ export interface ShiftAssignmentGridDay {
   day: number;
   /** Ngoài ngày vào làm/ngày nghỉ việc nên không được áp ca trong kỳ này. */
   inAttendanceWindow: boolean;
+  /** Lịch công cho phép phân ca, kể cả khi CBNV chưa có ca cá nhân. */
+  calendarIsWorkingDay: boolean;
   isWorkingDay: boolean;
   holidayName: string | null;
   source: string;
