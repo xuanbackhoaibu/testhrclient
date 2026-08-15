@@ -7,14 +7,16 @@ import {
   getAssignmentWeekdayPreset,
   isFullDayAdministrativeOfficeShift,
   optionalAssignmentWeekdays,
+  singleDayShiftAssignmentScope,
+  SUNDAY_ONLY,
   weekdayForShiftAssignmentDate,
   weekdaysForAssignmentPreset,
 } from "./shiftAssignmentWeekdays";
 
 describe("shift-assignment weekdays", () => {
-  it("keeps the existing all-days behavior when weekdays are absent", () => {
+  it("keeps the legacy T2–T7 behavior when weekdays are absent", () => {
     expect(getAssignmentWeekdayPreset(undefined)).toBe("all");
-    expect(formatAssignmentWeekdays(undefined)).toBe("Tất cả ngày");
+    expect(formatAssignmentWeekdays(undefined)).toBe("T2–T7");
     expect(optionalAssignmentWeekdays(ALL_ASSIGNMENT_WEEKDAYS)).toBeUndefined();
   });
 
@@ -23,9 +25,17 @@ describe("shift-assignment weekdays", () => {
     expect(weekdayForShiftAssignmentDate("2026-08-02")).toBe(0);
   });
 
-  it("only exposes an eligible unassigned plan cell as selectable", () => {
-    const availableDay = {
-      date: "2026-08-01",
+  it("keeps a direct grid selection to its clicked date and weekday", () => {
+    expect(singleDayShiftAssignmentScope("2026-08-02")).toEqual({
+      effectiveFrom: "2026-08-02",
+      effectiveTo: "2026-08-02",
+      weekdays: [0],
+    });
+  });
+
+  it("keeps a later unassigned weekday selectable after a one-day assignment", () => {
+    const laterUnassignedWeekday = {
+      date: "2026-08-03",
       inAttendanceWindow: true,
       calendarIsWorkingDay: true,
       // The API intentionally returns false before the first ca is assigned.
@@ -34,14 +44,48 @@ describe("shift-assignment weekdays", () => {
       source: "UNASSIGNED",
     };
 
-    expect(canSelectShiftAssignmentGridDay(availableDay, true, false)).toBe(
-      true,
-    );
+    expect(
+      canSelectShiftAssignmentGridDay(
+        {
+          ...laterUnassignedWeekday,
+          date: "2026-08-01",
+          source: "ASSIGNMENT_EMPLOYEE",
+        },
+        true,
+        false,
+        true,
+      ),
+    ).toBe(false);
+    expect(
+      canSelectShiftAssignmentGridDay(
+        laterUnassignedWeekday,
+        true,
+        false,
+        true,
+      ),
+    ).toBe(true);
+  });
+
+  it("only exposes an eligible unassigned plan cell as selectable", () => {
+    const availableDay = {
+      date: "2026-08-03",
+      inAttendanceWindow: true,
+      calendarIsWorkingDay: true,
+      // The API intentionally returns false before the first ca is assigned.
+      isWorkingDay: false,
+      holidayName: null,
+      source: "UNASSIGNED",
+    };
+
+    expect(
+      canSelectShiftAssignmentGridDay(availableDay, true, false, false),
+    ).toBe(true);
     expect(
       canSelectShiftAssignmentGridDay(
         { ...availableDay, holidayName: "Quốc khánh" },
         true,
         false,
+        true,
       ),
     ).toBe(false);
     expect(
@@ -49,12 +93,22 @@ describe("shift-assignment weekdays", () => {
         { ...availableDay, source: "ASSIGNMENT_EMPLOYEE" },
         true,
         false,
+        true,
       ),
     ).toBe(false);
     expect(
       canSelectShiftAssignmentGridDay(
         { ...availableDay, inAttendanceWindow: false },
         true,
+        false,
+        true,
+      ),
+    ).toBe(false);
+    expect(
+      canSelectShiftAssignmentGridDay(
+        { ...availableDay, date: "2026-08-02" },
+        true,
+        false,
         false,
       ),
     ).toBe(false);
@@ -63,6 +117,19 @@ describe("shift-assignment weekdays", () => {
         { ...availableDay, date: "2026-08-02" },
         true,
         false,
+        true,
+      ),
+    ).toBe(true);
+    expect(
+      canSelectShiftAssignmentGridDay(
+        {
+          ...availableDay,
+          date: "2026-08-02",
+          holidayName: "Quốc khánh",
+        },
+        true,
+        false,
+        true,
       ),
     ).toBe(false);
     expect(
@@ -70,14 +137,15 @@ describe("shift-assignment weekdays", () => {
         { ...availableDay, calendarIsWorkingDay: false },
         true,
         false,
+        true,
       ),
     ).toBe(false);
-    expect(canSelectShiftAssignmentGridDay(availableDay, false, false)).toBe(
-      false,
-    );
-    expect(canSelectShiftAssignmentGridDay(availableDay, true, true)).toBe(
-      false,
-    );
+    expect(
+      canSelectShiftAssignmentGridDay(availableDay, false, false, true),
+    ).toBe(false);
+    expect(
+      canSelectShiftAssignmentGridDay(availableDay, true, true, true),
+    ).toBe(false);
   });
 
   it("maps the compact presets to their intended weekdays", () => {
@@ -85,6 +153,10 @@ describe("shift-assignment weekdays", () => {
       1, 2, 3, 4, 5,
     ]);
     expect(weekdaysForAssignmentPreset("saturday", [])).toEqual([6]);
+    expect(weekdaysForAssignmentPreset("sunday", [])).toEqual([0]);
+    expect(getAssignmentWeekdayPreset(SUNDAY_ONLY)).toBe("sunday");
+    expect(formatAssignmentWeekdays(SUNDAY_ONLY)).toBe("Chủ nhật");
+    expect(optionalAssignmentWeekdays(SUNDAY_ONLY)).toEqual([0]);
   });
 
   it("only identifies full-day administrative office shifts for the T2–T6 default", () => {
