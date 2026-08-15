@@ -210,6 +210,35 @@ export interface BulkShiftAssignmentResult {
   includedInTimesheet: number;
 }
 
+/** Replaces the planned shift for exactly one employee/date without changing BCC membership. */
+export interface ReplaceShiftAssignmentDayPayload {
+  month: number;
+  year: number;
+  unitId: string;
+  employeeId: string;
+  shiftId: string;
+  date: string;
+}
+
+export type ReplaceShiftAssignmentDayStrategy =
+  | "UPDATED_DIRECT_DAY"
+  | "SPLIT_DIRECT_RANGE"
+  | "CREATED_EMPLOYEE_OVERRIDE"
+  | "UNCHANGED";
+
+export interface ReplaceShiftAssignmentDayResult {
+  changed: boolean;
+  strategy: ReplaceShiftAssignmentDayStrategy;
+  employeeId: string;
+  date: string;
+  shiftId: string;
+  recomputeRequired: boolean;
+  affected: Array<{
+    employeeId: string;
+    date: string;
+  }>;
+}
+
 /**
  * Đưa các CBNV đã có ca vào BCC mà không tạo hoặc thay đổi ShiftAssignment.
  * Backend khởi tạo roster tháng trong cùng transaction nếu chưa có.

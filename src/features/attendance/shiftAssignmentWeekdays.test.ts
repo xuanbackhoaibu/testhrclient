@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   ALL_ASSIGNMENT_WEEKDAYS,
+  canOpenShiftAssignmentGridPicker,
   canSelectShiftAssignmentGridDay,
   formatAssignmentWeekdays,
   getAssignmentWeekdayPreset,
@@ -145,6 +146,53 @@ describe("shift-assignment weekdays", () => {
     ).toBe(false);
     expect(
       canSelectShiftAssignmentGridDay(availableDay, true, true, true),
+    ).toBe(false);
+  });
+
+  it("opens an existing assigned cell for correction without opening protected days", () => {
+    const assignedDay = {
+      date: "2026-08-02",
+      inAttendanceWindow: true,
+      calendarIsWorkingDay: false,
+      isWorkingDay: true,
+      holidayName: null,
+      source: "ASSIGNMENT_DEPARTMENT",
+    };
+
+    // An explicit Sunday assignment may be corrected even though Sunday is not
+    // a default calendar workday.
+    expect(
+      canOpenShiftAssignmentGridPicker(assignedDay, true, false, false),
+    ).toBe(true);
+    expect(
+      canOpenShiftAssignmentGridPicker(
+        { ...assignedDay, source: "ASSIGNMENT_EMPLOYEE" },
+        true,
+        false,
+        false,
+      ),
+    ).toBe(true);
+    expect(
+      canOpenShiftAssignmentGridPicker(
+        { ...assignedDay, source: "CALENDAR" },
+        true,
+        false,
+        false,
+      ),
+    ).toBe(true);
+    expect(
+      canOpenShiftAssignmentGridPicker(
+        { ...assignedDay, holidayName: "Quốc khánh" },
+        true,
+        false,
+        true,
+      ),
+    ).toBe(false);
+    expect(
+      canOpenShiftAssignmentGridPicker(assignedDay, true, true, true),
+    ).toBe(false);
+    expect(
+      canOpenShiftAssignmentGridPicker(assignedDay, false, false, true),
     ).toBe(false);
   });
 

@@ -15,6 +15,7 @@ import {
   listHolidays,
   listShiftAssignments,
   listWorkShifts,
+  replaceShiftAssignmentDay,
   updateWorkCalendarDay,
   updateShiftAssignmentWeekdays,
   updateWorkShift,
@@ -24,6 +25,7 @@ import type {
   CloneHolidaysPayload,
   HolidayPayload,
   IncludeShiftAssignmentRowsInTimesheetPayload,
+  ReplaceShiftAssignmentDayPayload,
   ShiftAssignmentGridQuery,
   ShiftAssignmentPayload,
   UpdateShiftAssignmentWeekdaysPayload,
@@ -201,6 +203,19 @@ export function useBulkAssignShifts() {
       if (payload.includeInTimesheet) {
         void queryClient.invalidateQueries({ queryKey: ["timesheet"] });
       }
+    },
+  });
+}
+
+/** Replaces one planned day while preserving whether the employee is in BCC. */
+export function useReplaceShiftAssignmentDay() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: ReplaceShiftAssignmentDayPayload) =>
+      replaceShiftAssignmentDay(payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["timesheet"] });
     },
   });
 }
