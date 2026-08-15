@@ -6,9 +6,11 @@ import { AuthLayout } from '../layouts/AuthLayout';
 import { MainLayout } from '../layouts/MainLayout';
 import { AttendancePage } from '../pages/attendance/AttendancePage';
 import { AttendanceMappingPage } from '../pages/attendance/AttendanceMappingPage';
+import { MonthlyTimesheetRosterPage } from '../pages/attendance/MonthlyTimesheetRosterPage';
 import { TimesheetGridPage } from '../pages/attendance/TimesheetGridPage';
 import { TimesheetPeriodsPage } from '../pages/attendance/TimesheetPeriodsPage';
 import { WorkShiftsPage } from '../pages/attendance/WorkShiftsPage';
+import { WeeklyShiftTemplatesPage } from '../pages/attendance/WeeklyShiftTemplatesPage';
 import { HolidaysPage } from '../pages/attendance/HolidaysPage';
 import { ShiftAssignmentsPage } from '../pages/attendance/ShiftAssignmentsPage';
 import { AuditLogsPage } from '../pages/audit/AuditLogsPage';
@@ -126,6 +128,22 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute route={ROUTES.attendanceMapping}>
             <AttendanceMappingPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.weeklyShifts,
+        element: (
+          <ProtectedRoute route={ROUTES.weeklyShifts}>
+            <WeeklyShiftTemplatesPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.monthlyTimesheetRoster,
+        element: (
+          <ProtectedRoute route={ROUTES.monthlyTimesheetRoster}>
+            <MonthlyTimesheetRosterPage />
           </ProtectedRoute>
         ),
       },

@@ -1,6 +1,5 @@
 import {
   AppShell,
-  ActionIcon,
   Avatar,
   Burger,
   Group,
@@ -10,23 +9,18 @@ import {
   Stack,
   Text,
   Title,
-  Tooltip,
   UnstyledButton,
 } from "@mantine/core";
-import { useDisclosure, useLocalStorage } from "@mantine/hooks";
+import { useDisclosure } from "@mantine/hooks";
 import {
   IconBriefcase,
   IconBuildingBank,
   IconCalendarCheck,
-  IconCalendarEvent,
   IconCalendarTime,
-  IconChevronLeft,
-  IconChevronRight,
   IconChevronDown,
   IconClipboardList,
   IconClock,
   IconDashboard,
-  IconFileAnalytics,
   IconKey,
   IconLink,
   IconLogout,
@@ -53,28 +47,38 @@ interface NavItem {
   icon: typeof IconDashboard;
 }
 
-const mainItems: NavItem[] = [
+const primaryItems: NavItem[] = [
   { label: "Dashboard", path: ROUTES.dashboard, icon: IconDashboard },
   { label: "Nhân sự", path: ROUTES.employees, icon: IconUsers },
-  { label: "Lịch của tôi", path: ROUTES.calendar, icon: IconCalendarEvent },
+];
+
+const preAttendanceItems: NavItem[] = [
   { label: "Điều chuyển", path: ROUTES.movements, icon: IconTransfer },
-  // { label: "Hợp đồng", path: ROUTES.contracts, icon: IconBriefcase },
-  { label: "Chấm công", path: ROUTES.attendance, icon: IconClipboardList },
-  { label: "Xử lý mapping", path: ROUTES.attendanceMapping, icon: IconLink },
+];
+
+const attendanceItems: NavItem[] = [
+  { label: "Dữ liệu chấm công", path: ROUTES.attendance, icon: IconClipboardList },
+  { label: "Ca làm việc", path: ROUTES.workShifts, icon: IconClock },
+  { label: "Ca tuần", path: ROUTES.weeklyShifts, icon: IconCalendarTime },
+  { label: "Sắp ca tháng", path: ROUTES.monthlyTimesheetRoster, icon: IconCalendarTime },
+  { label: "Phân ca", path: ROUTES.shiftAssignments, icon: IconCalendarTime },
   { label: "Bảng công tháng", path: ROUTES.timesheetGrid, icon: IconTable },
   { label: "Kỳ công", path: ROUTES.timesheetPeriods, icon: IconCalendarStats },
-  { label: "Ca làm việc", path: ROUTES.workShifts, icon: IconClock },
   { label: "Ngày lễ", path: ROUTES.holidays, icon: IconCalendarCheck },
-  { label: "Phân ca", path: ROUTES.shiftAssignments, icon: IconCalendarTime },
-  // { label: "Onboarding", path: ROUTES.onboarding, icon: IconFolderOpen },
-  // { label: "Offboarding", path: ROUTES.offboarding, icon: IconFileImport },
-  { label: "Nhật ký audit", path: ROUTES.auditLogs, icon: IconFileAnalytics },
   { label: "Nghỉ phép", path: ROUTES.leave, icon: IconCalendarCheck },
   {
     label: "Cấu hình duyệt phép",
     path: ROUTES.leaveApprovalAssignments,
     icon: IconUserCheck,
   },
+];
+
+const postAttendanceItems: NavItem[] = [
+  { label: "Xử lý mapping", path: ROUTES.attendanceMapping, icon: IconLink },
+];
+
+const finalItems: NavItem[] = [
+  // Keep global settings as the final action in the sidebar.
   { label: "Cài đặt", path: ROUTES.settings, icon: IconSettings },
 ];
 
@@ -115,12 +119,13 @@ const routeTitles: Record<string, string> = {
   [ROUTES.leaveApprovalAssignments]: "Cấu hình duyệt phép",
   [ROUTES.attendance]: "Chấm công",
   [ROUTES.attendanceMapping]: "Xử lý mapping",
-  [ROUTES.timesheetGrid]: "Bảng chấm công tháng",
+  [ROUTES.monthlyTimesheetRoster]: "Sắp ca tháng",
+  [ROUTES.timesheetGrid]: "Bảng công tháng",
   [ROUTES.timesheetPeriods]: "Kỳ công",
   [ROUTES.workShifts]: "Ca làm việc",
+  [ROUTES.weeklyShifts]: "Ca tuần",
   [ROUTES.holidays]: "Ngày lễ",
   [ROUTES.shiftAssignments]: "Phân ca",
-  [ROUTES.calendar]: "Lịch của tôi",
   [ROUTES.onboarding]: "Onboarding",
   [ROUTES.offboarding]: "Offboarding",
   [ROUTES.imports]: "Imports",
@@ -143,15 +148,23 @@ function isActive(pathname: string, path: string) {
 
 export function MainLayout() {
   const [opened, { toggle, close }] = useDisclosure();
-  const [desktopCollapsed, setDesktopCollapsed] = useLocalStorage({
-    key: "hr-web-client.sidebar-collapsed",
-    defaultValue: false,
-  });
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const visibleMainItems = mainItems.filter((item) =>
+  const visiblePrimaryItems = primaryItems.filter((item) =>
+    canAccessRoute(user, item.path),
+  );
+  const visiblePreAttendanceItems = preAttendanceItems.filter((item) =>
+    canAccessRoute(user, item.path),
+  );
+  const visibleAttendanceItems = attendanceItems.filter((item) =>
+    canAccessRoute(user, item.path),
+  );
+  const visiblePostAttendanceItems = postAttendanceItems.filter((item) =>
+    canAccessRoute(user, item.path),
+  );
+  const visibleFinalItems = finalItems.filter((item) =>
     canAccessRoute(user, item.path),
   );
   const visibleOrgItems = orgItems.filter((item) =>
@@ -166,10 +179,12 @@ export function MainLayout() {
   const isIamRoute = visibleIamItems.some((item) =>
     isActive(location.pathname, item.path),
   );
+  const isAttendanceRoute = visibleAttendanceItems.some((item) =>
+    isActive(location.pathname, item.path),
+  );
   const selectedPath = location.pathname.startsWith("/employees/")
     ? ROUTES.employees
     : location.pathname;
-  const headerTitle = routeTitles[selectedPath] ?? "HACOM HRM";
 
   function goTo(path: string) {
     navigate(path);
@@ -178,91 +193,72 @@ export function MainLayout() {
 
   return (
     <AppShell
-      header={{ height: 64 }}
-      navbar={{ width: 260, breakpoint: "md", collapsed: { mobile: !opened, desktop: desktopCollapsed } }}
-      padding="lg"
-      bg="var(--hrm-bg)"
-      className={`app-shell ${desktopCollapsed ? "is-sidebar-collapsed" : ""}`}
+      header={{ height: 56 }}
+      navbar={{ width: 232, breakpoint: "md", collapsed: { mobile: !opened } }}
+      padding="md"
+      bg="#f6f8fb"
     >
-      <AppShell.Header className="app-shell-header">
-        <Group h="100%" px="lg" justify="space-between" wrap="nowrap">
-          <Group gap="sm" wrap="nowrap">
+      <AppShell.Header>
+        <Group h="100%" px="md" justify="space-between" wrap="nowrap">
+          <Group gap="xs" wrap="nowrap">
             <Burger
               opened={opened}
               onClick={toggle}
               hiddenFrom="md"
               size="sm"
             />
-            {desktopCollapsed ? (
-              <Tooltip label="Mở rộng thanh bên">
-                <ActionIcon
-                  variant="default"
-                  size="lg"
-                  aria-label="Mở rộng thanh bên"
-                  visibleFrom="md"
-                  onClick={() => setDesktopCollapsed(false)}
-                >
-                  <IconChevronRight size={18} />
-                </ActionIcon>
-              </Tooltip>
-            ) : null}
-            <Title order={1} size="h3" className="app-shell-title">
-              {headerTitle}
+            <Title order={1} size="h4">
+              {routeTitles[selectedPath] ?? "HACOM HRM"}
             </Title>
           </Group>
 
-          <Group gap="sm" wrap="nowrap" className="app-shell-user-tools">
-          <NotificationBell />
-          <Menu position="bottom-end" shadow="md" width={230}>
-            <Menu.Target>
-              <UnstyledButton className="app-user-menu-button">
-                <Group gap="xs" wrap="nowrap">
-                  <Avatar size={32} radius="xl" color="hacomRed">
-                    {(user?.fullName ?? user?.email ?? "U")
-                      .slice(0, 1)
-                      .toUpperCase()}
-                  </Avatar>
-                  <Stack gap={0} visibleFrom="sm">
-                    <Text size="sm" fw={600} maw={160} truncate>
-                      {user?.fullName ?? "User"}
-                    </Text>
-                    <Text size="xs" c="dimmed" maw={160} truncate>
-                      {user?.email ?? "-"}
-                    </Text>
-                  </Stack>
-                  <IconChevronDown size={16} />
-                </Group>
-              </UnstyledButton>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Label>Tài khoản</Menu.Label>
-              <Menu.Item
-                color="red"
-                leftSection={<IconLogout size={16} />}
-                onClick={() => logout()}
-              >
-                Đăng xuất
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
+          <Group gap="xs" wrap="nowrap">
+            <NotificationBell />
+            <Menu position="bottom-end" shadow="md" width={230}>
+              <Menu.Target>
+                <UnstyledButton>
+                  <Group gap="xs" wrap="nowrap">
+                    <Avatar size={28} radius="xl" color="blue">
+                      {(user?.fullName ?? user?.email ?? "U")
+                        .slice(0, 1)
+                        .toUpperCase()}
+                    </Avatar>
+                    <Stack gap={0} visibleFrom="sm">
+                      <Text size="sm" fw={600} maw={160} truncate>
+                        {user?.fullName ?? "User"}
+                      </Text>
+                      <Text size="xs" c="dimmed" maw={160} truncate>
+                        {user?.email ?? "-"}
+                      </Text>
+                    </Stack>
+                    <IconChevronDown size={16} />
+                  </Group>
+                </UnstyledButton>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Label>Tài khoản</Menu.Label>
+                <Menu.Item
+                  color="red"
+                  leftSection={<IconLogout size={16} />}
+                  onClick={() => logout()}
+                >
+                  Đăng xuất
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
           </Group>
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar p="md" className="app-shell-navbar">
-        <Stack gap="md" h="100%">
+      <AppShell.Navbar p="md">
+        <Stack gap="sm" h="100%">
           <Group px="xs">
-            <BrandLogo />
+            <BrandLogo compact />
           </Group>
 
           <ScrollArea flex={1}>
             <Stack gap={4}>
-              {visibleMainItems.length > 0 ? (
-                <Text size="xs" fw={750} c="dimmed" className="app-nav-section-label">
-                  Vận hành
-                </Text>
-              ) : null}
-              {visibleMainItems.slice(0, 2).map((item) => {
+              {visiblePrimaryItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <NavLink
@@ -277,10 +273,6 @@ export function MainLayout() {
               })}
 
               {showOrganizationMenu ? (
-                <>
-                <Text size="xs" fw={750} c="dimmed" className="app-nav-section-label">
-                  Danh mục
-                </Text>
                 <NavLink
                   label="Tổ chức"
                   leftSection={<IconBuildingBank size={18} />}
@@ -301,14 +293,9 @@ export function MainLayout() {
                     );
                   })}
                 </NavLink>
-                </>
               ) : null}
 
               {showIamMenu ? (
-                <>
-                <Text size="xs" fw={750} c="dimmed" className="app-nav-section-label">
-                  Quản trị
-                </Text>
                 <NavLink
                   label="Phân quyền"
                   leftSection={<IconShield size={18} />}
@@ -369,10 +356,60 @@ export function MainLayout() {
                     );
                   })}
                 </NavLink>
-                </>
               ) : null}
 
-              {visibleMainItems.slice(2).map((item) => {
+              {visiblePreAttendanceItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.path}
+                    label={item.label}
+                    leftSection={<Icon size={18} />}
+                    active={isActive(location.pathname, item.path)}
+                    onClick={() => goTo(item.path)}
+                    className="app-nav-link"
+                  />
+                );
+              })}
+
+              {visibleAttendanceItems.length ? (
+                <NavLink
+                  label="Chấm công"
+                  leftSection={<IconClipboardList size={18} />}
+                  defaultOpened={isAttendanceRoute}
+                  className="app-nav-link"
+                >
+                  {visibleAttendanceItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <NavLink
+                        key={item.path}
+                        label={item.label}
+                        leftSection={<Icon size={17} />}
+                        active={isActive(location.pathname, item.path)}
+                        onClick={() => goTo(item.path)}
+                        className="app-nav-link"
+                      />
+                    );
+                  })}
+                </NavLink>
+              ) : null}
+
+              {visiblePostAttendanceItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.path}
+                    label={item.label}
+                    leftSection={<Icon size={18} />}
+                    active={isActive(location.pathname, item.path)}
+                    onClick={() => goTo(item.path)}
+                    className="app-nav-link"
+                  />
+                );
+              })}
+
+              {visibleFinalItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <NavLink
@@ -387,23 +424,10 @@ export function MainLayout() {
               })}
             </Stack>
           </ScrollArea>
-          <Group justify="center" className="app-sidebar-footer">
-            <Tooltip label="Thu gọn thanh bên">
-              <ActionIcon
-                variant="default"
-                size="lg"
-                aria-label="Thu gọn thanh bên"
-                visibleFrom="md"
-                onClick={() => setDesktopCollapsed(true)}
-              >
-                <IconChevronLeft size={18} />
-              </ActionIcon>
-            </Tooltip>
-          </Group>
         </Stack>
       </AppShell.Navbar>
 
-      <AppShell.Main className="app-shell-main">
+      <AppShell.Main>
         <Outlet />
       </AppShell.Main>
     </AppShell>

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   hasTimesheetAttendanceEvent,
+  isWeeklyTemplateOffDay,
   timesheetDayDisplayValue,
 } from "./timesheetDayPresentation";
 
@@ -47,5 +48,44 @@ describe("timesheet day presentation", () => {
         needsExplanation: false,
       }),
     ).toBe("+");
+  });
+
+  it("keeps the default-full marker visible without inferring a symbol for an unassigned day", () => {
+    expect(
+      timesheetDayDisplayValue({
+        displaySymbol: "",
+        firstPunch: null,
+        lastPunch: null,
+        needsExplanation: false,
+        source: "DEFAULT_FULL_ATTENDANCE",
+      }),
+    ).toBe("+");
+    expect(
+      timesheetDayDisplayValue({
+        displaySymbol: "",
+        firstPunch: null,
+        lastPunch: null,
+        needsExplanation: false,
+        source: "UNASSIGNED",
+      }),
+    ).toBe("");
+  });
+
+  it("treats a weekly template OFF as scheduled rest, not unassigned", () => {
+    expect(
+      isWeeklyTemplateOffDay({
+        source: "WEEKLY_TEMPLATE_EMPLOYEE",
+        isWorkingDay: false,
+      }),
+    ).toBe(true);
+    expect(
+      isWeeklyTemplateOffDay({
+        source: "WEEKLY_TEMPLATE_EMPLOYEE",
+        isWorkingDay: true,
+      }),
+    ).toBe(false);
+    expect(
+      isWeeklyTemplateOffDay({ source: "UNASSIGNED", isWorkingDay: false }),
+    ).toBe(false);
   });
 });

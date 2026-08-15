@@ -2210,3 +2210,17 @@ Cập nhật bổ sung:
   - Giữ lại nền hover xanh nhạt cũ `#f8fbff` cho các bảng ở light mode.
   - Mantine DataTable, bảng chi tiết, bảng phân quyền, cây tổ chức, audit feed và AntD Table dùng cùng màu hover này.
   - Dark mode giữ hover nền tối trung tính để không gây chói.
+
+## 41. Đồng Bộ Main Mới Và Sidebar Theo Main
+
+Đã pull/merge code mới nhất từ `hacom/main` vào nhánh `Bactx`.
+
+- Sidebar `MainLayout` lấy theo bản `main` để giữ đúng thứ tự module và nhóm chức năng của main.
+- Nhóm sidebar hiện dùng cấu trúc main:
+  - `Dashboard`, `Nhân sự`.
+  - Nhóm `Tổ chức`.
+  - Nhóm `Phân quyền`.
+  - `Điều chuyển`.
+  - Nhóm `Chấm công` với các mục mới như `Ca tuần`, `Sắp ca tháng`, `Phân ca`, `Bảng công tháng`, `Kỳ công`, `Ngày lễ`, `Nghỉ phép`, `Cấu hình duyệt phép`.
+  - `Xử lý mapping`, `Cài đặt`.
+- Đồng bộ các cập nhật mới từ main liên quan phân ca, ca tuần, sắp ca tháng, bảng công và quyền truy cập.

@@ -9,18 +9,23 @@ import type {
   TimesheetRecomputeJob,
   SetAutoFullAttendancePayload,
   SetAutoFullAttendanceResult,
+  InitializeMonthlyTimesheetRosterPayload,
+  MonthlyTimesheetRosterQuery,
+  MonthlyTimesheetRosterResult,
   OpenTimesheetPeriodPayload,
   ReopenTimesheetPeriodPayload,
   TimesheetGrid,
   TimesheetGridQuery,
   TimesheetConfirmation,
   TimesheetPeriod,
+  UpdateMonthlyTimesheetRosterMembersPayload,
 } from './timesheetTypes';
 import { longRunningAttendanceMutationConfig } from './longRunningMutation';
 
 const BASE = '/attendance/timesheet';
 const RECOMPUTE_JOB_BASE = `${BASE}/recompute-jobs`;
 const PERIOD_BASE = '/timesheet/periods';
+const MONTHLY_ROSTER_BASE = '/attendance/monthly-timesheet-roster';
 
 /** API nhận các bộ lọc nhiều lựa chọn dạng CSV để Nest xử lý ổn định ở cả
  * proxy và query parser khác nhau (tránh phụ thuộc departmentIds[]=...). */
@@ -104,6 +109,33 @@ export async function setAutoFullAttendance(
 ): Promise<SetAutoFullAttendanceResult> {
   return api.patch<SetAutoFullAttendanceResult>(
     `${BASE}/employees/${employeeId}/auto-full-attendance`,
+    payload,
+  );
+}
+
+export async function getMonthlyTimesheetRoster(
+  query: MonthlyTimesheetRosterQuery,
+): Promise<MonthlyTimesheetRosterResult> {
+  return api.get<MonthlyTimesheetRosterResult>(MONTHLY_ROSTER_BASE, {
+    params: query,
+  });
+}
+
+export async function initializeMonthlyTimesheetRoster(
+  payload: InitializeMonthlyTimesheetRosterPayload,
+): Promise<MonthlyTimesheetRosterResult> {
+  return api.post<MonthlyTimesheetRosterResult>(
+    `${MONTHLY_ROSTER_BASE}/initialize`,
+    payload,
+  );
+}
+
+export async function updateMonthlyTimesheetRosterMembers(
+  id: string,
+  payload: UpdateMonthlyTimesheetRosterMembersPayload,
+): Promise<MonthlyTimesheetRosterResult> {
+  return api.patch<MonthlyTimesheetRosterResult>(
+    `${MONTHLY_ROSTER_BASE}/${id}/members`,
     payload,
   );
 }

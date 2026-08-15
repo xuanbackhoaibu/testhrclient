@@ -67,6 +67,12 @@ export interface TimesheetGridRow {
   /** Mã đơn vị tại thời điểm của kỳ công, dùng để nhóm/sắp xếp BCC ổn định. */
   unitCode?: string | null;
   unitName: string | null;
+  /** Ngày đầu được tính công từ bảng sắp ca tháng (nếu đã khởi tạo). */
+  attendanceFrom?: string | null;
+  /** Ngày cuối được tính công từ bảng sắp ca tháng (nếu có giới hạn). */
+  attendanceTo?: string | null;
+  /** Ngày nghỉ việc trong kỳ; vẫn giữ dòng BCC để đối chiếu lịch sử. */
+  terminationEffectiveDate?: string | null;
   jobTitle: string | null;
   days: TimesheetGridDay[];
   summary: {
@@ -222,6 +228,84 @@ export interface OpenTimesheetPeriodPayload {
 
 export interface ReopenTimesheetPeriodPayload {
   reason: string;
+}
+
+/**
+ * Bảng sắp ca tháng là snapshot lựa chọn nhân sự trước khi mở BCC.
+ * Ca thực tế vẫn được cấu hình ở WorkShift/ShiftAssignment.
+ */
+export type MonthlyTimesheetRosterLifecycle =
+  | "ACTIVE"
+  | "NEW_HIRE"
+  | "TERMINATED_IN_MONTH"
+  | "NOT_ELIGIBLE";
+
+export interface MonthlyTimesheetRoster {
+  id: string;
+  month: number;
+  year: number;
+  unitId: string;
+  unit: { id: string; code: string; name: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MonthlyTimesheetRosterRow {
+  memberId: string | null;
+  employeeId: string;
+  includedInTimesheet: boolean;
+  canInclude: boolean;
+  eligibilityReason: string | null;
+  lifecycle: MonthlyTimesheetRosterLifecycle;
+  employeeCode: string;
+  attendanceCode: string | null;
+  fullName: string;
+  jobTitle: string | null;
+  departmentId: string | null;
+  departmentCode: string | null;
+  departmentName: string | null;
+  unitCode: string | null;
+  unitName: string | null;
+  hireDate: string | null;
+  attendanceFrom: string | null;
+  attendanceTo: string | null;
+  terminationEffectiveDate: string | null;
+  unassignedWorkingDays: number;
+}
+
+export interface MonthlyTimesheetRosterResult {
+  roster: MonthlyTimesheetRoster | null;
+  summary: {
+    total: number;
+    selected: number;
+    unassignedWorkingDays: number;
+  };
+  rows: MonthlyTimesheetRosterRow[];
+}
+
+export interface MonthlyTimesheetRosterQuery {
+  month: number;
+  year: number;
+  unitId: string;
+  departmentId?: string;
+  search?: string;
+}
+
+export interface InitializeMonthlyTimesheetRosterPayload {
+  month: number;
+  year: number;
+  unitId: string;
+}
+
+export interface UpdateMonthlyTimesheetRosterMemberPayload {
+  employeeId: string;
+  includedInTimesheet: boolean;
+  attendanceFrom?: string;
+  attendanceTo?: string;
+}
+
+export interface UpdateMonthlyTimesheetRosterMembersPayload {
+  members: UpdateMonthlyTimesheetRosterMemberPayload[];
 }
 
 /**

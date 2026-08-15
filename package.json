@@ -8,10 +8,10 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc --noEmit",
     "audit:ui-text": "node scripts/audit-ui-text.mjs",
-    "test:authorization": "node --experimental-strip-types --test src/features/auth/*.test.ts src/features/authorization/*.test.ts src/features/work-report-authorizations/*.test.ts",
+    "test:authorization": "vitest run src/features/auth/*.test.ts src/features/authorization/*.test.ts src/features/work-report-authorizations/*.test.ts",
     "test:ime-search": "vitest run src/shared/hooks/useImeSafeSearch.test.tsx src/shared/hooks/useImeSafeSelectFilter.test.tsx",
-    "test:search-utils": "node --experimental-strip-types --test src/shared/utils/sort.test.ts src/shared/utils/filterSelectOptions.test.ts",
-    "test:permission-assignment": "node --experimental-strip-types --test src/features/auth-admin/permissionAssignmentPolicy.test.ts",
+    "test:search-utils": "vitest run src/shared/utils/sort.test.ts src/shared/utils/filterSelectOptions.test.ts",
+    "test:permission-assignment": "vitest run src/features/auth-admin/permissionAssignmentPolicy.test.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },

@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
+  Accordion,
   Alert,
   Badge,
   Button,
@@ -14,16 +15,33 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconInfoCircle, IconPlayerStop, IconPlus } from "@tabler/icons-react";
+import {
+  IconCalendarTime,
+  IconInfoCircle,
+  IconPlayerStop,
+  IconPlus,
+} from "@tabler/icons-react";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
+import {
+  ALL_ASSIGNMENT_WEEKDAYS,
+  isFullDayAdministrativeOfficeShift,
+  MONDAY_TO_FRIDAY,
+  formatAssignmentWeekdays,
+  optionalAssignmentWeekdays,
+} from "../../features/attendance/shiftAssignmentWeekdays";
 import { useAuth } from "../../features/auth/useAuth";
 import {
   useCreateShiftAssignment,
   useEndShiftAssignment,
+  useUpdateShiftAssignmentWeekdays,
   useShiftAssignments,
   useWorkShifts,
 } from "../../features/attendance/useWorkSchedule";
+import {
+  getWorkShiftCatalogOrder,
+  sortWorkShiftCatalog,
+} from "../../features/attendance/workShiftCatalogOrder";
 import { formatVietnamBusinessDate } from "../../features/attendance/shiftAssignmentDate";
 import { getActiveShiftPrefillId } from "../../features/attendance/shiftAssignmentNavigation";
 import type { ShiftAssignment } from "../../features/attendance/workScheduleTypes";
@@ -41,6 +59,8 @@ import { ROUTES } from "../../shared/constants/routes";
 import { formatDate } from "../../shared/utils/date";
 
 import { HrmDateInput } from "../../shared/components/HrmDateInput";
+import { WeekdayScopeField } from "./components/WeekdayScopeField";
+import { MonthlyShiftAssignmentGrid } from "./MonthlyShiftAssignmentGrid";
 type TargetKind = "employee" | "department" | "unit";
 
 interface AssignmentFormValues {
@@ -51,6 +71,7 @@ interface AssignmentFormValues {
   unitId: string;
   effectiveFrom: string;
   effectiveTo: string;
+  weekdays: number[];
   note: string;
 }
 
@@ -69,8 +90,19 @@ function createAssignmentFormValues(shiftId = ""): AssignmentFormValues {
     unitId: "",
     effectiveFrom: todayIso(),
     effectiveTo: "",
+    weekdays: [...ALL_ASSIGNMENT_WEEKDAYS],
     note: "",
   };
+}
+
+function assignmentTargetText(assignment: ShiftAssignment): string {
+  if (assignment.employee) {
+    return (
+      assignment.employee.employeeCode + " — " + assignment.employee.fullName
+    );
+  }
+  if (assignment.department) return assignment.department.name;
+  return assignment.unit?.name ?? "Không xác định";
 }
 
 export function ShiftAssignmentsPage() {
@@ -84,12 +116,19 @@ export function ShiftAssignmentsPage() {
     () => canEdit && Boolean(requestedShiftId && shouldOpenPrefilledDrawer),
   );
   const [ending, setEnding] = useState<ShiftAssignment | null>(null);
+  const [editingWeekdays, setEditingWeekdays] =
+    useState<ShiftAssignment | null>(null);
+  const [editingWeekdayScope, setEditingWeekdayScope] = useState<number[]>(
+    () => [...ALL_ASSIGNMENT_WEEKDAYS],
+  );
+  const didDefaultRequestedRuleScope = useRef(false);
 
   const assignmentsQuery = useShiftAssignments();
   const shiftsQuery = useWorkShifts();
   const unitsQuery = useUnitsSelect();
   const createAssignment = useCreateShiftAssignment();
   const endAssignment = useEndShiftAssignment();
+  const updateAssignmentWeekdays = useUpdateShiftAssignmentWeekdays();
 
   const form = useForm<AssignmentFormValues>({
     initialValues: createAssignmentFormValues(requestedShiftId ?? ""),
@@ -107,6 +146,8 @@ export function ShiftAssignmentsPage() {
         values.targetKind === "department" && !value ? "Chọn phòng ban." : null,
       unitId: (value, values) =>
         values.targetKind === "unit" && !value ? "Chọn đơn vị." : null,
+      weekdays: (value) =>
+        value.length ? null : "Chọn ít nhất một ngày áp dụng.",
     },
   });
 
@@ -144,19 +185,30 @@ export function ShiftAssignmentsPage() {
   );
   // Chỉ tải danh sách nhân viên khi thực sự cần — tránh kéo cả công ty về
   // mỗi lần mở trang.
-  const employeesQuery = useAllEmployees({}, {
-    enabled: targetKind === "employee",
-  });
+  const employeesQuery = useAllEmployees(
+    {},
+    {
+      enabled: targetKind === "employee",
+    },
+  );
 
   const shiftOptions = useMemo(
     () =>
-      (shiftsQuery.data ?? [])
-        .filter((shift) => shift.status === "ACTIVE")
-        .map((shift) => ({
-          value: shift.id,
-          label: `${shift.code} — ${shift.name} (${shift.startTime}–${shift.endTime})`,
-        })),
+      sortWorkShiftCatalog(
+        (shiftsQuery.data ?? []).filter((shift) => shift.status === "ACTIVE"),
+      ).map((shift) => ({
+        value: shift.id,
+        label: `${getWorkShiftCatalogOrder(shift.code) ?? "—"} · ${shift.code} — ${shift.name} (${shift.startTime}–${shift.endTime})`,
+      })),
     [shiftsQuery.data],
+  );
+
+  const selectedRuleShift =
+    (shiftsQuery.data ?? []).find(
+      (shift) => shift.id === form.values.shiftId,
+    ) ?? null;
+  const selectedRuleShiftUsesWeekdaySplit = Boolean(
+    selectedRuleShift && isFullDayAdministrativeOfficeShift(selectedRuleShift),
   );
 
   const hasUnavailableRequestedShift =
@@ -167,6 +219,29 @@ export function ShiftAssignmentsPage() {
   const hasSelectedActiveShift = shiftOptions.some(
     (shift) => shift.value === form.values.shiftId,
   );
+
+  useEffect(() => {
+    if (
+      didDefaultRequestedRuleScope.current ||
+      !drawerOpen ||
+      !requestedShiftId ||
+      form.values.shiftId !== requestedShiftId ||
+      !selectedRuleShiftUsesWeekdaySplit
+    ) {
+      return;
+    }
+    didDefaultRequestedRuleScope.current = true;
+    if (!optionalAssignmentWeekdays(form.values.weekdays)) {
+      form.setFieldValue("weekdays", [...MONDAY_TO_FRIDAY]);
+    }
+  }, [
+    drawerOpen,
+    form,
+    form.values.shiftId,
+    form.values.weekdays,
+    requestedShiftId,
+    selectedRuleShiftUsesWeekdaySplit,
+  ]);
 
   const employeeOptions = useMemo(
     () =>
@@ -195,6 +270,18 @@ export function ShiftAssignmentsPage() {
     [departmentsQuery.data],
   );
 
+  function handleRuleShiftChange(value: string | null) {
+    form.setFieldValue("shiftId", value ?? "");
+    form.clearFieldError("shiftId");
+    const selected = (shiftsQuery.data ?? []).find(
+      (shift) => shift.id === value,
+    );
+    if (!selected || !isFullDayAdministrativeOfficeShift(selected)) return;
+    if (!optionalAssignmentWeekdays(form.values.weekdays)) {
+      form.setFieldValue("weekdays", [...MONDAY_TO_FRIDAY]);
+    }
+  }
+
   async function handleSubmit(values: AssignmentFormValues) {
     if (!hasSelectedActiveShift) {
       notifications.show({
@@ -206,6 +293,7 @@ export function ShiftAssignmentsPage() {
     }
 
     try {
+      const assignmentWeekdays = optionalAssignmentWeekdays(values.weekdays);
       await createAssignment.mutateAsync({
         shiftId: values.shiftId,
         employeeId:
@@ -215,6 +303,7 @@ export function ShiftAssignmentsPage() {
         unitId: values.targetKind === "unit" ? values.unitId : undefined,
         effectiveFrom: values.effectiveFrom,
         effectiveTo: values.effectiveTo || undefined,
+        ...(assignmentWeekdays ? { weekdays: assignmentWeekdays } : {}),
         note: values.note.trim() || undefined,
       });
       notifications.show({
@@ -248,6 +337,55 @@ export function ShiftAssignmentsPage() {
         color: "red",
         title: "Không kết thúc được phân ca",
         message: "Vui lòng thử lại sau.",
+      });
+    }
+  }
+
+  function openWeekdayScopeEditor(assignment: ShiftAssignment) {
+    setEditingWeekdays(assignment);
+    setEditingWeekdayScope([
+      ...(assignment.weekdays ?? ALL_ASSIGNMENT_WEEKDAYS),
+    ]);
+  }
+
+  function closeWeekdayScopeEditor() {
+    setEditingWeekdays(null);
+    setEditingWeekdayScope([...ALL_ASSIGNMENT_WEEKDAYS]);
+  }
+
+  async function handleWeekdayScopeSave() {
+    if (!editingWeekdays) return;
+    if (!editingWeekdayScope.length) {
+      notifications.show({
+        color: "yellow",
+        title: "Chưa chọn ngày áp dụng",
+        message: "Chọn ít nhất một ngày để lưu quy tắc phân ca.",
+      });
+      return;
+    }
+
+    try {
+      await updateAssignmentWeekdays.mutateAsync({
+        id: editingWeekdays.id,
+        payload: {
+          weekdays: optionalAssignmentWeekdays(editingWeekdayScope) ?? null,
+        },
+      });
+      notifications.show({
+        color: "green",
+        title: "Đã sửa ngày áp dụng",
+        message:
+          "Đối tượng, ca và khoảng hiệu lực được giữ nguyên. Mở BCC rồi bấm Cập nhật bảng công để áp lại kết quả.",
+      });
+      closeWeekdayScopeEditor();
+    } catch (error) {
+      notifications.show({
+        color: "red",
+        title: "Không sửa được ngày áp dụng",
+        message:
+          error instanceof Error && error.message
+            ? error.message
+            : "Kiểm tra kỳ công đã chốt hoặc phạm vi phân ca rồi thử lại.",
       });
     }
   }
@@ -308,6 +446,12 @@ export function ShiftAssignmentsPage() {
           }`,
       },
       {
+        key: "weekdays",
+        header: "Ngày áp dụng",
+        width: 140,
+        render: (record) => formatAssignmentWeekdays(record.weekdays),
+      },
+      {
         key: "status",
         header: "Trạng thái",
         width: 130,
@@ -316,16 +460,28 @@ export function ShiftAssignmentsPage() {
       {
         key: "actions",
         header: "",
-        width: 80,
+        width: 104,
         align: "right",
         render: (record) => (
           <TableActionsMenu
             actions={[
               {
+                label: "Sửa ngày áp dụng",
+                icon: <IconCalendarTime size={16} />,
+                disabled:
+                  !canEdit ||
+                  record.status !== "ACTIVE" ||
+                  updateAssignmentWeekdays.isPending,
+                onClick: () => openWeekdayScopeEditor(record),
+              },
+              {
                 label: "Kết thúc phân ca",
                 icon: <IconPlayerStop size={16} />,
                 color: "red",
-                disabled: !canEdit || record.status !== "ACTIVE",
+                disabled:
+                  !canEdit ||
+                  record.status !== "ACTIVE" ||
+                  updateAssignmentWeekdays.isPending,
                 onClick: () => setEnding(record),
               },
             ]}
@@ -333,49 +489,73 @@ export function ShiftAssignmentsPage() {
         ),
       },
     ],
-    [canEdit],
+    [canEdit, updateAssignmentWeekdays.isPending],
   );
 
   return (
     <>
       <PageHeader
         title="Phân ca"
-        subtitle="Gán ca cho cá nhân, phòng ban hoặc đơn vị. Nhân sự không có phân ca hiệu lực sẽ hiển thị “chưa phân ca” và không tự tính BCC."
+        subtitle="Tick CBNV, chọn ca và ngày áp dụng. BCC dùng đúng ca kế hoạch này sau khi được cập nhật lại."
         actions={
           canEdit ? (
-            <Button leftSection={<IconPlus size={18} />} onClick={openCreate}>
-              Phân ca
+            <Button
+              variant="default"
+              leftSection={<IconPlus size={18} />}
+              onClick={openCreate}
+            >
+              Thêm quy tắc
             </Button>
           ) : null
         }
       />
 
       <Stack gap="md">
-        <Alert
-          icon={<IconInfoCircle size={18} />}
-          color="blue"
-          variant="light"
-          title="Độ ưu tiên khi một người trúng nhiều phân ca"
-        >
-          Cá nhân <b>&gt;</b> phòng ban <b>&gt;</b> đơn vị. Lịch tuần chỉ là mẫu
-          cấu hình/preview. Ngày lễ luôn phủ lên lịch đã phân. Nhóm chưa xác
-          định được ca (bảo vệ, lái xe…) nên <b>để trống</b> — hệ thống đánh dấu
-          “chưa phân ca” thay vì tự áp ca hành chính rồi chấm sai âm thầm.
-          <br />
-          Một phân ca dùng cùng một mẫu ca trong toàn bộ khoảng hiệu lực; không
-          dùng một phân ca để mô phỏng lịch T2–T6 và T7 có giờ khác nhau.
-        </Alert>
-
-        <DataTable
-          data={assignmentsQuery.data ?? []}
-          columns={columns}
-          rowKey={(record) => record.id}
-          loading={assignmentsQuery.isLoading}
-          error={assignmentsQuery.error}
-          onRetry={() => void assignmentsQuery.refetch()}
-          emptyTitle="Chưa có phân ca riêng"
-          emptyDescription="Tạo phân ca cho các nhóm đã được HR chốt giờ làm trước khi chạy BCC."
+        <MonthlyShiftAssignmentGrid
+          onOpenRules={openCreate}
+          requestedShiftId={requestedShiftId}
         />
+
+        <Accordion variant="contained" radius="md">
+          <Accordion.Item value="assignment-rules">
+            <Accordion.Control>
+              Quy tắc phân ca theo phòng ban / đơn vị
+            </Accordion.Control>
+            <Accordion.Panel>
+              <Stack gap="md">
+                <Alert
+                  icon={<IconInfoCircle size={18} />}
+                  color="blue"
+                  variant="light"
+                  title="Độ ưu tiên khi một người trúng nhiều phân ca"
+                >
+                  Ca cá nhân/ngày ngoại lệ <b>&gt;</b> Ca tuần đã áp <b>&gt;</b>{" "}
+                  phòng ban <b>&gt;</b> đơn vị. Mẫu Ca tuần chưa áp không ảnh
+                  hưởng BCC. Ngày lễ luôn phủ lên lịch đã phân. Nhóm chưa xác
+                  định được ca (bảo vệ, lái xe…) nên{" "}
+                  <b>để trống</b>
+                  — hệ thống đánh dấu “chưa phân ca” thay vì tự áp ca hành chính
+                  rồi chấm sai âm thầm.
+                  <br />
+                  Một quy tắc có thể giới hạn ngày áp dụng (T2–T6, Thứ 7 hoặc
+                  tùy chọn). Khi T2–T6 và Thứ 7 dùng giờ khác nhau, tạo hai quy
+                  tắc cùng khoảng hiệu lực với phạm vi ngày tương ứng.
+                </Alert>
+
+                <DataTable
+                  data={assignmentsQuery.data ?? []}
+                  columns={columns}
+                  rowKey={(record) => record.id}
+                  loading={assignmentsQuery.isLoading}
+                  error={assignmentsQuery.error}
+                  onRetry={() => void assignmentsQuery.refetch()}
+                  emptyTitle="Chưa có quy tắc phân ca riêng"
+                  emptyDescription="Tạo quy tắc cho phòng ban hoặc đơn vị khi cần một ca mặc định theo tổ chức."
+                />
+              </Stack>
+            </Accordion.Panel>
+          </Accordion.Item>
+        </Accordion>
       </Stack>
 
       <Drawer
@@ -398,7 +578,11 @@ export function ShiftAssignmentsPage() {
               </Alert>
             ) : null}
             {shiftsQuery.isError ? (
-              <Alert color="red" variant="light" title="Không tải được ca làm việc">
+              <Alert
+                color="red"
+                variant="light"
+                title="Không tải được ca làm việc"
+              >
                 Tải lại danh sách ca trước khi lưu phân ca.{" "}
                 <Button
                   size="compact-sm"
@@ -498,6 +682,7 @@ export function ShiftAssignmentsPage() {
               withAsterisk
               data={shiftOptions}
               {...form.getInputProps("shiftId")}
+              onChange={handleRuleShiftChange}
             />
 
             <Group grow>
@@ -522,6 +707,25 @@ export function ShiftAssignmentsPage() {
               />
             </Group>
 
+            <WeekdayScopeField
+              key={drawerOpen ? "open" : "closed"}
+              disabled={!canEdit}
+              error={form.errors.weekdays}
+              value={form.values.weekdays}
+              onChange={(value) => {
+                form.setFieldValue("weekdays", value);
+                form.clearFieldError("weekdays");
+              }}
+            />
+
+            {selectedRuleShiftUsesWeekdaySplit ? (
+              <Text size="xs" c="dimmed">
+                Ca hành chính cả ngày mặc định T2–T6. Nếu làm sáng Thứ 7, tạo ca
+                Thứ 7 tương ứng (ví dụ HC3/HC4) riêng cho Thứ 7 cùng khoảng
+                ngày, rồi Cập nhật bảng công.
+              </Text>
+            ) : null}
+
             <Textarea
               label="Ghi chú"
               minRows={2}
@@ -542,6 +746,68 @@ export function ShiftAssignmentsPage() {
             </Group>
           </Stack>
         </form>
+      </Drawer>
+
+      <Drawer
+        opened={editingWeekdays !== null}
+        onClose={closeWeekdayScopeEditor}
+        title="Sửa ngày áp dụng"
+        position="right"
+        size="sm"
+      >
+        {editingWeekdays ? (
+          <Stack gap="sm">
+            <Alert
+              icon={<IconInfoCircle size={18} />}
+              color="blue"
+              variant="light"
+              title="Khắc phục ca hành chính bị áp cả tuần"
+            >
+              Đổi quy tắc ca hành chính cả ngày về <b>T2–T6</b>. Nếu làm sáng
+              Thứ 7, tạo thêm quy tắc ca Thứ 7 tương ứng (ví dụ <b>HC3/HC4</b>)
+              riêng cho <b>Thứ 7</b> với cùng khoảng hiệu lực. Sau khi lưu, mở
+              BCC và bấm <b>Cập nhật bảng công</b>.
+            </Alert>
+
+            <Text size="sm">
+              <b>Áp dụng cho:</b> {assignmentTargetText(editingWeekdays)}
+            </Text>
+            <Text size="sm">
+              <b>Ca giữ nguyên:</b> {editingWeekdays.shift.code} —{" "}
+              {editingWeekdays.shift.name}
+            </Text>
+            <Text size="sm">
+              <b>Hiệu lực giữ nguyên:</b>{" "}
+              {formatDate(editingWeekdays.effectiveFrom)}
+              {" → "}
+              {editingWeekdays.effectiveTo
+                ? formatDate(editingWeekdays.effectiveTo)
+                : "không thời hạn"}
+            </Text>
+
+            <WeekdayScopeField
+              value={editingWeekdayScope}
+              disabled={updateAssignmentWeekdays.isPending}
+              onChange={setEditingWeekdayScope}
+            />
+
+            <Group justify="flex-end" mt="md">
+              <Button
+                variant="default"
+                disabled={updateAssignmentWeekdays.isPending}
+                onClick={closeWeekdayScopeEditor}
+              >
+                Hủy
+              </Button>
+              <Button
+                loading={updateAssignmentWeekdays.isPending}
+                onClick={() => void handleWeekdayScopeSave()}
+              >
+                Lưu ngày áp dụng
+              </Button>
+            </Group>
+          </Stack>
+        ) : null}
       </Drawer>
 
       <Drawer

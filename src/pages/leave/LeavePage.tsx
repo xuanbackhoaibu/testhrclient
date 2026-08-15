@@ -1,13 +1,17 @@
 import { useMemo, useState } from 'react';
+import { DeleteOutlined } from '@ant-design/icons';
 import type { TableColumnsType } from 'antd';
-import { Card, Col, Row, Select, Space, Table, Typography } from 'antd';
+import { Button, Card, Col, message, Popconfirm, Row, Select, Space, Table, Typography } from 'antd';
+
+import { HR_PERMISSIONS } from '../../features/auth/permissions';
+import { useAuth } from '../../features/auth/useAuth';
 
 import type {
   LeaveApprovalStep,
   LeavePolicyType,
   LeaveRequest,
 } from '../../features/leave/leaveTypes';
-import { useLeaveRequests, useLeaveTypes } from '../../features/leave/useLeaveRequests';
+import { useDeleteCancelledLeaveRequest, useLeaveRequests, useLeaveTypes } from '../../features/leave/useLeaveRequests';
 import { useEmployees } from '../../features/employees/useEmployees';
 import { LEAVE_TYPE_OPTIONS } from '../../shared/constants/statuses';
 import { ErrorState } from '../../shared/components/ErrorState';
@@ -123,6 +127,8 @@ const statusOptions = REQUEST_STATUS_OPTIONS.map((item) => ({
 }));
 
 export function LeavePage() {
+  const { can } = useAuth();
+  const canDeleteCancelled = can(HR_PERMISSIONS.LEAVE_CANCEL);
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeSelectOption | null>(null);
   const [params, setParams] = useState({
@@ -134,6 +140,7 @@ export function LeavePage() {
   });
   const { data, isLoading, error, refetch } = useLeaveRequests(params);
   const { data: leaveTypes = [], isLoading: isLeaveTypesLoading } = useLeaveTypes();
+  const deleteCancelledLeaveRequest = useDeleteCancelledLeaveRequest();
   const employeesQuery = useEmployees({
     search: employeeSearch.trim() || undefined,
     page: 1,
@@ -171,6 +178,15 @@ export function LeavePage() {
       ? (record.approvalSteps?.find((step) => step.status === 'SUBMITTED') ?? null)
       : null;
 
+  async function handleDeleteCancelledRequest(record: LeaveRequest) {
+    try {
+      await deleteCancelledLeaveRequest.mutateAsync(record.id);
+      message.success('Đã xóa đơn nghỉ phép đã hủy.');
+    } catch {
+      message.error('Không xóa được đơn. Đơn chỉ được xóa khi đã hủy.');
+    }
+  }
+
   const requestColumns: TableColumnsType<LeaveRequest> = [
     {
       title: 'Nhân viên',
@@ -193,7 +209,34 @@ export function LeavePage() {
     { title: 'Buổi nghỉ', width: 170, render: (_, record) => sessionRangeLabel(record) },
     { title: 'Số ngày', dataIndex: 'totalDays', width: 95 },
     { title: 'Báo trước', width: 130, render: (_, record) => noticeLabel(record) },
-    { title: 'Trạng thái', width: 150, render: (_, record) => <StatusTag status={record.status} /> },
+    {
+      title: 'Trạng thái',
+      width: 150,
+      render: (_, record) => (
+        <Space size={4}>
+          <StatusTag status={record.status} />
+          {record.status === 'CANCELLED' && canDeleteCancelled ? (
+            <Popconfirm
+              title='Xóa đơn đã hủy?'
+              description='Đơn sẽ bị xóa khỏi danh sách và không thể khôi phục.'
+              okText='Xóa'
+              cancelText='Hủy'
+              okButtonProps={{ danger: true, loading: deleteCancelledLeaveRequest.isPending }}
+              onConfirm={() => handleDeleteCancelledRequest(record)}
+            >
+              <Button
+                type='text'
+                danger
+                size='small'
+                icon={<DeleteOutlined />}
+                aria-label={'Xóa đơn nghỉ phép đã hủy của ' + (record.employeeName ?? record.employee?.fullName ?? record.employeeId)}
+                disabled={deleteCancelledLeaveRequest.isPending}
+              />
+            </Popconfirm>
+          ) : null}
+        </Space>
+      ),
+    },
     { title: 'Luồng duyệt', width: 220, render: (_, record) => approvalLabel(currentApprovalStep(record)) },
   ];
 

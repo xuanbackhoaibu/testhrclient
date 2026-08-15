@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { test } from 'vitest';
 import { getAuthorizationErrorMessage } from './authorizationErrorMessage.ts';
 
 test('authorization errors are mapped to business-safe Vietnamese messages', () => {

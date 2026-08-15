@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { test } from 'vitest';
 import { compareByBusinessCode, sortByCode } from './sort.ts';
 
 test('sortByCode uses natural, case-insensitive business-code order without mutation', () => {
