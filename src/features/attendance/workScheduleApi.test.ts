@@ -13,6 +13,7 @@ import {
   bulkAssignShifts,
   createShiftAssignment,
   getShiftAssignmentGrid,
+  includeShiftAssignmentRowsInTimesheet,
 } from "./workScheduleApi";
 
 describe("monthly shift-assignment API", () => {
@@ -68,6 +69,7 @@ describe("monthly shift-assignment API", () => {
       effectiveFrom: "2026-08-01",
       effectiveTo: "2026-08-31",
       weekdays: [1, 2, 3, 4, 5],
+      includeInTimesheet: true,
     };
     const result = {
       created: 2,
@@ -86,6 +88,31 @@ describe("monthly shift-assignment API", () => {
 
     expect(post).toHaveBeenCalledWith(
       "/attendance/work-schedule/assignments/bulk",
+      payload,
+    );
+  });
+
+  it("puts selected planned-shift rows into BCC without reapplying their shift", async () => {
+    const payload = {
+      month: 8,
+      year: 2026,
+      unitId: "unit-01",
+      employeeIds: ["employee-01", "employee-02"],
+    };
+    const result = {
+      rosterId: "roster-08-2026-unit-01",
+      includedInTimesheet: 2,
+      recomputeRequired: true,
+      affected: [],
+    };
+    post.mockResolvedValue(result);
+
+    await expect(includeShiftAssignmentRowsInTimesheet(payload)).resolves.toEqual(
+      result,
+    );
+
+    expect(post).toHaveBeenCalledWith(
+      "/attendance/work-schedule/assignments/include-in-timesheet",
       payload,
     );
   });
