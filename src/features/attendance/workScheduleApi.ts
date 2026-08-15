@@ -12,6 +12,8 @@ import type {
   ShiftAssignmentGrid,
   ShiftAssignmentGridQuery,
   ShiftAssignmentPayload,
+  ReplaceShiftAssignmentDayPayload,
+  ReplaceShiftAssignmentDayResult,
   UpdateShiftAssignmentWeekdaysPayload,
   WorkCalendarDay,
   WorkCalendarDayPayload,
@@ -102,6 +104,19 @@ export async function updateShiftAssignmentWeekdays(
   payload: UpdateShiftAssignmentWeekdaysPayload,
 ): Promise<ShiftAssignment> {
   return api.patch<ShiftAssignment>(`${BASE}/assignments/${id}`, payload);
+}
+
+/**
+ * Corrects the shift on exactly one date. The server preserves BCC membership
+ * and safely creates/splits a personal override when the current ca is shared.
+ */
+export async function replaceShiftAssignmentDay(
+  payload: ReplaceShiftAssignmentDayPayload,
+): Promise<ReplaceShiftAssignmentDayResult> {
+  return api.post<ReplaceShiftAssignmentDayResult>(
+    `${BASE}/assignments/replace-day`,
+    payload,
+  );
 }
 
 export async function getShiftAssignmentGrid(

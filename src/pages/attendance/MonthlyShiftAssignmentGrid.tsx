@@ -34,7 +34,7 @@ import {
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import {
   ALL_ASSIGNMENT_WEEKDAYS,
-  canSelectShiftAssignmentGridDay,
+  canOpenShiftAssignmentGridPicker,
   isFullDayAdministrativeOfficeShift,
   MONDAY_TO_FRIDAY,
   optionalAssignmentWeekdays,
@@ -49,6 +49,7 @@ import {
 import {
   useBulkAssignShifts,
   useIncludeShiftAssignmentRowsInTimesheet,
+  useReplaceShiftAssignmentDay,
   useShiftAssignmentGrid,
   useWorkShifts,
 } from "../../features/attendance/useWorkSchedule";
@@ -385,6 +386,7 @@ export function MonthlyShiftAssignmentGrid({
   const unitsQuery = useUnitsSelect();
   const shiftsQuery = useWorkShifts();
   const bulkAssign = useBulkAssignShifts();
+  const replaceShiftAssignmentDay = useReplaceShiftAssignmentDay();
   const includeInTimesheet = useIncludeShiftAssignmentRowsInTimesheet();
   const unitOptions = useMemo(
     () =>
@@ -597,6 +599,8 @@ export function MonthlyShiftAssignmentGrid({
     selectedOnPage === selectablePageRows.length;
   const somePageSelected = selectedOnPage > 0 && !allPageSelected;
   const tableIsDisabled = !canEdit || Boolean(grid?.isClosed);
+  const cellShiftMutationPending =
+    bulkAssign.isPending || replaceShiftAssignmentDay.isPending;
 
   function toggleEmployee(employeeId: string, checked: boolean) {
     setSelectionState((current) => {
@@ -659,36 +663,74 @@ export function MonthlyShiftAssignmentGrid({
       return;
     }
 
+    // Selecting the ca that is already effective is intentionally a no-op.
+    // It must never create a duplicate assignment or rewrite BCC.
+    if (picker.day.shift?.id === shift.id) {
+      closeCellShiftPicker();
+      return;
+    }
+
+    const replacesExistingAssignment =
+      picker.day.source === "ASSIGNMENT_EMPLOYEE" ||
+      picker.day.source === "ASSIGNMENT_DEPARTMENT" ||
+      picker.day.source === "ASSIGNMENT_UNIT" ||
+      picker.day.source === "CALENDAR";
+
     setCellShiftError(null);
     setCellShiftApplyingId(shift.id);
     try {
-      await bulkAssign.mutateAsync({
-        month,
-        year,
-        unitId: selectedUnitId,
-        employeeIds: [picker.employeeId],
-        shiftId: shift.id,
-        ...singleDayShiftAssignmentScope(picker.day.date),
-        includeInTimesheet: true,
-      });
-      notifications.show({
-        color: "green",
-        title: "Đã áp ca làm việc",
-        message:
-          "Đã áp " +
-          shift.code +
-          " cho " +
-          picker.fullName +
-          " ngày " +
-          formatDate(picker.day.date) +
-          " và đưa CBNV vào BCC.",
-      });
+      if (replacesExistingAssignment) {
+        await replaceShiftAssignmentDay.mutateAsync({
+          month,
+          year,
+          unitId: selectedUnitId,
+          employeeId: picker.employeeId,
+          shiftId: shift.id,
+          date: picker.day.date,
+        });
+        notifications.show({
+          color: "green",
+          title: "Đã đổi ca làm việc",
+          message:
+            "Đã đổi thành " +
+            shift.code +
+            " cho " +
+            picker.fullName +
+            " ngày " +
+            formatDate(picker.day.date) +
+            ". BCC hiện có được giữ nguyên.",
+        });
+      } else {
+        await bulkAssign.mutateAsync({
+          month,
+          year,
+          unitId: selectedUnitId,
+          employeeIds: [picker.employeeId],
+          shiftId: shift.id,
+          ...singleDayShiftAssignmentScope(picker.day.date),
+          includeInTimesheet: true,
+        });
+        notifications.show({
+          color: "green",
+          title: "Đã áp ca làm việc",
+          message:
+            "Đã áp " +
+            shift.code +
+            " cho " +
+            picker.fullName +
+            " ngày " +
+            formatDate(picker.day.date) +
+            " và đưa CBNV vào BCC.",
+        });
+      }
       closeCellShiftPicker();
     } catch (error) {
       setCellShiftError(
         error instanceof Error && error.message
           ? error.message
-          : "Không thể áp ca. Kiểm tra kỳ công hoặc ca đang chồng lấn rồi thử lại.",
+          : replacesExistingAssignment
+            ? "Không thể đổi ca. Kiểm tra kỳ công hoặc phạm vi áp dụng rồi thử lại."
+            : "Không thể áp ca. Kiểm tra kỳ công hoặc ca đang chồng lấn rồi thử lại.",
       );
     } finally {
       setCellShiftApplyingId(null);
@@ -1352,15 +1394,20 @@ export function MonthlyShiftAssignmentGrid({
                               );
                             }
                             const visual = cellVisual(day, meta);
-                            const canChooseShift =
-                              canSelectShiftAssignmentGridDay(
+                            const canOpenPicker =
+                              canOpenShiftAssignmentGridPicker(
                                 day,
                                 item.row.canInclude,
                                 tableIsDisabled,
                                 hasActiveDirectShift,
                               );
+                            const replacesExistingShift =
+                              day.source === "ASSIGNMENT_EMPLOYEE" ||
+                              day.source === "ASSIGNMENT_DEPARTMENT" ||
+                              day.source === "ASSIGNMENT_UNIT" ||
+                              day.source === "CALENDAR";
                             const pickerOpen =
-                              canChooseShift &&
+                              canOpenPicker &&
                               isCellShiftPickerOpen(
                                 item.row.employeeId,
                                 day.date,
@@ -1373,19 +1420,19 @@ export function MonthlyShiftAssignmentGrid({
                               <Table.Td
                                 key={meta.day}
                                 title={
-                                  canChooseShift
+                                  canOpenPicker
                                     ? undefined
                                     : unavailableCellTitle
                                 }
                                 style={{
                                   background: visual.background,
                                   minWidth: dayColumnWidth,
-                                  padding: canChooseShift ? 1 : undefined,
+                                  padding: canOpenPicker ? 1 : undefined,
                                   textAlign: "center",
                                   width: dayColumnWidth,
                                 }}
                               >
-                                {canChooseShift ? (
+                                {canOpenPicker ? (
                                   <Popover
                                     opened={pickerOpen}
                                     onDismiss={closeCellShiftPicker}
@@ -1400,17 +1447,21 @@ export function MonthlyShiftAssignmentGrid({
                                         aria-expanded={pickerOpen}
                                         aria-haspopup="dialog"
                                         aria-label={
-                                          "Chọn ca cho " +
+                                          (replacesExistingShift
+                                            ? "Đổi ca cho "
+                                            : "Chọn ca cho ") +
                                           item.row.fullName +
                                           ", ngày " +
                                           formatDate(day.date)
                                         }
                                         title={
-                                          meta.isSunday
-                                            ? "Chủ nhật mặc định nghỉ — nhấn để HR phân ca riêng"
-                                            : "Nhấn để chọn ca làm việc cho ngày này"
+                                          replacesExistingShift
+                                            ? "Nhấn để đổi ca làm việc cho ngày này"
+                                            : meta.isSunday
+                                              ? "Chủ nhật mặc định nghỉ — nhấn để HR phân ca riêng"
+                                              : "Nhấn để chọn ca làm việc cho ngày này"
                                         }
-                                        disabled={bulkAssign.isPending}
+                                        disabled={cellShiftMutationPending}
                                         onClick={() =>
                                           openCellShiftPicker(item.row, day)
                                         }
@@ -1447,11 +1498,19 @@ export function MonthlyShiftAssignmentGrid({
                                           >
                                             <Stack gap={0}>
                                               <Text fw={700} size="sm">
-                                                Chọn ca cho {item.row.fullName}
+                                                {replacesExistingShift
+                                                  ? "Đổi ca cho "
+                                                  : "Chọn ca cho "}
+                                                {item.row.fullName}
                                               </Text>
                                               <Text size="xs" c="dimmed">
-                                                {formatDate(day.date)} · Tự đưa
-                                                vào BCC
+                                                {replacesExistingShift
+                                                  ? formatDate(day.date) +
+                                                    " · Ca hiện tại: " +
+                                                    (day.shift?.code ?? "—") +
+                                                    " · Giữ nguyên BCC"
+                                                  : formatDate(day.date) +
+                                                    " · Tự đưa vào BCC"}
                                               </Text>
                                             </Stack>
                                             <Button
@@ -1459,7 +1518,7 @@ export function MonthlyShiftAssignmentGrid({
                                               variant="subtle"
                                               color="gray"
                                               leftSection={<IconX size={14} />}
-                                              disabled={bulkAssign.isPending}
+                                              disabled={cellShiftMutationPending}
                                               onClick={closeCellShiftPicker}
                                             >
                                               Đóng
@@ -1531,14 +1590,23 @@ export function MonthlyShiftAssignmentGrid({
                                                         directCellShiftDisabledReason(
                                                           shift,
                                                         );
+                                                      const isCurrentShift =
+                                                        replacesExistingShift &&
+                                                        day.shift?.id === shift.id;
                                                       const disabled =
                                                         Boolean(
                                                           disabledReason,
                                                         ) ||
-                                                        bulkAssign.isPending;
+                                                        cellShiftMutationPending ||
+                                                        isCurrentShift;
                                                       return (
                                                         <Table.Tr
                                                           key={shift.id}
+                                                          style={
+                                                            isCurrentShift
+                                                              ? { background: "#eff6ff" }
+                                                              : undefined
+                                                          }
                                                         >
                                                           <Table.Td>
                                                             {getWorkShiftCatalogOrder(
@@ -1548,7 +1616,16 @@ export function MonthlyShiftAssignmentGrid({
                                                           <Table.Td>
                                                             <Button
                                                               size="compact-xs"
-                                                              variant="subtle"
+                                                              variant={
+                                                                isCurrentShift
+                                                                  ? "light"
+                                                                  : "subtle"
+                                                              }
+                                                              color={
+                                                                isCurrentShift
+                                                                  ? "blue"
+                                                                  : undefined
+                                                              }
                                                               loading={
                                                                 cellShiftApplyingId ===
                                                                 shift.id
@@ -1564,6 +1641,15 @@ export function MonthlyShiftAssignmentGrid({
                                                             >
                                                               {shift.code}
                                                             </Button>
+                                                            {isCurrentShift ? (
+                                                              <Badge
+                                                                size="xs"
+                                                                color="blue"
+                                                                variant="light"
+                                                              >
+                                                                Đang áp dụng
+                                                              </Badge>
+                                                            ) : null}
                                                             {disabledReason ? (
                                                               <Text
                                                                 size="10px"

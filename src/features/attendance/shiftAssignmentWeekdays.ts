@@ -142,6 +142,52 @@ export function canSelectShiftAssignmentGridDay(
   );
 }
 
+/**
+ * Opens the single-day picker for either a blank plan cell or a cell that
+ * already resolves from an employee, department, unit, or work calendar. The
+ * latter is a correction, not an edit to the shared department/unit rule.
+ */
+export function canOpenShiftAssignmentGridPicker(
+  day: {
+    date: string;
+    inAttendanceWindow: boolean;
+    calendarIsWorkingDay: boolean;
+    isWorkingDay: boolean;
+    holidayName: string | null;
+    source: string;
+  },
+  canInclude: boolean,
+  disabled: boolean,
+  hasActiveDirectShift: boolean,
+): boolean {
+  if (
+    disabled ||
+    !canInclude ||
+    !day.inAttendanceWindow ||
+    Boolean(day.holidayName)
+  ) {
+    return false;
+  }
+
+  // A resolved assignment can be corrected even when it intentionally falls
+  // on a non-default working day, for example an explicitly assigned Sunday.
+  if (
+    day.source === "ASSIGNMENT_EMPLOYEE" ||
+    day.source === "ASSIGNMENT_DEPARTMENT" ||
+    day.source === "ASSIGNMENT_UNIT" ||
+    day.source === "CALENDAR"
+  ) {
+    return true;
+  }
+
+  return canSelectShiftAssignmentGridDay(
+    day,
+    canInclude,
+    disabled,
+    hasActiveDirectShift,
+  );
+}
+
 function parseShiftTime(value: string): number | null {
   const match = /^(\d{2}):(\d{2})/.exec(value);
   if (!match) return null;
