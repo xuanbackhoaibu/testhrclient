@@ -2240,7 +2240,6 @@ Cập nhật bổ sung:
   - `Thông tin công ty`: hiển thị runtime config hiện tại.
   - `Giao diện cá nhân`: 3 card chọn `Light`, `Dark`, `Auto`, click áp dụng ngay.
   - `Thông báo hệ thống`: ma trận toggle theo loại sự kiện và kênh nhận.
-  - `Bảo mật tài khoản`: thẻ chỉ xem mô tả xác thực tập trung, phân quyền, audit và phiên làm việc.
   - `Phiên hiện tại`: thông tin user, email, roles và data scopes.
 - Phần thông báo được phân quyền:
   - Chỉ hiển thị loại thông báo mà user có quyền đọc.
@@ -2248,3 +2247,44 @@ Cập nhật bổ sung:
 - Bổ sung khung giờ yên lặng với label ngắn `Bắt đầu` / `Kết thúc`.
 - Cài đặt thông báo lưu vào localStorage qua `writeNotificationSettings` và phát event `hrm:notification-settings-updated`.
 - Dark mode dùng lại các class `.settings-*` đã có trong global style để chữ/nền không bị mờ.
+- Theo nghiệm thu mới, bỏ khối `Bảo mật tài khoản` khỏi trang Cài đặt để trang gọn hơn.
+- Nâng cấp tiếp theo theo hướng Zalo Web:
+  - Trang Cài đặt chuyển sang dạng cửa sổ lớn giống Zalo Web.
+  - Khi vào `/settings`, giao diện phủ toàn màn hình bằng backdrop mờ, giống modal cài đặt của Zalo Web.
+  - Cột trái nền trắng có title `Cài đặt` và danh sách mục: `Cài đặt chung`, `Tài khoản và bảo mật`, `Quyền riêng tư`, `Đồng bộ và sao lưu`, `Quản lý dữ liệu`, `Giao diện`, `Thông báo`, `Tin nhắn`, `Cài đặt cuộc gọi`, `Tiện ích`.
+  - Mặc định mở tab `Giao diện`.
+  - Vùng phải dùng nền xám nhạt, có nút đóng ở góc trên phải.
+  - Tab `Giao diện` có 3 preview `Sáng`, `Tối`, `Hệ Thống` và tuỳ chọn `Sử dụng Avatar làm hình nền`, mô phỏng đúng bố cục Zalo Web.
+  - Mobile chuyển menu trái thành hàng ngang có thể lướt.
+- Căn lại kích thước modal Cài đặt theo tỷ lệ lớn hơn gần `1.1x` so với mẫu Zalo Web:
+  - Cửa sổ, sidebar, item menu, icon và typography được tăng nhẹ để giống ảnh tham chiếu hơn.
+  - Thumbnail chọn nền `Sáng` / `Tối` / `Hệ Thống` được vẽ lại theo style Zalo Web, gồm nền sáng/tối, chấm avatar, bubble nội dung và bubble hành động.
+  - Label theme và dòng `Sử dụng Avatar làm hình nền` dùng cỡ chữ lớn hơn, cân với bố cục modal.
+- Chỉnh lại lần nữa theo nghiệm thu kích thước ảnh mẫu:
+  - Modal giới hạn khoảng `1212px` thay vì quá rộng, gần đúng tỷ lệ khung Zalo Web trong ảnh.
+  - Sidebar trái giữ khoảng `350px`, vùng nội dung còn lại không bị kéo giãn.
+  - Ảnh preview theme cố định `190px` và căn đều trong card để không bị phóng to quá mức.
+- Chỉnh lại khung nội dung bên phải theo ảnh Zalo Web:
+  - Nội dung trong tab giới hạn chiều rộng, card bên trong nhỏ và gọn hơn.
+  - Giảm kích thước thumbnail theme, chữ và padding để không bị to quá.
+  - Tab `Thông báo` được sắp lại giống ảnh mẫu: tiêu đề `Cài đặt thông báo`, mô tả ngắn, card chọn `Bật` / `Tắt` bằng hình laptop và khối `Âm thanh thông báo`.
+  - Bản đầu vẫn giữ ma trận thông báo theo quyền bên dưới để không mất cấu hình nghiệp vụ.
+- Theo nghiệm thu mới của tab `Thông báo`:
+  - Bỏ khối `Phạm vi thông báo theo quyền`, bảng loại sự kiện/kênh nhận và phần `Tắt thông báo ngoài giờ làm việc`.
+  - Khi bấm `Bật` hoặc `Tắt`, trạng thái thông báo được lưu ngay vào localStorage và phát event cập nhật Notification Hub.
+  - Không còn badge `Chưa lưu` và không cần nút `Lưu thay đổi` cho tab thông báo.
+- Giảm typography trong cửa sổ Cài đặt về cùng nhịp với text ngoài app:
+  - Menu trái, label trong card, lựa chọn theme và lựa chọn thông báo dùng cỡ 14px.
+  - Title section còn 18px để giữ phân cấp nhưng không bị quá to.
+  - Radio và khoảng cách label được thu nhỏ theo cỡ chữ mới.
+- Thu nhỏ khung Cài đặt tổng thể:
+  - Modal còn khoảng `1040px x 760px`, sidebar còn `300px`.
+  - Vùng nội dung phải giới hạn khoảng `690px`.
+  - Thumbnail theme và icon laptop thông báo được thu nhỏ theo khung mới.
+- Bỏ cảm giác chữ in đậm trong cửa sổ Cài đặt:
+  - Menu trái, title, section title, label theme và label thông báo dùng font-weight thường.
+  - Xóa các prop `fw` mạnh trong `SettingsPage` để chữ không bị Mantine render đậm trở lại.
+- Rút gọn menu Cài đặt theo nghiệm thu:
+  - Bỏ `Quyền riêng tư`, `Cài đặt cuộc gọi`, `Tiện ích`.
+  - Dọn type/tab placeholder và icon import không còn dùng cho 3 mục này.
+  - Bỏ tiếp `Tin nhắn` và `Đồng bộ và sao lưu`, chỉ giữ các mục cài đặt còn cần thao tác/xem trong HRM.
