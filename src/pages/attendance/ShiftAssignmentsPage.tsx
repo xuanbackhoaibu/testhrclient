@@ -18,6 +18,11 @@ import { notifications } from "@mantine/notifications";
 import { IconInfoCircle, IconPlayerStop, IconPlus } from "@tabler/icons-react";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
+import {
+  ALL_ASSIGNMENT_WEEKDAYS,
+  formatAssignmentWeekdays,
+  optionalAssignmentWeekdays,
+} from "../../features/attendance/shiftAssignmentWeekdays";
 import { useAuth } from "../../features/auth/useAuth";
 import {
   useCreateShiftAssignment,
@@ -42,6 +47,7 @@ import { ROUTES } from "../../shared/constants/routes";
 import { formatDate } from "../../shared/utils/date";
 
 import { HrmDateInput } from "../../shared/components/HrmDateInput";
+import { WeekdayScopeField } from "./components/WeekdayScopeField";
 import { MonthlyShiftAssignmentGrid } from "./MonthlyShiftAssignmentGrid";
 type TargetKind = "employee" | "department" | "unit";
 
@@ -53,6 +59,7 @@ interface AssignmentFormValues {
   unitId: string;
   effectiveFrom: string;
   effectiveTo: string;
+  weekdays: number[];
   note: string;
 }
 
@@ -71,6 +78,7 @@ function createAssignmentFormValues(shiftId = ""): AssignmentFormValues {
     unitId: "",
     effectiveFrom: todayIso(),
     effectiveTo: "",
+    weekdays: [...ALL_ASSIGNMENT_WEEKDAYS],
     note: "",
   };
 }
@@ -109,6 +117,8 @@ export function ShiftAssignmentsPage() {
         values.targetKind === "department" && !value ? "Chọn phòng ban." : null,
       unitId: (value, values) =>
         values.targetKind === "unit" && !value ? "Chọn đơn vị." : null,
+      weekdays: (value) =>
+        value.length ? null : "Chọn ít nhất một ngày áp dụng.",
     },
   });
 
@@ -211,6 +221,7 @@ export function ShiftAssignmentsPage() {
     }
 
     try {
+      const assignmentWeekdays = optionalAssignmentWeekdays(values.weekdays);
       await createAssignment.mutateAsync({
         shiftId: values.shiftId,
         employeeId:
@@ -220,6 +231,7 @@ export function ShiftAssignmentsPage() {
         unitId: values.targetKind === "unit" ? values.unitId : undefined,
         effectiveFrom: values.effectiveFrom,
         effectiveTo: values.effectiveTo || undefined,
+        ...(assignmentWeekdays ? { weekdays: assignmentWeekdays } : {}),
         note: values.note.trim() || undefined,
       });
       notifications.show({
@@ -313,6 +325,12 @@ export function ShiftAssignmentsPage() {
           }`,
       },
       {
+        key: "weekdays",
+        header: "Ngày áp dụng",
+        width: 140,
+        render: (record) => formatAssignmentWeekdays(record.weekdays),
+      },
+      {
         key: "status",
         header: "Trạng thái",
         width: 130,
@@ -345,7 +363,7 @@ export function ShiftAssignmentsPage() {
     <>
       <PageHeader
         title="Phân ca"
-        subtitle="Tick CBNV, chọn ca đã tạo và áp dụng theo ngày. BCC dùng đúng ca kế hoạch này sau khi được cập nhật lại."
+        subtitle="Tick CBNV, chọn ca và ngày áp dụng. BCC dùng đúng ca kế hoạch này sau khi được cập nhật lại."
         actions={
           canEdit ? (
             <Button
@@ -385,9 +403,9 @@ export function ShiftAssignmentsPage() {
                   — hệ thống đánh dấu “chưa phân ca” thay vì tự áp ca hành chính
                   rồi chấm sai âm thầm.
                   <br />
-                  Một phân ca dùng cùng một mẫu ca trong toàn bộ khoảng hiệu
-                  lực; không dùng một phân ca để mô phỏng lịch T2–T6 và T7 có
-                  giờ khác nhau.
+                  Một quy tắc có thể giới hạn ngày áp dụng (T2–T6, Thứ 7 hoặc
+                  tùy chọn). Khi T2–T6 và Thứ 7 dùng giờ khác nhau, tạo hai quy
+                  tắc cùng khoảng hiệu lực với phạm vi ngày tương ứng.
                 </Alert>
 
                 <DataTable
@@ -553,6 +571,17 @@ export function ShiftAssignmentsPage() {
                 error={form.errors.effectiveTo}
               />
             </Group>
+
+            <WeekdayScopeField
+              key={drawerOpen ? "open" : "closed"}
+              disabled={!canEdit}
+              error={form.errors.weekdays}
+              value={form.values.weekdays}
+              onChange={(value) => {
+                form.setFieldValue("weekdays", value);
+                form.clearFieldError("weekdays");
+              }}
+            />
 
             <Textarea
               label="Ghi chú"

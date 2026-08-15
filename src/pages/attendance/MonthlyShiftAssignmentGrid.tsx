@@ -29,6 +29,10 @@ import {
 } from "@tabler/icons-react";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
+import {
+  ALL_ASSIGNMENT_WEEKDAYS,
+  optionalAssignmentWeekdays,
+} from "../../features/attendance/shiftAssignmentWeekdays";
 import { useAuth } from "../../features/auth/useAuth";
 import {
   useBulkAssignShifts,
@@ -46,6 +50,7 @@ import { HrmDateInput } from "../../shared/components/HrmDateInput";
 import { ROUTES } from "../../shared/constants/routes";
 import { useImeSafeSearch } from "../../shared/hooks/useImeSafeSearch";
 import { formatDate } from "../../shared/utils/date";
+import { WeekdayScopeField } from "./components/WeekdayScopeField";
 
 const now = new Date();
 const weekdayLabels = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
@@ -300,6 +305,9 @@ export function MonthlyShiftAssignmentGrid({
     employeeIds: Set<string>;
   }>(() => ({ scope: "", employeeIds: new Set() }));
   const [shiftId, setShiftId] = useState<string | null>(requestedShiftId);
+  const [weekdays, setWeekdays] = useState<number[]>(() => [
+    ...ALL_ASSIGNMENT_WEEKDAYS,
+  ]);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [pageState, setPageState] = useState({ scope: "", page: 1 });
 
@@ -549,8 +557,17 @@ export function MonthlyShiftAssignmentGrid({
       });
       return;
     }
+    if (!weekdays.length) {
+      notifications.show({
+        color: "yellow",
+        title: "Chưa chọn ngày áp dụng",
+        message: "Chọn ít nhất một ngày để áp dụng ca làm việc.",
+      });
+      return;
+    }
 
     try {
+      const assignmentWeekdays = optionalAssignmentWeekdays(weekdays);
       const result = await bulkAssign.mutateAsync({
         month,
         year,
@@ -559,6 +576,7 @@ export function MonthlyShiftAssignmentGrid({
         shiftId,
         effectiveFrom,
         effectiveTo,
+        ...(assignmentWeekdays ? { weekdays: assignmentWeekdays } : {}),
       });
       setSelectionState({ scope: selectionScope, employeeIds: new Set() });
       notifications.show({
@@ -721,6 +739,12 @@ export function MonthlyShiftAssignmentGrid({
               w={150}
               disabled={tableIsDisabled}
               onChange={updateEffectiveTo}
+            />
+            <WeekdayScopeField
+              disabled={tableIsDisabled}
+              value={weekdays}
+              width={294}
+              onChange={setWeekdays}
             />
             <Button
               leftSection={<IconUsers size={17} />}
