@@ -178,6 +178,11 @@ export interface BulkShiftAssignmentPayload {
   effectiveTo: string;
   /** Omit to keep the all-days assignment default. */
   weekdays?: number[];
+  /**
+   * Đưa đúng các CBNV vừa phân ca vào BCC của kỳ này. Mặc định backend là
+   * false để vẫn hỗ trợ trường hợp chỉ lập kế hoạch ca.
+   */
+  includeInTimesheet?: boolean;
   note?: string;
 }
 
@@ -189,6 +194,31 @@ export interface BulkShiftAssignmentResult {
     effectiveTo: string;
   }>;
   recomputeRequired: boolean;
+  /** Null khi thao tác chỉ lập kế hoạch ca, chưa đưa vào BCC. */
+  rosterId: string | null;
+  includedInTimesheet: number;
+}
+
+/**
+ * Đưa các CBNV đã có ca vào BCC mà không tạo hoặc thay đổi ShiftAssignment.
+ * Backend khởi tạo roster tháng trong cùng transaction nếu chưa có.
+ */
+export interface IncludeShiftAssignmentRowsInTimesheetPayload {
+  month: number;
+  year: number;
+  unitId: string;
+  employeeIds: string[];
+}
+
+export interface IncludeShiftAssignmentRowsInTimesheetResult {
+  rosterId: string;
+  includedInTimesheet: number;
+  recomputeRequired: boolean;
+  affected: Array<{
+    employeeId: string;
+    attendanceFrom: string;
+    attendanceTo: string | null;
+  }>;
 }
 
 export interface WorkCalendarDay {

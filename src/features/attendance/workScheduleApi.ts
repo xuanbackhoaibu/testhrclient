@@ -4,6 +4,8 @@ import type {
   CloneHolidaysResult,
   BulkShiftAssignmentPayload,
   BulkShiftAssignmentResult,
+  IncludeShiftAssignmentRowsInTimesheetPayload,
+  IncludeShiftAssignmentRowsInTimesheetResult,
   Holiday,
   HolidayPayload,
   ShiftAssignment,
@@ -106,6 +108,16 @@ export async function bulkAssignShifts(
 ): Promise<BulkShiftAssignmentResult> {
   return api.post<BulkShiftAssignmentResult>(
     `${BASE}/assignments/bulk`,
+    payload,
+  );
+}
+
+/** Đưa các dòng đã chọn vào BCC, không tạo lại hay ghi đè ca đã phân. */
+export async function includeShiftAssignmentRowsInTimesheet(
+  payload: IncludeShiftAssignmentRowsInTimesheetPayload,
+): Promise<IncludeShiftAssignmentRowsInTimesheetResult> {
+  return api.post<IncludeShiftAssignmentRowsInTimesheetResult>(
+    `${BASE}/assignments/include-in-timesheet`,
     payload,
   );
 }
