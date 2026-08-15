@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
@@ -32,6 +32,8 @@ import {
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import {
   ALL_ASSIGNMENT_WEEKDAYS,
+  isFullDayAdministrativeOfficeShift,
+  MONDAY_TO_FRIDAY,
   optionalAssignmentWeekdays,
 } from "../../features/attendance/shiftAssignmentWeekdays";
 import { useAuth } from "../../features/auth/useAuth";
@@ -310,6 +312,7 @@ export function MonthlyShiftAssignmentGrid({
   const [weekdays, setWeekdays] = useState<number[]>(() => [
     ...ALL_ASSIGNMENT_WEEKDAYS,
   ]);
+  const didDefaultRequestedShiftScope = useRef(false);
   const [includeInTimesheetWithShift, setIncludeInTimesheetWithShift] =
     useState(true);
   const [rowsPerPage, setRowsPerPage] = useState(20);
@@ -387,6 +390,26 @@ export function MonthlyShiftAssignmentGrid({
         })),
     [shiftsQuery.data],
   );
+  const selectedShift =
+    (shiftsQuery.data ?? []).find((shift) => shift.id === shiftId) ?? null;
+  const selectedShiftUsesWeekdaySplit = Boolean(
+    selectedShift && isFullDayAdministrativeOfficeShift(selectedShift),
+  );
+  useEffect(() => {
+    if (
+      didDefaultRequestedShiftScope.current ||
+      !requestedShiftId ||
+      shiftId !== requestedShiftId ||
+      !selectedShiftUsesWeekdaySplit
+    ) {
+      return;
+    }
+    didDefaultRequestedShiftScope.current = true;
+    setWeekdays((current) =>
+      optionalAssignmentWeekdays(current) ? current : [...MONDAY_TO_FRIDAY],
+    );
+  }, [requestedShiftId, selectedShiftUsesWeekdaySplit, shiftId]);
+
   const selectionScope = `${year}|${month}|${selectedUnitId ?? ""}`;
   const selectedEmployeeIds =
     selectionState.scope === selectionScope
@@ -516,6 +539,20 @@ export function MonthlyShiftAssignmentGrid({
       });
       return { scope: selectionScope, employeeIds: next };
     });
+  }
+
+  function handleShiftChange(value: string | null) {
+    setShiftId(value);
+    const selected = (shiftsQuery.data ?? []).find(
+      (shift) => shift.id === value,
+    );
+    if (!selected || !isFullDayAdministrativeOfficeShift(selected)) return;
+
+    // Chỉ thay giá trị mặc định đang là cả tuần; nếu HR đã chọn phạm vi riêng
+    // thì phải giữ nguyên lựa chọn đó.
+    setWeekdays((current) =>
+      optionalAssignmentWeekdays(current) ? current : [...MONDAY_TO_FRIDAY],
+    );
   }
 
   function updateEffectiveFrom(value: string | null) {
@@ -675,9 +712,9 @@ export function MonthlyShiftAssignmentGrid({
       <Alert icon={<IconInfoCircle size={18} />} color="blue" variant="light">
         Phân ca ở đây tạo <b>ca cá nhân</b> cho các CBNV được tích chọn; ca cá
         nhân ưu tiên hơn ca phòng ban và đơn vị. Mặc định, <b>Áp dụng ca</b>{" "}
-        cũng đưa đúng các CBNV đó vào BCC. Bỏ chọn “Đưa vào BCC cùng ca” khi
-        chỉ muốn lập kế hoạch ca. Với CBNV đã có ca, dùng <b>Đưa vào BCC</b> để
-        bổ sung bảng công mà không tạo lại ca. Sau đó mở đúng kỳ, bấm{" "}
+        cũng đưa đúng các CBNV đó vào BCC. Bỏ chọn “Đưa vào BCC cùng ca” khi chỉ
+        muốn lập kế hoạch ca. Với CBNV đã có ca, dùng <b>Đưa vào BCC</b> để bổ
+        sung bảng công mà không tạo lại ca. Sau đó mở đúng kỳ, bấm{" "}
         <b>Cập nhật bảng công</b> rồi mới xuất Excel.
       </Alert>
 
@@ -754,7 +791,8 @@ export function MonthlyShiftAssignmentGrid({
           title="Chưa khởi tạo bảng sắp ca tháng"
         >
           Bạn vẫn có thể xem và phân ca cho toàn bộ CBNV trong đơn vị. Bật
-          <b> Đưa vào BCC cùng ca</b> khi áp ca, hoặc dùng nút <b>Đưa vào BCC</b>
+          <b> Đưa vào BCC cùng ca</b> khi áp ca, hoặc dùng nút{" "}
+          <b>Đưa vào BCC</b>
           cho người đã có ca; hệ thống sẽ khởi tạo danh sách tháng an toàn.
         </Alert>
       ) : null}
@@ -774,7 +812,7 @@ export function MonthlyShiftAssignmentGrid({
               w={290}
               disabled={tableIsDisabled || shiftsQuery.isLoading}
               nothingFoundMessage="Chưa có ca đang áp dụng"
-              onChange={setShiftId}
+              onChange={handleShiftChange}
             />
             <HrmDateInput
               label="Từ ngày"
@@ -796,12 +834,21 @@ export function MonthlyShiftAssignmentGrid({
               disabled={tableIsDisabled}
               onChange={updateEffectiveTo}
             />
-            <WeekdayScopeField
-              disabled={tableIsDisabled}
-              value={weekdays}
-              width={294}
-              onChange={setWeekdays}
-            />
+            <Stack gap={2} w={294}>
+              <WeekdayScopeField
+                disabled={tableIsDisabled}
+                value={weekdays}
+                width="100%"
+                onChange={setWeekdays}
+              />
+              {selectedShiftUsesWeekdaySplit ? (
+                <Text size="xs" c="dimmed">
+                  Ca hành chính cả ngày mặc định T2–T6. Nếu làm sáng Thứ 7, áp
+                  ca Thứ 7 tương ứng (ví dụ HC3/HC4) riêng cho Thứ 7 cùng khoảng
+                  ngày, rồi Cập nhật bảng công.
+                </Text>
+              ) : null}
+            </Stack>
             <Checkbox
               label="Đưa vào BCC cùng ca"
               checked={includeInTimesheetWithShift}
