@@ -38,6 +38,10 @@ import {
   useWorkCalendar,
   useWorkShifts,
 } from "../../features/attendance/useWorkSchedule";
+import {
+  getWorkShiftCatalogOrder,
+  sortWorkShiftCatalog,
+} from "../../features/attendance/workShiftCatalogOrder";
 import { buildShiftAssignmentUrl } from "../../features/attendance/shiftAssignmentNavigation";
 import {
   WEEKDAY_LABELS,
@@ -179,16 +183,21 @@ export function WorkShiftsPage() {
 
   const shiftOptions = useMemo(
     () =>
-      (shiftsQuery.data ?? [])
-        .filter(
+      sortWorkShiftCatalog(
+        (shiftsQuery.data ?? []).filter(
           (shift) =>
             shift.status === "ACTIVE" &&
             !isOvernightShift(shift.startTime, shift.endTime),
-        )
-        .map((shift) => ({
-          value: shift.id,
-          label: `${shift.code} — ${shift.name}`,
-        })),
+        ),
+      ).map((shift) => ({
+        value: shift.id,
+        label: `${getWorkShiftCatalogOrder(shift.code) ?? "—"} · ${shift.code} — ${shift.name}`,
+      })),
+    [shiftsQuery.data],
+  );
+
+  const orderedShifts = useMemo(
+    () => sortWorkShiftCatalog(shiftsQuery.data),
     [shiftsQuery.data],
   );
 
@@ -337,6 +346,13 @@ export function WorkShiftsPage() {
 
   const columns = useMemo<DataTableColumn<WorkShift>[]>(
     () => [
+      {
+        key: "catalogOrder",
+        header: "TT",
+        width: 52,
+        align: "center",
+        render: (record) => getWorkShiftCatalogOrder(record.code) ?? "—",
+      },
       {
         key: "code",
         header: "Mã ca",
@@ -489,7 +505,7 @@ export function WorkShiftsPage() {
         </Alert>
 
         <DataTable
-          data={shiftsQuery.data ?? []}
+          data={orderedShifts}
           columns={columns}
           rowKey={(record) => record.id}
           loading={shiftsQuery.isLoading}

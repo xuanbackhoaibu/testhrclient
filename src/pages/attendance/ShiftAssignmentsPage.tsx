@@ -38,6 +38,10 @@ import {
   useShiftAssignments,
   useWorkShifts,
 } from "../../features/attendance/useWorkSchedule";
+import {
+  getWorkShiftCatalogOrder,
+  sortWorkShiftCatalog,
+} from "../../features/attendance/workShiftCatalogOrder";
 import { formatVietnamBusinessDate } from "../../features/attendance/shiftAssignmentDate";
 import { getActiveShiftPrefillId } from "../../features/attendance/shiftAssignmentNavigation";
 import type { ShiftAssignment } from "../../features/attendance/workScheduleTypes";
@@ -190,12 +194,12 @@ export function ShiftAssignmentsPage() {
 
   const shiftOptions = useMemo(
     () =>
-      (shiftsQuery.data ?? [])
-        .filter((shift) => shift.status === "ACTIVE")
-        .map((shift) => ({
-          value: shift.id,
-          label: `${shift.code} — ${shift.name} (${shift.startTime}–${shift.endTime})`,
-        })),
+      sortWorkShiftCatalog(
+        (shiftsQuery.data ?? []).filter((shift) => shift.status === "ACTIVE"),
+      ).map((shift) => ({
+        value: shift.id,
+        label: `${getWorkShiftCatalogOrder(shift.code) ?? "—"} · ${shift.code} — ${shift.name} (${shift.startTime}–${shift.endTime})`,
+      })),
     [shiftsQuery.data],
   );
 
