@@ -16,6 +16,7 @@ import {
   listShiftAssignments,
   listWorkShifts,
   updateWorkCalendarDay,
+  updateShiftAssignmentWeekdays,
   updateWorkShift,
 } from "./workScheduleApi";
 import type {
@@ -25,6 +26,7 @@ import type {
   IncludeShiftAssignmentRowsInTimesheetPayload,
   ShiftAssignmentGridQuery,
   ShiftAssignmentPayload,
+  UpdateShiftAssignmentWeekdaysPayload,
   WorkCalendarDayPayload,
   WorkShiftPayload,
 } from "./workScheduleTypes";
@@ -159,6 +161,23 @@ export function useEndShiftAssignment() {
     mutationFn: (id: string) => endShiftAssignment(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
+    },
+  });
+}
+
+export function useUpdateShiftAssignmentWeekdays() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: UpdateShiftAssignmentWeekdaysPayload;
+    }) => updateShiftAssignmentWeekdays(id, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["timesheet"] });
     },
   });
 }

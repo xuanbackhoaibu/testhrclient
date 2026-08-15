@@ -115,6 +115,15 @@ export interface ShiftAssignmentPayload {
 }
 
 /**
+ * Chỉ sửa phạm vi thứ của một quy tắc đã có. `null` khôi phục áp dụng cả
+ * tuần; các trường đích gán, ca và khoảng hiệu lực không được thay đổi ở API
+ * này để tránh làm mất lịch sử phân ca.
+ */
+export interface UpdateShiftAssignmentWeekdaysPayload {
+  weekdays: number[] | null;
+}
+
+/**
  * Lưới phân ca tháng. Khác với BCC: đây là ca kế hoạch được resolver tính
  * theo đúng thứ tự cá nhân > phòng ban > đơn vị, chưa phải ký hiệu công.
  */

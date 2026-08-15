@@ -12,6 +12,7 @@ import type {
   ShiftAssignmentGrid,
   ShiftAssignmentGridQuery,
   ShiftAssignmentPayload,
+  UpdateShiftAssignmentWeekdaysPayload,
   WorkCalendarDay,
   WorkCalendarDayPayload,
   WorkShift,
@@ -93,6 +94,14 @@ export async function createShiftAssignment(
 
 export async function endShiftAssignment(id: string): Promise<ShiftAssignment> {
   return api.patch<ShiftAssignment>(`${BASE}/assignments/${id}/end`, {});
+}
+
+/** Chỉ sửa các thứ áp dụng, không thay đổi ca, đích gán hoặc hiệu lực. */
+export async function updateShiftAssignmentWeekdays(
+  id: string,
+  payload: UpdateShiftAssignmentWeekdaysPayload,
+): Promise<ShiftAssignment> {
+  return api.patch<ShiftAssignment>(`${BASE}/assignments/${id}`, payload);
 }
 
 export async function getShiftAssignmentGrid(
