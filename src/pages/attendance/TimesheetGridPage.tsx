@@ -55,6 +55,7 @@ import {
 } from "../../features/attendance/timesheetTypes";
 import {
   hasTimesheetAttendanceEvent,
+  isWeeklyTemplateOffDay,
   timesheetDayDisplayValue,
 } from "../../features/attendance/timesheetDayPresentation";
 import { formatDate } from "../../shared/utils/date";
@@ -122,6 +123,11 @@ const colorLegendItems = [
     color: "#e5e7eb",
     label: "Chưa phân ca",
     description: "HR cần phân ca trước khi tính BCC",
+  },
+  {
+    color: "#f1f5f9",
+    label: "Nghỉ theo ca",
+    description: "Ngày OFF rõ ràng từ mẫu Ca tuần",
   },
   {
     color: "#e9ecef",
@@ -381,6 +387,9 @@ function cellDescription(
   attendanceAutoFullDay = false,
 ): string {
   if (!day) return "Chưa tạo dữ liệu ngày công";
+  const weeklyTemplateOff = isWeeklyTemplateOffDay(day);
+  const weeklyTemplateWork =
+    day.source === "WEEKLY_TEMPLATE_EMPLOYEE" && !weeklyTemplateOff;
   return [
     day.isDerived ? "Dữ liệu xem trước, chưa lưu bảng công" : null,
     attendanceAutoFullDay &&
@@ -392,6 +401,8 @@ function cellDescription(
     day.holidayName,
     day.source === "HOLIDAY_UNPAID" ? "Ngày lễ không lương" : null,
     day.source === "UNASSIGNED" ? "Chưa phân ca — chưa tính công" : null,
+    weeklyTemplateOff ? "Nghỉ theo ca tuần" : null,
+    weeklyTemplateWork ? "Theo ca tuần" : null,
     day.firstPunch && day.lastPunch
       ? `${day.firstPunch}–${day.lastPunch}`
       : null,
@@ -516,11 +527,14 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
       {dayMetas.map((meta) => {
         const day = daysByNumber.get(meta.day);
         const label = timesheetDayDisplayValue(day);
+        const weeklyTemplateOff = isWeeklyTemplateOffDay(day);
         const hasExplanationEvent = Boolean(
           day?.needsExplanation && hasTimesheetAttendanceEvent(day),
         );
         const background =
-          day?.source === "UNASSIGNED"
+          weeklyTemplateOff
+            ? "#f1f5f9"
+            : day?.source === "UNASSIGNED"
             ? "#e5e7eb"
             : !day?.isWorkingDay
               ? day?.holidayName

@@ -529,9 +529,10 @@ export function ShiftAssignmentsPage() {
                   variant="light"
                   title="Độ ưu tiên khi một người trúng nhiều phân ca"
                 >
-                  Cá nhân <b>&gt;</b> phòng ban <b>&gt;</b> đơn vị. Lịch tuần
-                  chỉ là mẫu cấu hình/preview. Ngày lễ luôn phủ lên lịch đã
-                  phân. Nhóm chưa xác định được ca (bảo vệ, lái xe…) nên{" "}
+                  Ca cá nhân/ngày ngoại lệ <b>&gt;</b> Ca tuần đã áp <b>&gt;</b>{" "}
+                  phòng ban <b>&gt;</b> đơn vị. Mẫu Ca tuần chưa áp không ảnh
+                  hưởng BCC. Ngày lễ luôn phủ lên lịch đã phân. Nhóm chưa xác
+                  định được ca (bảo vệ, lái xe…) nên{" "}
                   <b>để trống</b>
                   — hệ thống đánh dấu “chưa phân ca” thay vì tự áp ca hành chính
                   rồi chấm sai âm thầm.

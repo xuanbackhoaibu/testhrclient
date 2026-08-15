@@ -1,14 +1,28 @@
 import type { TimesheetGridDay } from "./timesheetTypes";
+import { isWeeklyTemplateAssignmentSource } from "./shiftAssignmentWeekdays";
 
 type AttendanceEventDay = Pick<
   TimesheetGridDay,
   | "displaySymbol"
   | "firstPunch"
   | "lastPunch"
+  | "isWorkingDay"
   | "needsExplanation"
   | "source"
   | "totalMinutes"
+
 >;
+
+/** A template OFF is an explicit rest day, never an unassigned schedule. */
+export function isWeeklyTemplateOffDay(
+  day: Pick<TimesheetGridDay, "isWorkingDay" | "source"> | undefined,
+): boolean {
+  return Boolean(
+    day &&
+      isWeeklyTemplateAssignmentSource(day.source ?? "") &&
+      !day.isWorkingDay,
+  );
+}
 
 /** A question mark is meaningful only when there was a real attendance event. */
 export function hasTimesheetAttendanceEvent(

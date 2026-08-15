@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   hasTimesheetAttendanceEvent,
+  isWeeklyTemplateOffDay,
   timesheetDayDisplayValue,
 } from "./timesheetDayPresentation";
 
@@ -68,5 +69,23 @@ describe("timesheet day presentation", () => {
         source: "UNASSIGNED",
       }),
     ).toBe("");
+  });
+
+  it("treats a weekly template OFF as scheduled rest, not unassigned", () => {
+    expect(
+      isWeeklyTemplateOffDay({
+        source: "WEEKLY_TEMPLATE_EMPLOYEE",
+        isWorkingDay: false,
+      }),
+    ).toBe(true);
+    expect(
+      isWeeklyTemplateOffDay({
+        source: "WEEKLY_TEMPLATE_EMPLOYEE",
+        isWorkingDay: true,
+      }),
+    ).toBe(false);
+    expect(
+      isWeeklyTemplateOffDay({ source: "UNASSIGNED", isWorkingDay: false }),
+    ).toBe(false);
   });
 });
