@@ -8,6 +8,7 @@ import {
   Group,
   Pagination,
   Paper,
+  Popover,
   ScrollArea,
   Select,
   SimpleGrid,
@@ -27,16 +28,23 @@ import {
   IconSearch,
   IconUserCheck,
   IconUsers,
+  IconX,
 } from "@tabler/icons-react";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import {
   ALL_ASSIGNMENT_WEEKDAYS,
+  canSelectShiftAssignmentGridDay,
   isFullDayAdministrativeOfficeShift,
   MONDAY_TO_FRIDAY,
   optionalAssignmentWeekdays,
+  weekdayForShiftAssignmentDate,
 } from "../../features/attendance/shiftAssignmentWeekdays";
 import { useAuth } from "../../features/auth/useAuth";
+import {
+  getWorkShiftCatalogOrder,
+  sortWorkShiftCatalog,
+} from "../../features/attendance/workShiftCatalogOrder";
 import {
   useBulkAssignShifts,
   useIncludeShiftAssignmentRowsInTimesheet,
@@ -47,6 +55,7 @@ import type {
   ShiftAssignmentGridDay,
   ShiftAssignmentGridQuery,
   ShiftAssignmentGridRow,
+  WorkShift,
 } from "../../features/attendance/workScheduleTypes";
 import { useDepartmentsSelect } from "../../features/organization/useDepartments";
 import { useUnitsSelect } from "../../features/organization/useUnits";
@@ -54,6 +63,8 @@ import { HrmDateInput } from "../../shared/components/HrmDateInput";
 import { ROUTES } from "../../shared/constants/routes";
 import { useImeSafeSearch } from "../../shared/hooks/useImeSafeSearch";
 import { formatDate } from "../../shared/utils/date";
+import { includesNormalizedSearch } from "../../shared/utils/normalizeSearchText";
+import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 import { WeekdayScopeField } from "./components/WeekdayScopeField";
 
 const now = new Date();
@@ -101,6 +112,12 @@ interface PreparedGroup {
   startIndex: number;
   totalRows: number;
   rows: PreparedRow[];
+}
+
+interface CellShiftPicker {
+  employeeId: string;
+  fullName: string;
+  day: ShiftAssignmentGridDay;
 }
 
 export interface MonthlyShiftAssignmentGridProps {
@@ -258,6 +275,19 @@ function cellDescription(day: ShiftAssignmentGridDay): string {
     : sourceLabel(day.source);
 }
 
+function directCellShiftDisabledReason(shift: WorkShift): string | null {
+  if (shift.startTime >= shift.endTime) return "Chưa phân ca qua ngày";
+  return shift.status === "ACTIVE" ? null : "Ca đang tạm ngưng";
+}
+
+function formatShiftHoursAndWorkday(shift: WorkShift): string {
+  const hours = shift.standardMinutes / 60;
+  const displayHours = Number.isInteger(hours)
+    ? String(hours)
+    : hours.toFixed(1);
+  return displayHours + " giờ / " + shift.dayValue + " công";
+}
+
 function Legend() {
   const items = [
     { color: "#dbeafe", label: "Ca cá nhân" },
@@ -308,6 +338,13 @@ export function MonthlyShiftAssignmentGrid({
     scope: string;
     employeeIds: Set<string>;
   }>(() => ({ scope: "", employeeIds: new Set() }));
+  const [cellShiftPicker, setCellShiftPicker] =
+    useState<CellShiftPicker | null>(null);
+  const [cellShiftSearch, setCellShiftSearch] = useState("");
+  const [cellShiftError, setCellShiftError] = useState<string | null>(null);
+  const [cellShiftApplyingId, setCellShiftApplyingId] = useState<string | null>(
+    null,
+  );
   const [shiftId, setShiftId] = useState<string | null>(requestedShiftId);
   const [weekdays, setWeekdays] = useState<number[]>(() => [
     ...ALL_ASSIGNMENT_WEEKDAYS,
@@ -382,14 +419,38 @@ export function MonthlyShiftAssignmentGrid({
   const rows = grid?.rows ?? EMPTY_ROWS;
   const shiftOptions = useMemo(
     () =>
-      (shiftsQuery.data ?? [])
+      sortWorkShiftCatalog(shiftsQuery.data)
         .filter((shift) => shift.status === "ACTIVE")
         .map((shift) => ({
           value: shift.id,
-          label: `${shift.code} — ${shift.name} (${shift.startTime}–${shift.endTime})`,
+          label:
+            (getWorkShiftCatalogOrder(shift.code)
+              ? String(getWorkShiftCatalogOrder(shift.code)) + ". "
+              : "") +
+            shift.code +
+            " — " +
+            shift.name +
+            " (" +
+            shift.startTime +
+            "–" +
+            shift.endTime +
+            ")",
         })),
     [shiftsQuery.data],
   );
+  const cellShiftOptions = useMemo(
+    () =>
+      sortWorkShiftCatalog(shiftsQuery.data).filter(
+        (shift) =>
+          Boolean(shift.startTime && shift.endTime) &&
+          includesNormalizedSearch(
+            [shift.code, shift.name, shift.groupName ?? ""].join(" "),
+            cellShiftSearch,
+          ),
+      ),
+    [cellShiftSearch, shiftsQuery.data],
+  );
+
   const selectedShift =
     (shiftsQuery.data ?? []).find((shift) => shift.id === shiftId) ?? null;
   const selectedShiftUsesWeekdaySplit = Boolean(
@@ -539,6 +600,81 @@ export function MonthlyShiftAssignmentGrid({
       });
       return { scope: selectionScope, employeeIds: next };
     });
+  }
+
+  function closeCellShiftPicker() {
+    setCellShiftPicker(null);
+    setCellShiftSearch("");
+    setCellShiftError(null);
+    setCellShiftApplyingId(null);
+  }
+
+  function isCellShiftPickerOpen(employeeId: string, date: string): boolean {
+    return (
+      cellShiftPicker?.employeeId === employeeId &&
+      cellShiftPicker.day.date === date
+    );
+  }
+
+  function openCellShiftPicker(
+    row: ShiftAssignmentGridRow,
+    day: ShiftAssignmentGridDay,
+  ) {
+    setCellShiftPicker((current) =>
+      current?.employeeId === row.employeeId && current.day.date === day.date
+        ? null
+        : {
+            employeeId: row.employeeId,
+            fullName: row.fullName,
+            day,
+          },
+    );
+    setCellShiftSearch("");
+    setCellShiftError(null);
+  }
+
+  async function applyShiftToCell(shift: WorkShift) {
+    const picker = cellShiftPicker;
+    if (!picker || !selectedUnitId || directCellShiftDisabledReason(shift)) {
+      return;
+    }
+
+    setCellShiftError(null);
+    setCellShiftApplyingId(shift.id);
+    try {
+      await bulkAssign.mutateAsync({
+        month,
+        year,
+        unitId: selectedUnitId,
+        employeeIds: [picker.employeeId],
+        shiftId: shift.id,
+        effectiveFrom: picker.day.date,
+        effectiveTo: picker.day.date,
+        weekdays: [weekdayForShiftAssignmentDate(picker.day.date)],
+        includeInTimesheet: true,
+      });
+      notifications.show({
+        color: "green",
+        title: "Đã áp ca làm việc",
+        message:
+          "Đã áp " +
+          shift.code +
+          " cho " +
+          picker.fullName +
+          " ngày " +
+          formatDate(picker.day.date) +
+          " và đưa CBNV vào BCC.",
+      });
+      closeCellShiftPicker();
+    } catch (error) {
+      setCellShiftError(
+        error instanceof Error && error.message
+          ? error.message
+          : "Không thể áp ca. Kiểm tra kỳ công hoặc ca đang chồng lấn rồi thử lại.",
+      );
+    } finally {
+      setCellShiftApplyingId(null);
+    }
   }
 
   function handleShiftChange(value: string | null) {
@@ -711,11 +847,12 @@ export function MonthlyShiftAssignmentGrid({
     <Stack gap="md">
       <Alert icon={<IconInfoCircle size={18} />} color="blue" variant="light">
         Phân ca ở đây tạo <b>ca cá nhân</b> cho các CBNV được tích chọn; ca cá
-        nhân ưu tiên hơn ca phòng ban và đơn vị. Mặc định, <b>Áp dụng ca</b>{" "}
-        cũng đưa đúng các CBNV đó vào BCC. Bỏ chọn “Đưa vào BCC cùng ca” khi chỉ
-        muốn lập kế hoạch ca. Với CBNV đã có ca, dùng <b>Đưa vào BCC</b> để bổ
-        sung bảng công mà không tạo lại ca. Sau đó mở đúng kỳ, bấm{" "}
-        <b>Cập nhật bảng công</b> rồi mới xuất Excel.
+        nhân ưu tiên hơn ca phòng ban và đơn vị. Nhấn ô <b>—</b> để chọn ca trực
+        tiếp cho đúng CBNV/ngày; thao tác này luôn đưa CBNV vào BCC. Mặc định,{" "}
+        <b>Áp dụng ca</b> cũng đưa đúng các CBNV đó vào BCC. Bỏ chọn “Đưa vào
+        BCC cùng ca” khi chỉ muốn lập kế hoạch ca. Với CBNV đã có ca, dùng{" "}
+        <b>Đưa vào BCC</b> để bổ sung bảng công mà không tạo lại ca. Sau đó mở
+        đúng kỳ, bấm <b>Cập nhật bảng công</b> rồi mới xuất Excel.
       </Alert>
 
       <Paper withBorder p="md" radius="md">
@@ -1195,25 +1332,280 @@ export function MonthlyShiftAssignmentGrid({
                               );
                             }
                             const visual = cellVisual(day, meta);
+                            const canChooseShift =
+                              canSelectShiftAssignmentGridDay(
+                                day,
+                                item.row.canInclude,
+                                tableIsDisabled,
+                              );
+                            const pickerOpen =
+                              canChooseShift &&
+                              isCellShiftPickerOpen(
+                                item.row.employeeId,
+                                day.date,
+                              );
+                            const unavailableCellTitle =
+                              tableIsDisabled && grid?.isClosed
+                                ? "Kỳ công đã chốt — mở khóa kỳ công trước khi phân ca."
+                                : cellDescription(day);
                             return (
                               <Table.Td
                                 key={meta.day}
-                                title={cellDescription(day)}
+                                title={
+                                  canChooseShift
+                                    ? undefined
+                                    : unavailableCellTitle
+                                }
                                 style={{
                                   background: visual.background,
                                   minWidth: dayColumnWidth,
+                                  padding: canChooseShift ? 1 : undefined,
                                   textAlign: "center",
                                   width: dayColumnWidth,
                                 }}
                               >
-                                <Text
-                                  size="xs"
-                                  fw={day.shift ? 700 : 500}
-                                  c={visual.color}
-                                  lineClamp={1}
-                                >
-                                  {visual.label}
-                                </Text>
+                                {canChooseShift ? (
+                                  <Popover
+                                    opened={pickerOpen}
+                                    onDismiss={closeCellShiftPicker}
+                                    position="bottom-start"
+                                    shadow="md"
+                                    width={720}
+                                    withinPortal
+                                  >
+                                    <Popover.Target>
+                                      <button
+                                        type="button"
+                                        aria-expanded={pickerOpen}
+                                        aria-haspopup="dialog"
+                                        aria-label={
+                                          "Chọn ca cho " +
+                                          item.row.fullName +
+                                          ", ngày " +
+                                          formatDate(day.date)
+                                        }
+                                        title="Nhấn để chọn ca làm việc cho ngày này"
+                                        disabled={bulkAssign.isPending}
+                                        onClick={() =>
+                                          openCellShiftPicker(item.row, day)
+                                        }
+                                        style={{
+                                          alignItems: "center",
+                                          background: "transparent",
+                                          border: "1px solid transparent",
+                                          borderRadius: 4,
+                                          cursor: "pointer",
+                                          display: "flex",
+                                          justifyContent: "center",
+                                          minHeight: 30,
+                                          padding: 2,
+                                          width: "100%",
+                                        }}
+                                      >
+                                        <Text
+                                          size="xs"
+                                          fw={500}
+                                          c={visual.color}
+                                          lineClamp={1}
+                                        >
+                                          {visual.label}
+                                        </Text>
+                                      </button>
+                                    </Popover.Target>
+                                    {pickerOpen ? (
+                                      <Popover.Dropdown p="sm">
+                                        <Stack gap="xs">
+                                          <Group
+                                            justify="space-between"
+                                            align="flex-start"
+                                            wrap="nowrap"
+                                          >
+                                            <Stack gap={0}>
+                                              <Text fw={700} size="sm">
+                                                Chọn ca cho {item.row.fullName}
+                                              </Text>
+                                              <Text size="xs" c="dimmed">
+                                                {formatDate(day.date)} · Tự đưa
+                                                vào BCC
+                                              </Text>
+                                            </Stack>
+                                            <Button
+                                              size="compact-xs"
+                                              variant="subtle"
+                                              color="gray"
+                                              leftSection={<IconX size={14} />}
+                                              disabled={bulkAssign.isPending}
+                                              onClick={closeCellShiftPicker}
+                                            >
+                                              Đóng
+                                            </Button>
+                                          </Group>
+                                          <NormalizedSearchInput
+                                            size="xs"
+                                            placeholder="Tìm ký hiệu, loại ca hoặc nhóm"
+                                            value={cellShiftSearch}
+                                            onChange={setCellShiftSearch}
+                                          />
+                                          {cellShiftError ? (
+                                            <Alert
+                                              color="red"
+                                              variant="light"
+                                              p="xs"
+                                            >
+                                              {cellShiftError}
+                                            </Alert>
+                                          ) : null}
+                                          {shiftsQuery.isError ? (
+                                            <Alert
+                                              color="red"
+                                              variant="light"
+                                              p="xs"
+                                            >
+                                              Không tải được danh mục ca.
+                                              <Button
+                                                size="compact-xs"
+                                                variant="subtle"
+                                                onClick={() =>
+                                                  void shiftsQuery.refetch()
+                                                }
+                                              >
+                                                Tải lại
+                                              </Button>
+                                            </Alert>
+                                          ) : shiftsQuery.isLoading ? (
+                                            <Text size="sm" c="dimmed" py="sm">
+                                              Đang tải danh mục ca…
+                                            </Text>
+                                          ) : cellShiftOptions.length ? (
+                                            <ScrollArea.Autosize
+                                              mah={280}
+                                              type="auto"
+                                            >
+                                              <Table
+                                                withTableBorder
+                                                withColumnBorders
+                                                horizontalSpacing="xs"
+                                                verticalSpacing={4}
+                                                style={{ minWidth: 620 }}
+                                              >
+                                                <Table.Thead>
+                                                  <Table.Tr>
+                                                    <Table.Th>TT</Table.Th>
+                                                    <Table.Th>Ký hiệu</Table.Th>
+                                                    <Table.Th>Loại ca</Table.Th>
+                                                    <Table.Th>Nhóm</Table.Th>
+                                                    <Table.Th>
+                                                      Giờ / Công
+                                                    </Table.Th>
+                                                  </Table.Tr>
+                                                </Table.Thead>
+                                                <Table.Tbody>
+                                                  {cellShiftOptions.map(
+                                                    (shift) => {
+                                                      const disabledReason =
+                                                        directCellShiftDisabledReason(
+                                                          shift,
+                                                        );
+                                                      const disabled =
+                                                        Boolean(
+                                                          disabledReason,
+                                                        ) ||
+                                                        bulkAssign.isPending;
+                                                      return (
+                                                        <Table.Tr
+                                                          key={shift.id}
+                                                        >
+                                                          <Table.Td>
+                                                            {getWorkShiftCatalogOrder(
+                                                              shift.code,
+                                                            ) ?? "—"}
+                                                          </Table.Td>
+                                                          <Table.Td>
+                                                            <Button
+                                                              size="compact-xs"
+                                                              variant="subtle"
+                                                              loading={
+                                                                cellShiftApplyingId ===
+                                                                shift.id
+                                                              }
+                                                              disabled={
+                                                                disabled
+                                                              }
+                                                              onClick={() =>
+                                                                void applyShiftToCell(
+                                                                  shift,
+                                                                )
+                                                              }
+                                                            >
+                                                              {shift.code}
+                                                            </Button>
+                                                            {disabledReason ? (
+                                                              <Text
+                                                                size="10px"
+                                                                c="dimmed"
+                                                                lineClamp={1}
+                                                              >
+                                                                {disabledReason}
+                                                              </Text>
+                                                            ) : null}
+                                                          </Table.Td>
+                                                          <Table.Td>
+                                                            <Text
+                                                              size="xs"
+                                                              lineClamp={1}
+                                                            >
+                                                              {shift.name}
+                                                            </Text>
+                                                          </Table.Td>
+                                                          <Table.Td>
+                                                            <Text
+                                                              size="xs"
+                                                              lineClamp={1}
+                                                            >
+                                                              {shift.groupName ??
+                                                                "—"}
+                                                            </Text>
+                                                          </Table.Td>
+                                                          <Table.Td>
+                                                            <Text size="xs">
+                                                              {shift.startTime}–
+                                                              {shift.endTime}
+                                                            </Text>
+                                                            <Text
+                                                              size="10px"
+                                                              c="dimmed"
+                                                            >
+                                                              {formatShiftHoursAndWorkday(
+                                                                shift,
+                                                              )}
+                                                            </Text>
+                                                          </Table.Td>
+                                                        </Table.Tr>
+                                                      );
+                                                    },
+                                                  )}
+                                                </Table.Tbody>
+                                              </Table>
+                                            </ScrollArea.Autosize>
+                                          ) : (
+                                            <Text size="sm" c="dimmed" py="sm">
+                                              Không tìm thấy ca phù hợp.
+                                            </Text>
+                                          )}
+                                        </Stack>
+                                      </Popover.Dropdown>
+                                    ) : null}
+                                  </Popover>
+                                ) : (
+                                  <Text
+                                    size="xs"
+                                    fw={day.shift ? 700 : 500}
+                                    c={visual.color}
+                                    lineClamp={1}
+                                  >
+                                    {visual.label}
+                                  </Text>
+                                )}
                               </Table.Td>
                             );
                           })}
