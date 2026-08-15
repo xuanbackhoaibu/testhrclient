@@ -2288,3 +2288,15 @@ Cập nhật bổ sung:
   - Bỏ `Quyền riêng tư`, `Cài đặt cuộc gọi`, `Tiện ích`.
   - Dọn type/tab placeholder và icon import không còn dùng cho 3 mục này.
   - Bỏ tiếp `Tin nhắn` và `Đồng bộ và sao lưu`, chỉ giữ các mục cài đặt còn cần thao tác/xem trong HRM.
+  - Thu nhỏ khung chọn mục ở sidebar trái: item thấp hơn, padding/gap nhỏ hơn và icon còn 16px.
+  - Thu nhỏ toàn bộ khung menu trái từ `300px` xuống `240px`, giảm padding và title còn 20px.
+- Thu nhỏ khung dữ liệu bên phải của Cài đặt:
+  - Modal tổng thể còn khoảng `860px x 700px`.
+  - Bản đầu vùng nội dung phải giới hạn khoảng `520px` để thử nghiệm khung nhỏ.
+  - Card dữ liệu, thumbnail theme và icon laptop thông báo được thu nhỏ theo khung mới.
+- Điều chỉnh lại theo nghiệm thu mới:
+  - Giữ khung ngoài nhỏ nhưng bỏ giới hạn `520px` để dữ liệu/card bên phải bung gần hết vùng content.
+  - Tăng nhẹ thumbnail theme và khoảng cách khối thông báo để giảm khoảng trống trắng.
+- Bổ sung thao tác đóng modal Cài đặt:
+  - Click vào vùng xám backdrop bên ngoài khung Cài đặt sẽ thoát giống nút `X`.
+  - Click bên trong khung Cài đặt vẫn giữ nguyên, không đóng nhầm.

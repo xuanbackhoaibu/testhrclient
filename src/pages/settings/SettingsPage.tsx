@@ -179,7 +179,14 @@ export function SettingsPage() {
   }
 
   return (
-    <Box className="settings-zalo-stage">
+    <Box
+      className="settings-zalo-stage"
+      onClick={(event) => {
+        if (event.currentTarget === event.target) {
+          navigate(-1);
+        }
+      }}
+    >
       <Box className="settings-zalo-window">
         <aside className="settings-zalo-nav">
           <Title order={1} className="settings-zalo-title">Cài đặt</Title>
@@ -195,7 +202,7 @@ export function SettingsPage() {
                   onClick={() => setActiveSection(item.key)}
                 >
                   <span className="settings-zalo-nav-icon">
-                    <Icon size={18} stroke={1.9} />
+                    <Icon size={16} stroke={1.9} />
                   </span>
                   <span className="settings-zalo-nav-copy">
                     <Text size="sm" lh={1.2}>{item.label}</Text>

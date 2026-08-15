@@ -1530,28 +1530,28 @@ body {
   border: 1px solid var(--hrm-border);
   border-radius: 8px;
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
-  height: min(760px, calc(100vh - 36px));
+  grid-template-columns: 240px minmax(0, 1fr);
+  height: min(700px, calc(100vh - 36px));
   overflow: hidden;
-  width: min(1040px, calc(100vw - 40px));
+  width: min(860px, calc(100vw - 40px));
 }
 
 .settings-zalo-nav {
   background: var(--hrm-surface);
   border-right: 1px solid var(--hrm-border);
-  padding: 28px 10px 16px;
+  padding: 24px 8px 14px;
 }
 
 .settings-zalo-title {
   color: var(--hrm-text);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 400;
   line-height: 1.2;
-  margin: 0 18px 22px;
+  margin: 0 14px 18px;
 }
 
 .settings-zalo-nav-list {
-  gap: 6px;
+  gap: 4px;
 }
 
 .settings-zalo-nav-item {
@@ -1562,10 +1562,10 @@ body {
   color: var(--hrm-text);
   cursor: pointer;
   display: grid;
-  gap: 10px;
-  grid-template-columns: 32px minmax(0, 1fr) auto;
-  min-height: 48px;
-  padding: 8px 16px;
+  gap: 8px;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  min-height: 42px;
+  padding: 6px 12px;
   text-align: left;
   transition: background-color 150ms ease, color 150ms ease;
   width: 100%;
@@ -1586,9 +1586,9 @@ body {
   border-radius: 8px;
   color: var(--hrm-text);
   display: inline-flex;
-  height: 32px;
+  height: 28px;
   justify-content: center;
-  width: 32px;
+  width: 28px;
 }
 
 .settings-zalo-nav-item.is-active .settings-zalo-nav-icon {
@@ -1610,12 +1610,12 @@ body {
   background: #eef0f5;
   min-width: 0;
   overflow-y: auto;
-  padding: 88px 28px 34px 36px;
+  padding: 72px 24px 28px 28px;
   position: relative;
 }
 
 .settings-zalo-content > .mantine-Stack-root {
-  max-width: 690px;
+  max-width: 100%;
 }
 
 .settings-zalo-content-title {
@@ -1656,8 +1656,8 @@ body {
 }
 
 .settings-zalo-row {
-  min-height: 56px;
-  padding: 13px 24px;
+  min-height: 48px;
+  padding: 11px 18px;
 }
 
 .settings-zalo-row .mantine-Text-root {
@@ -1671,10 +1671,10 @@ body {
 
 .settings-zalo-theme-section {
   display: grid;
-  gap: 30px;
-  grid-template-columns: repeat(3, 150px);
-  justify-content: space-around;
-  padding: 28px 38px 28px;
+  gap: 18px;
+  grid-template-columns: repeat(3, 140px);
+  justify-content: space-between;
+  padding: 24px 30px 24px;
 }
 
 .settings-zalo-theme-choice {
@@ -1699,7 +1699,7 @@ body {
   padding: 0;
   position: relative;
   transition: border-color 150ms ease, box-shadow 150ms ease;
-  width: 150px;
+  width: 140px;
 }
 
 .settings-zalo-theme-choice.is-selected .settings-theme-preview {
@@ -1726,7 +1726,7 @@ body {
 }
 
 .settings-zalo-theme-choice .mantine-Group-root {
-  margin-top: 16px !important;
+  margin-top: 12px !important;
 }
 
 .settings-zalo-radio {
@@ -1746,10 +1746,10 @@ body {
 .settings-zalo-theme-choice .settings-theme-preview .settings-theme-dot {
   background: #b9dcff;
   border-radius: 999px;
-  height: 14px;
-  left: 16px;
-  top: 20px;
-  width: 14px;
+  height: 12px;
+  left: 14px;
+  top: 18px;
+  width: 12px;
 }
 
 .settings-zalo-theme-choice .settings-theme-preview .settings-theme-bubble {
@@ -1758,18 +1758,18 @@ body {
 
 .settings-zalo-theme-choice .settings-theme-preview .settings-theme-bubble.is-primary {
   background: #ffffff;
-  height: 27px;
-  left: 42px;
-  top: 18px;
-  width: 68px;
+  height: 25px;
+  left: 39px;
+  top: 16px;
+  width: 64px;
 }
 
 .settings-zalo-theme-choice .settings-theme-preview .settings-theme-bubble.is-secondary {
   background: #8fc2ff;
-  height: 26px;
-  right: 20px;
-  top: 52px;
-  width: 46px;
+  height: 24px;
+  right: 18px;
+  top: 48px;
+  width: 43px;
 }
 
 .settings-zalo-theme-choice.is-dark .settings-theme-preview .settings-theme-dot {
@@ -1791,11 +1791,11 @@ body {
 .settings-zalo-theme-choice.is-auto .settings-theme-preview .settings-theme-dot::after {
   background: #62a5ff;
   content: '';
-  height: 14px;
-  left: 92px;
+  height: 12px;
+  left: 85px;
   position: absolute;
   top: 0;
-  width: 7px;
+  width: 6px;
 }
 
 .settings-zalo-theme-choice.is-auto .settings-theme-preview .settings-theme-bubble.is-primary {
@@ -1809,9 +1809,9 @@ body {
 .settings-zalo-notification-mode {
   align-items: center;
   display: flex;
-  gap: 40px;
-  min-height: 210px;
-  padding: 28px 44px 28px;
+  gap: 42px;
+  min-height: 170px;
+  padding: 22px 44px;
 }
 
 .settings-zalo-notification-choice {
@@ -1821,9 +1821,9 @@ body {
   color: #27334a;
   cursor: pointer;
   display: grid;
-  gap: 22px;
+  gap: 16px;
   justify-items: center;
-  min-width: 150px;
+  min-width: 124px;
   padding: 0;
 }
 
@@ -1835,10 +1835,10 @@ body {
 
 .settings-zalo-laptop {
   display: block;
-  height: 96px;
+  height: 80px;
   opacity: 0.42;
   position: relative;
-  width: 150px;
+  width: 124px;
 }
 
 .settings-zalo-notification-choice.is-selected .settings-zalo-laptop {
@@ -1849,11 +1849,11 @@ body {
   background: #eef0f5;
   border: 3px solid #d6dbe4;
   border-radius: 7px 7px 2px 2px;
-  height: 78px;
-  left: 16px;
+  height: 64px;
+  left: 13px;
   position: absolute;
   top: 0;
-  width: 118px;
+  width: 98px;
 }
 
 .settings-zalo-notification-choice.is-selected .settings-zalo-laptop-screen {
@@ -1863,11 +1863,11 @@ body {
 .settings-zalo-laptop-message {
   background: #0068ff;
   border-radius: 3px;
-  height: 26px;
+  height: 22px;
   position: absolute;
-  right: 8px;
-  top: 10px;
-  width: 64px;
+  right: 7px;
+  top: 8px;
+  width: 54px;
 }
 
 .settings-zalo-laptop-message::before,
@@ -1887,7 +1887,7 @@ body {
 
 .settings-zalo-laptop-message::after {
   bottom: 7px;
-  width: 44px;
+  width: 37px;
 }
 
 .settings-zalo-laptop-base {
@@ -1895,10 +1895,10 @@ body {
   border: 3px solid #d6dbe4;
   border-radius: 0 0 10px 10px;
   bottom: 0;
-  height: 16px;
-  left: 7px;
+  height: 14px;
+  left: 6px;
   position: absolute;
-  width: 136px;
+  width: 112px;
 }
 
 .settings-zalo-notification-choice.is-selected .settings-zalo-laptop-base {
