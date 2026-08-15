@@ -239,6 +239,34 @@ export interface ReplaceShiftAssignmentDayResult {
   }>;
 }
 
+/** Cancels a direct employee shift for exactly one day without changing BCC. */
+export interface CancelShiftAssignmentDayPayload {
+  month: number;
+  year: number;
+  unitId: string;
+  employeeId: string;
+  date: string;
+}
+
+export type CancelShiftAssignmentDayStrategy =
+  | "DELETED_DIRECT_DAY"
+  | "SHORTENED_DIRECT_RANGE"
+  | "SPLIT_DIRECT_RANGE"
+  | "UNCHANGED";
+
+export interface CancelShiftAssignmentDayResult {
+  changed: boolean;
+  strategy: CancelShiftAssignmentDayStrategy;
+  employeeId: string;
+  date: string;
+  shiftId: null;
+  recomputeRequired: boolean;
+  affected: Array<{
+    employeeId: string;
+    date: string;
+  }>;
+}
+
 /**
  * Đưa các CBNV đã có ca vào BCC mà không tạo hoặc thay đổi ShiftAssignment.
  * Backend khởi tạo roster tháng trong cùng transaction nếu chưa có.
