@@ -2300,3 +2300,6 @@ Cập nhật bổ sung:
 - Bổ sung thao tác đóng modal Cài đặt:
   - Click vào vùng xám backdrop bên ngoài khung Cài đặt sẽ thoát giống nút `X`.
   - Click bên trong khung Cài đặt vẫn giữ nguyên, không đóng nhầm.
+- Đồng bộ màu active của menu chính bên ngoài Cài đặt:
+  - Sidebar chính khi chọn module dùng nền xanh nhạt `#e8f3ff` và chữ/vạch xanh `#0b64d8`, giống active item trong modal Cài đặt.
+  - Dark mode dùng nền xanh dịu và vạch `#93c5fd` để dễ nhìn.

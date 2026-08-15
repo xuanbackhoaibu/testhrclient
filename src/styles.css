@@ -722,9 +722,9 @@ body {
 }
 
 .app-nav-link[data-active='true'] {
-  background: var(--hrm-accent-soft);
-  color: var(--hrm-accent);
-  font-weight: 700;
+  background: #e8f3ff;
+  color: #0b64d8;
+  font-weight: 500;
 }
 
 .app-nav-link[data-active='true']::before {
@@ -733,7 +733,7 @@ body {
   bottom: 8px;
   left: 4px;
   width: 3px;
-  background: var(--hrm-accent);
+  background: #0b64d8;
   border-radius: 999px;
   content: '';
 }
@@ -2363,8 +2363,12 @@ body {
 }
 
 :root[data-mantine-color-scheme='dark'] .app-nav-link[data-active='true'] {
-  background: var(--hrm-accent-soft);
+  background: color-mix(in srgb, #339af0, transparent 82%);
   color: #bfdbfe;
+}
+
+:root[data-mantine-color-scheme='dark'] .app-nav-link[data-active='true']::before {
+  background: #93c5fd;
 }
 
 :root[data-mantine-color-scheme='dark'] .data-table-heading,
