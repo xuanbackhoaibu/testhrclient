@@ -2217,10 +2217,16 @@ Cập nhật bổ sung:
 
 - Sidebar `MainLayout` lấy theo bản `main` để giữ đúng thứ tự module và nhóm chức năng của main.
 - Nhóm sidebar hiện dùng cấu trúc main:
-  - `Dashboard`, `Nhân sự`.
+  - `Dashboard`, `Nhân sự`, `Lịch của tôi`.
   - Nhóm `Tổ chức`.
   - Nhóm `Phân quyền`.
   - `Điều chuyển`.
   - Nhóm `Chấm công` với các mục mới như `Ca tuần`, `Sắp ca tháng`, `Phân ca`, `Bảng công tháng`, `Kỳ công`, `Ngày lễ`, `Nghỉ phép`, `Cấu hình duyệt phép`.
   - `Xử lý mapping`, `Cài đặt`.
 - Đồng bộ các cập nhật mới từ main liên quan phân ca, ca tuần, sắp ca tháng, bảng công và quyền truy cập.
+- Bổ sung lại `Lịch của tôi` ngay dưới `Nhân sự`; route này dùng policy `authenticated` nên người dùng đăng nhập sẽ thấy trên sidebar.
+- Khôi phục cấu trúc sidebar dạng nhóm gập/mở theo bản menu cũ:
+  - Top-level: `Dashboard`, `Nhân sự`, `Lịch của tôi`.
+  - Nhóm: `Tổ chức`, `Quy trình nhân sự`, `Chấm công & Ca làm việc`, `Phân quyền`.
+  - Bottom-level: `Audit logs`, `Cài đặt`.
+  - Bổ sung các route mới từ main vào nhóm phù hợp: `Ca tuần`, `Sắp ca tháng`, `Cấu hình duyệt phép`.
