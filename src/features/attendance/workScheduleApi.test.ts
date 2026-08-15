@@ -9,7 +9,11 @@ vi.mock("../../shared/api/httpClient", () => ({
   api: { get, post },
 }));
 
-import { bulkAssignShifts, getShiftAssignmentGrid } from "./workScheduleApi";
+import {
+  bulkAssignShifts,
+  createShiftAssignment,
+  getShiftAssignmentGrid,
+} from "./workScheduleApi";
 
 describe("monthly shift-assignment API", () => {
   beforeEach(() => {
@@ -36,6 +40,24 @@ describe("monthly shift-assignment API", () => {
     );
   });
 
+  it("forwards weekday scope when creating an organizational rule", async () => {
+    const payload = {
+      shiftId: "shift-hc1",
+      departmentId: "department-03",
+      effectiveFrom: "2026-08-01",
+      weekdays: [1, 2, 3, 4, 5],
+    };
+    const assignment = { id: "assignment-01" };
+    post.mockResolvedValue(assignment);
+
+    await expect(createShiftAssignment(payload)).resolves.toEqual(assignment);
+
+    expect(post).toHaveBeenCalledWith(
+      "/attendance/work-schedule/assignments",
+      payload,
+    );
+  });
+
   it("submits one atomic bulk assignment instead of creating employee assignments in the browser", async () => {
     const payload = {
       month: 8,
@@ -45,6 +67,7 @@ describe("monthly shift-assignment API", () => {
       shiftId: "shift-hc1",
       effectiveFrom: "2026-08-01",
       effectiveTo: "2026-08-31",
+      weekdays: [1, 2, 3, 4, 5],
     };
     const result = {
       created: 2,

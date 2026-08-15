@@ -92,6 +92,8 @@ export interface ShiftAssignment {
   unitId: string | null;
   effectiveFrom: string;
   effectiveTo: string | null;
+  /** 0 = Chủ nhật … 6 = Thứ 7; null/omitted means every day. */
+  weekdays?: number[] | null;
   status: RecordStatus;
   note: string | null;
   shift: { code: string; name: string };
@@ -107,6 +109,8 @@ export interface ShiftAssignmentPayload {
   unitId?: string;
   effectiveFrom: string;
   effectiveTo?: string;
+  /** Omit to keep the all-days assignment default. */
+  weekdays?: number[];
   note?: string;
 }
 
@@ -172,6 +176,8 @@ export interface BulkShiftAssignmentPayload {
   shiftId: string;
   effectiveFrom: string;
   effectiveTo: string;
+  /** Omit to keep the all-days assignment default. */
+  weekdays?: number[];
   note?: string;
 }
 
