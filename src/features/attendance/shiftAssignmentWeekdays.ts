@@ -87,6 +87,32 @@ export function formatAssignmentWeekdays(
     : "Chưa chọn ngày";
 }
 
+/** Uses UTC so selecting a grid date never shifts weekday in the HR browser. */
+export function weekdayForShiftAssignmentDate(date: string): number {
+  return new Date(`${date}T00:00:00Z`).getUTCDay();
+}
+
+/** Only an actionable gap in the plan grid can be selected for a new ca. */
+export function canSelectShiftAssignmentGridDay(
+  day: {
+    inAttendanceWindow: boolean;
+    isWorkingDay: boolean;
+    holidayName: string | null;
+    source: string;
+  },
+  canInclude: boolean,
+  disabled: boolean,
+): boolean {
+  return (
+    !disabled &&
+    canInclude &&
+    day.inAttendanceWindow &&
+    day.isWorkingDay &&
+    !day.holidayName &&
+    day.source === "UNASSIGNED"
+  );
+}
+
 function parseShiftTime(value: string): number | null {
   const match = /^(\d{2}):(\d{2})/.exec(value);
   if (!match) return null;

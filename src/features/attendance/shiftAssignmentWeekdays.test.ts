@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   ALL_ASSIGNMENT_WEEKDAYS,
+  canSelectShiftAssignmentGridDay,
   formatAssignmentWeekdays,
   getAssignmentWeekdayPreset,
   isFullDayAdministrativeOfficeShift,
   optionalAssignmentWeekdays,
+  weekdayForShiftAssignmentDate,
   weekdaysForAssignmentPreset,
 } from "./shiftAssignmentWeekdays";
 
@@ -14,6 +16,58 @@ describe("shift-assignment weekdays", () => {
     expect(getAssignmentWeekdayPreset(undefined)).toBe("all");
     expect(formatAssignmentWeekdays(undefined)).toBe("Tất cả ngày");
     expect(optionalAssignmentWeekdays(ALL_ASSIGNMENT_WEEKDAYS)).toBeUndefined();
+  });
+
+  it("keeps selected grid dates on their UTC weekdays", () => {
+    expect(weekdayForShiftAssignmentDate("2026-08-01")).toBe(6);
+    expect(weekdayForShiftAssignmentDate("2026-08-02")).toBe(0);
+  });
+
+  it("only exposes an eligible unassigned plan cell as selectable", () => {
+    const availableDay = {
+      inAttendanceWindow: true,
+      isWorkingDay: true,
+      holidayName: null,
+      source: "UNASSIGNED",
+    };
+
+    expect(canSelectShiftAssignmentGridDay(availableDay, true, false)).toBe(
+      true,
+    );
+    expect(
+      canSelectShiftAssignmentGridDay(
+        { ...availableDay, holidayName: "Quốc khánh" },
+        true,
+        false,
+      ),
+    ).toBe(false);
+    expect(
+      canSelectShiftAssignmentGridDay(
+        { ...availableDay, source: "ASSIGNMENT_EMPLOYEE" },
+        true,
+        false,
+      ),
+    ).toBe(false);
+    expect(
+      canSelectShiftAssignmentGridDay(
+        { ...availableDay, inAttendanceWindow: false },
+        true,
+        false,
+      ),
+    ).toBe(false);
+    expect(
+      canSelectShiftAssignmentGridDay(
+        { ...availableDay, isWorkingDay: false },
+        true,
+        false,
+      ),
+    ).toBe(false);
+    expect(canSelectShiftAssignmentGridDay(availableDay, false, false)).toBe(
+      false,
+    );
+    expect(canSelectShiftAssignmentGridDay(availableDay, true, true)).toBe(
+      false,
+    );
   });
 
   it("maps the compact presets to their intended weekdays", () => {
