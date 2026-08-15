@@ -1,24 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { get, post } = vi.hoisted(() => ({
+const { get, patch, post } = vi.hoisted(() => ({
   get: vi.fn(),
+  patch: vi.fn(),
   post: vi.fn(),
 }));
 
 vi.mock("../../shared/api/httpClient", () => ({
-  api: { get, post },
+  api: { get, patch, post },
 }));
 
 import {
   bulkAssignShifts,
   createShiftAssignment,
   getShiftAssignmentGrid,
+  updateShiftAssignmentWeekdays,
   includeShiftAssignmentRowsInTimesheet,
 } from "./workScheduleApi";
 
 describe("monthly shift-assignment API", () => {
   beforeEach(() => {
     get.mockReset();
+    patch.mockReset();
     post.mockReset();
   });
 
@@ -56,6 +59,22 @@ describe("monthly shift-assignment API", () => {
     expect(post).toHaveBeenCalledWith(
       "/attendance/work-schedule/assignments",
       payload,
+    );
+  });
+
+  it("patches only the weekday scope of an existing rule", async () => {
+    const assignment = { id: "assignment-01", weekdays: [1, 2, 3, 4, 5] };
+    patch.mockResolvedValue(assignment);
+
+    await expect(
+      updateShiftAssignmentWeekdays("assignment-01", {
+        weekdays: [1, 2, 3, 4, 5],
+      }),
+    ).resolves.toEqual(assignment);
+
+    expect(patch).toHaveBeenCalledWith(
+      "/attendance/work-schedule/assignments/assignment-01",
+      { weekdays: [1, 2, 3, 4, 5] },
     );
   });
 
@@ -107,9 +126,9 @@ describe("monthly shift-assignment API", () => {
     };
     post.mockResolvedValue(result);
 
-    await expect(includeShiftAssignmentRowsInTimesheet(payload)).resolves.toEqual(
-      result,
-    );
+    await expect(
+      includeShiftAssignmentRowsInTimesheet(payload),
+    ).resolves.toEqual(result);
 
     expect(post).toHaveBeenCalledWith(
       "/attendance/work-schedule/assignments/include-in-timesheet",
