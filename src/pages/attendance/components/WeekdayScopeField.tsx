@@ -9,9 +9,10 @@ import {
 } from "../../../features/attendance/shiftAssignmentWeekdays";
 
 const presetOptions = [
-  { value: "all", label: "Tất cả ngày" },
+  { value: "all", label: "T2–T7" },
   { value: "weekdays", label: "T2–T6" },
   { value: "saturday", label: "Thứ 7" },
+  { value: "sunday", label: "Chủ nhật" },
   { value: "custom", label: "Tùy chọn" },
 ];
 

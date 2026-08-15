@@ -92,7 +92,7 @@ export interface ShiftAssignment {
   unitId: string | null;
   effectiveFrom: string;
   effectiveTo: string | null;
-  /** 0 = Chủ nhật … 6 = Thứ 7; null/omitted means every day. */
+  /** 0 = Chủ nhật … 6 = Thứ 7; null/bỏ trống dùng phạm vi T2–T7 cũ. */
   weekdays?: number[] | null;
   status: RecordStatus;
   note: string | null;
@@ -109,14 +109,14 @@ export interface ShiftAssignmentPayload {
   unitId?: string;
   effectiveFrom: string;
   effectiveTo?: string;
-  /** Omit to keep the all-days assignment default. */
+  /** Bỏ trống để dùng phạm vi T2–T7 cũ (không gồm Chủ nhật). */
   weekdays?: number[];
   note?: string;
 }
 
 /**
- * Chỉ sửa phạm vi thứ của một quy tắc đã có. `null` khôi phục áp dụng cả
- * tuần; các trường đích gán, ca và khoảng hiệu lực không được thay đổi ở API
+ * Chỉ sửa phạm vi thứ của một quy tắc đã có. `null` khôi phục phạm vi T2–T7
+ * cũ; các trường đích gán, ca và khoảng hiệu lực không được thay đổi ở API
  * này để tránh làm mất lịch sử phân ca.
  */
 export interface UpdateShiftAssignmentWeekdaysPayload {
@@ -187,7 +187,7 @@ export interface BulkShiftAssignmentPayload {
   shiftId: string;
   effectiveFrom: string;
   effectiveTo: string;
-  /** Omit to keep the all-days assignment default. */
+  /** Bỏ trống để dùng phạm vi T2–T7 cũ (không gồm Chủ nhật). */
   weekdays?: number[];
   /**
    * Đưa đúng các CBNV vừa phân ca vào BCC của kỳ này. Mặc định backend là

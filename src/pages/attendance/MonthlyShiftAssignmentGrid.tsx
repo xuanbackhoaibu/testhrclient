@@ -38,6 +38,7 @@ import {
   isFullDayAdministrativeOfficeShift,
   MONDAY_TO_FRIDAY,
   optionalAssignmentWeekdays,
+  singleDayShiftAssignmentScope,
   weekdayForShiftAssignmentDate,
 } from "../../features/attendance/shiftAssignmentWeekdays";
 import { useAuth } from "../../features/auth/useAuth";
@@ -257,7 +258,10 @@ function cellVisual(day: ShiftAssignmentGridDay, meta: DayMeta) {
   };
 }
 
-function cellDescription(day: ShiftAssignmentGridDay): string {
+function cellDescription(
+  day: ShiftAssignmentGridDay,
+  hasActiveDirectShift: boolean,
+): string {
   if (!day.inAttendanceWindow) {
     return "Ngoài khoảng tính công của nhân sự trong kỳ này";
   }
@@ -266,7 +270,9 @@ function cellDescription(day: ShiftAssignmentGridDay): string {
   }
   if (day.source === "UNASSIGNED") {
     return weekdayForShiftAssignmentDate(day.date) === 0
-      ? "Chủ nhật không tính công theo ca"
+      ? hasActiveDirectShift
+        ? "Chủ nhật mặc định nghỉ — nhấn để HR phân ca riêng"
+        : "Chủ nhật mặc định nghỉ — chưa có ca đang áp dụng để phân"
       : !day.calendarIsWorkingDay
         ? "Ngày được cấu hình nghỉ — không áp ca tại đây"
         : "Chưa phân ca — nhấn để chọn ca";
@@ -453,6 +459,16 @@ export function MonthlyShiftAssignmentGrid({
           ),
       ),
     [cellShiftSearch, shiftsQuery.data],
+  );
+
+  const hasActiveDirectShift = useMemo(
+    () =>
+      (shiftsQuery.data ?? []).some(
+        (shift) =>
+          Boolean(shift.startTime && shift.endTime) &&
+          directCellShiftDisabledReason(shift) === null,
+      ),
+    [shiftsQuery.data],
   );
 
   const selectedShift =
@@ -652,9 +668,7 @@ export function MonthlyShiftAssignmentGrid({
         unitId: selectedUnitId,
         employeeIds: [picker.employeeId],
         shiftId: shift.id,
-        effectiveFrom: picker.day.date,
-        effectiveTo: picker.day.date,
-        weekdays: [weekdayForShiftAssignmentDate(picker.day.date)],
+        ...singleDayShiftAssignmentScope(picker.day.date),
         includeInTimesheet: true,
       });
       notifications.show({
@@ -852,11 +866,13 @@ export function MonthlyShiftAssignmentGrid({
       <Alert icon={<IconInfoCircle size={18} />} color="blue" variant="light">
         Phân ca ở đây tạo <b>ca cá nhân</b> cho các CBNV được tích chọn; ca cá
         nhân ưu tiên hơn ca phòng ban và đơn vị. Nhấn ô <b>—</b> để chọn ca trực
-        tiếp cho đúng CBNV/ngày; thao tác này luôn đưa CBNV vào BCC. Mặc định,{" "}
-        <b>Áp dụng ca</b> cũng đưa đúng các CBNV đó vào BCC. Bỏ chọn “Đưa vào
-        BCC cùng ca” khi chỉ muốn lập kế hoạch ca. Với CBNV đã có ca, dùng{" "}
-        <b>Đưa vào BCC</b> để bổ sung bảng công mà không tạo lại ca. Sau đó mở
-        đúng kỳ, bấm <b>Cập nhật bảng công</b> rồi mới xuất Excel.
+        tiếp cho đúng CBNV/ngày; thao tác này luôn đưa CBNV vào BCC. Chủ nhật
+        mặc định nghỉ; HR chỉ có thể phân ca ngày này khi chủ động chọn ca tại ô
+        hoặc chọn Chủ nhật trong phần Ngày áp dụng. Ngày lễ vẫn không áp ca tại
+        đây. Mặc định, <b>Áp dụng ca</b> cũng đưa đúng các CBNV đó vào BCC. Bỏ
+        chọn “Đưa vào BCC cùng ca” khi chỉ muốn lập kế hoạch ca. Với CBNV đã có
+        ca, dùng <b>Đưa vào BCC</b> để bổ sung bảng công mà không tạo lại ca.
+        Sau đó mở đúng kỳ, bấm <b>Cập nhật bảng công</b> rồi mới xuất Excel.
       </Alert>
 
       <Paper withBorder p="md" radius="md">
@@ -1341,6 +1357,7 @@ export function MonthlyShiftAssignmentGrid({
                                 day,
                                 item.row.canInclude,
                                 tableIsDisabled,
+                                hasActiveDirectShift,
                               );
                             const pickerOpen =
                               canChooseShift &&
@@ -1351,7 +1368,7 @@ export function MonthlyShiftAssignmentGrid({
                             const unavailableCellTitle =
                               tableIsDisabled && grid?.isClosed
                                 ? "Kỳ công đã chốt — mở khóa kỳ công trước khi phân ca."
-                                : cellDescription(day);
+                                : cellDescription(day, hasActiveDirectShift);
                             return (
                               <Table.Td
                                 key={meta.day}
@@ -1388,7 +1405,11 @@ export function MonthlyShiftAssignmentGrid({
                                           ", ngày " +
                                           formatDate(day.date)
                                         }
-                                        title="Nhấn để chọn ca làm việc cho ngày này"
+                                        title={
+                                          meta.isSunday
+                                            ? "Chủ nhật mặc định nghỉ — nhấn để HR phân ca riêng"
+                                            : "Nhấn để chọn ca làm việc cho ngày này"
+                                        }
                                         disabled={bulkAssign.isPending}
                                         onClick={() =>
                                           openCellShiftPicker(item.row, day)

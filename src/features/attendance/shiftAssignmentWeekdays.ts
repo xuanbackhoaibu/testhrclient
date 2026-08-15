@@ -3,9 +3,10 @@ import type { WorkShift } from "./workScheduleTypes";
 export const ALL_ASSIGNMENT_WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;
 export const MONDAY_TO_FRIDAY = [1, 2, 3, 4, 5] as const;
 export const SATURDAY_ONLY = [6] as const;
+export const SUNDAY_ONLY = [0] as const;
 
 export type AssignmentWeekdayPreset =
-  "all" | "weekdays" | "saturday" | "custom";
+  "all" | "weekdays" | "saturday" | "sunday" | "custom";
 
 const SHORT_WEEKDAY_LABELS: Record<number, string> = {
   0: "CN",
@@ -44,6 +45,7 @@ export function getAssignmentWeekdayPreset(
   if (sameWeekdays(normalized, ALL_ASSIGNMENT_WEEKDAYS)) return "all";
   if (sameWeekdays(normalized, MONDAY_TO_FRIDAY)) return "weekdays";
   if (sameWeekdays(normalized, SATURDAY_ONLY)) return "saturday";
+  if (sameWeekdays(normalized, SUNDAY_ONLY)) return "sunday";
   return "custom";
 }
 
@@ -58,12 +60,14 @@ export function weekdaysForAssignmentPreset(
       return [...MONDAY_TO_FRIDAY];
     case "saturday":
       return [...SATURDAY_ONLY];
+    case "sunday":
+      return [...SUNDAY_ONLY];
     case "custom":
       return normalizedWeekdays(current);
   }
 }
 
-/** Omit all seven days to preserve the existing all-days backend default. */
+/** Omit the legacy T2–T7 preset so the backend keeps its non-Sunday scope. */
 export function optionalAssignmentWeekdays(
   weekdays: readonly number[],
 ): number[] | undefined {
@@ -77,9 +81,10 @@ export function formatAssignmentWeekdays(
   weekdays: readonly number[] | null | undefined,
 ): string {
   const preset = getAssignmentWeekdayPreset(weekdays);
-  if (preset === "all") return "Tất cả ngày";
+  if (preset === "all") return "T2–T7";
   if (preset === "weekdays") return "T2–T6";
   if (preset === "saturday") return "Thứ 7";
+  if (preset === "sunday") return "Chủ nhật";
 
   const normalized = normalizedWeekdays(weekdays);
   return normalized.length
@@ -92,9 +97,23 @@ export function weekdayForShiftAssignmentDate(date: string): number {
   return new Date(`${date}T00:00:00Z`).getUTCDay();
 }
 
+/** Keeps a direct grid selection scoped to exactly its clicked day. */
+export function singleDayShiftAssignmentScope(date: string): {
+  effectiveFrom: string;
+  effectiveTo: string;
+  weekdays: number[];
+} {
+  return {
+    effectiveFrom: date,
+    effectiveTo: date,
+    weekdays: [weekdayForShiftAssignmentDate(date)],
+  };
+}
+
 /**
  * An unassigned T2–T7 cell must stay selectable even though the resolver
  * correctly reports `isWorkingDay = false` until the first shift is assigned.
+ * Sunday is a rest day by default, but HR may explicitly assign a shift there.
  */
 export function canSelectShiftAssignmentGridDay(
   day: {
@@ -107,6 +126,7 @@ export function canSelectShiftAssignmentGridDay(
   },
   canInclude: boolean,
   disabled: boolean,
+  hasActiveDirectShift: boolean,
 ): boolean {
   const weekday = weekdayForShiftAssignmentDate(day.date);
 
@@ -114,9 +134,9 @@ export function canSelectShiftAssignmentGridDay(
     !disabled &&
     canInclude &&
     day.inAttendanceWindow &&
-    day.calendarIsWorkingDay &&
-    weekday >= 1 &&
-    weekday <= 6 &&
+    (weekday === 0
+      ? hasActiveDirectShift
+      : day.calendarIsWorkingDay && weekday >= 1 && weekday <= 6) &&
     !day.holidayName &&
     day.source === "UNASSIGNED"
   );
