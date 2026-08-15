@@ -26,11 +26,22 @@ test('every router screen is wrapped by the shared route policy', () => {
     'ROUTES.leaveApprovalAssignments',
     'ROUTES.onboarding',
     'ROUTES.offboarding',
+    'ROUTES.weeklyShifts',
   ]) {
     assert.match(source, new RegExp(`ProtectedRoute route=\\{${route.replace('.', '\\.')}\\}`));
   }
 });
 
+test('weekly schedules are discoverable through the attendance navigation', () => {
+  const layout = read('../../layouts/MainLayout.tsx');
+  const policies = read('./routePolicies.ts');
+
+  assert.match(
+    layout,
+    /label: "Ca tuần", path: ROUTES\.weeklyShifts/,
+  );
+  assert.match(policies, /\[ROUTES\.weeklyShifts\].*ATTENDANCE_READ/);
+});
 test('authority is never restored from persisted current-user data', () => {
   const source = read('./authClient.ts');
   assert.doesNotMatch(source, /setStoredString\(STORAGE_KEYS\.currentUser/);

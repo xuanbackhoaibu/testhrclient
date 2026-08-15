@@ -7,8 +7,10 @@ import {
   formatAssignmentWeekdays,
   getAssignmentWeekdayPreset,
   isFullDayAdministrativeOfficeShift,
+  isWeeklyTemplateAssignmentSource,
   optionalAssignmentWeekdays,
   singleDayShiftAssignmentScope,
+  requiresOneDayShiftOverride,
   SUNDAY_ONLY,
   weekdayForShiftAssignmentDate,
   weekdaysForAssignmentPreset,
@@ -193,6 +195,50 @@ describe("shift-assignment weekdays", () => {
     ).toBe(false);
     expect(
       canOpenShiftAssignmentGridPicker(assignedDay, false, false, true),
+    ).toBe(false);
+  });
+  it("opens weekly work and explicit-off days for intentional one-day exceptions", () => {
+    const weeklyDay = {
+      date: "2026-08-02",
+      inAttendanceWindow: true,
+      calendarIsWorkingDay: false,
+      isWorkingDay: false,
+      holidayName: null,
+      source: "WEEKLY_TEMPLATE_EMPLOYEE",
+    };
+
+    expect(isWeeklyTemplateAssignmentSource(weeklyDay.source)).toBe(true);
+    expect(isWeeklyTemplateAssignmentSource("WEEKLY_TEMPLATE")).toBe(true);
+    expect(isWeeklyTemplateAssignmentSource("UNASSIGNED")).toBe(false);
+    expect(requiresOneDayShiftOverride(weeklyDay.source)).toBe(true);
+    expect(requiresOneDayShiftOverride("WEEKLY_TEMPLATE")).toBe(true);
+    expect(requiresOneDayShiftOverride("UNASSIGNED")).toBe(false);
+    expect(
+      canOpenShiftAssignmentGridPicker(
+        { ...weeklyDay, shift: { id: "hc1" } },
+        true,
+        false,
+        false,
+      ),
+    ).toBe(true);
+    // Explicit OFF blocks inherited schedules, but HR may still add exactly one
+    // deliberate exception such as Sunday work. The exact one-day replacement
+    // path preserves BCC and allows cancellation to reveal the template OFF.
+    expect(
+      canOpenShiftAssignmentGridPicker(
+        { ...weeklyDay, shift: null },
+        true,
+        false,
+        false,
+      ),
+    ).toBe(true);
+    expect(
+      canOpenShiftAssignmentGridPicker(
+        { ...weeklyDay, shift: null, holidayName: "Quốc khánh" },
+        true,
+        false,
+        false,
+      ),
     ).toBe(false);
   });
 

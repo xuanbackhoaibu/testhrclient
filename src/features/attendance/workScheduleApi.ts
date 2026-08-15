@@ -1,5 +1,9 @@
 import { api } from "../../shared/api/httpClient";
 import type {
+  ApplyWeeklyShiftTemplatePayload,
+  ApplyWeeklyShiftTemplateResult,
+  CancelWeeklyShiftAssignmentsPayload,
+  CancelWeeklyShiftAssignmentsResult,
   CancelShiftAssignmentDayPayload,
   CancelShiftAssignmentDayResult,
   CloneHolidaysPayload,
@@ -21,6 +25,10 @@ import type {
   WorkCalendarDayPayload,
   WorkShift,
   WorkShiftPayload,
+  WeeklyShiftTemplate,
+  WeeklyShiftTemplatePayload,
+  WeeklyShiftAssignment,
+  WeeklyShiftAssignmentQuery,
 } from "./workScheduleTypes";
 
 /**
@@ -154,6 +162,60 @@ export async function includeShiftAssignmentRowsInTimesheet(
 ): Promise<IncludeShiftAssignmentRowsInTimesheetResult> {
   return api.post<IncludeShiftAssignmentRowsInTimesheetResult>(
     `${BASE}/assignments/include-in-timesheet`,
+    payload,
+  );
+}
+
+// ─── Ca tuần ─────────────────────────────────────────────────────────────────
+
+export async function listWeeklyShiftTemplates(): Promise<WeeklyShiftTemplate[]> {
+  return api.get<WeeklyShiftTemplate[]>(`${BASE}/weekly-shifts`);
+}
+
+export async function createWeeklyShiftTemplate(
+  payload: WeeklyShiftTemplatePayload,
+): Promise<WeeklyShiftTemplate> {
+  return api.post<WeeklyShiftTemplate>(`${BASE}/weekly-shifts`, payload);
+}
+
+export async function updateWeeklyShiftTemplate(
+  id: string,
+  payload: Partial<WeeklyShiftTemplatePayload>,
+): Promise<WeeklyShiftTemplate> {
+  return api.patch<WeeklyShiftTemplate>(`${BASE}/weekly-shifts/${id}`, payload);
+}
+
+/** Chỉ xóa được mẫu chưa từng áp dụng để giữ nguyên lịch sử phân ca. */
+export async function deleteWeeklyShiftTemplate(
+  id: string,
+): Promise<{ deleted: boolean }> {
+  return api.delete<{ deleted: boolean }>(`${BASE}/weekly-shifts/${id}`);
+}
+/** Áp một snapshot mẫu tuần cho một hoặc nhiều CBNV trong kỳ công đã chọn. */
+export async function applyWeeklyShiftTemplate(
+  payload: ApplyWeeklyShiftTemplatePayload,
+): Promise<ApplyWeeklyShiftTemplateResult> {
+  return api.post<ApplyWeeklyShiftTemplateResult>(
+    `${BASE}/weekly-shifts/apply`,
+    payload,
+  );
+}
+
+/** Lịch Ca tuần đã áp; có thể lọc theo mẫu hoặc CBNV. */
+export async function listWeeklyShiftAssignments(
+  params: WeeklyShiftAssignmentQuery = {},
+): Promise<WeeklyShiftAssignment[]> {
+  return api.get<WeeklyShiftAssignment[]>(`${BASE}/weekly-shifts/assignments`, {
+    params,
+  });
+}
+
+/** Hủy/tách đúng khoảng Ca tuần đã chọn, không đụng BCC hay ngoại lệ theo ngày. */
+export async function cancelWeeklyShiftAssignments(
+  payload: CancelWeeklyShiftAssignmentsPayload,
+): Promise<CancelWeeklyShiftAssignmentsResult> {
+  return api.post<CancelWeeklyShiftAssignmentsResult>(
+    `${BASE}/weekly-shifts/assignments/cancel`,
     payload,
   );
 }

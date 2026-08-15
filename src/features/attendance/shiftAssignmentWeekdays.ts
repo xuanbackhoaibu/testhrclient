@@ -8,6 +8,29 @@ export const SUNDAY_ONLY = [0] as const;
 export type AssignmentWeekdayPreset =
   "all" | "weekdays" | "saturday" | "sunday" | "custom";
 
+/** A named Ca tuần is a persisted employee schedule, not a direct day override. */
+export function isWeeklyTemplateAssignmentSource(source: string): boolean {
+  return (
+    source === "WEEKLY_TEMPLATE_EMPLOYEE" || source === "WEEKLY_TEMPLATE"
+  );
+}
+
+/**
+ * A correction over any resolved source is stored as an exact employee/day
+ * override. This deliberately includes an explicit Ca tuần OFF: it restores
+ * the OFF when that direct-day override is later cancelled, and leaves BCC
+ * membership untouched.
+ */
+export function requiresOneDayShiftOverride(source: string): boolean {
+  return (
+    source === "ASSIGNMENT_EMPLOYEE" ||
+    source === "ASSIGNMENT_DEPARTMENT" ||
+    source === "ASSIGNMENT_UNIT" ||
+    source === "CALENDAR" ||
+    isWeeklyTemplateAssignmentSource(source)
+  );
+}
+
 const SHORT_WEEKDAY_LABELS: Record<number, string> = {
   0: "CN",
   1: "T2",
@@ -155,6 +178,7 @@ export function canOpenShiftAssignmentGridPicker(
     isWorkingDay: boolean;
     holidayName: string | null;
     source: string;
+    shift?: unknown;
   },
   canInclude: boolean,
   disabled: boolean,
@@ -167,6 +191,13 @@ export function canOpenShiftAssignmentGridPicker(
     Boolean(day.holidayName)
   ) {
     return false;
+  }
+
+  // Ca tuần is an employee-level plan. Both a working template day and an
+  // explicit OFF may receive an intentional one-day exception (for example
+  // Sunday work), saved as a direct day override.
+  if (isWeeklyTemplateAssignmentSource(day.source)) {
+    return true;
   }
 
   // A resolved assignment can be corrected even when it intentionally falls
