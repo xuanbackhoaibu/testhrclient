@@ -36,9 +36,11 @@ import {
   ALL_ASSIGNMENT_WEEKDAYS,
   canOpenShiftAssignmentGridPicker,
   isFullDayAdministrativeOfficeShift,
+  isWeeklyTemplateAssignmentSource,
   MONDAY_TO_FRIDAY,
   optionalAssignmentWeekdays,
   singleDayShiftAssignmentScope,
+  requiresOneDayShiftOverride,
   weekdayForShiftAssignmentDate,
 } from "../../features/attendance/shiftAssignmentWeekdays";
 import { useAuth } from "../../features/auth/useAuth";
@@ -208,6 +210,9 @@ function sourceLabel(source: string): string {
       return "Theo phòng ban";
     case "ASSIGNMENT_UNIT":
       return "Theo đơn vị";
+    case "WEEKLY_TEMPLATE_EMPLOYEE":
+    case "WEEKLY_TEMPLATE":
+      return "Theo ca tuần";
     case "UNASSIGNED":
       return "Chưa phân ca";
     default:
@@ -224,6 +229,16 @@ function cellVisual(day: ShiftAssignmentGridDay, meta: DayMeta) {
   }
   if (day.source === "UNASSIGNED") {
     return { background: "#e5e7eb", color: "#64748b", label: "—" };
+  }
+  if (isWeeklyTemplateAssignmentSource(day.source)) {
+    if (!day.shift) {
+      return { background: "#f1f5f9", color: "#64748b", label: "Nghỉ" };
+    }
+    return {
+      background: "#ede9fe",
+      color: "#6d28d9",
+      label: day.shift.code,
+    };
   }
   if (!day.isWorkingDay) {
     return {
@@ -279,6 +294,15 @@ function cellDescription(
         ? "Ngày được cấu hình nghỉ — không áp ca tại đây"
         : "Chưa phân ca — nhấn để chọn ca";
   }
+  if (isWeeklyTemplateAssignmentSource(day.source)) {
+    const templateName = day.weeklyTemplate?.name
+      ? ` · ${day.weeklyTemplate.name}`
+      : "";
+    if (!day.shift) {
+      return `Nghỉ theo ca tuần${templateName} — không kế thừa ca phòng ban, đơn vị hoặc lịch chung. Nhấn để phân ca ngoại lệ cho đúng ngày.`;
+    }
+    return `${day.shift.code} — ${day.shift.name} · Theo ca tuần${templateName} · Nhấn để đổi ca cho đúng ngày.`;
+  }
   if (!day.isWorkingDay) {
     return "Ngày không làm việc theo lịch công";
   }
@@ -305,6 +329,8 @@ function Legend() {
     { color: "#dbeafe", label: "Ca cá nhân" },
     { color: "#eef6ff", label: "Theo phòng ban" },
     { color: "#ecfdf5", label: "Theo đơn vị" },
+    { color: "#ede9fe", label: "Theo ca tuần" },
+    { color: "#f1f5f9", label: "Nghỉ theo ca" },
     { color: "#e5e7eb", label: "Chưa phân ca" },
     { color: "#fff3bf", label: "Ngày lễ" },
     { color: "#f8fafc", label: "Ngoài khoảng tính công" },
@@ -745,11 +771,9 @@ export function MonthlyShiftAssignmentGrid({
       return;
     }
 
-    const replacesExistingAssignment =
-      picker.day.source === "ASSIGNMENT_EMPLOYEE" ||
-      picker.day.source === "ASSIGNMENT_DEPARTMENT" ||
-      picker.day.source === "ASSIGNMENT_UNIT" ||
-      picker.day.source === "CALENDAR";
+    const replacesExistingAssignment = requiresOneDayShiftOverride(
+      picker.day.source,
+    );
 
     setCellShiftError(null);
     setCellShiftApplyingId(shift.id);
@@ -1177,6 +1201,14 @@ export function MonthlyShiftAssignmentGrid({
             >
               Sắp ca tháng
             </Button>
+            <Button
+              variant="default"
+              size="sm"
+              leftSection={<IconCalendarTime size={16} />}
+              onClick={() => navigate(ROUTES.weeklyShifts)}
+            >
+              Ca tuần
+            </Button>
             <Button variant="default" size="sm" onClick={onOpenRules}>
               Quy tắc PB/đơn vị
             </Button>
@@ -1476,11 +1508,12 @@ export function MonthlyShiftAssignmentGrid({
                                 tableIsDisabled,
                                 hasActiveDirectShift,
                               );
+                            const isWeeklyTemplateDay =
+                              isWeeklyTemplateAssignmentSource(day.source);
+                            const isWeeklyTemplateOff =
+                              isWeeklyTemplateDay && !day.shift;
                             const replacesExistingShift =
-                              day.source === "ASSIGNMENT_EMPLOYEE" ||
-                              day.source === "ASSIGNMENT_DEPARTMENT" ||
-                              day.source === "ASSIGNMENT_UNIT" ||
-                              day.source === "CALENDAR";
+                              requiresOneDayShiftOverride(day.source);
                             const canCancelShift =
                               day.source === "ASSIGNMENT_EMPLOYEE" &&
                               Boolean(day.shift);
@@ -1529,19 +1562,23 @@ export function MonthlyShiftAssignmentGrid({
                                         aria-expanded={pickerOpen}
                                         aria-haspopup="dialog"
                                         aria-label={
-                                          (replacesExistingShift
-                                            ? "Đổi ca cho "
-                                            : "Chọn ca cho ") +
+                                          (isWeeklyTemplateOff
+                                            ? "Phân ca ngoại lệ cho "
+                                            : replacesExistingShift
+                                              ? "Đổi ca cho "
+                                              : "Chọn ca cho ") +
                                           item.row.fullName +
                                           ", ngày " +
                                           formatDate(day.date)
                                         }
                                         title={
-                                          replacesExistingShift
-                                            ? "Nhấn để đổi ca làm việc cho ngày này"
-                                            : meta.isSunday
-                                              ? "Chủ nhật mặc định nghỉ — nhấn để HR phân ca riêng"
-                                              : "Nhấn để chọn ca làm việc cho ngày này"
+                                          isWeeklyTemplateOff
+                                              ? "Nghỉ theo ca tuần — nhấn để phân ca ngoại lệ cho đúng ngày"
+                                              : replacesExistingShift
+                                                ? "Nhấn để đổi ca làm việc cho ngày này"
+                                              : meta.isSunday
+                                                ? "Chủ nhật mặc định nghỉ — nhấn để HR phân ca riêng"
+                                                : "Nhấn để chọn ca làm việc cho ngày này"
                                         }
                                         disabled={cellShiftMutationPending}
                                         onClick={() =>
@@ -1580,19 +1617,24 @@ export function MonthlyShiftAssignmentGrid({
                                           >
                                             <Stack gap={0}>
                                               <Text fw={700} size="sm">
-                                                {replacesExistingShift
-                                                  ? "Đổi ca cho "
-                                                  : "Chọn ca cho "}
+                                                {isWeeklyTemplateOff
+                                                  ? "Phân ca ngoại lệ cho "
+                                                  : replacesExistingShift
+                                                    ? "Đổi ca cho "
+                                                    : "Chọn ca cho "}
                                                 {item.row.fullName}
                                               </Text>
                                               <Text size="xs" c="dimmed">
-                                                {replacesExistingShift
-                                                  ? formatDate(day.date) +
-                                                    " · Ca hiện tại: " +
-                                                    (day.shift?.code ?? "—") +
-                                                    " · Giữ nguyên BCC"
-                                                  : formatDate(day.date) +
-                                                    " · Tự đưa vào BCC"}
+                                                {isWeeklyTemplateOff
+                                                    ? formatDate(day.date) +
+                                                      " · Nghỉ theo ca tuần · Tạo ca cá nhân cho đúng ngày, giữ nguyên BCC"
+                                                    : replacesExistingShift
+                                                      ? formatDate(day.date) +
+                                                        " · Ca hiện tại: " +
+                                                        (day.shift?.code ?? "—") +
+                                                        " · Giữ nguyên BCC"
+                                                    : formatDate(day.date) +
+                                                      " · Tự đưa vào BCC"}
                                               </Text>
                                             </Stack>
                                             <Group gap={2} wrap="nowrap">

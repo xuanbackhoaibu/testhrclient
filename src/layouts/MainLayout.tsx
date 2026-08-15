@@ -59,6 +59,7 @@ const preAttendanceItems: NavItem[] = [
 const attendanceItems: NavItem[] = [
   { label: "Dữ liệu chấm công", path: ROUTES.attendance, icon: IconClipboardList },
   { label: "Ca làm việc", path: ROUTES.workShifts, icon: IconClock },
+  { label: "Ca tuần", path: ROUTES.weeklyShifts, icon: IconCalendarTime },
   { label: "Sắp ca tháng", path: ROUTES.monthlyTimesheetRoster, icon: IconCalendarTime },
   { label: "Phân ca", path: ROUTES.shiftAssignments, icon: IconCalendarTime },
   { label: "Bảng công tháng", path: ROUTES.timesheetGrid, icon: IconTable },
@@ -122,6 +123,7 @@ const routeTitles: Record<string, string> = {
   [ROUTES.timesheetGrid]: "Bảng công tháng",
   [ROUTES.timesheetPeriods]: "Kỳ công",
   [ROUTES.workShifts]: "Ca làm việc",
+  [ROUTES.weeklyShifts]: "Ca tuần",
   [ROUTES.holidays]: "Ngày lễ",
   [ROUTES.shiftAssignments]: "Phân ca",
   [ROUTES.onboarding]: "Onboarding",

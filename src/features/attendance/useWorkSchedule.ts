@@ -1,14 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  applyWeeklyShiftTemplate,
   bulkAssignShifts,
   cancelShiftAssignmentDay,
+  cancelWeeklyShiftAssignments,
   cloneHolidays,
   createHoliday,
   createShiftAssignment,
   createWorkShift,
+  createWeeklyShiftTemplate,
   deleteHoliday,
   deleteWorkShift,
+  deleteWeeklyShiftTemplate,
   endShiftAssignment,
   getShiftAssignmentGrid,
   getWorkCalendar,
@@ -16,14 +20,19 @@ import {
   listHolidays,
   listShiftAssignments,
   listWorkShifts,
+  listWeeklyShiftTemplates,
+  listWeeklyShiftAssignments,
   replaceShiftAssignmentDay,
   updateWorkCalendarDay,
   updateShiftAssignmentWeekdays,
   updateWorkShift,
+  updateWeeklyShiftTemplate,
 } from "./workScheduleApi";
 import type {
+  ApplyWeeklyShiftTemplatePayload,
   BulkShiftAssignmentPayload,
   CancelShiftAssignmentDayPayload,
+  CancelWeeklyShiftAssignmentsPayload,
   CloneHolidaysPayload,
   HolidayPayload,
   IncludeShiftAssignmentRowsInTimesheetPayload,
@@ -33,6 +42,8 @@ import type {
   UpdateShiftAssignmentWeekdaysPayload,
   WorkCalendarDayPayload,
   WorkShiftPayload,
+  WeeklyShiftTemplatePayload,
+  WeeklyShiftAssignmentQuery,
 } from "./workScheduleTypes";
 
 export const workScheduleKeys = {
@@ -43,6 +54,8 @@ export const workScheduleKeys = {
     ["work-schedule", "assignments", params] as const,
   assignmentGrid: (query: ShiftAssignmentGridQuery | null) =>
     ["work-schedule", "assignment-grid", query] as const,
+  weeklyShifts: () => ["work-schedule", "weekly-shifts"] as const,
+  weeklyShiftAssignments: (params: WeeklyShiftAssignmentQuery) => ["work-schedule", "weekly-shifts", "assignments", params] as const,
   calendar: () => ["work-schedule", "calendar"] as const,
 };
 
@@ -240,6 +253,87 @@ export function useIncludeShiftAssignmentRowsInTimesheet() {
   return useMutation({
     mutationFn: (payload: IncludeShiftAssignmentRowsInTimesheetPayload) =>
       includeShiftAssignmentRowsInTimesheet(payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["timesheet"] });
+    },
+  });
+}
+
+// ─── Ca tuần ─────────────────────────────────────────────────────────────────
+
+export function useWeeklyShiftTemplates() {
+  return useQuery({
+    queryKey: workScheduleKeys.weeklyShifts(),
+    queryFn: listWeeklyShiftTemplates,
+    staleTime: 30_000,
+  });
+}
+
+export function useCreateWeeklyShiftTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: WeeklyShiftTemplatePayload) =>
+      createWeeklyShiftTemplate(payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
+    },
+  });
+}
+
+export function useUpdateWeeklyShiftTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: Partial<WeeklyShiftTemplatePayload>;
+    }) => updateWeeklyShiftTemplate(id, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
+    },
+  });
+}
+
+export function useDeleteWeeklyShiftTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteWeeklyShiftTemplate(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
+    },
+  });
+}
+
+export function useApplyWeeklyShiftTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: ApplyWeeklyShiftTemplatePayload) =>
+      applyWeeklyShiftTemplate(payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["timesheet"] });
+    },
+  });
+}
+
+export function useWeeklyShiftAssignments(
+  params: WeeklyShiftAssignmentQuery = {},
+) {
+  return useQuery({
+    queryKey: workScheduleKeys.weeklyShiftAssignments(params),
+    queryFn: () => listWeeklyShiftAssignments(params),
+    staleTime: 30_000,
+  });
+}
+
+export function useCancelWeeklyShiftAssignments() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CancelWeeklyShiftAssignmentsPayload) =>
+      cancelWeeklyShiftAssignments(payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
       void queryClient.invalidateQueries({ queryKey: ["timesheet"] });

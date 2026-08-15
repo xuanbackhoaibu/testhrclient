@@ -146,6 +146,8 @@ export interface ShiftAssignmentGridDay {
   holidayName: string | null;
   source: string;
   shift: { id: string; code: string; name: string } | null;
+  /** Có khi nguồn là mẫu Ca tuần áp cho cá nhân. */
+  weeklyTemplate?: { id: string; name: string } | null;
 }
 
 export interface ShiftAssignmentGridRow {
@@ -210,6 +212,118 @@ export interface BulkShiftAssignmentResult {
   includedInTimesheet: number;
 }
 
+/**
+ * Mẫu Ca tuần lặp cố định từ Thứ 2 đến Chủ nhật.
+ * `shiftId: null` là Nghỉ rõ ràng, không được kế thừa ca PB/đơn vị/lịch chung.
+ */
+export interface WeeklyShiftTemplateDay {
+  /** 0 = Chủ nhật … 6 = Thứ 7. */
+  weekday: number;
+  shiftId: string | null;
+  shift: {
+    id: string;
+    code: string;
+    name: string;
+    groupName?: string | null;
+    startTime?: string;
+    endTime?: string;
+    dayValue?: number;
+  } | null;
+}
+
+export interface WeeklyShiftTemplate {
+  id: string;
+  name: string;
+  note: string | null;
+  status: RecordStatus;
+  days: WeeklyShiftTemplateDay[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WeeklyShiftTemplatePayload {
+  name: string;
+  note?: string | null;
+  /** Phải gồm đủ đúng 7 ngày 0…6; null = Nghỉ rõ ràng. */
+  days: Array<{ weekday: number; shiftId: string | null }>;
+}
+
+export interface ApplyWeeklyShiftTemplatePayload {
+  month: number;
+  year: number;
+  unitId: string;
+  templateId: string;
+  employeeIds: string[];
+  effectiveFrom: string;
+  effectiveTo: string;
+  note?: string;
+  /** Mặc định false: không âm thầm ghi đè ca cá nhân hiện hữu. */
+  overwriteExisting?: boolean;
+  /** Mặc định backend là true; chỉ gửi false khi HR chủ động bỏ chọn. */
+  includeInTimesheet?: boolean;
+}
+
+export interface ApplyWeeklyShiftTemplateResult {
+  created: number;
+  /** Số lịch Ca tuần cũ bị tách/thay thế trong đúng khoảng đã chọn. */
+  replacedWeeklyAssignments: number;
+  /** Số phân ca cá nhân cũ bị thay thế trong đúng khoảng đã chọn. */
+  replacedDirectAssignments: number;
+  /** Các chỉnh sửa ca đúng một ngày được giữ nguyên. */
+  preservedDayOverrides: number;
+  affected: Array<{
+    employeeId: string;
+    effectiveFrom: string;
+    effectiveTo: string;
+  }>;
+  rosterId: string | null;
+  includedInTimesheet: number;
+  recomputeRequired: true;
+}
+
+
+/** Snapshot Ca tuần đã áp cho một CBNV; sửa mẫu sau này không đổi bản ghi này. */
+export interface WeeklyShiftAssignment {
+  id: string;
+  template: { id: string; name: string };
+  employee: { id: string; employeeCode: string; fullName: string };
+  /** Đơn vị gốc khi áp ca tuần; dùng để bảo toàn guard sau điều chuyển. */
+  unitId: string;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  status: RecordStatus;
+  note: string | null;
+  days: WeeklyShiftTemplateDay[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WeeklyShiftAssignmentQuery {
+  employeeId?: string;
+  templateId?: string;
+}
+
+export interface CancelWeeklyShiftAssignmentsPayload {
+  month: number;
+  year: number;
+  unitId: string;
+  employeeIds: string[];
+  /** Chỉ hủy đúng các lịch Ca tuần đã chọn, không chạm lịch chồng cùng CBNV. */
+  assignmentIds: string[];
+  effectiveFrom: string;
+  effectiveTo: string;
+}
+
+export interface CancelWeeklyShiftAssignmentsResult {
+  /** Số lịch Ca tuần bị xóa/tách đúng trong khoảng HR đã chọn. */
+  changed: number;
+  affected: Array<{
+    employeeId: string;
+    effectiveFrom: string;
+    effectiveTo: string;
+  }>;
+  recomputeRequired: true;
+}
 /** Replaces the planned shift for exactly one employee/date without changing BCC membership. */
 export interface ReplaceShiftAssignmentDayPayload {
   month: number;
