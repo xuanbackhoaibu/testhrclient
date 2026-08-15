@@ -25,6 +25,7 @@ import {
   IconInfoCircle,
   IconRefresh,
   IconSearch,
+  IconUserCheck,
   IconUsers,
 } from "@tabler/icons-react";
 
@@ -36,6 +37,7 @@ import {
 import { useAuth } from "../../features/auth/useAuth";
 import {
   useBulkAssignShifts,
+  useIncludeShiftAssignmentRowsInTimesheet,
   useShiftAssignmentGrid,
   useWorkShifts,
 } from "../../features/attendance/useWorkSchedule";
@@ -308,6 +310,8 @@ export function MonthlyShiftAssignmentGrid({
   const [weekdays, setWeekdays] = useState<number[]>(() => [
     ...ALL_ASSIGNMENT_WEEKDAYS,
   ]);
+  const [includeInTimesheetWithShift, setIncludeInTimesheetWithShift] =
+    useState(true);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [pageState, setPageState] = useState({ scope: "", page: 1 });
 
@@ -331,6 +335,7 @@ export function MonthlyShiftAssignmentGrid({
   const unitsQuery = useUnitsSelect();
   const shiftsQuery = useWorkShifts();
   const bulkAssign = useBulkAssignShifts();
+  const includeInTimesheet = useIncludeShiftAssignmentRowsInTimesheet();
   const unitOptions = useMemo(
     () =>
       (unitsQuery.data ?? []).map((unit) => ({
@@ -576,13 +581,16 @@ export function MonthlyShiftAssignmentGrid({
         shiftId,
         effectiveFrom,
         effectiveTo,
+        includeInTimesheet: includeInTimesheetWithShift,
         ...(assignmentWeekdays ? { weekdays: assignmentWeekdays } : {}),
       });
       setSelectionState({ scope: selectionScope, employeeIds: new Set() });
       notifications.show({
         color: "green",
         title: "Đã áp ca làm việc",
-        message: `Đã phân ca cho ${result.created} CBNV. Mở BCC, bấm Cập nhật bảng công rồi mới xuất Excel.`,
+        message: includeInTimesheetWithShift
+          ? `Đã phân ca và đưa ${result.includedInTimesheet ?? result.created} CBNV vào BCC. Mở BCC, bấm Cập nhật bảng công rồi mới xuất Excel.`
+          : `Đã phân ca cho ${result.created} CBNV. Họ chưa vào BCC; dùng nút “Đưa vào BCC” khi đã sẵn sàng.`,
       });
     } catch (error) {
       notifications.show({
@@ -592,6 +600,52 @@ export function MonthlyShiftAssignmentGrid({
           error instanceof Error && error.message
             ? error.message
             : "Kiểm tra khoảng ngày hoặc ca cá nhân đang chồng lấn rồi thử lại.",
+      });
+    }
+  }
+
+  async function includeSelectedInTimesheet() {
+    if (!selectedUnitId) return;
+    if (!selectedEmployeeIds.size) {
+      notifications.show({
+        color: "yellow",
+        title: "Chưa chọn CBNV",
+        message: "Tích chọn ít nhất một CBNV để đưa vào BCC.",
+      });
+      return;
+    }
+    if (grid?.isClosed) {
+      notifications.show({
+        color: "orange",
+        title: "Kỳ công đã chốt",
+        message: "Mở lại kỳ công trước khi thay đổi danh sách BCC.",
+      });
+      return;
+    }
+
+    try {
+      const result = await includeInTimesheet.mutateAsync({
+        month,
+        year,
+        unitId: selectedUnitId,
+        employeeIds: [...selectedEmployeeIds],
+      });
+      notifications.show({
+        color: "green",
+        title: "Đã đưa CBNV vào BCC",
+        message:
+          result.includedInTimesheet > 0
+            ? `Đã đưa ${result.includedInTimesheet} CBNV vào BCC mà không thay đổi ca đã phân. Mở BCC, bấm Cập nhật bảng công rồi kiểm tra kết quả.`
+            : "Các CBNV đã chọn đã ở BCC; không có ca nào bị thay đổi.",
+      });
+    } catch (error) {
+      notifications.show({
+        color: "red",
+        title: "Chưa thể đưa vào BCC",
+        message:
+          error instanceof Error && error.message
+            ? error.message
+            : "Kiểm tra kỳ công, phạm vi đơn vị hoặc CBNV đã có ở BCC đơn vị khác rồi thử lại.",
       });
     }
   }
@@ -619,9 +673,11 @@ export function MonthlyShiftAssignmentGrid({
   return (
     <Stack gap="md">
       <Alert icon={<IconInfoCircle size={18} />} color="blue" variant="light">
-        Phân ca ở đây tạo <b>ca cá nhân</b> cho các CBNV được tích chọn. Ca cá
-        nhân ưu tiên hơn ca phòng ban và đơn vị. Để CBNV xuất hiện trên BCC,
-        chọn họ tại <b>Sắp ca tháng</b>. Sau khi áp ca, HR mở đúng kỳ, bấm{" "}
+        Phân ca ở đây tạo <b>ca cá nhân</b> cho các CBNV được tích chọn; ca cá
+        nhân ưu tiên hơn ca phòng ban và đơn vị. Mặc định, <b>Áp dụng ca</b>{" "}
+        cũng đưa đúng các CBNV đó vào BCC. Bỏ chọn “Đưa vào BCC cùng ca” khi
+        chỉ muốn lập kế hoạch ca. Với CBNV đã có ca, dùng <b>Đưa vào BCC</b> để
+        bổ sung bảng công mà không tạo lại ca. Sau đó mở đúng kỳ, bấm{" "}
         <b>Cập nhật bảng công</b> rồi mới xuất Excel.
       </Alert>
 
@@ -697,9 +753,9 @@ export function MonthlyShiftAssignmentGrid({
           variant="light"
           title="Chưa khởi tạo bảng sắp ca tháng"
         >
-          Bạn vẫn có thể xem và phân ca cho toàn bộ CBNV trong đơn vị. Trước khi
-          mở BCC, vào <b>Sắp ca tháng</b> để chọn những CBNV được đưa vào bảng
-          công.
+          Bạn vẫn có thể xem và phân ca cho toàn bộ CBNV trong đơn vị. Bật
+          <b> Đưa vào BCC cùng ca</b> khi áp ca, hoặc dùng nút <b>Đưa vào BCC</b>
+          cho người đã có ca; hệ thống sẽ khởi tạo danh sách tháng an toàn.
         </Alert>
       ) : null}
 
@@ -746,11 +802,25 @@ export function MonthlyShiftAssignmentGrid({
               width={294}
               onChange={setWeekdays}
             />
+            <Checkbox
+              label="Đưa vào BCC cùng ca"
+              checked={includeInTimesheetWithShift}
+              disabled={
+                tableIsDisabled ||
+                bulkAssign.isPending ||
+                includeInTimesheet.isPending
+              }
+              onChange={(event) =>
+                setIncludeInTimesheetWithShift(event.currentTarget.checked)
+              }
+            />
             <Button
               leftSection={<IconUsers size={17} />}
               loading={bulkAssign.isPending}
               disabled={
                 tableIsDisabled ||
+                bulkAssign.isPending ||
+                includeInTimesheet.isPending ||
                 !selectedEmployeeIds.size ||
                 !shiftId ||
                 !effectiveFrom ||
@@ -759,6 +829,21 @@ export function MonthlyShiftAssignmentGrid({
               onClick={() => void applyShift()}
             >
               Áp dụng ca
+            </Button>
+            <Button
+              variant="light"
+              color="green"
+              leftSection={<IconUserCheck size={17} />}
+              loading={includeInTimesheet.isPending}
+              disabled={
+                tableIsDisabled ||
+                bulkAssign.isPending ||
+                includeInTimesheet.isPending ||
+                !selectedEmployeeIds.size
+              }
+              onClick={() => void includeSelectedInTimesheet()}
+            >
+              Đưa vào BCC
             </Button>
           </Group>
           <Group gap="xs">

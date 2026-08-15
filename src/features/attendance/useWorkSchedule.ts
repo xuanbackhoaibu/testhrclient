@@ -11,6 +11,7 @@ import {
   endShiftAssignment,
   getShiftAssignmentGrid,
   getWorkCalendar,
+  includeShiftAssignmentRowsInTimesheet,
   listHolidays,
   listShiftAssignments,
   listWorkShifts,
@@ -21,6 +22,7 @@ import type {
   BulkShiftAssignmentPayload,
   CloneHolidaysPayload,
   HolidayPayload,
+  IncludeShiftAssignmentRowsInTimesheetPayload,
   ShiftAssignmentGridQuery,
   ShiftAssignmentPayload,
   WorkCalendarDayPayload,
@@ -175,8 +177,23 @@ export function useBulkAssignShifts() {
   return useMutation({
     mutationFn: (payload: BulkShiftAssignmentPayload) =>
       bulkAssignShifts(payload),
+    onSuccess: (_result, payload) => {
+      void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
+      if (payload.includeInTimesheet) {
+        void queryClient.invalidateQueries({ queryKey: ["timesheet"] });
+      }
+    },
+  });
+}
+
+export function useIncludeShiftAssignmentRowsInTimesheet() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: IncludeShiftAssignmentRowsInTimesheetPayload) =>
+      includeShiftAssignmentRowsInTimesheet(payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["timesheet"] });
     },
   });
 }
