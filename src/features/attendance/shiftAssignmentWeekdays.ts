@@ -92,10 +92,15 @@ export function weekdayForShiftAssignmentDate(date: string): number {
   return new Date(`${date}T00:00:00Z`).getUTCDay();
 }
 
-/** Only an actionable gap in the plan grid can be selected for a new ca. */
+/**
+ * An unassigned T2–T7 cell must stay selectable even though the resolver
+ * correctly reports `isWorkingDay = false` until the first shift is assigned.
+ */
 export function canSelectShiftAssignmentGridDay(
   day: {
+    date: string;
     inAttendanceWindow: boolean;
+    calendarIsWorkingDay: boolean;
     isWorkingDay: boolean;
     holidayName: string | null;
     source: string;
@@ -103,11 +108,15 @@ export function canSelectShiftAssignmentGridDay(
   canInclude: boolean,
   disabled: boolean,
 ): boolean {
+  const weekday = weekdayForShiftAssignmentDate(day.date);
+
   return (
     !disabled &&
     canInclude &&
     day.inAttendanceWindow &&
-    day.isWorkingDay &&
+    day.calendarIsWorkingDay &&
+    weekday >= 1 &&
+    weekday <= 6 &&
     !day.holidayName &&
     day.source === "UNASSIGNED"
   );
