@@ -1,7 +1,9 @@
 import {
+  ActionIcon,
   AppShell,
   Avatar,
   Burger,
+  Button,
   Group,
   Menu,
   NavLink,
@@ -9,10 +11,16 @@ import {
   Stack,
   Text,
   Title,
+  Tooltip,
   UnstyledButton,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
-import { IconChevronDown, IconLogout } from "@tabler/icons-react";
+import { useDisclosure, useLocalStorage } from "@mantine/hooks";
+import {
+  IconChevronDown,
+  IconChevronLeft,
+  IconChevronRight,
+  IconLogout,
+} from "@tabler/icons-react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../features/auth/useAuth";
@@ -120,6 +128,10 @@ function NavGroupMenu({
 
 export function MainLayout() {
   const [opened, { toggle, close }] = useDisclosure();
+  const [desktopCollapsed, setDesktopCollapsed] = useLocalStorage({
+    key: "hr-web-client.sidebar-collapsed",
+    defaultValue: false,
+  });
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -141,10 +153,10 @@ export function MainLayout() {
   return (
     <AppShell
       header={{ height: 64 }}
-      navbar={{ width: 288, breakpoint: "md", collapsed: { mobile: !opened } }}
+      navbar={{ width: 260, breakpoint: "md", collapsed: { mobile: !opened, desktop: desktopCollapsed } }}
       padding="lg"
       bg="#f6f8fb"
-      className="app-shell"
+      className={`app-shell ${desktopCollapsed ? "is-sidebar-collapsed" : ""}`}
     >
       <AppShell.Header className="app-shell-header">
         <Group h="100%" px="lg" justify="space-between" wrap="nowrap">
@@ -155,6 +167,19 @@ export function MainLayout() {
               hiddenFrom="md"
               size="sm"
             />
+            {desktopCollapsed ? (
+              <Tooltip label="Mở rộng thanh bên">
+                <ActionIcon
+                  variant="default"
+                  size="lg"
+                  aria-label="Mở rộng thanh bên"
+                  visibleFrom="md"
+                  onClick={() => setDesktopCollapsed(false)}
+                >
+                  <IconChevronRight size={18} />
+                </ActionIcon>
+              </Tooltip>
+            ) : null}
             <Title order={1} size="h3" className="app-shell-title">
               {routeTitles[selectedPath] ?? "HACOM HRM"}
             </Title>
@@ -219,6 +244,18 @@ export function MainLayout() {
               ))}
             </Stack>
           </ScrollArea>
+
+          <Group className="app-sidebar-footer" justify="center" visibleFrom="md">
+            <Button
+              variant="subtle"
+              size="xs"
+              fullWidth
+              leftSection={<IconChevronLeft size={15} />}
+              onClick={() => setDesktopCollapsed(true)}
+            >
+              Thu gọn
+            </Button>
+          </Group>
         </Stack>
       </AppShell.Navbar>
 

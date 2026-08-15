@@ -2230,3 +2230,21 @@ Cập nhật bổ sung:
   - Nhóm: `Tổ chức`, `Quy trình nhân sự`, `Chấm công & Ca làm việc`, `Phân quyền`.
   - Bottom-level: `Audit logs`, `Cài đặt`.
   - Bổ sung các route mới từ main vào nhóm phù hợp: `Ca tuần`, `Sắp ca tháng`, `Cấu hình duyệt phép`.
+- Khôi phục nút `Thu gọn` ở đáy sidebar desktop và nút mở rộng trên header khi sidebar đang ẩn.
+
+## 42. Nâng Cấp Trang Cài Đặt
+
+Đã thay trang `SettingsPage` dạng AntD `Descriptions` thô bằng giao diện Mantine đồng bộ HRM:
+
+- Chia trang thành các khối rõ ràng:
+  - `Thông tin công ty`: hiển thị runtime config hiện tại.
+  - `Giao diện cá nhân`: 3 card chọn `Light`, `Dark`, `Auto`, click áp dụng ngay.
+  - `Thông báo hệ thống`: ma trận toggle theo loại sự kiện và kênh nhận.
+  - `Bảo mật tài khoản`: thẻ chỉ xem mô tả xác thực tập trung, phân quyền, audit và phiên làm việc.
+  - `Phiên hiện tại`: thông tin user, email, roles và data scopes.
+- Phần thông báo được phân quyền:
+  - Chỉ hiển thị loại thông báo mà user có quyền đọc.
+  - Nếu không có quyền đọc loại nào thì khối thông báo không render.
+- Bổ sung khung giờ yên lặng với label ngắn `Bắt đầu` / `Kết thúc`.
+- Cài đặt thông báo lưu vào localStorage qua `writeNotificationSettings` và phát event `hrm:notification-settings-updated`.
+- Dark mode dùng lại các class `.settings-*` đã có trong global style để chữ/nền không bị mờ.
