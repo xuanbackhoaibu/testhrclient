@@ -1,10 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActionIcon,
   Badge,
   Box,
-  Button,
-  Card,
   Group,
   SimpleGrid,
   Stack,
@@ -18,6 +16,7 @@ import {
   IconBell,
   IconDatabase,
   IconDeviceDesktop,
+  IconLanguage,
   IconMoon,
   IconPalette,
   IconSettings,
@@ -38,8 +37,11 @@ import { formatList } from '../../shared/utils/format';
 import { useNavigate } from 'react-router-dom';
 
 type ThemeMode = 'light' | 'dark' | 'auto';
+type FontSizeMode = 'small' | 'medium' | 'large';
+type LanguageMode = 'vi' | 'en' | 'system';
 type SettingsSection =
   | 'general'
+  | 'language'
   | 'session'
   | 'data'
   | 'appearance'
@@ -67,6 +69,55 @@ const themeOptions: Array<{
   },
 ];
 
+const fontSizeStorageKey = 'hrm:appearance-font-size';
+const languageStorageKey = 'hrm:appearance-language';
+const fontSizeOptions: Array<{
+  value: FontSizeMode;
+  label: string;
+  sample: string;
+}> = [
+  { value: 'small', label: 'Nhỏ', sample: 'Aa' },
+  { value: 'medium', label: 'Vừa', sample: 'Aa' },
+  { value: 'large', label: 'Lớn', sample: 'Aa' },
+];
+const languageOptions: Array<{
+  value: LanguageMode;
+  label: string;
+  locale: string;
+  description: string;
+}> = [
+  {
+    value: 'vi',
+    label: 'Tiếng Việt',
+    locale: 'VI',
+    description: 'Giao diện tiếng Việt cho vận hành HRM hằng ngày.',
+  },
+  {
+    value: 'en',
+    label: 'English',
+    locale: 'EN',
+    description: 'English interface for bilingual teams.',
+  },
+  {
+    value: 'system',
+    label: 'Theo hệ thống',
+    locale: 'AUTO',
+    description: 'Sử dụng ngôn ngữ của trình duyệt.',
+  },
+];
+
+function readFontSizeMode(): FontSizeMode {
+  if (typeof window === 'undefined') return 'medium';
+  const saved = window.localStorage.getItem(fontSizeStorageKey);
+  return saved === 'small' || saved === 'large' ? saved : 'medium';
+}
+
+function readLanguageMode(): LanguageMode {
+  if (typeof window === 'undefined') return 'vi';
+  const saved = window.localStorage.getItem(languageStorageKey);
+  return saved === 'en' || saved === 'system' ? saved : 'vi';
+}
+
 function formatDataScopes(scopes: AuthUser['dataScopes'] | undefined) {
   return formatList(
     scopes?.map((scope) =>
@@ -83,6 +134,8 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<SettingsSection>('appearance');
   const [useAvatarBackground, setUseAvatarBackground] = useState(false);
+  const [fontSizeMode, setFontSizeMode] = useState<FontSizeMode>(() => readFontSizeMode());
+  const [languageMode, setLanguageMode] = useState<LanguageMode>(() => readLanguageMode());
   const [notificationSoundEnabled, setNotificationSoundEnabled] = useState(true);
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(() =>
     readNotificationSettings(),
@@ -96,6 +149,9 @@ export function SettingsPage() {
   const notificationsEnabled = readableNotificationEvents.some((event) =>
     Object.values(notificationSettings.matrix[event.key]).some(Boolean),
   );
+  const selectedLanguage =
+    languageOptions.find((option) => option.value === languageMode) ?? languageOptions[0];
+  const browserLanguage = typeof navigator === 'undefined' ? '-' : navigator.language;
 
   const settingsSections: Array<{
     key: SettingsSection;
@@ -111,6 +167,11 @@ export function SettingsPage() {
       key: 'session',
       label: 'Tài khoản và bảo mật',
       icon: IconShield,
+    },
+    {
+      key: 'language',
+      label: 'Ngôn ngữ',
+      icon: IconLanguage,
     },
     {
       key: 'data',
@@ -150,6 +211,30 @@ export function SettingsPage() {
     notifications.show({
       color: 'green',
       message: `Đã áp dụng giao diện ${mode === 'auto' ? 'tự động' : mode}.`,
+    });
+  }
+
+  useEffect(() => {
+    document.documentElement.dataset.hrmFontSize = fontSizeMode;
+    window.localStorage.setItem(fontSizeStorageKey, fontSizeMode);
+  }, [fontSizeMode]);
+
+  function selectFontSize(mode: FontSizeMode) {
+    setFontSizeMode(mode);
+    notifications.show({
+      color: 'green',
+      message: `Đã áp dụng cỡ chữ ${mode === 'small' ? 'nhỏ' : mode === 'large' ? 'lớn' : 'vừa'}.`,
+    });
+  }
+
+  function selectLanguage(mode: LanguageMode) {
+    setLanguageMode(mode);
+    window.localStorage.setItem(languageStorageKey, mode);
+    notifications.show({
+      color: 'green',
+      message: `Đã chọn ngôn ngữ ${
+        mode === 'vi' ? 'Tiếng Việt' : mode === 'en' ? 'English' : 'theo hệ thống'
+      }.`,
     });
   }
 
@@ -265,6 +350,29 @@ export function SettingsPage() {
                   />
                 </Group>
               </div>
+
+              <div>
+                <Title order={3} className="settings-zalo-section-title" mb="sm">Cỡ chữ</Title>
+                <div className="settings-zalo-section-card settings-zalo-font-size">
+                  {fontSizeOptions.map((option) => {
+                    const selected = fontSizeMode === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={`settings-zalo-font-choice is-${option.value}${selected ? ' is-selected' : ''}`}
+                        onClick={() => selectFontSize(option.value)}
+                      >
+                        <span className="settings-zalo-font-sample">{option.sample}</span>
+                        <Group gap="xs" justify="center">
+                          <span className={`settings-zalo-radio${selected ? ' is-selected' : ''}`} />
+                          <Text size="sm">{option.label}</Text>
+                        </Group>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </Stack>
           ) : null}
 
@@ -321,24 +429,14 @@ export function SettingsPage() {
           {activeSection === 'general' ? (
             <Stack gap="xl">
               <div>
-                <Title order={2} size="h3">Cài đặt chung</Title>
+                <Title order={2} className="settings-zalo-content-title">Cài đặt chung</Title>
                 <Text size="sm" c="dimmed">Runtime config đang dùng trong phiên hiện tại.</Text>
               </div>
 
               <div>
-                <Title order={3} size="h4" mb="sm">Ngôn ngữ</Title>
-                <Card withBorder radius="md" p={0} className="settings-zalo-section-card">
-                  <Group justify="space-between" className="settings-zalo-row">
-                    <Text size="sm">Thay đổi ngôn ngữ</Text>
-                    <Button variant="default" size="sm">Tiếng Việt</Button>
-                  </Group>
-                </Card>
-              </div>
-
-              <div>
                 <Group justify="space-between" mb="sm">
-                  <Title order={3} size="h4">Cấu hình vận hành</Title>
-                  <Badge variant="light" color="gray">Runtime</Badge>
+                  <Title order={3} className="settings-zalo-section-title">Cấu hình vận hành</Title>
+                  <Badge variant="light" color="gray" className="settings-zalo-badge">Runtime</Badge>
                 </Group>
                 <Stack gap={0} className="settings-zalo-section-card">
                 {runtimeItems.map((item) => (
@@ -354,10 +452,58 @@ export function SettingsPage() {
             </Stack>
           ) : null}
 
+          {activeSection === 'language' ? (
+            <Stack gap="xl">
+              <div>
+                <Title order={2} className="settings-zalo-content-title">Ngôn ngữ</Title>
+                <Text className="settings-zalo-subtitle">Chọn ngôn ngữ hiển thị trong ứng dụng.</Text>
+              </div>
+
+              <div>
+                <Title order={3} className="settings-zalo-section-title" mb="sm">Ngôn ngữ hiển thị</Title>
+                <div className="settings-zalo-language-panel">
+                  <Group justify="space-between" className="settings-zalo-language-current">
+                    <div>
+                      <Text size="sm" c="dimmed">Đang áp dụng</Text>
+                      <Text size="sm">{selectedLanguage.label}</Text>
+                    </div>
+                    <Badge variant="light" color="blue">{selectedLanguage.locale}</Badge>
+                  </Group>
+
+                  <div className="settings-zalo-language-grid">
+                    {languageOptions.map((option) => {
+                    const selected = languageMode === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={`settings-zalo-language-card${selected ? ' is-selected' : ''}`}
+                        onClick={() => selectLanguage(option.value)}
+                      >
+                        <span className="settings-zalo-language-locale">{option.locale}</span>
+                        <span className="settings-zalo-language-copy">
+                          <Text size="sm">{option.label}</Text>
+                          <Text size="xs" c="dimmed">{option.description}</Text>
+                        </span>
+                        <span className={`settings-zalo-radio${selected ? ' is-selected' : ''}`} />
+                      </button>
+                    );
+                  })}
+                  </div>
+
+                  <Group justify="space-between" className="settings-zalo-language-browser">
+                    <Text size="sm" c="dimmed">Ngôn ngữ trình duyệt</Text>
+                    <Text size="sm">{browserLanguage}</Text>
+                  </Group>
+                </div>
+              </div>
+            </Stack>
+          ) : null}
+
           {activeSection === 'session' ? (
             <Stack gap="xl">
               <div>
-                <Title order={2} size="h3">Tài khoản và bảo mật</Title>
+                <Title order={2} className="settings-zalo-content-title">Tài khoản và bảo mật</Title>
                 <Text size="sm" c="dimmed">Thông tin nhận diện tài khoản HRM đang đăng nhập.</Text>
               </div>
 
@@ -382,13 +528,13 @@ export function SettingsPage() {
 
           {activeSection === 'data' ? (
             <Stack gap="xl">
-              <Title order={2} size="h3">
+              <Title order={2} className="settings-zalo-content-title">
                 {settingsSections.find((item) => item.key === activeSection)?.label}
               </Title>
               <div className="settings-zalo-section-card">
                 <Group justify="space-between" className="settings-zalo-row">
                   <Text size="sm">Cấu hình sẽ được đồng bộ theo quyền và API tương ứng.</Text>
-                  <Badge variant="light" color="gray">Sắp có</Badge>
+                  <Badge variant="light" color="gray" className="settings-zalo-badge">Sắp có</Badge>
                 </Group>
               </div>
             </Stack>

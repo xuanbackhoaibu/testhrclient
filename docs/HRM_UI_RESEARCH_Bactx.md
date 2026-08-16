@@ -2303,3 +2303,29 @@ Cập nhật bổ sung:
 - Đồng bộ màu active của menu chính bên ngoài Cài đặt:
   - Sidebar chính khi chọn module dùng nền xanh nhạt `#e8f3ff` và chữ/vạch xanh `#0b64d8`, giống active item trong modal Cài đặt.
   - Dark mode dùng nền xanh dịu và vạch `#93c5fd` để dễ nhìn.
+- Nâng cấp tab `Giao diện` trong Cài đặt:
+  - Thêm mục `Cỡ chữ` với 3 lựa chọn `Nhỏ`, `Vừa`, `Lớn`.
+  - Lựa chọn được lưu vào localStorage key `hrm:appearance-font-size`.
+  - Gắn `data-hrm-font-size` lên root để đồng bộ nền tảng font-size cho Mantine/rem và body text.
+  - Bổ sung dark mode cho card chọn cỡ chữ.
+- Tách `Ngôn ngữ` thành module riêng trong Cài đặt:
+  - Menu trái có mục `Ngôn ngữ` riêng, nằm sau `Cài đặt chung`.
+  - Card `Thay đổi ngôn ngữ` được chuyển khỏi `Cài đặt chung` sang tab `Ngôn ngữ`.
+- Nâng cấp module `Ngôn ngữ`:
+  - Đổi mô tả thành `Chọn ngôn ngữ hiển thị trong ứng dụng.`
+  - Thêm nhóm `Ngôn ngữ hiển thị` với 3 lựa chọn: `Tiếng Việt`, `English`, `Theo hệ thống`.
+  - Lựa chọn `Theo hệ thống` có mô tả `Sử dụng ngôn ngữ của trình duyệt.`
+  - Trạng thái ngôn ngữ lưu vào localStorage key `hrm:appearance-language`.
+  - Nâng cấp giao diện thành panel chọn ngôn ngữ:
+    - Có khối `Đang áp dụng` và badge mã ngôn ngữ `VI` / `EN` / `AUTO`.
+    - Mỗi lựa chọn là card riêng có mã ngôn ngữ, mô tả ngắn và radio trạng thái.
+    - Hiển thị thêm dòng `Ngôn ngữ trình duyệt` để HR biết chế độ hệ thống đang dựa trên locale nào.
+    - Đồng bộ hover/selected và dark mode cho panel ngôn ngữ.
+  - Chuyển vị trí mục `Ngôn ngữ` xuống dưới `Tài khoản và bảo mật` trong menu Cài đặt.
+- Bỏ in đậm tiêu đề `Tài khoản và bảo mật` trong nội dung tab, dùng style title mảnh giống các tab Zalo-style khác.
+- Bỏ in đậm trong tab `Cài đặt chung`:
+  - Title `Cài đặt chung` và `Cấu hình vận hành` dùng style mảnh.
+  - Badge `Runtime` trong modal Cài đặt không uppercase/in đậm.
+- Bỏ in đậm trong tab `Quản lý dữ liệu`:
+  - Title dùng style mảnh giống các tab khác.
+  - Badge `Sắp có` dùng class badge mảnh của modal Cài đặt.

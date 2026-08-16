@@ -38,6 +38,30 @@ body {
   line-height: 1.5;
 }
 
+:root[data-hrm-font-size='small'] {
+  font-size: 15px;
+}
+
+:root[data-hrm-font-size='small'] body {
+  font-size: 13px;
+}
+
+:root[data-hrm-font-size='medium'] {
+  font-size: 16px;
+}
+
+:root[data-hrm-font-size='medium'] body {
+  font-size: 14px;
+}
+
+:root[data-hrm-font-size='large'] {
+  font-size: 17px;
+}
+
+:root[data-hrm-font-size='large'] body {
+  font-size: 15px;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -1641,6 +1665,11 @@ body {
   margin: 0 0 18px;
 }
 
+.settings-zalo-badge {
+  font-weight: 400;
+  text-transform: none;
+}
+
 .settings-zalo-close {
   color: var(--hrm-text);
   position: absolute;
@@ -1667,6 +1696,74 @@ body {
 
 .settings-zalo-row + .settings-zalo-row {
   border-top: 1px solid var(--hrm-border-soft);
+}
+
+.settings-zalo-language-panel {
+  background: var(--hrm-surface);
+  border: 1px solid var(--hrm-border);
+  border-radius: 11px;
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.settings-zalo-language-current,
+.settings-zalo-language-browser {
+  background: #f7f9fc;
+  border-radius: 9px;
+  min-height: 48px;
+  padding: 10px 14px;
+}
+
+.settings-zalo-language-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-zalo-language-card {
+  align-items: center;
+  background: var(--hrm-surface);
+  border: 1px solid var(--hrm-border);
+  border-radius: 10px;
+  color: var(--hrm-text);
+  cursor: pointer;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 46px minmax(0, 1fr) 18px;
+  min-height: 72px;
+  padding: 12px 14px;
+  text-align: left;
+  transition: background-color 150ms ease, border-color 150ms ease;
+  width: 100%;
+}
+
+.settings-zalo-language-card:hover,
+.settings-zalo-language-card.is-selected {
+  background: #f5f9ff;
+  border-color: #0b64d8;
+}
+
+.settings-zalo-language-locale {
+  align-items: center;
+  background: #e8f3ff;
+  border-radius: 8px;
+  color: #0b64d8;
+  display: inline-flex;
+  font-size: 12px;
+  height: 34px;
+  justify-content: center;
+  width: 46px;
+}
+
+.settings-zalo-language-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.settings-zalo-language-copy .mantine-Text-root {
+  font-size: 14px;
+  font-weight: 400;
 }
 
 .settings-zalo-theme-section {
@@ -1804,6 +1901,62 @@ body {
 
 .settings-zalo-theme-choice.is-auto .settings-theme-preview .settings-theme-bubble.is-secondary {
   background: #62a5ff;
+}
+
+.settings-zalo-font-size {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 16px;
+}
+
+.settings-zalo-font-choice {
+  align-items: center;
+  background: var(--hrm-surface);
+  border: 1px solid var(--hrm-border);
+  border-radius: 10px;
+  color: #27334a;
+  cursor: pointer;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  min-height: 86px;
+  padding: 12px 8px;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.settings-zalo-font-choice:hover {
+  background: #f5f9ff;
+}
+
+.settings-zalo-font-choice.is-selected {
+  background: #e8f3ff;
+  border-color: #0b64d8;
+}
+
+.settings-zalo-font-sample {
+  color: #172033;
+  display: inline-flex;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.settings-zalo-font-choice.is-small .settings-zalo-font-sample {
+  font-size: 18px;
+}
+
+.settings-zalo-font-choice.is-medium .settings-zalo-font-sample {
+  font-size: 23px;
+}
+
+.settings-zalo-font-choice.is-large .settings-zalo-font-sample {
+  font-size: 28px;
+}
+
+.settings-zalo-font-choice .mantine-Text-root {
+  color: #27334a;
+  font-size: 14px;
+  font-weight: 400;
 }
 
 .settings-zalo-notification-mode {
@@ -2682,6 +2835,29 @@ body {
   border-top-color: var(--hrm-border);
 }
 
+:root[data-mantine-color-scheme='dark'] .settings-zalo-language-panel,
+:root[data-mantine-color-scheme='dark'] .settings-zalo-language-card {
+  background: var(--hrm-surface);
+  border-color: var(--hrm-border);
+  color: var(--hrm-text);
+}
+
+:root[data-mantine-color-scheme='dark'] .settings-zalo-language-current,
+:root[data-mantine-color-scheme='dark'] .settings-zalo-language-browser {
+  background: var(--hrm-surface-subtle);
+}
+
+:root[data-mantine-color-scheme='dark'] .settings-zalo-language-card:hover,
+:root[data-mantine-color-scheme='dark'] .settings-zalo-language-card.is-selected {
+  background: color-mix(in srgb, #339af0, transparent 82%);
+  border-color: #60a5fa;
+}
+
+:root[data-mantine-color-scheme='dark'] .settings-zalo-language-locale {
+  background: color-mix(in srgb, #339af0, transparent 82%);
+  color: #bfdbfe;
+}
+
 :root[data-mantine-color-scheme='dark'] .settings-zalo-radio {
   border-color: var(--hrm-border);
 }
@@ -2692,6 +2868,23 @@ body {
 
 :root[data-mantine-color-scheme='dark'] .settings-zalo-radio.is-selected::after {
   background: #60a5fa;
+}
+
+:root[data-mantine-color-scheme='dark'] .settings-zalo-font-choice {
+  background: var(--hrm-surface);
+  border-color: var(--hrm-border);
+  color: var(--hrm-text);
+}
+
+:root[data-mantine-color-scheme='dark'] .settings-zalo-font-choice:hover,
+:root[data-mantine-color-scheme='dark'] .settings-zalo-font-choice.is-selected {
+  background: color-mix(in srgb, #339af0, transparent 82%);
+  border-color: #60a5fa;
+}
+
+:root[data-mantine-color-scheme='dark'] .settings-zalo-font-sample,
+:root[data-mantine-color-scheme='dark'] .settings-zalo-font-choice .mantine-Text-root {
+  color: var(--hrm-text);
 }
 
 :root[data-mantine-color-scheme='dark'] .settings-security-row + .settings-security-row {
