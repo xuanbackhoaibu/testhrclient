@@ -4,7 +4,6 @@ import {
   Badge,
   Box,
   Group,
-  SimpleGrid,
   Stack,
   Switch,
   Text,
@@ -16,12 +15,16 @@ import {
   IconBell,
   IconDatabase,
   IconDeviceDesktop,
+  IconId,
+  IconKey,
   IconLanguage,
   IconMoon,
   IconPalette,
   IconSettings,
   IconShield,
   IconSun,
+  IconUserCheck,
+  IconUsersGroup,
   IconX,
 } from '@tabler/icons-react';
 
@@ -33,12 +36,18 @@ import {
   writeNotificationSettings,
   type NotificationSettings,
 } from '../../features/notifications/notificationSettings';
+import {
+  applyAppLanguage,
+  readAppLanguageMode,
+  translateUiText,
+  writeAppLanguageMode,
+  type AppLanguageMode,
+} from '../../shared/i18n/appLanguage';
 import { formatList } from '../../shared/utils/format';
 import { useNavigate } from 'react-router-dom';
 
 type ThemeMode = 'light' | 'dark' | 'auto';
 type FontSizeMode = 'small' | 'medium' | 'large';
-type LanguageMode = 'vi' | 'en' | 'system';
 type SettingsSection =
   | 'general'
   | 'language'
@@ -70,7 +79,6 @@ const themeOptions: Array<{
 ];
 
 const fontSizeStorageKey = 'hrm:appearance-font-size';
-const languageStorageKey = 'hrm:appearance-language';
 const fontSizeOptions: Array<{
   value: FontSizeMode;
   label: string;
@@ -81,7 +89,7 @@ const fontSizeOptions: Array<{
   { value: 'large', label: 'Lớn', sample: 'Aa' },
 ];
 const languageOptions: Array<{
-  value: LanguageMode;
+  value: AppLanguageMode;
   label: string;
   locale: string;
   description: string;
@@ -112,12 +120,6 @@ function readFontSizeMode(): FontSizeMode {
   return saved === 'small' || saved === 'large' ? saved : 'medium';
 }
 
-function readLanguageMode(): LanguageMode {
-  if (typeof window === 'undefined') return 'vi';
-  const saved = window.localStorage.getItem(languageStorageKey);
-  return saved === 'en' || saved === 'system' ? saved : 'vi';
-}
-
 function formatDataScopes(scopes: AuthUser['dataScopes'] | undefined) {
   return formatList(
     scopes?.map((scope) =>
@@ -135,7 +137,7 @@ export function SettingsPage() {
   const [activeSection, setActiveSection] = useState<SettingsSection>('appearance');
   const [useAvatarBackground, setUseAvatarBackground] = useState(false);
   const [fontSizeMode, setFontSizeMode] = useState<FontSizeMode>(() => readFontSizeMode());
-  const [languageMode, setLanguageMode] = useState<LanguageMode>(() => readLanguageMode());
+  const [languageMode, setLanguageMode] = useState<AppLanguageMode>(() => readAppLanguageMode());
   const [notificationSoundEnabled, setNotificationSoundEnabled] = useState(true);
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(() =>
     readNotificationSettings(),
@@ -149,9 +151,26 @@ export function SettingsPage() {
   const notificationsEnabled = readableNotificationEvents.some((event) =>
     Object.values(notificationSettings.matrix[event.key]).some(Boolean),
   );
+  const accountName = user?.fullName ?? user?.email ?? '-';
+  const accountEmail = user?.email ?? '-';
+  const accountStatus = user?.accountStatus ?? user?.account_status ?? '-';
+  const authUserId = user?.authUserId ?? user?.externalAuthUserId ?? '-';
+  const employeeId = user?.employeeId ?? '-';
+  const rolesText = formatList(roles);
+  const dataScopesText = formatDataScopes(user?.dataScopes);
+  const accountInitial = accountName && accountName !== '-' ? accountName.charAt(0).toUpperCase() : 'H';
+  const accountDetailItems = [
+    { icon: IconUserCheck, label: 'User', value: accountName },
+    { icon: IconId, label: 'Auth user ID', value: authUserId },
+    { icon: IconShield, label: 'Account status', value: accountStatus },
+    { icon: IconId, label: 'Employee ID', value: employeeId ?? '-' },
+    { icon: IconUsersGroup, label: 'Roles', value: rolesText },
+    { icon: IconKey, label: 'Data scopes', value: dataScopesText },
+  ];
   const selectedLanguage =
     languageOptions.find((option) => option.value === languageMode) ?? languageOptions[0];
   const browserLanguage = typeof navigator === 'undefined' ? '-' : navigator.language;
+  const t = (value: string) => translateUiText(value, languageMode);
 
   const settingsSections: Array<{
     key: SettingsSection;
@@ -160,33 +179,33 @@ export function SettingsPage() {
   }> = [
     {
       key: 'general',
-      label: 'Cài đặt chung',
+      label: t('Cài đặt chung'),
       icon: IconSettings,
     },
     {
       key: 'session',
-      label: 'Tài khoản và bảo mật',
+      label: t('Tài khoản và bảo mật'),
       icon: IconShield,
     },
     {
       key: 'language',
-      label: 'Ngôn ngữ',
+      label: t('Ngôn ngữ'),
       icon: IconLanguage,
     },
     {
       key: 'data',
-      label: 'Quản lý dữ liệu',
+      label: t('Quản lý dữ liệu'),
       icon: IconDatabase,
     },
     {
       key: 'appearance',
-      label: 'Giao diện',
+      label: t('Giao diện'),
       icon: IconPalette,
     },
     ...(readableNotificationEvents.length > 0
       ? [{
           key: 'notifications' as const,
-          label: 'Thông báo',
+          label: t('Thông báo'),
           icon: IconBell,
         }]
       : []),
@@ -219,6 +238,10 @@ export function SettingsPage() {
     window.localStorage.setItem(fontSizeStorageKey, fontSizeMode);
   }, [fontSizeMode]);
 
+  useEffect(() => {
+    applyAppLanguage(languageMode);
+  }, [languageMode]);
+
   function selectFontSize(mode: FontSizeMode) {
     setFontSizeMode(mode);
     notifications.show({
@@ -227,9 +250,9 @@ export function SettingsPage() {
     });
   }
 
-  function selectLanguage(mode: LanguageMode) {
+  function selectLanguage(mode: AppLanguageMode) {
     setLanguageMode(mode);
-    window.localStorage.setItem(languageStorageKey, mode);
+    writeAppLanguageMode(mode);
     notifications.show({
       color: 'green',
       message: `Đã chọn ngôn ngữ ${
@@ -274,7 +297,7 @@ export function SettingsPage() {
     >
       <Box className="settings-zalo-window">
         <aside className="settings-zalo-nav">
-          <Title order={1} className="settings-zalo-title">Cài đặt</Title>
+          <Title order={1} className="settings-zalo-title">{t('Cài đặt')}</Title>
           <Stack gap={4} className="settings-zalo-nav-list">
             {settingsSections.map((item) => {
               const Icon = item.icon;
@@ -303,7 +326,7 @@ export function SettingsPage() {
             variant="subtle"
             size="xl"
             className="settings-zalo-close"
-            aria-label="Đóng cài đặt"
+            aria-label={t('Cài đặt')}
             onClick={() => navigate(-1)}
           >
             <IconX size={28} />
@@ -311,7 +334,7 @@ export function SettingsPage() {
 
           {activeSection === 'appearance' ? (
             <Stack gap="xl">
-              <Title order={2} className="settings-zalo-content-title">Cài đặt giao diện</Title>
+              <Title order={2} className="settings-zalo-content-title">{t('Cài đặt giao diện')}</Title>
 
               <div className="settings-zalo-section-card settings-zalo-theme-section">
                 {themeOptions.map((option) => {
@@ -331,7 +354,7 @@ export function SettingsPage() {
                       <Group justify="center" gap="xs" mt="md">
                         <span className={`settings-zalo-radio${selected ? ' is-selected' : ''}`} />
                         <Text size="sm">
-                          {option.value === 'light' ? 'Sáng' : option.value === 'dark' ? 'Tối' : 'Hệ Thống'}
+                          {option.value === 'light' ? t('Sáng') : option.value === 'dark' ? t('Tối') : t('Theo hệ thống')}
                         </Text>
                       </Group>
                     </button>
@@ -340,19 +363,19 @@ export function SettingsPage() {
               </div>
 
               <div>
-                <Title order={3} className="settings-zalo-section-title" mb="sm">Hình nền chat</Title>
+                <Title order={3} className="settings-zalo-section-title" mb="sm">{t('Hình nền chat')}</Title>
                 <Group justify="space-between" className="settings-zalo-section-card settings-zalo-row">
-                  <Text size="sm">Sử dụng Avatar làm hình nền</Text>
+                  <Text size="sm">{t('Sử dụng Avatar làm hình nền')}</Text>
                   <Switch
                     checked={useAvatarBackground}
                     onChange={(event) => setUseAvatarBackground(event.currentTarget.checked)}
-                    aria-label="Sử dụng Avatar làm hình nền"
+                    aria-label={t('Sử dụng Avatar làm hình nền')}
                   />
                 </Group>
               </div>
 
               <div>
-                <Title order={3} className="settings-zalo-section-title" mb="sm">Cỡ chữ</Title>
+                <Title order={3} className="settings-zalo-section-title" mb="sm">{t('Cỡ chữ')}</Title>
                 <div className="settings-zalo-section-card settings-zalo-font-size">
                   {fontSizeOptions.map((option) => {
                     const selected = fontSizeMode === option.value;
@@ -366,7 +389,7 @@ export function SettingsPage() {
                         <span className="settings-zalo-font-sample">{option.sample}</span>
                         <Group gap="xs" justify="center">
                           <span className={`settings-zalo-radio${selected ? ' is-selected' : ''}`} />
-                          <Text size="sm">{option.label}</Text>
+                          <Text size="sm">{t(option.label)}</Text>
                         </Group>
                       </button>
                     );
@@ -379,8 +402,8 @@ export function SettingsPage() {
           {activeSection === 'notifications' && readableNotificationEvents.length > 0 ? (
             <Stack gap="xl">
               <div>
-                <Title order={2} className="settings-zalo-content-title">Cài đặt thông báo</Title>
-                <Text className="settings-zalo-subtitle">Nhận được thông báo mỗi khi có cập nhật mới trong HRM</Text>
+                <Title order={2} className="settings-zalo-content-title">{t('Cài đặt thông báo')}</Title>
+                <Text className="settings-zalo-subtitle">{t('Nhận được thông báo mỗi khi có cập nhật mới trong HRM')}</Text>
               </div>
 
               <div className="settings-zalo-section-card settings-zalo-notification-mode">
@@ -404,7 +427,7 @@ export function SettingsPage() {
                       </span>
                       <Group justify="center" gap="xs">
                         <span className={`settings-zalo-radio${selected ? ' is-selected' : ''}`} />
-                        <Text size="sm">{option.label}</Text>
+                        <Text size="sm">{t(option.label)}</Text>
                       </Group>
                     </button>
                   );
@@ -412,9 +435,9 @@ export function SettingsPage() {
               </div>
 
               <div>
-                <Title order={3} className="settings-zalo-section-title" mb="sm">Âm thanh thông báo</Title>
+                <Title order={3} className="settings-zalo-section-title" mb="sm">{t('Âm thanh thông báo')}</Title>
                 <Group justify="space-between" className="settings-zalo-section-card settings-zalo-row">
-                  <Text size="sm">Phát âm thanh khi có tin nhắn & thông báo mới</Text>
+                  <Text size="sm">{t('Phát âm thanh khi có tin nhắn & thông báo mới')}</Text>
                   <Switch
                     checked={notificationSoundEnabled}
                     onChange={(event) => setNotificationSoundEnabled(event.currentTarget.checked)}
@@ -429,19 +452,19 @@ export function SettingsPage() {
           {activeSection === 'general' ? (
             <Stack gap="xl">
               <div>
-                <Title order={2} className="settings-zalo-content-title">Cài đặt chung</Title>
-                <Text size="sm" c="dimmed">Runtime config đang dùng trong phiên hiện tại.</Text>
+                <Title order={2} className="settings-zalo-content-title">{t('Cài đặt chung')}</Title>
+                <Text size="sm" c="dimmed">{t('Runtime config đang dùng trong phiên hiện tại.')}</Text>
               </div>
 
               <div>
                 <Group justify="space-between" mb="sm">
-                  <Title order={3} className="settings-zalo-section-title">Cấu hình vận hành</Title>
-                  <Badge variant="light" color="gray" className="settings-zalo-badge">Runtime</Badge>
+                  <Title order={3} className="settings-zalo-section-title">{t('Cấu hình vận hành')}</Title>
+                  <Badge variant="light" color="gray" className="settings-zalo-badge">{t('Runtime')}</Badge>
                 </Group>
                 <Stack gap={0} className="settings-zalo-section-card">
                 {runtimeItems.map((item) => (
                   <Group key={item.label} justify="space-between" gap="md" className="settings-zalo-row">
-                    <Text size="sm" c="dimmed">{item.label}</Text>
+                    <Text size="sm" c="dimmed">{t(item.label)}</Text>
                     <Text size="sm" ta="right" maw={520} truncate="end">
                       {item.value}
                     </Text>
@@ -455,17 +478,17 @@ export function SettingsPage() {
           {activeSection === 'language' ? (
             <Stack gap="xl">
               <div>
-                <Title order={2} className="settings-zalo-content-title">Ngôn ngữ</Title>
-                <Text className="settings-zalo-subtitle">Chọn ngôn ngữ hiển thị trong ứng dụng.</Text>
+                <Title order={2} className="settings-zalo-content-title">{t('Ngôn ngữ')}</Title>
+                <Text className="settings-zalo-subtitle">{t('Chọn ngôn ngữ hiển thị trong ứng dụng.')}</Text>
               </div>
 
               <div>
-                <Title order={3} className="settings-zalo-section-title" mb="sm">Ngôn ngữ hiển thị</Title>
+                <Title order={3} className="settings-zalo-section-title" mb="sm">{t('Ngôn ngữ hiển thị')}</Title>
                 <div className="settings-zalo-language-panel">
                   <Group justify="space-between" className="settings-zalo-language-current">
                     <div>
-                      <Text size="sm" c="dimmed">Đang áp dụng</Text>
-                      <Text size="sm">{selectedLanguage.label}</Text>
+                      <Text size="sm" c="dimmed">{t('Đang áp dụng')}</Text>
+                      <Text size="sm">{t(selectedLanguage.label)}</Text>
                     </div>
                     <Badge variant="light" color="blue">{selectedLanguage.locale}</Badge>
                   </Group>
@@ -482,8 +505,8 @@ export function SettingsPage() {
                       >
                         <span className="settings-zalo-language-locale">{option.locale}</span>
                         <span className="settings-zalo-language-copy">
-                          <Text size="sm">{option.label}</Text>
-                          <Text size="xs" c="dimmed">{option.description}</Text>
+                          <Text size="sm">{t(option.label)}</Text>
+                          <Text size="xs" c="dimmed">{t(option.description)}</Text>
                         </span>
                         <span className={`settings-zalo-radio${selected ? ' is-selected' : ''}`} />
                       </button>
@@ -492,7 +515,7 @@ export function SettingsPage() {
                   </div>
 
                   <Group justify="space-between" className="settings-zalo-language-browser">
-                    <Text size="sm" c="dimmed">Ngôn ngữ trình duyệt</Text>
+                    <Text size="sm" c="dimmed">{t('Ngôn ngữ trình duyệt')}</Text>
                     <Text size="sm">{browserLanguage}</Text>
                   </Group>
                 </div>
@@ -503,26 +526,39 @@ export function SettingsPage() {
           {activeSection === 'session' ? (
             <Stack gap="xl">
               <div>
-                <Title order={2} className="settings-zalo-content-title">Tài khoản và bảo mật</Title>
-                <Text size="sm" c="dimmed">Thông tin nhận diện tài khoản HRM đang đăng nhập.</Text>
+                <Title order={2} className="settings-zalo-content-title">{t('Tài khoản và bảo mật')}</Title>
+                <Text size="sm" c="dimmed">{t('Thông tin nhận diện tài khoản HRM đang đăng nhập.')}</Text>
               </div>
 
-              <SimpleGrid cols={{ base: 1, md: 2 }} spacing={0} className="settings-zalo-section-card">
-            {[
-              ['Người dùng', user?.fullName ?? '-'],
-              ['Email', user?.email ?? '-'],
-              ['Auth user ID', user?.authUserId ?? user?.externalAuthUserId ?? '-'],
-              ['Trạng thái tài khoản', user?.accountStatus ?? user?.account_status ?? '-'],
-              ['Employee ID', user?.employeeId ?? '-'],
-              ['Roles', formatList(roles)],
-              ['Data scopes', formatDataScopes(user?.dataScopes)],
-            ].map(([label, value]) => (
-              <Group key={label} justify="space-between" gap="md" className="settings-zalo-row">
-                <Text size="sm" c="dimmed">{label}</Text>
-                <Text size="sm" ta="right" maw={360} truncate="end">{value}</Text>
-              </Group>
-            ))}
-              </SimpleGrid>
+              <div className="settings-zalo-account-summary">
+                <span className="settings-zalo-account-avatar" aria-hidden="true">{accountInitial}</span>
+                <div className="settings-zalo-account-copy">
+                  <Text className="settings-zalo-account-name">{accountName}</Text>
+                  <Text className="settings-zalo-account-email">{accountEmail}</Text>
+                </div>
+                <Badge variant="light" color="blue" className="settings-zalo-badge">
+                  {accountStatus}
+                </Badge>
+                <div className="settings-zalo-account-meta">
+                  <span>Roles: {rolesText}</span>
+                  <span>Data scopes: {dataScopesText}</span>
+                </div>
+              </div>
+
+              <div className="settings-zalo-account-grid">
+                {accountDetailItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.label} className="settings-zalo-account-card">
+                      <span className="settings-zalo-account-card-icon" aria-hidden="true">
+                        <Icon size={16} stroke={1.8} />
+                      </span>
+                      <Text className="settings-zalo-account-card-label">{item.label}</Text>
+                      <Text className="settings-zalo-account-card-value" truncate="end">{item.value}</Text>
+                    </div>
+                  );
+                })}
+              </div>
             </Stack>
           ) : null}
 
@@ -533,8 +569,8 @@ export function SettingsPage() {
               </Title>
               <div className="settings-zalo-section-card">
                 <Group justify="space-between" className="settings-zalo-row">
-                  <Text size="sm">Cấu hình sẽ được đồng bộ theo quyền và API tương ứng.</Text>
-                  <Badge variant="light" color="gray" className="settings-zalo-badge">Sắp có</Badge>
+                  <Text size="sm">{t('Cấu hình sẽ được đồng bộ theo quyền và API tương ứng.')}</Text>
+                  <Badge variant="light" color="gray" className="settings-zalo-badge">{t('Sắp có')}</Badge>
                 </Group>
               </div>
             </Stack>

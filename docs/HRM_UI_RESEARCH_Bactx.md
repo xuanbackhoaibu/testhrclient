@@ -2329,3 +2329,35 @@ Cập nhật bổ sung:
 - Bỏ in đậm trong tab `Quản lý dữ liệu`:
   - Title dùng style mảnh giống các tab khác.
   - Badge `Sắp có` dùng class badge mảnh của modal Cài đặt.
+- Kích hoạt lựa chọn ngôn ngữ thay vì chỉ lưu trạng thái:
+  - Thêm shared utility `src/shared/i18n/appLanguage.ts`.
+  - Khi chọn `Tiếng Việt`, `English` hoặc `Theo hệ thống`, app lưu localStorage, set `document.documentElement.lang` và phát event `hrm:language-changed`.
+  - `MainLayout` lắng nghe event để đổi ngay text ở sidebar, header, tooltip mở rộng, menu tài khoản và nút `Thu gọn`.
+  - `SettingsPage` dùng chung `translateUiText` để đổi ngay các nhãn trong modal Cài đặt.
+  - Dictionary hiện phủ shell/menu chính và Cài đặt; các trang nghiệp vụ có thể map dần theo cùng cơ chế.
+  - Bổ sung key dịch còn thiếu cho sidebar: `Quy trình nhân sự`, `Tài khoản chờ liên kết`.
+- Nâng cấp tab `Tài khoản và bảo mật` trong Cài đặt:
+  - Thay lưới thông tin thô bằng card tài khoản gọn kiểu Zalo Web, chỉ dùng các field đang có: tên, email, trạng thái, vai trò và phạm vi dữ liệu.
+  - Grid chi tiết chỉ hiển thị lại đúng dữ liệu hiện có: `User`, `Auth user ID`, `Account status`, `Employee ID`, `Roles`, `Data scopes`.
+  - Các label dữ liệu tài khoản được giữ bằng tiếng Anh cố định để trùng khớp naming của field/API.
+  - Bỏ các dòng mô tả suy luận để thông tin trên UI trùng khớp dữ liệu tài khoản hiện tại.
+  - Đồng bộ typography thường, màu xanh active, responsive mobile và dark mode cho các khối mới.
+- Nâng cấp Notification Center theo hướng Zalo Web:
+  - Dropdown chuông đổi thành panel gọn, header mảnh, chip lọc ngang và nội dung nhóm theo loại thông báo được phép xem.
+  - Danh sách chỉ hiển thị chiều cao khoảng 3 thông báo; nếu nhiều hơn sẽ scroll trong panel.
+  - Thông báo chưa đọc giữ nền trắng như thông báo thường, chỉ thêm chấm xanh nhỏ.
+  - Click vào thông báo mở màn chi tiết ngay trong panel, hiển thị tiêu đề, thời gian đúng, nội dung, người thực hiện và nút mở module liên quan nếu có `actionUrl`.
+  - Đồng bộ hover nhẹ, giới hạn độ dài text, responsive width và dark mode cho panel thông báo.
+- Polish lại Notification Center sau nghiệm thu:
+  - Giảm width panel còn khoảng `392px`, item còn khoảng `74px` để nhìn giống inbox gọn hơn.
+  - Bỏ badge màu trong từng item, dùng một màu xanh nhẹ thống nhất cho icon và filter active.
+  - Header chỉ còn title, mô tả quyền và số chưa đọc dạng text nhỏ, giảm cảm giác rối.
+  - List bỏ dòng `Người thực hiện` ở view danh sách, chỉ giữ trong view chi tiết.
+  - Hover chuyển nền xanh rất nhạt, không lift/scale để đúng tinh thần flat Zalo Web.
+- Hoàn thiện trạng thái và responsive cho Notification Center:
+  - Thay loader bằng skeleton 3 dòng mô phỏng đúng layout item thông báo.
+  - Empty state rút gọn theo kiểu Zalo Web, ít chữ hơn và icon xanh nhẹ.
+  - Filter chuyển từ nhiều chip loại thông báo sang 2 tab đơn giản `Tất cả` / `Chưa đọc`; loại thông báo vẫn được nhóm trong danh sách.
+  - Mobile dưới `768px` dùng panel gần full width, giảm padding và giới hạn scroll để không tràn màn hình.
+  - Bỏ nút `Đọc tất cả` khỏi header, chỉ giữ số lượng thông báo chưa đọc.
+  - Bỏ tiếp dòng mô tả quyền và số chưa đọc trong header panel; chức năng unread vẫn giữ ở badge chuông và tab `Chưa đọc`.

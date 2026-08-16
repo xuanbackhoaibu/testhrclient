@@ -3,13 +3,11 @@ import {
   ActionIcon,
   Badge,
   Box,
-  Button,
   Group,
   Indicator,
-  Loader,
   Popover,
   ScrollArea,
-  SegmentedControl,
+  Skeleton,
   Stack,
   Text,
   ThemeIcon,
@@ -21,8 +19,9 @@ import {
   IconBell,
   IconBellCheck,
   IconBriefcase,
-  IconCheck,
+  IconChevronLeft,
   IconClock,
+  IconExternalLink,
   IconFileText,
   IconUserPlus,
 } from '@tabler/icons-react';
@@ -43,16 +42,17 @@ import {
 } from './notificationSettings';
 
 type NotificationFilter = 'all' | NotificationEvent;
+type NotificationView = 'all' | 'unread';
 
 const categoryMeta: Record<NotificationEvent, {
   label: string;
   color: string;
   icon: typeof IconBell;
 }> = {
-  leave: { label: 'Đơn từ', color: 'hacomRed', icon: IconFileText },
-  contract: { label: 'Nhắc nhở', color: 'orange', icon: IconBriefcase },
-  employee: { label: 'Nhân sự', color: 'green', icon: IconUserPlus },
-  system: { label: 'Hệ thống', color: 'violet', icon: IconAlertTriangle },
+  leave: { label: 'Đơn từ', color: 'blue', icon: IconFileText },
+  contract: { label: 'Nhắc nhở', color: 'blue', icon: IconBriefcase },
+  employee: { label: 'Nhân sự', color: 'blue', icon: IconUserPlus },
+  system: { label: 'Hệ thống', color: 'blue', icon: IconAlertTriangle },
 };
 
 function parseNotificationDate(value: string): Date | null {
@@ -114,7 +114,8 @@ function truncateText(value: string | null | undefined, maxLength: number) {
 
 export function NotificationBell() {
   const [opened, setOpened] = useState(false);
-  const [filter, setFilter] = useState<NotificationFilter>('all');
+  const [view, setView] = useState<NotificationView>('all');
+  const [selectedNotification, setSelectedNotification] = useState<AppNotification | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
   useNotificationStream();
@@ -123,15 +124,9 @@ export function NotificationBell() {
     page: 1,
     pageSize: 30,
   });
-  const { markRead, markAllRead } = useNotificationMutations();
+  const { markRead } = useNotificationMutations();
 
   const readableEvents = useMemo(() => getReadableNotificationEvents(user), [user]);
-  const readableEventSet = useMemo(
-    () => new Set(readableEvents.map((event) => event.key)),
-    [readableEvents],
-  );
-  const activeFilter: NotificationFilter =
-    filter === 'all' || readableEventSet.has(filter) ? filter : 'all';
   const allowedNotifications = useMemo(
     () =>
       notifications.filter((notification) =>
@@ -142,10 +137,10 @@ export function NotificationBell() {
 
   const filteredNotifications = useMemo(
     () =>
-      activeFilter === 'all'
+      view === 'all'
         ? allowedNotifications
-        : allowedNotifications.filter((notification) => categoryOf(notification) === activeFilter),
-    [activeFilter, allowedNotifications],
+        : allowedNotifications.filter((notification) => !notification.readAt),
+    [allowedNotifications, view],
   );
 
   const unreadByCategory = useMemo(() => {
@@ -167,27 +162,37 @@ export function NotificationBell() {
 
   const visibleUnreadCount = unreadByCategory.all;
 
-  const handleOpen = (notification: AppNotification) => {
+  const groupedNotifications = useMemo(() => {
+    return readableEvents.map((event) => event.key)
+      .map((key) => ({
+        key,
+        meta: categoryMeta[key],
+        items: filteredNotifications.filter((notification) => categoryOf(notification) === key),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [filteredNotifications, readableEvents]);
+
+  const handleSelect = (notification: AppNotification) => {
     if (!notification.readAt) markRead.mutate(notification.id);
-    const url = actionUrlOf(notification);
-    setOpened(false);
-    if (url) navigate(url);
+    setSelectedNotification(notification);
   };
 
-  const filterOptions = [
-    { value: 'all', label: `Tất cả ${unreadByCategory.all ? `(${unreadByCategory.all})` : ''}` },
-    ...readableEvents.map((event) => ({
-      value: event.key,
-      label: `${categoryMeta[event.key].label} ${unreadByCategory[event.key] ? `(${unreadByCategory[event.key]})` : ''}`,
-    })),
-  ];
+  const handleOpenAction = (notification: AppNotification) => {
+    const url = actionUrlOf(notification);
+    setOpened(false);
+    setSelectedNotification(null);
+    if (url) navigate(url);
+  };
 
   return (
     <Popover
       opened={opened}
-      onChange={setOpened}
+      onChange={(nextOpened) => {
+        setOpened(nextOpened);
+        if (!nextOpened) setSelectedNotification(null);
+      }}
       position="bottom-end"
-      width="min(440px, calc(100vw - 24px))"
+      width="min(392px, calc(100vw - 24px))"
       shadow="xl"
       withArrow
     >
@@ -213,109 +218,184 @@ export function NotificationBell() {
       </Popover.Target>
 
       <Popover.Dropdown p={0} className="notification-center-panel">
-        <Group justify="space-between" px="md" py="sm" className="notification-center-header">
-          <Box>
-            <Text fw={800} size="sm">Trung tâm thông báo</Text>
-            <Text size="xs" c="dimmed">Tự ẩn thông báo cũ sau 30 ngày</Text>
-          </Box>
-          <Group gap="xs">
-            <Badge variant="light" color={visibleUnreadCount > 0 ? 'red' : 'green'} size="sm">
-              {visibleUnreadCount} chưa đọc
-            </Badge>
-            {visibleUnreadCount > 0 ? (
-              <Button
-                variant="subtle"
-                size="compact-xs"
-                leftSection={<IconCheck size={13} />}
-                onClick={() => markAllRead.mutate()}
-                loading={markAllRead.isPending}
-              >
-                Đọc tất cả
-              </Button>
-            ) : null}
-          </Group>
-        </Group>
-
-        <Box px="md" pb="sm">
-          <SegmentedControl
-            size="xs"
-            fullWidth
-            value={activeFilter}
-            onChange={(value) => setFilter(value as NotificationFilter)}
-            data={filterOptions}
-          />
-        </Box>
-
-        <ScrollArea.Autosize className="notification-center-scroll" type="hover">
-          {isLoading ? (
-            <Group justify="center" py="xl">
-              <Loader size="sm" />
-            </Group>
-          ) : filteredNotifications.length === 0 ? (
-            <Stack align="center" gap="xs" py="xl" px="md">
-              <ThemeIcon size={48} radius="xl" variant="light" color="green">
-                <IconBellCheck size={24} />
-              </ThemeIcon>
-              <Text fw={800} ta="center">Không có thông báo phù hợp</Text>
-              <Text c="dimmed" size="sm" ta="center">
-                Hệ thống sẽ tự cập nhật khi có đơn từ, hợp đồng hoặc thay đổi mới.
-              </Text>
-            </Stack>
-          ) : (
-            <Stack gap={0}>
-              {filteredNotifications.map((notification) => {
-                const category = categoryOf(notification);
-                const meta = categoryMeta[category];
-                const Icon = meta.icon;
-                const isUnread = !notification.readAt;
-                const title = truncateText(notification.title, 120);
-                const body = truncateText(notification.body, 220);
-                const actorName = truncateText(notification.actorName, 48);
-                const notificationTime = formatNotificationTime(notification.createdAt);
-                return (
-                  <UnstyledButton
-                    key={notification.id}
-                    onClick={() => handleOpen(notification)}
-                    className={`notification-center-item ${isUnread ? 'is-unread' : ''}`}
-                  >
-                    <Group gap="sm" wrap="nowrap" align="flex-start">
-                      <ThemeIcon radius="xl" variant="light" color={meta.color} size={34}>
-                        <Icon size={18} />
+        {selectedNotification ? (
+          <Stack gap={0} className="notification-detail-view">
+            {(() => {
+              const category = categoryOf(selectedNotification);
+              const meta = categoryMeta[category];
+              const Icon = meta.icon;
+              const url = actionUrlOf(selectedNotification);
+              return (
+                <>
+                  <Group justify="space-between" className="notification-center-header">
+                    <Button
+                      variant="subtle"
+                      size="compact-sm"
+                      leftSection={<IconChevronLeft size={15} />}
+                      onClick={() => setSelectedNotification(null)}
+                    >
+                      Quay lại
+                    </Button>
+                    <Badge size="sm" variant="light" color={meta.color}>{meta.label}</Badge>
+                  </Group>
+                  <Stack gap="md" className="notification-detail-body">
+                    <Group gap="sm" align="flex-start" wrap="nowrap">
+                      <ThemeIcon radius="xl" variant="light" color={meta.color} size={38}>
+                        <Icon size={19} />
                       </ThemeIcon>
-                      <Stack gap={4} style={{ minWidth: 0, flex: 1 }}>
-                        <Group gap={6} wrap="nowrap">
-                          <Badge size="xs" variant="light" color={meta.color}>{meta.label}</Badge>
-                          <Group gap={4} wrap="nowrap" ml="auto" className="notification-meta">
-                            {isUnread ? <span className="notification-unread-dot" aria-label="Chưa đọc" /> : null}
-                            <IconClock size={12} />
-                            <Tooltip label={relativeTime(notification.createdAt)}>
-                              <Text size="10px" c="dimmed" span>
-                                {notificationTime}
-                              </Text>
-                            </Tooltip>
-                          </Group>
-                        </Group>
-                        <Text size="sm" fw={isUnread ? 800 : 650} lineClamp={2} className="notification-title">
-                          {title}
+                      <Box style={{ minWidth: 0 }}>
+                        <Text className="notification-detail-title">
+                          {selectedNotification.title}
                         </Text>
-                        {body ? (
-                          <Text size="xs" c="dimmed" lineClamp={3} className="notification-body">
-                            {body}
+                        <Group gap={6} mt={4} wrap="nowrap" className="notification-detail-time">
+                          <IconClock size={13} />
+                          <Text size="xs" c="dimmed">
+                            {formatNotificationTime(selectedNotification.createdAt)}
                           </Text>
-                        ) : null}
-                        {actorName ? (
-                          <Text size="10px" c="dimmed" lineClamp={1} className="notification-actor">
-                            Người thực hiện: {actorName}
-                          </Text>
-                        ) : null}
+                          <Text size="xs" c="dimmed">· {relativeTime(selectedNotification.createdAt)}</Text>
+                        </Group>
+                      </Box>
+                    </Group>
+
+                    {selectedNotification.body ? (
+                      <Text className="notification-detail-message">
+                        {selectedNotification.body}
+                      </Text>
+                    ) : null}
+
+                    {selectedNotification.actorName ? (
+                      <Group justify="space-between" className="notification-detail-row">
+                        <Text size="xs" c="dimmed">Người thực hiện</Text>
+                        <Text size="xs">{selectedNotification.actorName}</Text>
+                      </Group>
+                    ) : null}
+
+                    {url ? (
+                      <Button
+                        variant="light"
+                        color="blue"
+                        rightSection={<IconExternalLink size={14} />}
+                        onClick={() => handleOpenAction(selectedNotification)}
+                      >
+                        Mở module liên quan
+                      </Button>
+                    ) : null}
+                  </Stack>
+                </>
+              );
+            })()}
+          </Stack>
+        ) : (
+          <>
+            <Group justify="space-between" px="md" py="sm" className="notification-center-header">
+              <Box>
+                <Text className="notification-center-title">Thông báo</Text>
+              </Box>
+            </Group>
+
+            <ScrollArea type="never" className="notification-filter-scroll">
+              <Group gap={6} wrap="nowrap" px="md" pb="sm">
+                {[
+                  { value: 'all', label: 'Tất cả' },
+                  { value: 'unread', label: 'Chưa đọc' },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`notification-filter-chip${view === option.value ? ' is-active' : ''}`}
+                    onClick={() => setView(option.value as NotificationView)}
+                  >
+                    {option.label}
+                    {option.value === 'unread' && visibleUnreadCount > 0 ? (
+                      <span>{visibleUnreadCount}</span>
+                    ) : null}
+                  </button>
+                ))}
+              </Group>
+            </ScrollArea>
+
+            <ScrollArea.Autosize className="notification-center-scroll" type="hover">
+              {isLoading ? (
+                <Stack gap={0}>
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <Group key={index} gap="sm" wrap="nowrap" align="flex-start" className="notification-skeleton-item">
+                      <Skeleton circle height={32} width={32} />
+                      <Stack gap={7} style={{ minWidth: 0, flex: 1 }}>
+                        <Group justify="space-between" wrap="nowrap">
+                          <Skeleton height={12} width="62%" radius="xl" />
+                          <Skeleton height={10} width={46} radius="xl" />
+                        </Group>
+                        <Skeleton height={10} width="88%" radius="xl" />
+                        <Skeleton height={10} width="54%" radius="xl" />
                       </Stack>
                     </Group>
-                  </UnstyledButton>
-                );
-              })}
-            </Stack>
-          )}
-        </ScrollArea.Autosize>
+                  ))}
+                </Stack>
+              ) : filteredNotifications.length === 0 ? (
+                <Stack align="center" gap={8} py={30} px="md" className="notification-empty-state">
+                  <ThemeIcon size={42} radius="xl" variant="light" color="blue">
+                    <IconBellCheck size={24} />
+                  </ThemeIcon>
+                  <Text className="notification-empty-title" ta="center">
+                    {view === 'unread' ? 'Không có thông báo chưa đọc' : 'Chưa có thông báo'}
+                  </Text>
+                  <Text c="dimmed" size="sm" ta="center">
+                    Hệ thống sẽ tự cập nhật khi có nội dung mới.
+                  </Text>
+                </Stack>
+              ) : (
+                <Stack gap={0}>
+                  {groupedNotifications.map((group) => (
+                    <Box key={group.key} className="notification-group">
+                      <Group justify="space-between" className="notification-group-title">
+                        <Text size="xs">{group.meta.label}</Text>
+                        <Text size="xs" c="dimmed">{group.items.length}</Text>
+                      </Group>
+                      {group.items.map((notification) => {
+                        const meta = categoryMeta[categoryOf(notification)];
+                        const Icon = meta.icon;
+                        const isUnread = !notification.readAt;
+                        const title = truncateText(notification.title, 92);
+                        const body = truncateText(notification.body, 110);
+                        return (
+                          <UnstyledButton
+                            key={notification.id}
+                            onClick={() => handleSelect(notification)}
+                            className={`notification-center-item ${isUnread ? 'is-unread' : ''}`}
+                          >
+                            <Group gap="sm" wrap="nowrap" align="flex-start">
+                              <ThemeIcon radius="xl" variant="light" color={meta.color} size={32}>
+                                <Icon size={17} />
+                              </ThemeIcon>
+                              <Stack gap={3} style={{ minWidth: 0, flex: 1 }}>
+                                <Group gap={6} wrap="nowrap">
+                                  <Text size="sm" className="notification-title" lineClamp={1}>
+                                    {title}
+                                  </Text>
+                                  {isUnread ? <span className="notification-unread-dot" aria-label="Chưa đọc" /> : null}
+                                  <Tooltip label={formatNotificationTime(notification.createdAt)}>
+                                    <Text size="10px" c="dimmed" ml="auto" className="notification-time">
+                                      {relativeTime(notification.createdAt)}
+                                    </Text>
+                                  </Tooltip>
+                                </Group>
+                                {body ? (
+                                  <Text size="xs" c="dimmed" lineClamp={2} className="notification-body">
+                                    {body}
+                                  </Text>
+                                ) : null}
+                              </Stack>
+                            </Group>
+                          </UnstyledButton>
+                        );
+                      })}
+                    </Box>
+                  ))}
+                </Stack>
+              )}
+            </ScrollArea.Autosize>
+          </>
+        )}
 
       </Popover.Dropdown>
     </Popover>

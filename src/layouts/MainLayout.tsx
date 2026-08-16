@@ -21,12 +21,20 @@ import {
   IconChevronRight,
   IconLogout,
 } from "@tabler/icons-react";
+import { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../features/auth/useAuth";
 import { canAccessRoute } from "../features/auth/routePolicies";
 import { NotificationBell } from "../features/notifications/NotificationBell";
 import { BrandLogo } from "../shared/components/BrandLogo";
+import {
+  appLanguageChangedEvent,
+  applyAppLanguage,
+  readAppLanguageMode,
+  translateUiText,
+  type AppLanguageMode,
+} from "../shared/i18n/appLanguage";
 import {
   bottomLevelItems,
   filterNavGroups,
@@ -43,17 +51,19 @@ function NavItemLink({
   item,
   pathname,
   goTo,
+  languageMode,
   size = 18,
 }: {
   item: NavItem;
   pathname: string;
   goTo: (path: string) => void;
+  languageMode: AppLanguageMode;
   size?: number;
 }) {
   const Icon = item.icon;
   return (
     <NavLink
-      label={item.label}
+      label={translateUiText(item.label, languageMode)}
       leftSection={<Icon size={size} />}
       active={isActive(pathname, item.path)}
       onClick={() => goTo(item.path)}
@@ -66,15 +76,17 @@ function NavItems({
   items,
   pathname,
   goTo,
+  languageMode,
 }: {
   items: NavItem[];
   pathname: string;
   goTo: (path: string) => void;
+  languageMode: AppLanguageMode;
 }) {
   return (
     <>
       {items.map((item) => (
-        <NavItemLink key={item.path} item={item} pathname={pathname} goTo={goTo} size={17} />
+        <NavItemLink key={item.path} item={item} pathname={pathname} goTo={goTo} languageMode={languageMode} size={17} />
       ))}
     </>
   );
@@ -91,17 +103,19 @@ function NavGroupMenu({
   group,
   pathname,
   goTo,
+  languageMode,
 }: {
   group: NavGroup;
   pathname: string;
   goTo: (path: string) => void;
+  languageMode: AppLanguageMode;
 }) {
   const Icon = group.icon;
   const isGroupActive = group.sections.some((section) => isSectionActive(section, pathname));
 
   return (
     <NavLink
-      label={group.label}
+      label={translateUiText(group.label, languageMode)}
       leftSection={<Icon size={18} />}
       defaultOpened={isGroupActive}
       className="app-nav-link"
@@ -110,16 +124,16 @@ function NavGroupMenu({
         section.label ? (
           <NavLink
             key={section.label}
-            label={section.label}
+            label={translateUiText(section.label, languageMode)}
             defaultOpened={isSectionActive(section, pathname)}
           >
             {section.items.map((item) => (
-              <NavItemLink key={item.path} item={item} pathname={pathname} goTo={goTo} size={17} />
+              <NavItemLink key={item.path} item={item} pathname={pathname} goTo={goTo} languageMode={languageMode} size={17} />
             ))}
           </NavLink>
         ) : (
           // Unlabeled sections are stable per group definition, so index is a safe key here.
-          <NavItems key={index} items={section.items} pathname={pathname} goTo={goTo} />
+          <NavItems key={index} items={section.items} pathname={pathname} goTo={goTo} languageMode={languageMode} />
         ),
       )}
     </NavLink>
@@ -135,6 +149,8 @@ export function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const [languageMode, setLanguageMode] = useState<AppLanguageMode>(() => readAppLanguageMode());
+  const t = (value: string) => translateUiText(value, languageMode);
 
   const canAccess = (path: string) => canAccessRoute(user, path);
   const visibleTopLevelItems = topLevelItems.filter((item) => canAccess(item.path));
@@ -149,6 +165,23 @@ export function MainLayout() {
     navigate(path);
     close();
   }
+
+  useEffect(() => {
+    applyAppLanguage(languageMode);
+  }, [languageMode]);
+
+  useEffect(() => {
+    function handleLanguageChange() {
+      setLanguageMode(readAppLanguageMode());
+    }
+
+    window.addEventListener(appLanguageChangedEvent, handleLanguageChange);
+    window.addEventListener("storage", handleLanguageChange);
+    return () => {
+      window.removeEventListener(appLanguageChangedEvent, handleLanguageChange);
+      window.removeEventListener("storage", handleLanguageChange);
+    };
+  }, []);
 
   return (
     <AppShell
@@ -168,11 +201,11 @@ export function MainLayout() {
               size="sm"
             />
             {desktopCollapsed ? (
-              <Tooltip label="Mở rộng thanh bên">
+              <Tooltip label={t("Mở rộng thanh bên")}>
                 <ActionIcon
                   variant="default"
                   size="lg"
-                  aria-label="Mở rộng thanh bên"
+                  aria-label={t("Mở rộng thanh bên")}
                   visibleFrom="md"
                   onClick={() => setDesktopCollapsed(false)}
                 >
@@ -181,7 +214,7 @@ export function MainLayout() {
               </Tooltip>
             ) : null}
             <Title order={1} size="h3" className="app-shell-title">
-              {routeTitles[selectedPath] ?? "HACOM HRM"}
+              {t(routeTitles[selectedPath] ?? "HACOM HRM")}
             </Title>
           </Group>
 
@@ -209,13 +242,13 @@ export function MainLayout() {
               </UnstyledButton>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Label>Tài khoản</Menu.Label>
+              <Menu.Label>{t("Tài khoản")}</Menu.Label>
               <Menu.Item
                 color="red"
                 leftSection={<IconLogout size={16} />}
                 onClick={() => logout()}
               >
-                Đăng xuất
+                {t("Đăng xuất")}
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>
@@ -232,15 +265,15 @@ export function MainLayout() {
           <ScrollArea flex={1}>
             <Stack gap={4}>
               {visibleTopLevelItems.map((item) => (
-                <NavItemLink key={item.path} item={item} pathname={location.pathname} goTo={goTo} />
+                <NavItemLink key={item.path} item={item} pathname={location.pathname} goTo={goTo} languageMode={languageMode} />
               ))}
 
               {visibleGroups.map((group) => (
-                <NavGroupMenu key={group.label} group={group} pathname={location.pathname} goTo={goTo} />
+                <NavGroupMenu key={group.label} group={group} pathname={location.pathname} goTo={goTo} languageMode={languageMode} />
               ))}
 
               {visibleBottomLevelItems.map((item) => (
-                <NavItemLink key={item.path} item={item} pathname={location.pathname} goTo={goTo} />
+                <NavItemLink key={item.path} item={item} pathname={location.pathname} goTo={goTo} languageMode={languageMode} />
               ))}
             </Stack>
           </ScrollArea>
@@ -253,7 +286,7 @@ export function MainLayout() {
               leftSection={<IconChevronLeft size={15} />}
               onClick={() => setDesktopCollapsed(true)}
             >
-              Thu gọn
+              {t("Thu gọn")}
             </Button>
           </Group>
         </Stack>

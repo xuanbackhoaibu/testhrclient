@@ -467,36 +467,117 @@ body {
 .notification-center-panel {
   background: var(--hrm-surface);
   border-color: var(--hrm-border);
-  width: min(440px, calc(100vw - 24px));
+  border-radius: 12px;
+  width: min(392px, calc(100vw - 24px));
   max-width: calc(100vw - 24px);
-  max-height: min(620px, calc(100dvh - 88px));
+  max-height: min(520px, calc(100dvh - 88px));
   overflow: hidden;
 }
 
 .notification-center-scroll {
-  max-height: min(300px, calc(100dvh - 228px));
+  max-height: min(252px, calc(100dvh - 228px));
 }
 
 .notification-center-header {
   background: var(--hrm-surface);
   border-bottom: 1px solid var(--hrm-border-soft);
+  min-height: 48px;
+  padding: 10px 12px 9px;
+}
+
+.notification-center-title,
+.notification-empty-title {
+  color: var(--hrm-text);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.notification-filter-scroll {
+  border-bottom: 1px solid var(--hrm-border-soft);
+  padding-top: 8px;
+}
+
+.notification-filter-chip {
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--hrm-muted);
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-size: 12px;
+  line-height: 1.2;
+  padding: 6px 9px;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.notification-filter-chip:hover,
+.notification-filter-chip.is-active {
+  background: #e8f3ff;
+  color: #0b64d8;
+}
+
+.notification-filter-chip span {
+  align-items: center;
+  background: #0b84ff;
+  border-radius: 999px;
+  color: #fff;
+  display: inline-flex;
+  font-size: 10px;
+  height: 16px;
+  justify-content: center;
+  margin-left: 6px;
+  min-width: 16px;
+  padding: 0 5px;
+}
+
+.notification-skeleton-item {
+  min-height: 74px;
+  padding: 11px 12px;
+}
+
+.notification-skeleton-item + .notification-skeleton-item {
+  border-top: 1px solid var(--hrm-border-soft);
+}
+
+.notification-group + .notification-group {
+  border-top: 1px solid var(--hrm-border-soft);
+}
+
+.notification-group-title {
+  background: #fafbfc;
+  color: var(--hrm-muted);
+  min-height: 28px;
+  padding: 7px 12px 5px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.notification-group-title .mantine-Text-root {
+  font-weight: 400;
+  line-height: 1.2;
 }
 
 .notification-center-item {
   background: var(--hrm-surface);
-  border-top: 1px solid var(--hrm-border-soft);
+  border-top: 0;
   color: var(--hrm-text);
   display: block;
-  padding: 12px 16px;
+  min-height: 74px;
+  padding: 9px 12px;
   text-align: left;
-  transition: background-color 160ms ease, transform 160ms ease;
+  transition: background-color 160ms ease;
   width: 100%;
+}
+
+.notification-center-item + .notification-center-item {
+  border-top: 1px solid var(--hrm-border-soft);
 }
 
 .notification-center-item:hover,
 .notification-center-item:focus-visible {
-  background: var(--hrm-surface-subtle);
-  transform: translateY(-1px);
+  background: #f5f9ff;
 }
 
 .notification-center-item.is-unread {
@@ -504,17 +585,24 @@ body {
 }
 
 .notification-unread-dot {
-  background: #0ea5e9;
+  background: #0b84ff;
   border-radius: 999px;
   display: inline-block;
   flex: 0 0 auto;
-  height: 7px;
-  width: 7px;
+  height: 6px;
+  margin-left: 2px;
+  width: 6px;
 }
 
 .notification-meta {
   flex: 0 0 auto;
   max-width: 150px;
+}
+
+.notification-time {
+  flex: 0 0 auto;
+  max-width: 74px;
+  white-space: nowrap;
 }
 
 .notification-title,
@@ -523,6 +611,50 @@ body {
   max-width: 100%;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.notification-title {
+  color: var(--hrm-text);
+  font-weight: 400;
+  min-width: 0;
+}
+
+.notification-empty-state {
+  min-height: 188px;
+}
+
+.notification-detail-view {
+  background: var(--hrm-surface);
+}
+
+.notification-detail-body {
+  padding: 14px;
+}
+
+.notification-detail-title {
+  color: var(--hrm-text);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.notification-detail-time {
+  color: var(--hrm-muted);
+}
+
+.notification-detail-message {
+  background: #f7f9fc;
+  border: 0;
+  border-radius: 10px;
+  color: var(--hrm-text);
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 12px;
+}
+
+.notification-detail-row {
+  border-top: 1px solid var(--hrm-border-soft);
+  padding-top: 10px;
 }
 
 .data-table tbody tr:hover .employee-row-quick-actions,
@@ -1698,6 +1830,120 @@ body {
   border-top: 1px solid var(--hrm-border-soft);
 }
 
+.settings-zalo-account-summary {
+  align-items: center;
+  background: var(--hrm-surface);
+  border: 1px solid var(--hrm-border);
+  border-radius: 11px;
+  display: grid;
+  gap: 10px 12px;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  padding: 14px 16px;
+}
+
+.settings-zalo-account-avatar {
+  align-items: center;
+  background: #e8f3ff;
+  border-radius: 999px;
+  color: #0b64d8;
+  display: inline-flex;
+  font-size: 16px;
+  font-weight: 400;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.settings-zalo-account-copy {
+  min-width: 0;
+}
+
+.settings-zalo-account-name {
+  color: var(--hrm-text);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.settings-zalo-account-email {
+  color: var(--hrm-muted);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
+.settings-zalo-account-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  grid-column: 2 / -1;
+  min-width: 0;
+}
+
+.settings-zalo-account-meta span {
+  background: #f7f9fc;
+  border: 1px solid var(--hrm-border);
+  border-radius: 999px;
+  color: var(--hrm-muted);
+  font-size: 12px;
+  line-height: 1.3;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 5px 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-zalo-account-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-zalo-account-card {
+  background: var(--hrm-surface);
+  border: 1px solid var(--hrm-border);
+  border-radius: 11px;
+  display: grid;
+  gap: 6px;
+  min-height: 116px;
+  padding: 14px;
+}
+
+.settings-zalo-account-card-icon {
+  align-items: center;
+  background: #e8f3ff;
+  border-radius: 8px;
+  color: #0b64d8;
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.settings-zalo-account-card-label {
+  color: var(--hrm-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.settings-zalo-account-card-value {
+  color: var(--hrm-text);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.settings-zalo-account-card-meta {
+  color: var(--hrm-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.3;
+  min-width: 0;
+}
+
 .settings-zalo-language-panel {
   background: var(--hrm-surface);
   border: 1px solid var(--hrm-border);
@@ -2234,6 +2480,35 @@ body {
 }
 
 @media (max-width: 768px) {
+  .notification-center-panel {
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+    max-height: min(540px, calc(100dvh - 72px));
+  }
+
+  .notification-center-scroll {
+    max-height: min(252px, calc(100dvh - 232px));
+  }
+
+  .notification-center-header {
+    padding: 10px 12px;
+  }
+
+  .notification-filter-scroll .mantine-Group-root {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .notification-center-item,
+  .notification-skeleton-item {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .notification-time {
+    max-width: 64px;
+  }
+
   .settings-zalo-stage {
     align-items: stretch;
     padding: 10px;
@@ -2280,6 +2555,23 @@ body {
     flex-direction: column;
     gap: 4px;
     padding: 12px 14px;
+  }
+
+  .settings-zalo-account-summary {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  .settings-zalo-account-summary .settings-zalo-badge {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .settings-zalo-account-meta {
+    grid-column: 1 / -1;
+  }
+
+  .settings-zalo-account-grid {
+    grid-template-columns: 1fr;
   }
 
   .employee-detail-hero-content {
@@ -2835,6 +3127,24 @@ body {
   border-top-color: var(--hrm-border);
 }
 
+:root[data-mantine-color-scheme='dark'] .settings-zalo-account-summary,
+:root[data-mantine-color-scheme='dark'] .settings-zalo-account-card {
+  background: var(--hrm-surface);
+  border-color: var(--hrm-border);
+}
+
+:root[data-mantine-color-scheme='dark'] .settings-zalo-account-avatar,
+:root[data-mantine-color-scheme='dark'] .settings-zalo-account-card-icon {
+  background: color-mix(in srgb, #339af0, transparent 82%);
+  color: #bfdbfe;
+}
+
+:root[data-mantine-color-scheme='dark'] .settings-zalo-account-meta span {
+  background: var(--hrm-surface-subtle);
+  border-color: var(--hrm-border);
+  color: var(--hrm-muted);
+}
+
 :root[data-mantine-color-scheme='dark'] .settings-zalo-language-panel,
 :root[data-mantine-color-scheme='dark'] .settings-zalo-language-card {
   background: var(--hrm-surface);
@@ -2935,6 +3245,28 @@ body {
 :root[data-mantine-color-scheme='dark'] .notification-center-item:hover,
 :root[data-mantine-color-scheme='dark'] .notification-center-item:focus-visible {
   background: var(--mantine-color-dark-5);
+}
+
+:root[data-mantine-color-scheme='dark'] .notification-filter-chip:hover,
+:root[data-mantine-color-scheme='dark'] .notification-filter-chip.is-active {
+  background: color-mix(in srgb, #339af0, transparent 82%);
+  color: #bfdbfe;
+}
+
+:root[data-mantine-color-scheme='dark'] .notification-filter-scroll,
+:root[data-mantine-color-scheme='dark'] .notification-group + .notification-group,
+:root[data-mantine-color-scheme='dark'] .notification-detail-row {
+  border-color: var(--hrm-border);
+}
+
+:root[data-mantine-color-scheme='dark'] .notification-group-title,
+:root[data-mantine-color-scheme='dark'] .notification-detail-view {
+  background: var(--hrm-surface);
+}
+
+:root[data-mantine-color-scheme='dark'] .notification-detail-message {
+  background: var(--hrm-surface-subtle);
+  border-color: var(--hrm-border);
 }
 
 :root[data-mantine-color-scheme='dark'] .empty-state-icon {
