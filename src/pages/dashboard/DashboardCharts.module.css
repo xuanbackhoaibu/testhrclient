@@ -1,0 +1,224 @@
+/*
+ * Shared chart hues — the validated status steps (validate_palette.js, light +
+ * dark): adjacent CVD ΔE 9.1 worst case, normal-vision ΔE 15.4, every step
+ * >= 3:1 on both surfaces. Grey is a de-emphasis slot, not a series identity.
+ */
+.donutWrap,
+.barList {
+  --chart-surface: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+  --chart-good: #0ca30c;
+  --chart-unknown: #7d7d8a;
+  --chart-warning: #c97f0a;
+  --chart-critical: #d03b3b;
+  --chart-accent: #2f6fd0;
+  --chart-track: light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5));
+}
+
+/* ---------- Donut ---------- */
+
+.donutWrap {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.donutFigure {
+  position: relative;
+  flex: none;
+  line-height: 0;
+}
+
+.donutSlice {
+  transition: opacity 140ms ease-out;
+}
+
+/* Hovering one slice recedes the others instead of recolouring anything. Kept
+   mild: at 0.35 a 3% slice all but vanishes, which is the opposite of the
+   point - the small slices are the ones worth finding. */
+.donutSlice[data-dim='true'] {
+  opacity: 0.72;
+}
+
+.donutSlice[data-tone='good'] {
+  stroke: var(--chart-good);
+}
+
+.donutSlice[data-tone='unknown'] {
+  stroke: var(--chart-unknown);
+}
+
+.donutSlice[data-tone='warning'] {
+  stroke: var(--chart-warning);
+}
+
+.donutSlice[data-tone='critical'] {
+  stroke: var(--chart-critical);
+}
+
+.donutSlice[data-tone='accent'] {
+  stroke: var(--chart-accent);
+}
+
+.donutCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  line-height: 1.15;
+  pointer-events: none;
+}
+
+/* Proportional figures: tabular-nums reads loose at display size. */
+.donutCenterValue {
+  font-size: 26px;
+  font-weight: 600;
+  color: light-dark(var(--mantine-color-gray-9), var(--mantine-color-white));
+}
+
+.donutCenterLabel {
+  font-size: 11px;
+  text-align: center;
+  max-width: 108px;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-1));
+}
+
+.legend {
+  flex: 1 1 190px;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legendItem {
+  display: grid;
+  grid-template-columns: 10px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--mantine-font-size-xs);
+}
+
+.legendLabel {
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-0));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legendValue {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: light-dark(var(--mantine-color-gray-9), var(--mantine-color-white));
+}
+
+.legendShare {
+  min-width: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-2));
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+/* ---------- Horizontal bars ---------- */
+
+.barList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 3px 12px;
+  padding: 5px 0;
+}
+
+.barLabel {
+  font-size: var(--mantine-font-size-sm);
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-0));
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barValue {
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: light-dark(var(--mantine-color-gray-9), var(--mantine-color-white));
+}
+
+/* Track + fill: 4px rounded data-end, grown from one baseline. */
+.barTrack {
+  grid-column: 1 / -1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--chart-track);
+  overflow: hidden;
+}
+
+.barFill {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  min-width: 2px;
+  background: var(--chart-accent);
+}
+
+.barFill[data-tone='good'] {
+  background: var(--chart-good);
+}
+
+.barFill[data-tone='unknown'] {
+  background: var(--chart-unknown);
+}
+
+.barFill[data-tone='warning'] {
+  background: var(--chart-warning);
+}
+
+.barFill[data-tone='critical'] {
+  background: var(--chart-critical);
+}
+
+.empty {
+  font-size: var(--mantine-font-size-xs);
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-1));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .donutSlice {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .barFill {
+    forced-color-adjust: none;
+    border: 1px solid CanvasText;
+  }
+}
+
+@media (max-width: 560px) {
+  .donutWrap {
+    justify-content: center;
+  }
+}

@@ -1,0 +1,175 @@
+/*
+ * Dashboard visuals. The bar hues are the same validated status steps used by
+ * the attendance chart (validate_palette.js, light + dark): adjacent CVD
+ * ΔE 9.1 worst case, normal-vision ΔE 15.4, every step >= 3:1 on both
+ * surfaces. Grey is a de-emphasis slot, not a series identity.
+ */
+.page {
+  --dash-good: #0ca30c;
+  --dash-unknown: #7d7d8a;
+  --dash-warning: #c97f0a;
+  --dash-critical: #d03b3b;
+  --dash-accent: #2f6fd0;
+  --dash-track: light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5));
+}
+
+/* Elevation declared once, matching the tiles: a hairline border, no shadow. */
+.panel {
+  background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  border-radius: 12px;
+}
+
+/* KPI tile: label, then the number as the loud element. A tile whose value is
+   zero recedes — nine equally-shouting tiles is the thing that reads noisy. */
+/* Elevation is declared once, as a border. No colored left edge: a status is
+   carried by the dot beside its label, which also survives forced-colors. */
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+}
+
+.tileLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--mantine-font-size-xs);
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-1));
+}
+
+/* 6px status dot: the accent as a state indicator, never as decoration. */
+.tileDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--tile-accent, var(--dash-accent));
+}
+
+.tile[data-quiet='true'] .tileDot {
+  background: var(--dash-track);
+}
+
+/* Proportional figures: tabular-nums makes a big standalone number look loose. */
+.tileValue {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: light-dark(var(--mantine-color-gray-9), var(--mantine-color-white));
+}
+
+.tile[data-quiet='true'] .tileValue {
+  color: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-2));
+}
+
+.tileHint {
+  font-size: 11px;
+  color: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-2));
+}
+
+/* Ranked rows: a bar makes the comparison readable at a glance, where a bare
+   column of numbers makes the reader do the ranking themselves. */
+.rankRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 5px 0;
+}
+
+.rankLabel {
+  font-size: var(--mantine-font-size-sm);
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-0));
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rankValue {
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: light-dark(var(--mantine-color-gray-9), var(--mantine-color-white));
+}
+
+/* Track + fill, 4px rounded data-end, grown from a single baseline. */
+.rankTrack {
+  grid-column: 1 / -1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--dash-track);
+  overflow: hidden;
+}
+
+.rankFill {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--rank-color, var(--dash-accent));
+  min-width: 2px;
+}
+
+.rankFill[data-tone='good'] {
+  background: var(--dash-good);
+}
+
+.rankFill[data-tone='unknown'] {
+  background: var(--dash-unknown);
+}
+
+.rankFill[data-tone='warning'] {
+  background: var(--dash-warning);
+}
+
+.rankFill[data-tone='critical'] {
+  background: var(--dash-critical);
+}
+
+/* Attendance-rate meter: unfilled track is a lighter step of the same ramp. */
+.meterTrack {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--dash-track);
+  overflow: hidden;
+}
+
+.meterFill {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  min-width: 2px;
+}
+
+.meterFill[data-tone='good'] {
+  background: var(--dash-good);
+}
+
+.meterFill[data-tone='warning'] {
+  background: var(--dash-warning);
+}
+
+.sectionTitle {
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+  color: light-dark(var(--mantine-color-gray-8), var(--mantine-color-dark-0));
+}
+
+.sectionCaption {
+  font-size: var(--mantine-font-size-xs);
+  font-variant-numeric: tabular-nums;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-1));
+}
+
+@media (forced-colors: active) {
+  .rankFill,
+  .meterFill {
+    forced-color-adjust: none;
+    border: 1px solid CanvasText;
+  }
+}

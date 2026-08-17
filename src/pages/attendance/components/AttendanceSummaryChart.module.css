@@ -12,18 +12,23 @@
   --viz-unknown: #7d7d8a;
   --viz-warning: #c97f0a;
   --viz-critical: #d03b3b;
+  --viz-grid: light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-4));
 
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 20px 28px;
-  padding: 14px 16px;
-  border-radius: var(--mantine-radius-md);
+  padding: 16px;
+  /* Elevation declared once: a hairline border, no shadow underneath it. */
   border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  border-radius: 12px;
   background: var(--viz-surface);
 }
 
+/* Space separates the two panels, not a rule between them. */
 .panel {
   min-width: 0;
+  padding: 4px 2px;
+  background: var(--viz-surface);
 }
 
 .heading {
@@ -31,7 +36,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .title {
@@ -46,82 +51,181 @@
   color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-1));
 }
 
-/* The bar: segments separated by a 2px surface gap, ends rounded 4px. */
-.bar {
-  display: flex;
-  width: 100%;
-  height: 26px;
-  border-radius: 4px;
-  overflow: hidden;
-  background: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-5));
+/* The detail card is positioned against this wrapper, not the page. */
+.plotWrap {
+  position: relative;
 }
 
-.segment {
+/* Plot area. The value cap and the category label sit in their own rows so
+   nothing is ever clipped. No axis gutter — the columns carry their values. */
+.plot {
   position: relative;
-  height: 100%;
-  min-width: 3px;
-  border-right: 2px solid var(--viz-surface);
+}
+
+.columns {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
+  align-items: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* Each column is its own hit target: cap value, bar, and category label. */
+.column {
+  flex: 1 1 0;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 18px 128px 22px;
+  align-items: end;
+  justify-items: center;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  border-radius: 4px;
+}
+
+/* A pinned column keeps a faint wash so the selection survives pointer-out. */
+.column[aria-pressed='true'] {
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+}
+
+.column:focus-visible {
+  outline: 2px solid var(--mantine-color-blue-6);
+  outline-offset: 2px;
+}
+
+.columnValue {
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+  color: light-dark(var(--mantine-color-gray-8), var(--mantine-color-dark-0));
+}
+
+/* Thin mark, capped width, rounded cap and square baseline. */
+.columnBar {
+  width: 100%;
+  max-width: 24px;
+  min-height: 2px;
+  align-self: end;
+  border-radius: 4px 4px 0 0;
   transition: filter 140ms ease-out;
 }
 
-.segment:last-child {
-  border-right: 0;
+.columnBar[data-empty='true'] {
+  background: var(--viz-grid) !important;
+  min-height: 2px;
 }
 
-.segment:hover {
-  filter: brightness(1.06);
+.column[data-active='true'] .columnBar {
+  filter: brightness(1.08);
 }
 
-.segment[data-tone='good'] {
+.columnBar[data-tone='good'] {
   background: var(--viz-good);
 }
 
-.segment[data-tone='unknown'] {
+.columnBar[data-tone='unknown'] {
   background: var(--viz-unknown);
 }
 
-.segment[data-tone='warning'] {
+.columnBar[data-tone='warning'] {
   background: var(--viz-warning);
 }
 
-.segment[data-tone='critical'] {
+.columnBar[data-tone='critical'] {
   background: var(--viz-critical);
 }
 
-/* Direct label inside the segment; white reads on all four validated steps. */
-.segmentLabel {
-  font-size: 11px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: #ffffff;
-  padding: 0 6px;
+/* Category names carry identity alongside colour, so no legend box is needed. */
+.columnLabel {
+  font-size: 10px;
+  line-height: 22px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-1));
 }
 
-.legend {
+.column[data-active='true'] .columnLabel,
+.column[data-active='true'] .columnValue {
+  color: light-dark(var(--mantine-color-gray-9), var(--mantine-color-white));
+}
+
+/* The detail panel that opens on hover/focus, in a reserved row under the plot
+   so opening it never shifts the columns. */
+.detailSlot {
+  min-height: 74px;
+  margin-top: 12px;
+}
+
+/* A tinted panel, no border — the fill is what separates it from the plot. */
+.detailCard {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 14px;
+  row-gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--mantine-radius-sm);
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+}
+
+.detailMain {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  margin-top: 10px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 92px;
 }
 
-.legendItem {
+.detailBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* Idle hint is bare text — a dashed box here is exactly the noise to avoid. */
+.detailIdle {
+  display: flex;
+  align-items: center;
+  min-height: 74px;
+  padding: 10px 2px;
+  font-size: 11px;
+  color: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-2));
+}
+
+.detailHead {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: var(--mantine-font-size-xs);
-  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-1));
 }
 
-.legendItem[data-zero='true'] {
-  opacity: 0.55;
+/* Value leads, label follows — the reader already has the category. */
+.detailValue {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: light-dark(var(--mantine-color-gray-9), var(--mantine-color-white));
 }
 
-/* Swatch shape doubles as the non-colour channel alongside the text label. */
+.detailShare {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-1));
+}
+
+.detailHint {
+  font-size: 11px;
+  line-height: 1.4;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
+}
+
 .swatch {
   width: 10px;
   height: 10px;
@@ -145,33 +249,22 @@
   background: var(--viz-critical);
 }
 
-.legendValue {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: light-dark(var(--mantine-color-gray-9), var(--mantine-color-dark-0));
-}
-
-.legendShare {
-  color: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-2));
-  font-variant-numeric: tabular-nums;
-}
-
 .empty {
   font-size: var(--mantine-font-size-xs);
   color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-1));
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .segment {
+  .columnBar {
     transition: none;
   }
 }
 
 /* Forced-colors: fills collapse, so fall back to the system palette. */
 @media (forced-colors: active) {
-  .segment {
+  .columnBar {
     forced-color-adjust: none;
-    border-right: 2px solid Canvas;
+    border: 1px solid CanvasText;
   }
 }
 
@@ -179,5 +272,9 @@
   .root {
     grid-template-columns: 1fr;
     gap: 16px;
+  }
+
+  .detailCard {
+    width: 160px;
   }
 }

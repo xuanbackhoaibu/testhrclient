@@ -385,6 +385,8 @@ export function AttendancePage() {
           onToggleChart={toggleChart}
         />
 
+        {/* Inline, not a modal: reading a chart needs no interruption, and the
+            filters above stay reachable while it is open. */}
         {chartOpened && <AttendanceSummaryChart summary={summary} scope={summaryScope} />}
 
         {/* Filter Bar */}

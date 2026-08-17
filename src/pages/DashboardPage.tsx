@@ -1,54 +1,75 @@
-import {
-  Badge,
-  Group,
-  Paper,
-  SimpleGrid,
-  Stack,
-  Table,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Group, Paper, SimpleGrid, Stack, Table, Text } from "@mantine/core";
 
 import { useDashboardSummary } from "../features/dashboard/useDashboardSummary";
 import { EmptyState } from "../shared/components/EmptyState";
 import { ErrorState } from "../shared/components/ErrorState";
 import { LoadingState } from "../shared/components/LoadingState";
 import { PageHeader } from "../shared/components/PageHeader";
+import { getStatusLabel } from "../shared/constants/statusLabels";
+import { BarChart } from "./dashboard/BarChart";
+import { DonutChart, type ChartTone } from "./dashboard/DonutChart";
+import styles from "./DashboardPage.module.css";
 
-function MetricCard({ title, value }: { title: string; value: number }) {
+type Tone = ChartTone;
+
+const formatCount = (value: number) => value.toLocaleString("vi-VN");
+
+/** Status keys the API returns, mapped onto the validated status palette. */
+const STATUS_TONES: Record<string, Tone> = {
+  ACTIVE: "good",
+  PROBATION: "warning",
+  INACTIVE: "unknown",
+  SUSPENDED: "warning",
+  RESIGNED: "warning",
+  TERMINATED: "critical",
+};
+
+function MetricCard({
+  title,
+  value,
+  tone = "accent",
+}: {
+  title: string;
+  value: number;
+  tone?: Tone;
+}) {
+  // A zero is "nothing to do" — it should recede, not compete with real counts.
+  const quiet = value === 0;
   return (
-    <Paper p="md" radius="md">
-      <Stack gap={4}>
-        <Text c="dimmed" size="sm">
-          {title}
-        </Text>
-        <Title order={3}>{value.toLocaleString("vi-VN")}</Title>
-      </Stack>
-    </Paper>
+    <div
+      className={styles.tile}
+      data-quiet={quiet ? "true" : undefined}
+      style={
+        quiet ? undefined : { ["--tile-accent" as string]: `var(--dash-${tone})` }
+      }
+    >
+      <span className={styles.tileLabel}>
+        <span className={styles.tileDot} aria-hidden="true" />
+        {title}
+      </span>
+      <span className={styles.tileValue}>{formatCount(value)}</span>
+    </div>
   );
 }
 
-function BreakdownList({
+/** Card chrome shared by every chart on the page: title, caption, plot. */
+function ChartPanel({
   title,
-  items,
+  caption,
+  children,
 }: {
   title: string;
-  items: Array<{ label: string; value: number }>;
+  caption?: string;
+  children: React.ReactNode;
 }) {
   return (
-    <Paper p="md" radius="md">
+    <Paper p="md" radius="md" className={styles.panel}>
       <Stack gap="sm">
-        <Text fw={650}>{title}</Text>
-        {items.map((item) => (
-          <Group key={item.label} justify="space-between" gap="md">
-            <Text size="sm" c="dimmed">
-              {item.label}
-            </Text>
-            <Text size="sm" fw={650}>
-              {item.value.toLocaleString("vi-VN")}
-            </Text>
-          </Group>
-        ))}
+        <Group justify="space-between" align="baseline" gap="md">
+          <span className={styles.sectionTitle}>{title}</span>
+          {caption ? <span className={styles.sectionCaption}>{caption}</span> : null}
+        </Group>
+        {children}
       </Stack>
     </Paper>
   );
@@ -70,35 +91,41 @@ function AttendanceRateList({
   labelKey: "unitName" | "departmentName";
 }) {
   return (
-    <Paper p="md" radius="md">
+    <Paper p="md" radius="md" className={styles.panel}>
       <Stack gap="sm">
-        <Text fw={650}>{title}</Text>
+        <span className={styles.sectionTitle}>{title}</span>
         {items.length === 0 ? (
           <Text size="sm" c="dimmed">
             Chưa có dữ liệu công tháng này.
           </Text>
         ) : (
-          items.slice(0, 6).map((item) => (
-            <Group
-              key={item[labelKey] ?? "unknown"}
-              justify="space-between"
-              gap="md"
-            >
-              <Stack gap={0}>
-                <Text size="sm">{item[labelKey] ?? "-"}</Text>
-                <Text size="xs" c="dimmed">
-                  {item.attendedDays.toLocaleString("vi-VN")}/
-                  {item.workDays.toLocaleString("vi-VN")} ngày
-                </Text>
-              </Stack>
-              <Badge
-                color={item.attendanceRate >= 95 ? "green" : "yellow"}
-                variant="light"
-              >
-                {item.attendanceRate.toLocaleString("vi-VN")}%
-              </Badge>
-            </Group>
-          ))
+          <Stack gap="xs">
+            {items.slice(0, 6).map((item) => {
+              const good = item.attendanceRate >= 95;
+              return (
+                <div key={item[labelKey] ?? "unknown"} className={styles.rankRow}>
+                  <span className={styles.rankLabel} title={item[labelKey] ?? "-"}>
+                    {item[labelKey] ?? "-"}
+                  </span>
+                  <span className={styles.rankValue}>
+                    {item.attendanceRate.toLocaleString("vi-VN")}%
+                  </span>
+                  <span className={styles.rankTrack}>
+                    <span
+                      className={styles.meterFill}
+                      data-tone={good ? "good" : "warning"}
+                      style={{
+                        width: `${Math.min(Math.max(item.attendanceRate, 0), 100)}%`,
+                      }}
+                    />
+                  </span>
+                  <Text size="xs" c="dimmed" style={{ gridColumn: "1 / -1" }}>
+                    {formatCount(item.attendedDays)}/{formatCount(item.workDays)} ngày
+                  </Text>
+                </div>
+              );
+            })}
+          </Stack>
         )}
       </Stack>
     </Paper>
@@ -119,15 +146,18 @@ function TopLateTable({
   }>;
 }) {
   return (
-    <Paper p="md" radius="md">
+    <Paper p="md" radius="md" className={styles.panel}>
       <Stack gap="sm">
-        <Text fw={650}>Nhân sự đi muộn nhiều nhất</Text>
+        <Group justify="space-between" align="baseline" gap="md">
+          <span className={styles.sectionTitle}>Nhân sự đi muộn nhiều nhất</span>
+          <span className={styles.sectionCaption}>Tháng này</span>
+        </Group>
         {items.length === 0 ? (
           <Text size="sm" c="dimmed">
             Chưa ghi nhận lần đi muộn trong tháng này.
           </Text>
         ) : (
-          <Table striped highlightOnHover withTableBorder>
+          <Table highlightOnHover verticalSpacing="sm" withRowBorders={false}>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Nhân sự</Table.Th>
@@ -157,11 +187,12 @@ function TopLateTable({
                       </Text>
                     </Stack>
                   </Table.Td>
-                  <Table.Td ta="right">
-                    {item.lateCount.toLocaleString("vi-VN")}
+                  {/* Số lần là thông tin chính, số phút là phụ. */}
+                  <Table.Td ta="right" fw={600}>
+                    {formatCount(item.lateCount)}
                   </Table.Td>
-                  <Table.Td ta="right">
-                    {item.totalLateMinutes.toLocaleString("vi-VN")}
+                  <Table.Td ta="right" c="dimmed">
+                    {formatCount(item.totalLateMinutes)}
                   </Table.Td>
                 </Table.Tr>
               ))}
@@ -188,115 +219,95 @@ export function DashboardPage() {
     return <EmptyState />;
   }
 
-  const metrics = [
+  const unitTotal = data.employeesByUnit.reduce((sum, item) => sum + item.value, 0);
+  const statusTotal = data.employeesByEmploymentStatus.reduce(
+    (sum, item) => sum + item.value,
+    0,
+  );
+
+  // Headcount facts read neutral; queues that need action carry a status tone.
+  const headcount: Array<{ title: string; value: number; tone?: Tone }> = [
     { title: "Tổng nhân sự", value: data.totalEmployees },
-    { title: "Đang làm việc", value: data.activeEmployees },
-    { title: "Tuyển mới tháng này", value: data.newHiresThisMonth },
-    { title: "Nghỉ việc tháng này", value: data.terminatedThisMonth },
-    { title: "Đơn nghỉ phép chờ duyệt", value: data.pendingLeaveRequests },
+    { title: "Đang làm việc", value: data.activeEmployees, tone: "good" },
+    { title: "Tuyển mới tháng này", value: data.newHiresThisMonth, tone: "good" },
+    { title: "Nghỉ việc tháng này", value: data.terminatedThisMonth, tone: "critical" },
+  ];
+
+  const queues: Array<{ title: string; value: number; tone?: Tone }> = [
+    { title: "Đơn nghỉ phép chờ duyệt", value: data.pendingLeaveRequests, tone: "warning" },
     {
       title: "Giải trình chấm công chờ duyệt",
       value: data.pendingAttendanceExplanations,
+      tone: "warning",
     },
-    { title: "Điều chuyển chờ xử lý", value: data.pendingMovements },
+    { title: "Điều chuyển chờ xử lý", value: data.pendingMovements, tone: "warning" },
     { title: "Onboarding đang chạy", value: data.onboardingInProgress },
     { title: "Offboarding đang chạy", value: data.offboardingInProgress },
   ];
 
   return (
-    <>
+    <div className={styles.page}>
       <PageHeader
         title="Dashboard"
         subtitle="Tổng quan vận hành HRM, chấm công, nghỉ phép và dữ liệu bàn giao lương."
       />
 
-      <Stack gap="md">
-        <SimpleGrid cols={{ base: 1, sm: 2, xl: 3 }} spacing="md">
-          {metrics.map((metric) => (
-            <MetricCard
-              key={metric.title}
-              title={metric.title}
-              value={metric.value}
+      <Stack gap="lg">
+        <Stack gap="xs">
+          <span className={styles.sectionTitle}>Nhân sự</span>
+          <SimpleGrid cols={{ base: 2, md: 4 }} spacing="sm">
+            {headcount.map((metric) => (
+              <MetricCard key={metric.title} {...metric} />
+            ))}
+          </SimpleGrid>
+        </Stack>
+
+        <Stack gap="xs">
+          <span className={styles.sectionTitle}>Hàng chờ xử lý</span>
+          <SimpleGrid cols={{ base: 2, md: 5 }} spacing="sm">
+            {queues.map((metric) => (
+              <MetricCard key={metric.title} {...metric} />
+            ))}
+          </SimpleGrid>
+        </Stack>
+
+        <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md" style={{ alignItems: "start" }}>
+          <ChartPanel
+            title="Nhân sự theo đơn vị"
+            caption={`${formatCount(unitTotal)} nhân sự`}
+          >
+            {/* Long unit names rank better horizontally than as columns. */}
+            <BarChart
+              items={data.employeesByUnit.map((item) => ({
+                key: item.label,
+                label: item.label,
+                value: item.value,
+              }))}
             />
-          ))}
-        </SimpleGrid>
+          </ChartPanel>
 
-        <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
-          <BreakdownList title="Nhân sự theo đơn vị" items={data.employeesByUnit} />
-          <BreakdownList
+          <ChartPanel
             title="Nhân sự theo trạng thái"
-            items={data.employeesByEmploymentStatus}
-          />
+            caption={`${formatCount(statusTotal)} nhân sự`}
+          >
+            {/* Few slices and a genuine part-to-whole: a donut earns its place. */}
+            <DonutChart
+              centerLabel="Tổng nhân sự"
+              slices={data.employeesByEmploymentStatus.map((item) => ({
+                key: item.label,
+                label: getStatusLabel(item.label),
+                value: item.value,
+                tone: STATUS_TONES[item.label] ?? "accent",
+              }))}
+            />
+          </ChartPanel>
         </SimpleGrid>
 
-        <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
-          <TopLateTable items={data.attendanceThisMonth.topLateEmployees} />
-          <Paper p="md" radius="md">
-            <Stack gap="sm">
-              <Text fw={650}>Chuẩn bị bàn giao lương</Text>
-              <Group justify="space-between">
-                <Text size="sm" c="dimmed">
-                  Kỳ công đã chốt
-                </Text>
-                <Text size="sm" fw={650}>
-                  {data.payrollHandoff.closedPeriods.toLocaleString("vi-VN")}
-                </Text>
-              </Group>
-              <Group justify="space-between">
-                <Text size="sm" c="dimmed">
-                  Kỳ mới nhất
-                </Text>
-                <Text size="sm" fw={650}>
-                  {data.payrollHandoff.latestClosedPeriod
-                    ? `${data.payrollHandoff.latestClosedPeriod.month}/${data.payrollHandoff.latestClosedPeriod.year}`
-                    : "-"}
-                </Text>
-              </Group>
-              <Group justify="space-between">
-                <Text size="sm" c="dimmed">
-                  Định dạng lương
-                </Text>
-                <Badge color="yellow" variant="light">
-                  Chờ chốt
-                </Badge>
-              </Group>
-              <Group justify="space-between">
-                <Text size="sm" c="dimmed">
-                  Phép năm đã dùng tháng này
-                </Text>
-                <Text size="sm" fw={650}>
-                  {data.attendanceThisMonth.annualLeaveDaysUsed.toLocaleString(
-                    "vi-VN",
-                  )}
-                </Text>
-              </Group>
-              <Group justify="space-between">
-                <Text size="sm" c="dimmed">
-                  Quỹ phép
-                </Text>
-                <Badge color="yellow" variant="light">
-                  Đang đối chiếu CSV
-                </Badge>
-              </Group>
-              <Group justify="space-between" align="flex-start">
-                <Stack gap={0}>
-                  <Text size="sm" c="dimmed">
-                    Phép sắp hết hạn
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    {data.leaveExpiryRisks.message ??
-                      "Đang chờ dữ liệu quỹ phép."}
-                  </Text>
-                </Stack>
-                <Badge color="yellow" variant="light">
-                  {data.leaveExpiryRisks.items.length.toLocaleString("vi-VN")}
-                </Badge>
-              </Group>
-            </Stack>
-          </Paper>
-        </SimpleGrid>
+        <TopLateTable items={data.attendanceThisMonth.topLateEmployees} />
 
-        <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
+        {/* Top-aligned: the two lists rarely have the same row count, and a
+            stretched short panel leaves a large void under its last row. */}
+        <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md" style={{ alignItems: "start" }}>
           <AttendanceRateList
             title="Chuyên cần theo đơn vị"
             items={data.attendanceThisMonth.byUnit}
@@ -309,6 +320,6 @@ export function DashboardPage() {
           />
         </SimpleGrid>
       </Stack>
-    </>
+    </div>
   );
 }
