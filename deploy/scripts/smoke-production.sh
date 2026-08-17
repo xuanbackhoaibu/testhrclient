@@ -143,7 +143,19 @@ HR_API_CONTAINER="$(
     | head -1
 )"
 if [ -z "${HR_API_CONTAINER}" ]; then
-  HR_API_CONTAINER="$(docker ps --format '{{.Names}}' | grep -E "${PROJECT_NAME}-hr-api" | head -1)"
+  # Name fallback for an API deployed under a different compose project. Must
+  # exclude `docker compose run` one-off containers, which are named
+  # <project>-<service>-run-<hash>: those are short-lived migration/seed jobs.
+  # Matching one made this smoke poll a container that exited mid-loop, so the
+  # health check burned all 30 retries and the log dump then failed with
+  # "No such container".
+  # `|| true` because grep exits 1 on no match, which under `set -o pipefail`
+  # would abort the script instead of reaching the "not found, skipping" branch.
+  HR_API_CONTAINER="$(
+    docker ps --format '{{.Names}}' \
+      | grep -E "^${PROJECT_NAME}-hr-api(-[0-9]+)?$" \
+      | head -1 || true
+  )"
 fi
 
 if [ -n "${HR_API_CONTAINER}" ]; then

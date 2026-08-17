@@ -134,7 +134,15 @@ HR_API_CONTAINER="$(
     | head -1
 )"
 if [ -z "${HR_API_CONTAINER}" ]; then
-  HR_API_CONTAINER="$(docker ps --format '{{.Names}}' | grep -E "${PROJECT_NAME}-hr-api" | head -1)"
+  # Excludes `docker compose run` one-off containers (<project>-<service>-run-<hash>),
+  # which are short-lived jobs that exit mid-health-check. See smoke-production.sh.
+  # `|| true` because grep exits 1 on no match, which under `set -o pipefail`
+  # would abort the script instead of reaching the "not found, skipping" branch.
+  HR_API_CONTAINER="$(
+    docker ps --format '{{.Names}}' \
+      | grep -E "^${PROJECT_NAME}-hr-api(-[0-9]+)?$" \
+      | head -1 || true
+  )"
 fi
 
 if [ -n "${HR_API_CONTAINER}" ]; then
