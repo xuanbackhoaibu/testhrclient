@@ -145,7 +145,14 @@ export interface ShiftAssignmentGridDay {
   isWorkingDay: boolean;
   holidayName: string | null;
   source: string;
-  shift: { id: string; code: string; name: string } | null;
+  shift: {
+    id: string;
+    code: string;
+    name: string;
+    /** Số công của ca: ca 12 giờ 1.5, ca 24 giờ 3. Có thể thiếu nếu API cũ. */
+    dayValue?: number;
+    standardMinutes?: number;
+  } | null;
   /** Có khi nguồn là mẫu Ca tuần áp cho cá nhân. */
   weeklyTemplate?: { id: string; name: string } | null;
 }
