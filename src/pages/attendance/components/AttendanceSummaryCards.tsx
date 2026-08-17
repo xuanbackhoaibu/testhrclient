@@ -1,179 +1,185 @@
-import { Card, Grid, Group, RingProgress, Stack, Text, ThemeIcon } from '@mantine/core';
-import {
-  IconAlertTriangle,
-  IconCheck,
-  IconClock,
-  IconClockHour4,
-  IconQuestionMark,
-  IconUserCheck,
-  IconUserX,
-  IconUsers,
-} from '@tabler/icons-react';
+import { Button, Skeleton, Tooltip } from '@mantine/core';
+import { IconChartBar } from '@tabler/icons-react';
 import type { AttendanceSummary } from '../../../features/attendance/attendanceTypes';
+import styles from './AttendanceSummaryCards.module.css';
+
+/** Whether the figures cover the whole filter or only the page on screen. */
+export type SummaryScope = 'filter' | 'page';
 
 interface AttendanceSummaryCardsProps {
   summary: AttendanceSummary | undefined;
+  scope?: SummaryScope;
+  /** Opens the mapping screen; the CTA is hidden when omitted. */
+  onOpenMapping?: () => void;
+  chartOpened?: boolean;
+  onToggleChart?: () => void;
 }
 
-interface StatCardProps {
+type Tone = 'default' | 'positive' | 'warning' | 'danger' | 'muted';
+
+interface StatProps {
   label: string;
   value: number;
-  icon: typeof IconUsers;
-  color: string;
+  /** Percentage of total, rendered beside the value when provided. */
+  share?: number;
+  tone?: Tone;
+  hint?: string;
+  groupStart?: boolean;
 }
 
-function StatCard({ label, value, icon: Icon, color }: StatCardProps) {
-  return (
-    <Card withBorder padding="sm" radius="md">
-      <Group gap="xs" wrap="nowrap">
-        <ThemeIcon size="md" variant="light" color={color} radius="xl">
-          <Icon size={14} />
-        </ThemeIcon>
-        <Stack gap={0}>
-          <Text size="xs" c="dimmed" lh={1.2}>{label}</Text>
-          <Text size="lg" fw={700} lh={1.2} style={{ fontVariantNumeric: 'tabular-nums' }}>
-            {value.toLocaleString('vi-VN')}
-          </Text>
-        </Stack>
-      </Group>
-    </Card>
+function Stat({ label, value, share, tone = 'default', hint, groupStart }: StatProps) {
+  const body = (
+    <div className={groupStart ? `${styles.stat} ${styles.groupStart}` : styles.stat}>
+      <span className={styles.label}>{label}</span>
+      <span className={styles.figure}>
+        <span className={styles.value} data-tone={tone === 'default' ? undefined : tone}>
+          {value.toLocaleString('vi-VN')}
+        </span>
+        {share !== undefined && value > 0 && (
+          <span className={styles.share}>{share.toFixed(0)}%</span>
+        )}
+      </span>
+      {share !== undefined && (
+        <span className={styles.track} aria-hidden="true">
+          <span
+            className={styles.trackFill}
+            data-tone={tone === 'default' ? undefined : tone}
+            style={{ width: `${Math.min(100, Math.max(0, share))}%` }}
+          />
+        </span>
+      )}
+    </div>
+  );
+
+  return hint ? (
+    <Tooltip label={hint} withArrow openDelay={200}>
+      {body}
+    </Tooltip>
+  ) : (
+    body
   );
 }
 
-export function AttendanceSummaryCards({ summary }: AttendanceSummaryCardsProps) {
+function SummarySkeleton() {
+  return (
+    <div className={styles.root} aria-busy="true" aria-label="Đang tải số liệu tổng hợp">
+      {Array.from({ length: 7 }).map((_, index) => (
+        <div key={index} className={styles.stat}>
+          <Skeleton height={9} width={56} radius="sm" mt={3} />
+          <Skeleton height={18} width={44} radius="sm" mt={7} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function AttendanceSummaryCards({
+  summary,
+  scope = 'filter',
+  onOpenMapping,
+  chartOpened,
+  onToggleChart,
+}: AttendanceSummaryCardsProps) {
   if (!summary) {
-    return (
-      <Grid gap="xs">
-        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-          <Grid.Col key={i} span={{ base: 6, sm: 4, md: 3 }}>
-            <Card withBorder padding="sm" radius="md">
-              <Stack gap={4}>
-                <Text size="xs" c="dimmed">—</Text>
-                <Text size="lg" fw={700}>—</Text>
-              </Stack>
-            </Card>
-          </Grid.Col>
-        ))}
-      </Grid>
-    );
+    return <SummarySkeleton />;
   }
 
-  const presentRate = summary.total > 0 ? (summary.present / summary.total) * 100 : 0;
-  const mappedRate = summary.total > 0 ? ((summary.mapped + summary.autoMapped) / summary.total) * 100 : 0;
-  const unmappedConflictRate = summary.total > 0 ? ((summary.unmapped + summary.conflict) / summary.total) * 100 : 0;
+  const mappedTotal = summary.mapped + (summary.autoMapped ?? 0);
+  const conflict = summary.conflict ?? 0;
+  const needsAttention = summary.unmapped + conflict;
+
+  // When the backend omits the summary, `total` is the full filtered count but
+  // the per-status counts only cover the current page. Measure shares against
+  // what was actually counted so the percentages stay honest.
+  const countedStatus =
+    summary.present + summary.late + summary.absent + summary.singlePunch + summary.unknown;
+  const base = scope === 'filter' ? summary.total : countedStatus;
+  const share = (value: number) => (base > 0 ? (value / base) * 100 : 0);
+
+  const totalHint =
+    scope === 'page'
+      ? 'Tổng bản ghi khớp bộ lọc. Phân loại theo trạng thái bên cạnh tính trên trang đang xem.'
+      : 'Tính trên toàn bộ bản ghi khớp bộ lọc hiện tại, không chỉ trang đang xem.';
 
   return (
-    <>
-      <Grid gap="xs">
-        <Grid.Col span={{ base: 6, sm: 4, md: 3 }}>
-          <StatCard label="Tổng bản ghi" value={summary.total} icon={IconUsers} color="hacomRed" />
-        </Grid.Col>
-        <Grid.Col span={{ base: 6, sm: 4, md: 3 }}>
-          <StatCard label="Đủ công" value={summary.present} icon={IconCheck} color="green" />
-        </Grid.Col>
-        <Grid.Col span={{ base: 6, sm: 4, md: 3 }}>
-          <StatCard label="Đi muộn" value={summary.late} icon={IconClockHour4} color="yellow" />
-        </Grid.Col>
-        <Grid.Col span={{ base: 6, sm: 4, md: 3 }}>
-          <StatCard label="Chấm 1 lần" value={summary.singlePunch} icon={IconClock} color="orange" />
-        </Grid.Col>
-        <Grid.Col span={{ base: 6, sm: 4, md: 3 }}>
-          <StatCard label="Vắng" value={summary.absent} icon={IconUserX} color="red" />
-        </Grid.Col>
-        <Grid.Col span={{ base: 6, sm: 4, md: 3 }}>
-          <StatCard
-            label="Đã map"
-            value={summary.mapped + summary.autoMapped}
-            icon={IconUserCheck}
-            color={summary.mapped + summary.autoMapped > 0 ? 'teal' : 'gray'}
-          />
-        </Grid.Col>
-        <Grid.Col span={{ base: 6, sm: 4, md: 3 }}>
-          <StatCard
-            label="Chưa map"
-            value={summary.unmapped}
-            icon={IconQuestionMark}
-            color={summary.unmapped > 0 ? 'orange' : 'gray'}
-          />
-        </Grid.Col>
-        <Grid.Col span={{ base: 6, sm: 4, md: 3 }}>
-          <StatCard
-            label="Trùng mã"
-            value={summary.conflict}
-            icon={IconAlertTriangle}
-            color={summary.conflict > 0 ? 'red' : 'gray'}
-          />
-        </Grid.Col>
-      </Grid>
+    <div className={styles.root}>
+      <Stat label="Tổng bản ghi" value={summary.total} tone="default" hint={totalHint} />
 
-      <Card withBorder padding="sm" radius="md" bg="gray.0" mt="xs">
-        <Group gap="xl" wrap="wrap">
-          <Group gap="xs">
-            <RingProgress
-              size={56}
-              thickness={5}
-              sections={[{ value: presentRate, color: 'green' }]}
-              label={
-                <Text size="xs" ta="center" fw={600}>
-                  {presentRate.toFixed(0)}%
-                </Text>
-              }
-            />
-            <Stack gap={0}>
-              <Text size="xs" c="dimmed">Đủ công</Text>
-              <Text size="sm" fw={600} c="green.7">
-                {summary.present}/{summary.total}
-              </Text>
-            </Stack>
-          </Group>
+      <Stat
+        label="Đủ công"
+        value={summary.present}
+        share={share(summary.present)}
+        tone="positive"
+        hint="Có đủ giờ vào và ra, vào ca không quá mốc đi muộn của ca."
+      />
+      <Stat
+        label="Đi muộn"
+        value={summary.late}
+        tone={summary.late > 0 ? 'warning' : 'muted'}
+        hint="Giờ vào trễ hơn giờ bắt đầu ca cộng dung sai đi muộn được cấu hình trong Ca làm việc."
+      />
+      <Stat
+        label="Chấm 1 lần"
+        value={summary.singlePunch}
+        tone={summary.singlePunch > 0 ? 'warning' : 'muted'}
+        hint="Chỉ ghi nhận một lần chấm nên chưa xác định được giờ ra."
+      />
+      <Stat
+        label="Vắng"
+        value={summary.absent}
+        tone={summary.absent > 0 ? 'danger' : 'muted'}
+        hint="Ngày làm việc theo ca nhưng không có lần chấm nào."
+      />
+      {summary.unknown > 0 && (
+        <Stat
+          label="Không rõ"
+          value={summary.unknown}
+          tone="muted"
+          hint="Chưa phân giải được ca hoặc giờ chấm không hợp lệ. Kiểm tra phân ca trước khi kết luận."
+        />
+      )}
 
-          <Group gap="xs">
-            <RingProgress
-              size={56}
-              thickness={5}
-              sections={[
-                { value: mappedRate, color: 'teal' },
-                ...(unmappedConflictRate > 0 ? [{ value: unmappedConflictRate, color: 'red' }] : []),
-              ]}
-              label={
-                <Text size="xs" ta="center" fw={600}>
-                  {mappedRate.toFixed(0)}%
-                </Text>
-              }
-            />
-            <Stack gap={0}>
-              <Text size="xs" c="dimmed">Đã map</Text>
-              <Text size="sm" fw={600} c="teal.7">
-                {summary.mapped + summary.autoMapped}/{summary.total}
-              </Text>
-            </Stack>
-          </Group>
+      <Stat
+        label="Đã map"
+        value={mappedTotal}
+        share={share(mappedTotal)}
+        tone="positive"
+        groupStart
+        hint="Bản ghi đã liên kết được với nhân sự trong HRM."
+      />
+      <Stat
+        label="Chưa map"
+        value={summary.unmapped}
+        tone={summary.unmapped > 0 ? 'warning' : 'muted'}
+        hint="Chưa liên kết với nhân sự HRM nên không lên lịch cá nhân và bảng công."
+      />
+      {conflict > 0 && (
+        <Stat label="Trùng mã" value={conflict} tone="danger" hint="Một mã chấm công khớp nhiều nhân sự." />
+      )}
 
-          {(summary.unmapped + summary.conflict) > 0 && (
-            <Group gap="xs">
-              <RingProgress
-                size={56}
-                thickness={5}
-                sections={[
-                  { value: summary.unmapped > 0 ? (summary.unmapped / summary.total) * 100 : 0, color: 'orange' },
-                  { value: summary.conflict > 0 ? (summary.conflict / summary.total) * 100 : 0, color: 'red' },
-                ]}
-                label={
-                  <Text size="xs" ta="center" fw={600}>
-                    {(summary.unmapped + summary.conflict) > 0 ? ((summary.unmapped + summary.conflict) / summary.total * 100).toFixed(0) : '0'}%
-                  </Text>
-                }
-              />
-              <Stack gap={0}>
-                <Text size="xs" c="dimmed">Cần xử lý</Text>
-                <Text size="sm" fw={600} c="red.7">
-                  {summary.unmapped + summary.conflict} bản ghi
-                </Text>
-              </Stack>
-            </Group>
+      <div className={styles.spacer} />
+
+      {(onToggleChart || (needsAttention > 0 && onOpenMapping)) && (
+        <div className={styles.action}>
+          {onToggleChart && (
+            <Button
+              size="xs"
+              variant="subtle"
+              color="gray"
+              onClick={onToggleChart}
+              leftSection={<IconChartBar size={14} />}
+              aria-expanded={chartOpened}
+            >
+              {chartOpened ? 'Ẩn biểu đồ' : 'Biểu đồ'}
+            </Button>
           )}
-        </Group>
-      </Card>
-    </>
+          {needsAttention > 0 && onOpenMapping && (
+            <Button size="xs" variant="light" color="orange" onClick={onOpenMapping}>
+              Xử lý mapping ({needsAttention.toLocaleString('vi-VN')})
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

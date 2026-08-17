@@ -24,7 +24,6 @@ import {
   IconCalendarStats,
   IconDownload,
   IconFilter,
-  IconInfoCircle,
   IconRefresh,
   IconPlayerStop,
   IconTrash,
@@ -63,6 +62,7 @@ import { useEmployees } from "../../features/employees/useEmployees";
 import { useDepartmentsSelect } from "../../features/organization/useDepartments";
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { PageHeader } from "../../shared/components/PageHeader";
+import { InfoBanner } from "../../shared/components/InfoBanner";
 
 const now = new Date();
 const earliestTimesheetYear = 2020;
@@ -1191,7 +1191,7 @@ export function TimesheetGridPage() {
         0
       ) {
         notifications.show({
-          color: "hacomRed",
+          color: "blue",
           title: "Giữ nguyên quyết định đã có",
           message: `Không thay đổi ${result.recompute.skippedLocked} ngày đã chốt và ${result.recompute.skippedAdjusted} ngày HR đã sửa tay.`,
         });
@@ -1282,14 +1282,8 @@ export function TimesheetGridPage() {
       />
 
       <Stack gap="xs">
-        <Alert
-          p="xs"
-          radius="sm"
-          icon={<IconInfoCircle size={15} />}
-          color="hacomRed"
-          variant="light"
-        >
-          <Text size="xs">
+        <InfoBanner title="Quy tắc tính công và ký hiệu trên bảng" collapsible>
+          <Text size="sm" inherit>
             Giờ hành chính <b>08:00–17:00</b>; check-in <b>quá 10 phút</b> mới
             tính đi muộn. Ngưỡng thực tế lấy theo từng ca. Thứ Bảy làm buổi sáng
             <b> 08:00–12:00</b>; Chủ nhật luôn là <b> ngày nghỉ</b>, không cảnh
@@ -1301,7 +1295,7 @@ export function TimesheetGridPage() {
             khi bật. Khi chọn tháng cũ, hệ thống xét đúng phân công hiệu lực của
             tháng đó, kể cả nhân sự đã nghỉ hoặc chuyển đơn vị sau này.
           </Text>
-        </Alert>
+        </InfoBanner>
 
         {recomputeJob.status !== "IDLE" ? (
           <Paper withBorder radius="sm" p="sm">

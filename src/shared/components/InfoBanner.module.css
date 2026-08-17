@@ -1,0 +1,68 @@
+/*
+ * Explanatory banner used at the top of operational screens. Replaces the
+ * ad-hoc <Alert> blocks that each page styled differently.
+ */
+.root {
+  display: flex;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: var(--mantine-radius-md);
+  border: 1px solid;
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.55;
+}
+
+.root[data-tone='info'] {
+  border-color: light-dark(var(--mantine-color-blue-2), var(--mantine-color-blue-9));
+  background: light-dark(var(--mantine-color-blue-0), var(--mantine-color-dark-6));
+  color: light-dark(var(--mantine-color-gray-8), var(--mantine-color-dark-0));
+}
+
+.root[data-tone='warning'] {
+  border-color: light-dark(var(--mantine-color-orange-2), var(--mantine-color-orange-9));
+  background: light-dark(var(--mantine-color-orange-0), var(--mantine-color-dark-6));
+  color: light-dark(var(--mantine-color-gray-8), var(--mantine-color-dark-0));
+}
+
+.root[data-tone='neutral'] {
+  border-color: light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
+}
+
+.icon {
+  flex: none;
+  margin-top: 1px;
+}
+
+.root[data-tone='info'] .icon {
+  color: light-dark(var(--mantine-color-blue-6), var(--mantine-color-blue-4));
+}
+
+.root[data-tone='warning'] .icon {
+  color: light-dark(var(--mantine-color-orange-6), var(--mantine-color-orange-4));
+}
+
+.root[data-tone='neutral'] .icon {
+  color: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-2));
+}
+
+.body {
+  min-width: 0;
+  flex: 1;
+}
+
+.title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+/* Long policy text reads better at a limited measure. */
+.content {
+  max-width: 96ch;
+}
+
+.toggle {
+  align-self: flex-start;
+  flex: none;
+}

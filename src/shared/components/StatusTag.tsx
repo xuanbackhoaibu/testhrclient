@@ -1,4 +1,6 @@
 import { Badge } from '@mantine/core';
+import { STATUS_LABEL_MAP } from '../constants/statusLabels';
+import styles from './StatusTag.module.css';
 
 const STATUS_COLOR_MAP: Record<string, string> = {
   ACTIVE: 'green',
@@ -30,43 +32,22 @@ const STATUS_COLOR_MAP: Record<string, string> = {
   TOMBSTONED: 'dark',
 };
 
-const STATUS_LABEL_MAP: Record<string, string> = {
-  ACTIVE: 'Đang làm việc',
-  INACTIVE: 'Tạm ngưng',
-  PROBATION: 'Thử việc',
-  TERMINATED: 'Nghỉ việc',
-  RESIGNED: 'Admin',
-  SUSPENDED: 'Tạm dừng',
-  DRAFT: 'Nháp',
-  SUBMITTED: 'Đang trình duyệt',
-  APPROVED: 'Đã duyệt',
-  REJECTED: 'Từ chối',
-  CANCELLED: 'Đã hủy',
-  PENDING: 'Chờ xử lý',
-  CONFIRMED: 'Đã xác nhận',
-  PENDING_HR_RULE: 'Chờ quy tắc HR',
-  LINKED: 'Đã liên kết',
-  UNLINKED: 'Chưa liên kết',
-  // Account statuses
-  NOT_CREATED: 'Chưa tạo TK',
-  PENDING_ACTIVATION: 'Chờ kích hoạt',
-  LOCKED: 'Bị khóa',
-  DISABLED: 'Vô hiệu hóa',
-  DEACTIVATED: 'Đã hủy kích hoạt',
-  TOMBSTONED: 'Đã xóa',
-};
-
 export function StatusTag({ status }: { status?: string | null }) {
   if (!status) {
     return (
-      <Badge color="gray" variant="light">
+      <Badge color="gray" variant="light" radius="sm" className={styles.badge}>
         -
       </Badge>
     );
   }
 
   return (
-    <Badge color={STATUS_COLOR_MAP[status] ?? 'gray'} variant="light" radius="sm">
+    <Badge
+      color={STATUS_COLOR_MAP[status] ?? 'gray'}
+      variant="light"
+      radius="sm"
+      className={styles.badge}
+    >
       {STATUS_LABEL_MAP[status] ?? `Khác: ${status}`}
     </Badge>
   );

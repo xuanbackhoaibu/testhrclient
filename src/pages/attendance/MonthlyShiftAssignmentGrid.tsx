@@ -11,7 +11,6 @@ import {
   Popover,
   ScrollArea,
   Select,
-  SimpleGrid,
   Skeleton,
   Stack,
   Table,
@@ -23,7 +22,6 @@ import {
   IconAlertTriangle,
   IconCalendarTime,
   IconExternalLink,
-  IconInfoCircle,
   IconRefresh,
   IconSearch,
   IconUserCheck,
@@ -49,6 +47,16 @@ import {
   sortWorkShiftCatalog,
 } from "../../features/attendance/workShiftCatalogOrder";
 import {
+  directCellShiftDisabledReason,
+  formatShiftHoursAndWorkday,
+} from "../../features/attendance/shiftAssignmentEligibility";
+import {
+  sumAssignmentTotals,
+  summarizeAssignedPerDay,
+  summarizeAssignmentRow,
+  type ShiftAssignmentRowTotals,
+} from "../../features/attendance/shiftAssignmentTotals";
+import {
   useBulkAssignShifts,
   useCancelShiftAssignmentDay,
   useIncludeShiftAssignmentRowsInTimesheet,
@@ -66,6 +74,9 @@ import { useDepartmentsSelect } from "../../features/organization/useDepartments
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { HrmDateInput } from "../../shared/components/HrmDateInput";
 import { ROUTES } from "../../shared/constants/routes";
+import { InfoBanner } from "../../shared/components/InfoBanner";
+import { FilterBar } from "../../shared/components/FilterBar";
+import filterStyles from "../../shared/components/FilterBar.module.css";
 import { useImeSafeSearch } from "../../shared/hooks/useImeSafeSearch";
 import { formatDate } from "../../shared/utils/date";
 import { includesNormalizedSearch } from "../../shared/utils/normalizeSearchText";
@@ -96,6 +107,45 @@ const fixedColumns = [
 const fixedColumnsWidth =
   fixedColumns[fixedColumns.length - 1].left +
   fixedColumns[fixedColumns.length - 1].width;
+
+/*
+ * Năm cột công đầu tiên đúng theo bảng chấm công mẫu, quy ra SỐ CÔNG theo danh
+ * mục 'Ca làm việc' (shiftPayrollCatalog.ts) — không phải đếm số ngày. Cột (6)
+ * là tổng của (1)..(5).
+ *
+ * Ba cột cuối là thông tin riêng của bảng phân ca, giúp thấy lịch còn hở chỗ
+ * nào: ngày làm việc chưa có ca, ngày nghỉ theo lịch, ngày ngoài khoảng tính
+ * công. Mẫu Excel không có ba cột này.
+ */
+const totalColumns = [
+  { key: "workDays", label: "Công làm việc\nthực tế\n(1)", width: 78 },
+  { key: "publicHolidayDays", label: "Nghỉ Lễ\n(2)", width: 62 },
+  { key: "annualLeaveDays", label: "Nghỉ\nPhép\n(3)", width: 62 },
+  { key: "personalLeaveDays", label: "Nghỉ Việc\nriêng\n(4)", width: 68 },
+  { key: "compensatoryLeaveDays", label: "Nghỉ bù\n(5)", width: 62 },
+] as const;
+const TOTAL_SUM_COLUMN_WIDTH = 92;
+/** Cột chẩn đoán riêng của bảng phân ca, đứng sau cột tổng (6). */
+const diagnosticColumns = [
+  {
+    key: "unassignedWorkingDays",
+    label: "Ngày làm việc\nchưa phân ca",
+    width: 84,
+    highlightWhenPositive: true,
+  },
+  { key: "offDays", label: "Nghỉ\ntheo ca", width: 62 },
+  { key: "outOfWindowDays", label: "Ngoài khoảng\ntính công", width: 78 },
+] as const;
+const totalColumnsWidth =
+  totalColumns.reduce((sum, column) => sum + column.width, 0) +
+  TOTAL_SUM_COLUMN_WIDTH +
+  diagnosticColumns.reduce((sum, column) => sum + column.width, 0);
+
+/* Số công luôn là bội của 0.5, nên "23.5" chứ không phải "23.50", và số tròn
+   hiện "24" như trên bảng chấm công giấy. */
+function formatWorkdayValue(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
 const EMPTY_ROWS: ShiftAssignmentGridRow[] = [];
 const EMPTY_SELECTION = new Set<string>();
 
@@ -108,6 +158,7 @@ interface DayMeta {
 interface PreparedRow {
   row: ShiftAssignmentGridRow;
   daysByNumber: Map<number, ShiftAssignmentGridDay>;
+  totals: ShiftAssignmentRowTotals;
 }
 
 interface PreparedGroup {
@@ -309,19 +360,6 @@ function cellDescription(
   return day.shift
     ? `${day.shift.code} — ${day.shift.name} · ${sourceLabel(day.source)}`
     : sourceLabel(day.source);
-}
-
-function directCellShiftDisabledReason(shift: WorkShift): string | null {
-  if (shift.startTime >= shift.endTime) return "Chưa phân ca qua ngày";
-  return shift.status === "ACTIVE" ? null : "Ca đang tạm ngưng";
-}
-
-function formatShiftHoursAndWorkday(shift: WorkShift): string {
-  const hours = shift.standardMinutes / 60;
-  const displayHours = Number.isInteger(hours)
-    ? String(hours)
-    : hours.toFixed(1);
-  return displayHours + " giờ / " + shift.dayValue + " công";
 }
 
 function Legend() {
@@ -544,6 +582,7 @@ export function MonthlyShiftAssignmentGrid({
       rows.map((row) => ({
         row,
         daysByNumber: new Map(row.days.map((day) => [day.day, day])),
+        totals: summarizeAssignmentRow(row.days),
       })),
     [rows],
   );
@@ -621,6 +660,20 @@ export function MonthlyShiftAssignmentGrid({
   const pageRows = useMemo(
     () => pagedGroups.flatMap((group) => group.rows),
     [pagedGroups],
+  );
+  /* Dòng "Tổng cộng" tổng theo các CBNV đang hiển thị trên trang, khớp với những
+     gì người dùng đọc được — không phải toàn bộ 70 CBNV của kỳ. */
+  const perDayAssigned = useMemo(
+    () =>
+      summarizeAssignedPerDay(
+        pageRows.map((item) => item.row),
+        dayMetas.length,
+      ),
+    [dayMetas.length, pageRows],
+  );
+  const columnTotals = useMemo(
+    () => sumAssignmentTotals(pageRows.map((item) => item.totals)),
+    [pageRows],
   );
   const selectablePageRows = pageRows.filter((item) => item.row.canInclude);
   const selectedOnPage = selectablePageRows.filter((item) =>
@@ -1004,7 +1057,7 @@ export function MonthlyShiftAssignmentGrid({
 
   return (
     <Stack gap="md">
-      <Alert icon={<IconInfoCircle size={18} />} color="blue" variant="light">
+      <InfoBanner title="Cách phân ca và quan hệ với BCC" collapsible>
         Phân ca ở đây tạo <b>ca cá nhân</b> cho các CBNV được tích chọn; ca cá
         nhân ưu tiên hơn ca phòng ban và đơn vị. Nhấn ô <b>—</b> để chọn ca trực
         tiếp cho đúng CBNV/ngày; thao tác này luôn đưa CBNV vào BCC. Chủ nhật
@@ -1014,54 +1067,62 @@ export function MonthlyShiftAssignmentGrid({
         chọn “Đưa vào BCC cùng ca” khi chỉ muốn lập kế hoạch ca. Với CBNV đã có
         ca, dùng <b>Đưa vào BCC</b> để bổ sung bảng công mà không tạo lại ca.
         Sau đó mở đúng kỳ, bấm <b>Cập nhật bảng công</b> rồi mới xuất Excel.
-      </Alert>
+      </InfoBanner>
 
-      <Paper withBorder p="md" radius="md">
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 5 }} spacing="sm">
-          <Select
-            label="Kỳ công"
-            data={monthOptions}
-            value={String(month)}
-            allowDeselect={false}
-            onChange={(value) => setMonth(Number(value ?? month))}
-          />
-          <Select
-            label="Năm"
-            data={yearOptions}
-            value={String(year)}
-            allowDeselect={false}
-            onChange={(value) => setYear(Number(value ?? year))}
-          />
-          <Select
-            label="Đơn vị"
-            placeholder="Chọn đơn vị"
-            data={unitOptions}
-            value={selectedUnitId}
-            searchable
-            disabled={unitsQuery.isLoading}
-            onChange={(value) => {
-              setRequestedUnitId(value);
-              setDepartmentId(null);
-            }}
-          />
-          <Select
-            label="Phòng ban"
-            placeholder="Tất cả phòng ban"
-            data={departmentOptions}
-            value={departmentId}
-            searchable
-            clearable
-            disabled={!selectedUnitId || departmentsQuery.isLoading}
-            onChange={setDepartmentId}
-          />
-          <TextInput
-            label="Nhân sự"
-            placeholder="Tìm tên, MCB hoặc mã nhân sự"
-            leftSection={<IconSearch size={16} />}
-            {...searchInput.inputProps}
-          />
-        </SimpleGrid>
-      </Paper>
+      <FilterBar>
+        <Select
+          aria-label="Kỳ công"
+          data={monthOptions}
+          value={String(month)}
+          allowDeselect={false}
+          onChange={(value) => setMonth(Number(value ?? month))}
+          size="sm"
+          className={filterStyles.field}
+        />
+        <Select
+          aria-label="Năm"
+          data={yearOptions}
+          value={String(year)}
+          allowDeselect={false}
+          onChange={(value) => setYear(Number(value ?? year))}
+          size="sm"
+          className={filterStyles.field}
+        />
+        <Select
+          aria-label="Đơn vị"
+          placeholder="Chọn đơn vị"
+          data={unitOptions}
+          value={selectedUnitId}
+          searchable
+          disabled={unitsQuery.isLoading}
+          onChange={(value) => {
+            setRequestedUnitId(value);
+            setDepartmentId(null);
+          }}
+          size="sm"
+          className={filterStyles.fieldWide}
+        />
+        <Select
+          aria-label="Phòng ban"
+          placeholder="Tất cả phòng ban"
+          data={departmentOptions}
+          value={departmentId}
+          searchable
+          clearable
+          disabled={!selectedUnitId || departmentsQuery.isLoading}
+          onChange={setDepartmentId}
+          size="sm"
+          className={filterStyles.fieldWide}
+        />
+        <TextInput
+          aria-label="Nhân sự"
+          placeholder="Tìm tên, MCB hoặc mã nhân sự"
+          leftSection={<IconSearch size={15} />}
+          {...searchInput.inputProps}
+          size="sm"
+          className={filterStyles.grow}
+        />
+      </FilterBar>
 
       {!selectedUnitId && !unitsQuery.isLoading ? (
         <Alert color="yellow" variant="light" title="Chưa có đơn vị để phân ca">
@@ -1227,7 +1288,9 @@ export function MonthlyShiftAssignmentGrid({
           <Legend />
           <Text size="xs" c="dimmed">
             Ca cá nhân đang chồng ngày sẽ được báo lỗi; hệ thống không tự ghi đè
-            lịch sử.
+            lịch sử. Cột (1)–(6) quy số công theo danh mục ca (ca 12 giờ 1.5
+            công, ca 24 giờ 3 công) và tính trên lịch đã phân — công chốt cuối kỳ
+            vẫn lấy ở Bảng công tháng sau khi có dữ liệu chấm công.
           </Text>
         </Group>
       </Paper>
@@ -1285,7 +1348,10 @@ export function MonthlyShiftAssignmentGrid({
               horizontalSpacing={0}
               verticalSpacing={0}
               style={{
-                minWidth: fixedColumnsWidth + dayMetas.length * dayColumnWidth,
+                minWidth:
+                  fixedColumnsWidth +
+                  dayMetas.length * dayColumnWidth +
+                  totalColumnsWidth,
               }}
             >
               <Table.Thead>
@@ -1339,6 +1405,54 @@ export function MonthlyShiftAssignmentGrid({
                       {String(meta.day).padStart(2, "0")}
                     </Table.Th>
                   ))}
+                  {totalColumns.map((column) => (
+                    <Table.Th
+                      key={column.key}
+                      rowSpan={2}
+                      style={{
+                        background: "#e6f2df",
+                        minWidth: column.width,
+                        padding: "5px 4px",
+                        textAlign: "center",
+                        verticalAlign: "middle",
+                        whiteSpace: "pre-line",
+                        width: column.width,
+                      }}
+                    >
+                      {column.label}
+                    </Table.Th>
+                  ))}
+                  <Table.Th
+                    rowSpan={2}
+                    style={{
+                      background: "#dcecd2",
+                      minWidth: TOTAL_SUM_COLUMN_WIDTH,
+                      padding: "5px 4px",
+                      textAlign: "center",
+                      verticalAlign: "middle",
+                      whiteSpace: "pre-line",
+                      width: TOTAL_SUM_COLUMN_WIDTH,
+                    }}
+                  >
+                    {"Tổng ngày công\nthực tế\n(6)=(1)+(2)+\n(3)+(4)+(5)"}
+                  </Table.Th>
+                  {diagnosticColumns.map((column) => (
+                    <Table.Th
+                      key={column.key}
+                      rowSpan={2}
+                      style={{
+                        background: "#eef2f7",
+                        minWidth: column.width,
+                        padding: "5px 4px",
+                        textAlign: "center",
+                        verticalAlign: "middle",
+                        whiteSpace: "pre-line",
+                        width: column.width,
+                      }}
+                    >
+                      {column.label}
+                    </Table.Th>
+                  ))}
                 </Table.Tr>
                 <Table.Tr>
                   {dayMetas.map((meta) => (
@@ -1386,7 +1500,12 @@ export function MonthlyShiftAssignmentGrid({
                         </Text>
                       </Table.Td>
                       <Table.Td
-                        colSpan={dayMetas.length}
+                        colSpan={
+                          dayMetas.length +
+                          totalColumns.length +
+                          1 +
+                          diagnosticColumns.length
+                        }
                         style={{ background: "#d9d2e9", padding: "7px 10px" }}
                       />
                     </Table.Tr>
@@ -1907,11 +2026,160 @@ export function MonthlyShiftAssignmentGrid({
                               </Table.Td>
                             );
                           })}
+                          {totalColumns.map((column) => {
+                            const value = item.totals[column.key];
+                            return (
+                              <Table.Td
+                                key={column.key}
+                                style={{
+                                  background: "#fbfdfa",
+                                  fontVariantNumeric: "tabular-nums",
+                                  padding: "4px 6px",
+                                  textAlign: "center",
+                                }}
+                              >
+                                <Text
+                                  size="xs"
+                                  fw={value > 0 ? 600 : 400}
+                                  c={value > 0 ? undefined : "dimmed"}
+                                >
+                                  {formatWorkdayValue(value)}
+                                </Text>
+                              </Table.Td>
+                            );
+                          })}
+                          <Table.Td
+                            style={{
+                              background: "#f1f8ec",
+                              fontVariantNumeric: "tabular-nums",
+                              padding: "4px 6px",
+                              textAlign: "center",
+                            }}
+                          >
+                            <Text size="xs" fw={700}>
+                              {formatWorkdayValue(item.totals.totalDays)}
+                            </Text>
+                          </Table.Td>
+                          {diagnosticColumns.map((column) => {
+                            const value = item.totals[column.key];
+                            const warn =
+                              "highlightWhenPositive" in column &&
+                              column.highlightWhenPositive &&
+                              value > 0;
+                            return (
+                              <Table.Td
+                                key={column.key}
+                                style={{
+                                  background: warn ? "#fff5f5" : "#f8fafc",
+                                  fontVariantNumeric: "tabular-nums",
+                                  padding: "4px 6px",
+                                  textAlign: "center",
+                                }}
+                              >
+                                <Text
+                                  size="xs"
+                                  fw={value > 0 ? 600 : 400}
+                                  c={
+                                    warn
+                                      ? "red.7"
+                                      : value > 0
+                                        ? undefined
+                                        : "dimmed"
+                                  }
+                                >
+                                  {value}
+                                </Text>
+                              </Table.Td>
+                            );
+                          })}
                         </Table.Tr>
                       );
                     })}
                   </Fragment>
                 ))}
+                {pageRows.length ? (
+                  <Table.Tr>
+                    <Table.Td
+                      colSpan={fixedColumns.length}
+                      style={{
+                        background: "#eef2f7",
+                        boxShadow: "2px 0 0 var(--mantine-color-gray-4)",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        left: 0,
+                        minWidth: fixedColumnsWidth,
+                        padding: "6px 10px",
+                        position: "sticky",
+                        textAlign: "right",
+                        width: fixedColumnsWidth,
+                        zIndex: 3,
+                      }}
+                    >
+                      Tổng cộng ({pageRows.length} CBNV)
+                    </Table.Td>
+                    {dayMetas.map((meta, index) => (
+                      <Table.Td
+                        key={meta.day}
+                        style={{
+                          background: meta.isSunday ? "#fdf3d8" : "#eef2f7",
+                          fontVariantNumeric: "tabular-nums",
+                          padding: "6px 2px",
+                          textAlign: "center",
+                        }}
+                      >
+                        <Text
+                          size="xs"
+                          fw={600}
+                          c={perDayAssigned[index] ? undefined : "dimmed"}
+                        >
+                          {formatWorkdayValue(perDayAssigned[index] ?? 0)}
+                        </Text>
+                      </Table.Td>
+                    ))}
+                    {totalColumns.map((column) => (
+                      <Table.Td
+                        key={column.key}
+                        style={{
+                          background: "#eef2f7",
+                          fontVariantNumeric: "tabular-nums",
+                          padding: "6px 6px",
+                          textAlign: "center",
+                        }}
+                      >
+                        <Text size="xs" fw={700}>
+                          {formatWorkdayValue(columnTotals[column.key])}
+                        </Text>
+                      </Table.Td>
+                    ))}
+                    <Table.Td
+                      style={{
+                        background: "#e3ebf3",
+                        fontVariantNumeric: "tabular-nums",
+                        padding: "6px 6px",
+                        textAlign: "center",
+                      }}
+                    >
+                      <Text size="xs" fw={700}>
+                        {formatWorkdayValue(columnTotals.totalDays)}
+                      </Text>
+                    </Table.Td>
+                    {diagnosticColumns.map((column) => (
+                      <Table.Td
+                        key={column.key}
+                        style={{
+                          background: "#eef2f7",
+                          fontVariantNumeric: "tabular-nums",
+                          padding: "6px 6px",
+                          textAlign: "center",
+                        }}
+                      >
+                        <Text size="xs" fw={700}>
+                          {columnTotals[column.key]}
+                        </Text>
+                      </Table.Td>
+                    ))}
+                  </Table.Tr>
+                ) : null}
               </Table.Tbody>
             </Table>
           </ScrollArea>

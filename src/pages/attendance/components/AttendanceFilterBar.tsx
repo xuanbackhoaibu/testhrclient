@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Badge, Button, Group, Select, Stack, TextInput } from '@mantine/core';
+import { Badge, Button, Select, TextInput } from '@mantine/core';
 import { IconRefresh, IconSearch, IconX } from '@tabler/icons-react';
 import { useBioTimeDepartments } from '../../../features/attendance/useAttendanceSync';
 import { AttendanceDateFilter } from './AttendanceDateFilter';
@@ -22,10 +22,8 @@ interface AttendanceFilterBarProps {
   filters: AttendanceFilters;
   onChange: (filters: AttendanceFilters) => void;
   onSync: () => void;
-  onOpenMapping?: () => void;
   isSyncing: boolean;
   maySync: boolean;
-  unmappedConflictCount?: number;
 }
 
 const STATUS_OPTIONS = [
@@ -70,10 +68,8 @@ export function AttendanceFilterBar({
   filters,
   onChange,
   onSync,
-  onOpenMapping,
   isSyncing,
   maySync,
-  unmappedConflictCount = 0,
 }: AttendanceFilterBarProps) {
   const selectSearch = useImeSafeSelectFilter();
   const search = useImeSafeSearch({
@@ -122,8 +118,8 @@ export function AttendanceFilterBar({
   const activeCount = countActiveFilters(filters);
 
   return (
-    <Stack gap="xs" className={styles.root}>
-      <Group gap="xs" wrap="nowrap" className={styles.row}>
+    <div className={styles.root}>
+      <div className={styles.row}>
         {/* Search input */}
         <TextInput
           placeholder="Tìm mã NV, họ tên, phòng ban..."
@@ -200,7 +196,23 @@ export function AttendanceFilterBar({
         />
 
         {/* Nhóm thao tác */}
-        <Group gap="xs" wrap="nowrap" className={styles.actions}>
+        <div className={styles.actions}>
+          {activeCount > 0 && (
+            <Button
+              variant="subtle"
+              size="sm"
+              color="gray"
+              onClick={handleClear}
+              leftSection={
+                <Badge size="xs" circle color="blue">
+                  {activeCount}
+                </Badge>
+              }
+            >
+              Xóa lọc
+            </Button>
+          )}
+
           {maySync && (
             <Button
               leftSection={<IconRefresh size={15} />}
@@ -209,40 +221,13 @@ export function AttendanceFilterBar({
               disabled={isSyncing}
               size="sm"
               variant="light"
-              color="hacomRed"
+              color="blue"
             >
               Đồng bộ
             </Button>
           )}
-
-          {maySync && unmappedConflictCount > 0 && (
-            <Button
-              size="sm"
-              variant="light"
-              color="orange"
-              onClick={onOpenMapping}
-            >
-              Xử lý mapping ({unmappedConflictCount})
-            </Button>
-          )}
-
-          {activeCount > 0 && (
-            <Button
-              variant="subtle"
-              size="sm"
-              color="gray"
-              onClick={handleClear}
-              leftSection={
-                <Badge size="xs" circle color="hacomRed">
-                  {activeCount}
-                </Badge>
-              }
-            >
-              Xóa lọc
-            </Button>
-          )}
-        </Group>
-      </Group>
-    </Stack>
+        </div>
+      </div>
+    </div>
   );
 }

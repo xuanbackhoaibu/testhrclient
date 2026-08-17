@@ -1,14 +1,8 @@
-import { Alert, Badge, Card, Grid, Group, Progress, Stack, Text, ThemeIcon } from '@mantine/core';
-import {
-  IconAlertTriangle,
-  IconClock,
-  IconDatabase,
-  IconDeviceFloppy,
-  IconRefresh,
-  IconUsers,
-} from '@tabler/icons-react';
+import { Alert, Anchor, Skeleton } from '@mantine/core';
+import { IconAlertTriangle } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 import type { AttendanceSyncStatus } from '../../../features/attendance/attendanceTypes';
+import styles from './AttendanceSyncStatusCard.module.css';
 
 interface AttendanceSyncStatusCardProps {
   status: AttendanceSyncStatus | undefined;
@@ -17,94 +11,48 @@ interface AttendanceSyncStatusCardProps {
   mayViewSyncLog: boolean;
 }
 
-interface SyncJobCardProps {
-  title: string;
-  icon: typeof IconRefresh;
-  job: {
-    isRunning: boolean;
-    lastSuccessAt: string | null;
-    lastError: string | null;
-    lastErrorAt: string | null;
-    totalSynced: number;
-    latestRun: {
-      status: string | null;
-      totalFetched: number;
-      totalUpserted: number;
-      errorMessage: string | null;
-    } | null;
-  } | undefined;
+type SyncJob = AttendanceSyncStatus['dailyToday'];
+
+interface ResolvedState {
+  state: 'running' | 'error' | 'ok' | 'idle';
+  /** Job whose state won, used for the timestamp and error message. */
+  job: SyncJob | undefined;
+  label: string;
 }
 
-function SyncJobCard({ title, icon: Icon, job }: SyncJobCardProps) {
-  if (!job) {
-    return (
-      <Card withBorder padding="sm" radius="md" bg="gray.0">
-        <Group gap="xs" mb={4}>
-          <Icon size={14} />
-          <Text size="xs" fw={600}>{title}</Text>
-        </Group>
-        <Text size="xs" c="dimmed">Chưa có dữ liệu</Text>
-      </Card>
-    );
-  }
+const JOB_LABELS = {
+  dailyToday: 'Đồng bộ hôm nay',
+  nightly7Days: 'Đồng bộ đêm',
+  manualSync: 'Đồng bộ thủ công',
+} as const;
 
-  if (job.isRunning) {
-    return (
-      <Card withBorder padding="sm" radius="md" bg="var(--hacom-primary-tint)" style={{ borderColor: 'color-mix(in srgb, var(--hacom-primary), transparent 65%)' }}>
-        <Group gap="xs" mb={4}>
-          <Icon size={14} />
-          <Text size="xs" fw={600} c="var(--hacom-primary)">{title}</Text>
-          <Badge size="xs" color="hacomRed" variant="light">Đang chạy</Badge>
-        </Group>
-        <Progress value={100} animated color="hacomRed" size="xs" mb={4} />
-        <Text size="xs" c="var(--hacom-primary)">Đang đồng bộ dữ liệu...</Text>
-      </Card>
-    );
-  }
-
-  if (job.lastError) {
-    return (
-      <Card withBorder padding="sm" radius="md" bg="red.0" style={{ borderColor: 'var(--mantine-color-red-3)' }}>
-        <Group gap="xs" mb={4}>
-          <Icon size={14} />
-          <Text size="xs" fw={600} c="red.7">{title}</Text>
-          <Badge size="xs" color="red" variant="light">Lỗi</Badge>
-        </Group>
-        <Text size="xs" c="red.6" lineClamp={2}>{job.lastError}</Text>
-        {job.lastErrorAt && (
-          <Text size="xs" c="dimmed" mt={2}>
-            Lúc {dayjs(job.lastErrorAt).format('DD/MM/YYYY HH:mm')}
-          </Text>
-        )}
-      </Card>
-    );
-  }
-
-  if (job.lastSuccessAt) {
-    return (
-      <Card withBorder padding="sm" radius="md" bg="green.0" style={{ borderColor: 'var(--mantine-color-green-3)' }}>
-        <Group gap="xs" mb={4}>
-          <Icon size={14} />
-          <Text size="xs" fw={600} c="green.7">{title}</Text>
-          <Badge size="xs" color="green" variant="light">Thành công</Badge>
-        </Group>
-        <Text size="xs" c="green.6">
-          {dayjs(job.lastSuccessAt).format('DD/MM/YYYY HH:mm')} ·{' '}
-          {job.totalSynced.toLocaleString('vi-VN')} bản ghi
-        </Text>
-      </Card>
-    );
-  }
-
-  return (
-    <Card withBorder padding="sm" radius="md" bg="gray.0">
-      <Group gap="xs" mb={4}>
-        <Icon size={14} />
-        <Text size="xs" fw={600}>{title}</Text>
-      </Group>
-      <Text size="xs" c="dimmed">Chưa chạy lần nào</Text>
-    </Card>
+/**
+ * Collapses the three sync jobs into the single state worth surfacing:
+ * running beats error, error beats success, success beats idle.
+ */
+function resolveState(status: AttendanceSyncStatus): ResolvedState {
+  const candidates: { job: SyncJob; label: string }[] = [
+    { job: status.dailyToday, label: JOB_LABELS.dailyToday },
+    { job: status.nightly7Days, label: JOB_LABELS.nightly7Days },
+    { job: status.manualSync, label: JOB_LABELS.manualSync },
+  ];
+  const jobs = candidates.filter(
+    (entry): entry is { job: NonNullable<SyncJob>; label: string } =>
+      Boolean(entry.job),
   );
+
+  const running = jobs.find((entry) => entry.job.isRunning);
+  if (running) return { state: 'running', job: running.job, label: running.label };
+
+  const failed = jobs.find((entry) => entry.job.lastError);
+  if (failed) return { state: 'error', job: failed.job, label: failed.label };
+
+  const succeeded = jobs
+    .filter((entry) => entry.job.lastSuccessAt)
+    .sort((a, b) => dayjs(b.job.lastSuccessAt!).valueOf() - dayjs(a.job.lastSuccessAt!).valueOf())[0];
+  if (succeeded) return { state: 'ok', job: succeeded.job, label: succeeded.label };
+
+  return { state: 'idle', job: undefined, label: 'Đồng bộ' };
 }
 
 export function AttendanceSyncStatusCard({
@@ -115,13 +63,12 @@ export function AttendanceSyncStatusCard({
 }: AttendanceSyncStatusCardProps) {
   if (isLoading) {
     return (
-      <Card withBorder padding="md" radius="md">
-        <Stack gap="xs">
-          <Text size="sm" fw={600}>Trạng thái đồng bộ</Text>
-          <Progress value={40} animated />
-          <Text size="xs" c="dimmed">Đang tải...</Text>
-        </Stack>
-      </Card>
+      <div className={styles.root} aria-busy="true" aria-label="Đang tải trạng thái đồng bộ">
+        <Skeleton height={8} circle />
+        <Skeleton height={10} width={220} radius="sm" />
+        <div className={styles.spacer} />
+        <Skeleton height={10} width={110} radius="sm" />
+      </div>
     );
   }
 
@@ -129,82 +76,71 @@ export function AttendanceSyncStatusCard({
     return null;
   }
 
-  const hasNoData = !status.hasAttendanceData;
+  const resolved = resolveState(status);
 
   return (
     <>
-      {/* Warning banner if no data */}
-      {hasNoData && (
-        <Alert
-          color="yellow"
-          icon={<IconAlertTriangle size={16} />}
-          py={8}
-          mb="xs"
-        >
-          <Group gap="xs" wrap="nowrap">
-            <Text size="sm">
-              Chưa có dữ liệu chấm công được đồng bộ. Hãy chạy đồng bộ hoặc kiểm tra cấu hình BioTime.
-            </Text>
-          </Group>
+      {!status.hasAttendanceData && (
+        <Alert color="yellow" icon={<IconAlertTriangle size={16} />} py={8} mb="xs">
+          Chưa có dữ liệu chấm công được đồng bộ. Hãy chạy đồng bộ hoặc kiểm tra cấu hình BioTime.
         </Alert>
       )}
 
-      {/* Stats row */}
-      <Card withBorder padding="sm" radius="md" mb="xs">
-        <Group justify="space-between" wrap="wrap" gap="xs">
-          <Group gap="xs">
-            <ThemeIcon size="sm" variant="light" color="hacomRed" radius="xl">
-              <IconDatabase size={12} />
-            </ThemeIcon>
-            <Text size="xs">
-              <Text span fw={600}>{status.attendanceTotal.toLocaleString('vi-VN')}</Text> bản ghi chấm công
-            </Text>
-          </Group>
-          <Group gap="xs">
-            <ThemeIcon size="sm" variant="light" color="teal" radius="xl">
-              <IconUsers size={12} />
-            </ThemeIcon>
-            <Text size="xs">
-              <Text span fw={600}>{status.departmentTotal}</Text> phòng ban BioTime
-            </Text>
-          </Group>
-          {mayViewSyncLog && (
-            <Text
-              size="xs"
-              c="var(--hacom-primary)"
-              style={{ cursor: 'pointer' }}
-              onClick={onViewSyncHistory}
-            >
-              Xem lịch sử đồng bộ →
-            </Text>
-          )}
-        </Group>
-      </Card>
+      <div className={styles.root} data-state={resolved.state}>
+        <span className={styles.dot} data-state={resolved.state} aria-hidden="true" />
 
-      {/* Sync job cards */}
-      <Grid gap="xs">
-        <Grid.Col span={{ base: 12, sm: 4 }}>
-          <SyncJobCard
-            title="Đồng bộ hôm nay"
-            icon={IconRefresh}
-            job={status.dailyToday}
-          />
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, sm: 4 }}>
-          <SyncJobCard
-            title="Đồng bộ đêm (7 ngày)"
-            icon={IconClock}
-            job={status.nightly7Days}
-          />
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, sm: 4 }}>
-          <SyncJobCard
-            title="Đồng bộ thủ công"
-            icon={IconDeviceFloppy}
-            job={status.manualSync}
-          />
-        </Grid.Col>
-      </Grid>
+        <span className={styles.text}>
+          {resolved.state === 'running' && <>{resolved.label} đang chạy…</>}
+
+          {resolved.state === 'error' && (
+            <>
+              {resolved.label} thất bại
+              {resolved.job?.lastErrorAt && (
+                <> lúc {dayjs(resolved.job.lastErrorAt).format('DD/MM HH:mm')}</>
+              )}
+              <span className={styles.sep}> · </span>
+              <span className={styles.errorText} title={resolved.job?.lastError ?? undefined}>
+                {resolved.job?.lastError}
+              </span>
+            </>
+          )}
+
+          {resolved.state === 'ok' && resolved.job?.lastSuccessAt && (
+            <>
+              {resolved.label} lúc{' '}
+              <span className={styles.strong}>
+                {dayjs(resolved.job.lastSuccessAt).format('DD/MM HH:mm')}
+              </span>
+            </>
+          )}
+
+          {resolved.state === 'idle' && <>Chưa chạy đồng bộ lần nào</>}
+        </span>
+
+        <span className={styles.sep} aria-hidden="true">
+          ·
+        </span>
+
+        <span className={styles.text}>
+          <span className={styles.strong}>{status.attendanceTotal.toLocaleString('vi-VN')}</span> bản ghi
+        </span>
+
+        <span className={styles.sep} aria-hidden="true">
+          ·
+        </span>
+
+        <span className={styles.text}>
+          <span className={styles.strong}>{status.departmentTotal.toLocaleString('vi-VN')}</span> phòng ban
+        </span>
+
+        <div className={styles.spacer} />
+
+        {mayViewSyncLog && (
+          <Anchor component="button" type="button" size="sm" onClick={onViewSyncHistory}>
+            Lịch sử đồng bộ
+          </Anchor>
+        )}
+      </div>
     </>
   );
 }
