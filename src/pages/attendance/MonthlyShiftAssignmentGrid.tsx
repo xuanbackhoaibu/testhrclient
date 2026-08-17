@@ -51,6 +51,11 @@ import {
   formatShiftHoursAndWorkday,
 } from "../../features/attendance/shiftAssignmentEligibility";
 import {
+  summarizeAssignedPerDay,
+  summarizeAssignmentRow,
+  type ShiftAssignmentRowTotals,
+} from "../../features/attendance/shiftAssignmentTotals";
+import {
   useBulkAssignShifts,
   useCancelShiftAssignmentDay,
   useIncludeShiftAssignmentRowsInTimesheet,
@@ -101,6 +106,38 @@ const fixedColumns = [
 const fixedColumnsWidth =
   fixedColumns[fixedColumns.length - 1].left +
   fixedColumns[fixedColumns.length - 1].width;
+
+/*
+ * Cột tổng ở cuối bảng, xếp theo mẫu BCC: các cột thành phần rồi cột tổng.
+ *
+ * Đây là tổng của LỊCH ĐÃ PHÂN, không phải công thực tế — bảng phân ca không có
+ * ký hiệu chấm công nên không dựng được cột Nghỉ phép / Nghỉ bù / Nghỉ việc
+ * riêng như mẫu; những cột đó nằm ở Bảng công tháng. Xem shiftAssignmentTotals.ts.
+ */
+const totalColumns = [
+  {
+    key: "assignedDays",
+    label: "Ngày\nđã phân ca\n(1)",
+    width: 74,
+  },
+  {
+    key: "unassignedWorkingDays",
+    label: "Ngày làm việc\nchưa phân ca\n(2)",
+    width: 82,
+    highlightWhenPositive: true,
+  },
+  { key: "holidayDays", label: "Ngày lễ\n(3)", width: 60 },
+  { key: "offDays", label: "Nghỉ\ntheo ca\n(4)", width: 62 },
+  {
+    key: "outOfWindowDays",
+    label: "Ngoài khoảng\ntính công\n(5)",
+    width: 74,
+  },
+] as const;
+const TOTAL_SUM_COLUMN_WIDTH = 86;
+const totalColumnsWidth =
+  totalColumns.reduce((sum, column) => sum + column.width, 0) +
+  TOTAL_SUM_COLUMN_WIDTH;
 const EMPTY_ROWS: ShiftAssignmentGridRow[] = [];
 const EMPTY_SELECTION = new Set<string>();
 
@@ -113,6 +150,7 @@ interface DayMeta {
 interface PreparedRow {
   row: ShiftAssignmentGridRow;
   daysByNumber: Map<number, ShiftAssignmentGridDay>;
+  totals: ShiftAssignmentRowTotals;
 }
 
 interface PreparedGroup {
@@ -536,6 +574,7 @@ export function MonthlyShiftAssignmentGrid({
       rows.map((row) => ({
         row,
         daysByNumber: new Map(row.days.map((day) => [day.day, day])),
+        totals: summarizeAssignmentRow(row.days),
       })),
     [rows],
   );
@@ -613,6 +652,37 @@ export function MonthlyShiftAssignmentGrid({
   const pageRows = useMemo(
     () => pagedGroups.flatMap((group) => group.rows),
     [pagedGroups],
+  );
+  /* Dòng "Tổng cộng" tổng theo các CBNV đang hiển thị trên trang, khớp với những
+     gì người dùng đọc được — không phải toàn bộ 70 CBNV của kỳ. */
+  const perDayAssigned = useMemo(
+    () =>
+      summarizeAssignedPerDay(
+        pageRows.map((item) => item.row),
+        dayMetas.length,
+      ),
+    [dayMetas.length, pageRows],
+  );
+  const columnTotals = useMemo(
+    () =>
+      pageRows.reduce<ShiftAssignmentRowTotals>(
+        (sum, item) => ({
+          assignedDays: sum.assignedDays + item.totals.assignedDays,
+          unassignedWorkingDays:
+            sum.unassignedWorkingDays + item.totals.unassignedWorkingDays,
+          offDays: sum.offDays + item.totals.offDays,
+          holidayDays: sum.holidayDays + item.totals.holidayDays,
+          outOfWindowDays: sum.outOfWindowDays + item.totals.outOfWindowDays,
+        }),
+        {
+          assignedDays: 0,
+          unassignedWorkingDays: 0,
+          offDays: 0,
+          holidayDays: 0,
+          outOfWindowDays: 0,
+        },
+      ),
+    [pageRows],
   );
   const selectablePageRows = pageRows.filter((item) => item.row.canInclude);
   const selectedOnPage = selectablePageRows.filter((item) =>
@@ -1227,7 +1297,8 @@ export function MonthlyShiftAssignmentGrid({
           <Legend />
           <Text size="xs" c="dimmed">
             Ca cá nhân đang chồng ngày sẽ được báo lỗi; hệ thống không tự ghi đè
-            lịch sử.
+            lịch sử. Các cột tổng bên phải đếm theo lịch đã phân, chưa phải công
+            thực tế — nghỉ phép, nghỉ bù và công thực tế xem ở Bảng công tháng.
           </Text>
         </Group>
       </Paper>
@@ -1285,7 +1356,10 @@ export function MonthlyShiftAssignmentGrid({
               horizontalSpacing={0}
               verticalSpacing={0}
               style={{
-                minWidth: fixedColumnsWidth + dayMetas.length * dayColumnWidth,
+                minWidth:
+                  fixedColumnsWidth +
+                  dayMetas.length * dayColumnWidth +
+                  totalColumnsWidth,
               }}
             >
               <Table.Thead>
@@ -1339,6 +1413,37 @@ export function MonthlyShiftAssignmentGrid({
                       {String(meta.day).padStart(2, "0")}
                     </Table.Th>
                   ))}
+                  {totalColumns.map((column) => (
+                    <Table.Th
+                      key={column.key}
+                      rowSpan={2}
+                      style={{
+                        background: "#e6f2df",
+                        minWidth: column.width,
+                        padding: "5px 4px",
+                        textAlign: "center",
+                        verticalAlign: "middle",
+                        whiteSpace: "pre-line",
+                        width: column.width,
+                      }}
+                    >
+                      {column.label}
+                    </Table.Th>
+                  ))}
+                  <Table.Th
+                    rowSpan={2}
+                    style={{
+                      background: "#e6f2df",
+                      minWidth: TOTAL_SUM_COLUMN_WIDTH,
+                      padding: "5px 4px",
+                      textAlign: "center",
+                      verticalAlign: "middle",
+                      whiteSpace: "pre-line",
+                      width: TOTAL_SUM_COLUMN_WIDTH,
+                    }}
+                  >
+                    {"Tổng ngày\n(6)=(1)+(2)+\n(3)+(4)+(5)"}
+                  </Table.Th>
                 </Table.Tr>
                 <Table.Tr>
                   {dayMetas.map((meta) => (
@@ -1386,7 +1491,7 @@ export function MonthlyShiftAssignmentGrid({
                         </Text>
                       </Table.Td>
                       <Table.Td
-                        colSpan={dayMetas.length}
+                        colSpan={dayMetas.length + totalColumns.length + 1}
                         style={{ background: "#d9d2e9", padding: "7px 10px" }}
                       />
                     </Table.Tr>
@@ -1907,11 +2012,131 @@ export function MonthlyShiftAssignmentGrid({
                               </Table.Td>
                             );
                           })}
+                          {totalColumns.map((column) => {
+                            const value = item.totals[column.key];
+                            const warn =
+                              "highlightWhenPositive" in column &&
+                              column.highlightWhenPositive &&
+                              value > 0;
+                            return (
+                              <Table.Td
+                                key={column.key}
+                                style={{
+                                  background: warn ? "#fff5f5" : "#fbfdfa",
+                                  fontVariantNumeric: "tabular-nums",
+                                  padding: "4px 6px",
+                                  textAlign: "center",
+                                }}
+                              >
+                                <Text
+                                  size="xs"
+                                  fw={value > 0 ? 600 : 400}
+                                  c={
+                                    warn
+                                      ? "red.7"
+                                      : value > 0
+                                        ? undefined
+                                        : "dimmed"
+                                  }
+                                >
+                                  {value}
+                                </Text>
+                              </Table.Td>
+                            );
+                          })}
+                          <Table.Td
+                            style={{
+                              background: "#f1f8ec",
+                              fontVariantNumeric: "tabular-nums",
+                              padding: "4px 6px",
+                              textAlign: "center",
+                            }}
+                          >
+                            <Text size="xs" fw={700}>
+                              {item.totals.assignedDays +
+                                item.totals.unassignedWorkingDays +
+                                item.totals.holidayDays +
+                                item.totals.offDays +
+                                item.totals.outOfWindowDays}
+                            </Text>
+                          </Table.Td>
                         </Table.Tr>
                       );
                     })}
                   </Fragment>
                 ))}
+                {pageRows.length ? (
+                  <Table.Tr>
+                    <Table.Td
+                      colSpan={fixedColumns.length}
+                      style={{
+                        background: "#eef2f7",
+                        boxShadow: "2px 0 0 var(--mantine-color-gray-4)",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        left: 0,
+                        minWidth: fixedColumnsWidth,
+                        padding: "6px 10px",
+                        position: "sticky",
+                        textAlign: "right",
+                        width: fixedColumnsWidth,
+                        zIndex: 3,
+                      }}
+                    >
+                      Tổng cộng ({pageRows.length} CBNV)
+                    </Table.Td>
+                    {dayMetas.map((meta, index) => (
+                      <Table.Td
+                        key={meta.day}
+                        style={{
+                          background: meta.isSunday ? "#fdf3d8" : "#eef2f7",
+                          fontVariantNumeric: "tabular-nums",
+                          padding: "6px 2px",
+                          textAlign: "center",
+                        }}
+                      >
+                        <Text
+                          size="xs"
+                          fw={600}
+                          c={perDayAssigned[index] ? undefined : "dimmed"}
+                        >
+                          {perDayAssigned[index] ?? 0}
+                        </Text>
+                      </Table.Td>
+                    ))}
+                    {totalColumns.map((column) => (
+                      <Table.Td
+                        key={column.key}
+                        style={{
+                          background: "#eef2f7",
+                          fontVariantNumeric: "tabular-nums",
+                          padding: "6px 6px",
+                          textAlign: "center",
+                        }}
+                      >
+                        <Text size="xs" fw={700}>
+                          {columnTotals[column.key]}
+                        </Text>
+                      </Table.Td>
+                    ))}
+                    <Table.Td
+                      style={{
+                        background: "#e3ebf3",
+                        fontVariantNumeric: "tabular-nums",
+                        padding: "6px 6px",
+                        textAlign: "center",
+                      }}
+                    >
+                      <Text size="xs" fw={700}>
+                        {columnTotals.assignedDays +
+                          columnTotals.unassignedWorkingDays +
+                          columnTotals.holidayDays +
+                          columnTotals.offDays +
+                          columnTotals.outOfWindowDays}
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                ) : null}
               </Table.Tbody>
             </Table>
           </ScrollArea>
