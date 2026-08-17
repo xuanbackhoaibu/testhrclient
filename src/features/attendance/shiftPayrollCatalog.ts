@@ -128,20 +128,61 @@ export function lookupShiftPayrollValue(
 export function summarizeShiftPayroll(
   codes: readonly (string | null | undefined)[],
 ): ShiftPayrollTotals {
+  return summarizeAssignedShifts(
+    codes.map((code) => ({ code: code ?? null, dayValue: undefined })),
+  );
+}
+
+/**
+ * Bản dùng cho dữ liệu thật: `dayValue` lấy từ danh mục ca trong cơ sở dữ liệu,
+ * nên HR sửa số công của ca là bảng đổi theo — không phụ thuộc mã ca có nằm
+ * trong SHIFT_PAYROLL_CATALOG hay không.
+ *
+ * Danh mục hardcode chỉ còn dùng để PHÂN LOẠI nghỉ (mã nào là nghỉ phép, nghỉ
+ * lễ…), vì WorkShift chưa có field phân loại. Mã lạ mà có dayValue vẫn được tính
+ * đúng vào cột (1), thay vì bị bỏ và ra 0 như trước.
+ */
+export function summarizeAssignedShifts(
+  shifts: readonly {
+    code: string | null | undefined;
+    dayValue?: number | null;
+  }[],
+): ShiftPayrollTotals {
   let workDays = 0;
   let publicHolidayDays = 0;
   let annualLeaveDays = 0;
   let personalLeaveDays = 0;
   let compensatoryLeaveDays = 0;
 
-  for (const code of codes) {
-    const value = lookupShiftPayrollValue(code);
-    if (!value) continue;
-    workDays += value.workDays;
-    publicHolidayDays += value.publicHolidayDays ?? 0;
-    annualLeaveDays += value.annualLeaveDays ?? 0;
-    personalLeaveDays += value.personalLeaveDays ?? 0;
-    compensatoryLeaveDays += value.compensatoryLeaveDays ?? 0;
+  for (const shift of shifts) {
+    const known = lookupShiftPayrollValue(shift.code);
+    const isLeaveCode = Boolean(
+      known &&
+        known.workDays === 0 &&
+        (known.publicHolidayDays ??
+          known.annualLeaveDays ??
+          known.personalLeaveDays ??
+          known.compensatoryLeaveDays),
+    );
+
+    if (known) {
+      publicHolidayDays += known.publicHolidayDays ?? 0;
+      annualLeaveDays += known.annualLeaveDays ?? 0;
+      personalLeaveDays += known.personalLeaveDays ?? 0;
+      compensatoryLeaveDays += known.compensatoryLeaveDays ?? 0;
+    }
+
+    if (isLeaveCode) continue;
+
+    // Ưu tiên dayValue thật của ca; chỉ lùi về danh mục hardcode khi API chưa
+    // trả dayValue, và cuối cùng coi một ca là 1 công.
+    if (typeof shift.dayValue === 'number' && Number.isFinite(shift.dayValue)) {
+      workDays += shift.dayValue;
+    } else if (known) {
+      workDays += known.workDays;
+    } else if (shift.code) {
+      workDays += 1;
+    }
   }
 
   workDays = roundHalf(workDays);

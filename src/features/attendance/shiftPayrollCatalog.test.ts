@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   SHIFT_PAYROLL_CATALOG,
   lookupShiftPayrollValue,
+  summarizeAssignedShifts,
   summarizeShiftPayroll,
 } from './shiftPayrollCatalog';
 
@@ -262,10 +263,15 @@ describe('lookupShiftPayrollValue', () => {
     expect(lookupShiftPayrollValue('KHONG-CO')).toBeNull();
   });
 
-  it('bỏ qua mã lạ thay vì cộng sai vào công thực tế', () => {
-    expect(summarizeShiftPayroll(['HC1', 'MA-LA', null, undefined])).toMatchObject(
-      { workDays: 1, totalDays: 1 },
-    );
+  /*
+   * Trước đây mã ngoài danh mục bị bỏ hẳn, nên cơ sở dữ liệu chỉ có "HC" và
+   * "HC-T7" (không phải HC1/VH1…) làm cả 6 cột ra 0 dù đã phân ca kín tháng.
+   * Mã lạ nay tính 1 công, còn ô rỗng vẫn không tính.
+   */
+  it('mã ngoài danh mục vẫn tính 1 công, ô rỗng thì không', () => {
+    expect(
+      summarizeShiftPayroll(['HC1', 'MA-LA', null, undefined]),
+    ).toMatchObject({ workDays: 2, totalDays: 2 });
   });
 
   it('cộng nhiều nửa công không bị sai số dấu phẩy động', () => {
@@ -279,5 +285,69 @@ describe('lookupShiftPayrollValue', () => {
         totalDays: 7,
       },
     );
+  });
+});
+
+/*
+ * Đường dùng dữ liệu thật: dayValue lấy từ danh mục ca trong cơ sở dữ liệu nên
+ * HR sửa số công của ca là bảng đổi theo, không phụ thuộc mã có nằm trong danh
+ * mục hardcode. Đây là ca gây lỗi "tất cả cột ra 0" trên máy thật: cơ sở dữ liệu
+ * chỉ có mã "HC" và "HC-T7", không có HC1/VH1.
+ */
+describe('summarizeAssignedShifts — dùng dayValue thật từ danh mục ca', () => {
+  it('mã "HC" ngoài danh mục hardcode vẫn tính đúng theo dayValue', () => {
+    expect(
+      summarizeAssignedShifts([
+        { code: 'HC', dayValue: 1 },
+        { code: 'HC', dayValue: 1 },
+        { code: 'HC-T7', dayValue: 1 },
+      ]),
+    ).toMatchObject({ workDays: 3, totalDays: 3 });
+  });
+
+  it('dayValue thật thắng giá trị hardcode khi HR đổi số công của ca', () => {
+    // Danh mục hardcode ghi VH1 = 1.5; nếu HR sửa thành 2 thì bảng theo 2.
+    expect(
+      summarizeAssignedShifts([{ code: 'VH1', dayValue: 2 }]),
+    ).toMatchObject({ workDays: 2 });
+  });
+
+  it('lùi về danh mục hardcode khi API chưa trả dayValue', () => {
+    expect(
+      summarizeAssignedShifts([{ code: 'VH3' }]),
+    ).toMatchObject({ workDays: 3 });
+  });
+
+  it('mã nghỉ vẫn vào cột nghỉ và không cộng vào công làm việc', () => {
+    // dayValue của bản ghi nghỉ không được kéo P vào cột (1).
+    expect(
+      summarizeAssignedShifts([
+        { code: 'HC', dayValue: 1 },
+        { code: 'P', dayValue: 1 },
+      ]),
+    ).toMatchObject({
+      workDays: 1,
+      annualLeaveDays: 1,
+      totalDays: 2,
+    });
+  });
+
+  it('ca nửa ngày S1 giữ nguyên 0.5 công làm việc và 0.5 nghỉ phép', () => {
+    expect(
+      summarizeAssignedShifts([{ code: 'S1', dayValue: 0.5 }]),
+    ).toMatchObject({
+      workDays: 0.5,
+      annualLeaveDays: 0.5,
+      totalDays: 1,
+    });
+  });
+
+  it('dayValue không hợp lệ thì lùi về 1 công thay vì ra 0', () => {
+    expect(
+      summarizeAssignedShifts([
+        { code: 'X1', dayValue: Number.NaN },
+        { code: 'X2', dayValue: null },
+      ]),
+    ).toMatchObject({ workDays: 2 });
   });
 });

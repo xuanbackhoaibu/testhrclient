@@ -2132,7 +2132,7 @@ export function MonthlyShiftAssignmentGrid({
                           fw={600}
                           c={perDayAssigned[index] ? undefined : "dimmed"}
                         >
-                          {perDayAssigned[index] ?? 0}
+                          {formatWorkdayValue(perDayAssigned[index] ?? 0)}
                         </Text>
                       </Table.Td>
                     ))}

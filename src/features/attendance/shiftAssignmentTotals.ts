@@ -1,4 +1,4 @@
-import { summarizeShiftPayroll } from './shiftPayrollCatalog';
+import { summarizeAssignedShifts } from './shiftPayrollCatalog';
 import type {
   ShiftAssignmentGridDay,
   ShiftAssignmentGridRow,
@@ -57,7 +57,7 @@ export function summarizeAssignmentRow(
   let offDays = 0;
   let holidayDays = 0;
   let outOfWindowDays = 0;
-  const codes: (string | null)[] = [];
+  const assigned: { code: string; dayValue?: number }[] = [];
 
   for (const day of days) {
     // Ngoài khoảng tính công thì không quy được về ca hay nghỉ.
@@ -68,7 +68,10 @@ export function summarizeAssignmentRow(
     // Ca đã phân vẫn tính công kể cả trên ngày lễ: mã ca là căn cứ tính, còn
     // cột "Ngày lễ" bên dưới chỉ để HR đối chiếu lịch.
     if (day.shift) {
-      codes.push(day.shift.code);
+      assigned.push({
+        code: day.shift.code,
+        dayValue: day.shift.dayValue,
+      });
       assignedDays += 1;
     }
     if (isHoliday(day)) {
@@ -83,7 +86,7 @@ export function summarizeAssignmentRow(
     offDays += 1;
   }
 
-  const payroll = summarizeShiftPayroll(codes);
+  const payroll = summarizeAssignedShifts(assigned);
 
   return {
     ...payroll,
@@ -133,9 +136,9 @@ export function summarizeAssignmentRowFor(
 }
 
 /**
- * Tổng theo ngày cho dòng "Tổng cộng" dưới bảng: mỗi ngày đếm số CBNV đã có ca.
- * Mẫu Excel cộng số công theo cột ngày; ở đây là số người được phân ca, vì
- * payload chưa có dayValue để quy ra công.
+ * Dòng "Tổng cộng" dưới bảng: mỗi cột ngày cộng SỐ CÔNG của các ca phân trong
+ * ngày đó, đúng như mẫu Excel (11.0, 7.0, 11.5…). Ca thiếu dayValue được coi là
+ * 1 công để không âm thầm bị bỏ khỏi tổng.
  */
 export function summarizeAssignedPerDay(
   rows: readonly Pick<ShiftAssignmentGridRow, 'days'>[],
@@ -145,10 +148,13 @@ export function summarizeAssignedPerDay(
   for (const row of rows) {
     for (const day of row.days) {
       if (day.day < 1 || day.day > daysInMonth) continue;
-      if (day.inAttendanceWindow && day.shift) {
-        perDay[day.day - 1] += 1;
-      }
+      if (!day.inAttendanceWindow || !day.shift) continue;
+      const dayValue = day.shift.dayValue;
+      perDay[day.day - 1] +=
+        typeof dayValue === 'number' && Number.isFinite(dayValue)
+          ? dayValue
+          : 1;
     }
   }
-  return perDay;
+  return perDay.map((value) => Math.round(value * 2) / 2);
 }
