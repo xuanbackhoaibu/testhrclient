@@ -1,4 +1,5 @@
 import { Button, Skeleton, Tooltip } from '@mantine/core';
+import { IconChartBar } from '@tabler/icons-react';
 import type { AttendanceSummary } from '../../../features/attendance/attendanceTypes';
 import styles from './AttendanceSummaryCards.module.css';
 
@@ -10,6 +11,8 @@ interface AttendanceSummaryCardsProps {
   scope?: SummaryScope;
   /** Opens the mapping screen; the CTA is hidden when omitted. */
   onOpenMapping?: () => void;
+  chartOpened?: boolean;
+  onToggleChart?: () => void;
 }
 
 type Tone = 'default' | 'positive' | 'warning' | 'danger' | 'muted';
@@ -74,25 +77,33 @@ export function AttendanceSummaryCards({
   summary,
   scope = 'filter',
   onOpenMapping,
+  chartOpened,
+  onToggleChart,
 }: AttendanceSummaryCardsProps) {
   if (!summary) {
     return <SummarySkeleton />;
   }
 
-  const share = (value: number) => (summary.total > 0 ? (value / summary.total) * 100 : 0);
   const mappedTotal = summary.mapped + (summary.autoMapped ?? 0);
   const conflict = summary.conflict ?? 0;
   const needsAttention = summary.unmapped + conflict;
 
-  const totalLabel = scope === 'page' ? 'Bản ghi trang này' : 'Tổng bản ghi';
+  // When the backend omits the summary, `total` is the full filtered count but
+  // the per-status counts only cover the current page. Measure shares against
+  // what was actually counted so the percentages stay honest.
+  const countedStatus =
+    summary.present + summary.late + summary.absent + summary.singlePunch + summary.unknown;
+  const base = scope === 'filter' ? summary.total : countedStatus;
+  const share = (value: number) => (base > 0 ? (value / base) * 100 : 0);
+
   const totalHint =
     scope === 'page'
-      ? 'Chỉ tính các bản ghi đang hiển thị trên trang này.'
+      ? 'Tổng bản ghi khớp bộ lọc. Phân loại theo trạng thái bên cạnh tính trên trang đang xem.'
       : 'Tính trên toàn bộ bản ghi khớp bộ lọc hiện tại, không chỉ trang đang xem.';
 
   return (
     <div className={styles.root}>
-      <Stat label={totalLabel} value={summary.total} tone="default" hint={totalHint} />
+      <Stat label="Tổng bản ghi" value={summary.total} tone="default" hint={totalHint} />
 
       <Stat
         label="Đủ công"
@@ -148,11 +159,25 @@ export function AttendanceSummaryCards({
 
       <div className={styles.spacer} />
 
-      {needsAttention > 0 && onOpenMapping && (
+      {(onToggleChart || (needsAttention > 0 && onOpenMapping)) && (
         <div className={styles.action}>
-          <Button size="xs" variant="light" color="orange" onClick={onOpenMapping}>
-            Xử lý mapping ({needsAttention.toLocaleString('vi-VN')})
-          </Button>
+          {onToggleChart && (
+            <Button
+              size="xs"
+              variant="subtle"
+              color="gray"
+              onClick={onToggleChart}
+              leftSection={<IconChartBar size={14} />}
+              aria-expanded={chartOpened}
+            >
+              {chartOpened ? 'Ẩn biểu đồ' : 'Biểu đồ'}
+            </Button>
+          )}
+          {needsAttention > 0 && onOpenMapping && (
+            <Button size="xs" variant="light" color="orange" onClick={onOpenMapping}>
+              Xử lý mapping ({needsAttention.toLocaleString('vi-VN')})
+            </Button>
+          )}
         </div>
       )}
     </div>

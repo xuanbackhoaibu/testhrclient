@@ -25,6 +25,7 @@ import type { AttendanceDailyFilterParams } from '../../features/attendance/atte
 import { AttendanceFilterBar } from './components/AttendanceFilterBar';
 import { AttendanceSyncStatusCard } from './components/AttendanceSyncStatusCard';
 import { AttendanceSummaryCards } from './components/AttendanceSummaryCards';
+import { AttendanceSummaryChart } from './components/AttendanceSummaryChart';
 import type { SummaryScope } from './components/AttendanceSummaryCards';
 import { ManualSyncModal } from './components/ManualSyncModal';
 import { AttendanceSyncRunsTable } from './components/AttendanceSyncRunsTable';
@@ -154,6 +155,7 @@ export function AttendancePage() {
     return PAGE_SIZE_OPTIONS.includes(fromUrl) ? fromUrl : DEFAULT_PAGE_SIZE;
   });
   const [isExporting, setIsExporting] = useState(false);
+  const [chartOpened, { toggle: toggleChart }] = useDisclosure(false);
 
   const queryParams = buildQueryParams({ ...filters, page, pageSize });
 
@@ -164,10 +166,17 @@ export function AttendancePage() {
 
   const records = useMemo(() => data?.data ?? [], [data]);
   const pagination = data?.pagination;
-  // Prefer the backend summary: it covers every record matching the filter.
-  // Falling back to a page-scoped tally keeps the strip populated if an older
-  // API build omits it.
-  const summary = data ? (data.summary ?? summarizeAttendanceRecords(records)) : undefined;
+  // The backend summary covers every record matching the filter. Older API
+  // builds omit it, so fall back to tallying the page — but keep the record
+  // total from pagination, which is always the full filtered count.
+  const summary = useMemo(() => {
+    if (!data) return undefined;
+    if (data.summary) return data.summary;
+    return {
+      ...summarizeAttendanceRecords(records),
+      total: data.pagination?.total ?? records.length,
+    };
+  }, [data, records]);
   const summaryScope: SummaryScope = data?.summary ? 'filter' : 'page';
 
   // Handle filter changes - sync to URL and localStorage
@@ -365,7 +374,11 @@ export function AttendancePage() {
           summary={summary}
           scope={summaryScope}
           onOpenMapping={maySync ? () => navigate(ROUTES.attendanceMapping) : undefined}
+          chartOpened={chartOpened}
+          onToggleChart={toggleChart}
         />
+
+        {chartOpened && <AttendanceSummaryChart summary={summary} scope={summaryScope} />}
 
         {/* Filter Bar */}
         <AttendanceFilterBar
