@@ -61,15 +61,21 @@ body {
 }
 
 .data-table-shell {
-  overflow: visible;
-  background: var(--mantine-color-white);
+  /*
+   * min-width lets the inner ScrollArea take over horizontal scrolling. Without
+   * it a flex/grid parent sizes to the table's min-width and the last columns
+   * get pushed past the viewport instead of scrolling inside the table.
+   */
+  min-width: 0;
+  background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
 }
 
 .data-table-heading {
-  color: #475569;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-1));
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.02em;
   white-space: nowrap;
 }
 

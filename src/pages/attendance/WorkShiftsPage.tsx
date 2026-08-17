@@ -17,6 +17,7 @@ import {
   TextInput,
   Textarea,
   Title,
+  Tooltip,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
@@ -43,6 +44,7 @@ import {
   sortWorkShiftCatalog,
 } from "../../features/attendance/workShiftCatalogOrder";
 import { buildShiftAssignmentUrl } from "../../features/attendance/shiftAssignmentNavigation";
+import { addMinutesToTime } from "../../features/attendance/shiftTime";
 import {
   WEEKDAY_LABELS,
   type WorkShift,
@@ -52,6 +54,7 @@ import {
   type DataTableColumn,
 } from "../../shared/components/DataTable";
 import { PageHeader } from "../../shared/components/PageHeader";
+import { InfoBanner } from "../../shared/components/InfoBanner";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 
@@ -95,14 +98,6 @@ function minutesBetween(from: string, to: string): number | null {
 
 function isOvernightShift(startTime: string, endTime: string): boolean {
   return startTime >= endTime;
-}
-
-function formatWindow(
-  open: string | null | undefined,
-  scheduled: string,
-  close: string | null | undefined,
-) {
-  return `${open ?? "—"} → ${scheduled} → ${close ?? "—"}`;
 }
 
 function formatWorkingDuration(minutes: number): string {
@@ -381,35 +376,44 @@ export function WorkShiftsPage() {
         render: (record) => record.groupName ?? "—",
       },
       {
-        key: "checkIn",
-        header: "Khung check-in",
-        minWidth: 200,
-        render: (record) =>
-          formatWindow(
-            record.checkInStart,
-            record.startTime,
-            record.checkInEnd,
-          ),
+        key: "hours",
+        header: "Giờ ca",
+        minWidth: 168,
+        render: (record) => (
+          <Stack gap={2}>
+            <Text size="sm" fw={500} style={{ fontVariantNumeric: "tabular-nums" }}>
+              {record.startTime} – {record.endTime}
+            </Text>
+            <Text size="xs" c="dimmed">
+              {record.breakStart && record.breakEnd
+                ? `Nghỉ ${record.breakStart}–${record.breakEnd}${record.breakDeducted ? " (trừ)" : ""}`
+                : "Không nghỉ giữa ca"}
+            </Text>
+          </Stack>
+        ),
       },
       {
-        key: "break",
-        header: "Nghỉ giữa ca",
-        minWidth: 170,
-        render: (record) =>
-          record.breakStart && record.breakEnd
-            ? `${record.breakStart} – ${record.breakEnd}${record.breakDeducted ? " (trừ)" : " (không trừ)"}`
-            : "Không",
-      },
-      {
-        key: "checkOut",
-        header: "Khung check-out",
-        minWidth: 210,
-        render: (record) =>
-          formatWindow(
-            record.checkOutStart,
-            record.endTime,
-            record.checkOutEnd,
-          ),
+        // The figure that decides whether a punch counts as late.
+        key: "lateThreshold",
+        header: "Ngưỡng muộn",
+        width: 128,
+        align: "center",
+        render: (record) => (
+          <Tooltip
+            label={`Vào sau ${addMinutesToTime(record.startTime, record.lateThresholdMinutes)} mới bị đánh dấu đi muộn.`}
+            withArrow
+            openDelay={200}
+          >
+            <Stack gap={0} align="center">
+              <Text size="sm" fw={500} style={{ fontVariantNumeric: "tabular-nums" }}>
+                {record.lateThresholdMinutes} phút
+              </Text>
+              <Text size="xs" c="dimmed" style={{ fontVariantNumeric: "tabular-nums" }}>
+                sau {addMinutesToTime(record.startTime, record.lateThresholdMinutes)}
+              </Text>
+            </Stack>
+          </Tooltip>
+        ),
       },
       {
         key: "work",
@@ -482,27 +486,19 @@ export function WorkShiftsPage() {
         }
       />
 
-      <Stack gap="lg">
-        <Alert
-          icon={<IconInfoCircle size={18} />}
-          color="blue"
-          variant="light"
+      <Stack gap="sm">
+        <InfoBanner
           title="Quy tắc chấm công: quá ngưỡng ca mới tính đi muộn"
+          collapsible
         >
           Mốc check-in/check-out ở giữa là giờ chuẩn của ca. Nếu nhập mốc đóng
           check-in hoặc mở check-out, hệ thống tự dùng chênh lệch đó làm ngưỡng
           đánh dấu đi muộn/về sớm; hiện chỉ ghi nhận, <b>chưa trừ công</b>.
-        </Alert>
-
-        <Alert
-          color="orange"
-          variant="light"
-          icon={<IconInfoCircle size={18} />}
-        >
+          <br />
           Ca kết thúc sang ngày hôm sau được lưu để quản lý danh mục, nhưng chưa
           thể phân ca: bộ tính công hiện tại chỉ xử lý một ngày. Các ca này được
           đánh dấu tạm ngưng để không chấm công sai.
-        </Alert>
+        </InfoBanner>
 
         <DataTable
           data={orderedShifts}

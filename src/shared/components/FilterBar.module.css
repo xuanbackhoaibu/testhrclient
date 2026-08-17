@@ -1,0 +1,71 @@
+/*
+ * Single-row filter strip shared by the operational screens.
+ *
+ * Flex, not grid: a fixed column count leaves the action group without a track
+ * and pushes it off-screen once the controls no longer fit.
+ */
+.root {
+  background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  border-radius: var(--mantine-radius-md);
+  padding: 10px 12px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Fields opt into a width class so every screen sizes controls the same way. */
+.grow {
+  flex: 1 1 180px;
+  min-width: 150px;
+}
+
+.field {
+  flex: 0 1 150px;
+  min-width: 116px;
+}
+
+.fieldWide {
+  flex: 0 1 200px;
+  min-width: 160px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 900px) {
+  .grow {
+    flex-basis: 100%;
+  }
+
+  .field,
+  .fieldWide {
+    flex: 1 1 140px;
+  }
+
+  .actions {
+    flex-basis: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 768px) {
+  .root {
+    padding: 10px;
+  }
+
+  .field,
+  .fieldWide {
+    flex-basis: calc(50% - 4px);
+  }
+}
