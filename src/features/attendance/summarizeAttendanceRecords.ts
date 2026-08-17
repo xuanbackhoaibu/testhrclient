@@ -1,6 +1,12 @@
 import type { AttendanceDailyRecord, AttendanceSummary } from './attendanceTypes';
 
-const EMPTY_SUMMARY: AttendanceSummary = {
+/**
+ * The page-scoped tally always fills every bucket, so both optional fields on
+ * AttendanceSummary are required here.
+ */
+type PageSummary = AttendanceSummary & { autoMapped: number; conflict: number };
+
+const EMPTY_SUMMARY: PageSummary = {
   total: 0,
   present: 0,
   late: 0,
@@ -22,8 +28,8 @@ const EMPTY_SUMMARY: AttendanceSummary = {
  */
 export function summarizeAttendanceRecords(
   records: AttendanceDailyRecord[],
-): AttendanceSummary {
-  const summary: AttendanceSummary = { ...EMPTY_SUMMARY, total: records.length };
+): PageSummary {
+  const summary: PageSummary = { ...EMPTY_SUMMARY, total: records.length };
 
   for (const record of records) {
     switch (record.status) {

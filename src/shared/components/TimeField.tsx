@@ -1,11 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { Input, Select } from '@mantine/core';
 import styles from './TimeField.module.css';
 
 interface TimeFieldProps {
   label?: string;
   description?: string;
-  error?: string;
+  /** Matches Mantine's form error type, which is a ReactNode, not a string. */
+  error?: ReactNode;
   withAsterisk?: boolean;
   disabled?: boolean;
   /** "HH:mm", or empty when unset. */
