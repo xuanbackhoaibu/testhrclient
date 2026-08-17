@@ -106,11 +106,6 @@ function isOvernightShift(startTime: string, endTime: string): boolean {
   return startTime >= endTime;
 }
 
-function formatWorkingDuration(minutes: number): string {
-  const hours = minutes / 60;
-  return Number.isInteger(hours) ? `${hours} giờ` : `${minutes} phút`;
-}
-
 const emptyForm: ShiftFormValues = {
   code: "",
   name: "",
@@ -186,11 +181,7 @@ export function WorkShiftsPage() {
   const shiftOptions = useMemo(
     () =>
       sortWorkShiftCatalog(
-        (shiftsQuery.data ?? []).filter(
-          (shift) =>
-            shift.status === "ACTIVE" &&
-            !isOvernightShift(shift.startTime, shift.endTime),
-        ),
+        (shiftsQuery.data ?? []).filter((shift) => shift.status === "ACTIVE"),
       ).map((shift) => ({
         value: shift.id,
         label: `${getWorkShiftCatalogOrder(shift.code) ?? "—"} · ${shift.code} — ${shift.name}`,
@@ -483,7 +474,7 @@ export function WorkShiftsPage() {
         width: 125,
         render: (record) => (
           <Stack gap={2}>
-            <Text>{formatWorkingDuration(record.standardMinutes)}</Text>
+            <Text>{formatWorkingMinutes(record.standardMinutes)}</Text>
             <Text size="sm" c="dimmed">
               {record.dayValue} công
             </Text>
@@ -507,10 +498,7 @@ export function WorkShiftsPage() {
               {
                 label: "Phân ca này",
                 icon: <IconCalendarTime size={16} />,
-                disabled:
-                  !canEdit ||
-                  record.status !== "ACTIVE" ||
-                  isOvernightShift(record.startTime, record.endTime),
+                disabled: !canEdit || record.status !== "ACTIVE",
                 onClick: () => navigate(buildShiftAssignmentUrl(record.id)),
               },
               {
@@ -770,9 +758,12 @@ export function WorkShiftsPage() {
             </div>
 
             {isOvernightShift(form.values.startTime, form.values.endTime) ? (
-              <InfoBanner tone="warning" title="Ca kết thúc sang ngày hôm sau">
-                Ca vẫn được lưu vào danh mục, nhưng chưa thể kích hoạt hoặc phân
-                ca cho tới khi bộ tính công hỗ trợ log của ngày kế tiếp.
+              <InfoBanner tone="info" title="Ca kết thúc sang ngày hôm sau">
+                Giờ ra được tính sang ngày kế tiếp
+                {computedMinutes !== null
+                  ? `, nên giờ công của ca là ${formatWorkingMinutes(computedMinutes)}`
+                  : ""}
+                . Ca vẫn kích hoạt và phân ca bình thường.
               </InfoBanner>
             ) : null}
 

@@ -146,4 +146,18 @@ describe('formatWorkingMinutes', () => {
   it('hiện riêng phút khi chưa đủ một giờ', () => {
     expect(formatWorkingMinutes(45)).toBe('45 phút');
   });
+
+  // Bảng danh mục ca từng hiện "710 phút" / "1430 phút" cho BV2 và BV3 vì chỉ
+  // đổi sang giờ khi chia hết cho 60. Đây là đúng hai giá trị trên màn hình đó.
+  it('ca đêm BV2 (18:10–06:00) hiện giờ và phút, không hiện 710 phút', () => {
+    expect(formatWorkingMinutes(710)).toBe('11 giờ 50 phút');
+  });
+
+  it('ca ngày đêm BV3 (06:10–06:00) hiện giờ và phút, không hiện 1430 phút', () => {
+    expect(formatWorkingMinutes(1430)).toBe('23 giờ 50 phút');
+  });
+
+  it('ca 24 tiếng hiện đúng 24 giờ', () => {
+    expect(formatWorkingMinutes(1440)).toBe('24 giờ');
+  });
 });
