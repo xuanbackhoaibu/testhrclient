@@ -30,3 +30,5 @@ CLAUDE.md
 FEHRM.MD
 BEHRM.MD
 # Logs
+# Leftover from tsconfig rewrites during build/typecheck
+*.json.tmp
