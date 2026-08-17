@@ -19,6 +19,38 @@ body {
   box-sizing: border-box;
 }
 
+/*
+ * Browser surfaces we did not draw still carry the design: selection, caret,
+ * scrollbars and focus rings ship with defaults that belong to no design
+ * system. Themed from the Mantine palette so they match the rest of the app.
+ */
+::selection {
+  background: light-dark(var(--mantine-color-blue-1), var(--mantine-color-blue-9));
+  color: light-dark(var(--mantine-color-blue-9), var(--mantine-color-blue-0));
+}
+
+input,
+textarea {
+  caret-color: var(--mantine-color-blue-6);
+}
+
+:focus-visible {
+  outline: 2px solid var(--mantine-color-blue-6);
+  outline-offset: 2px;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: light-dark(var(--mantine-color-gray-4), var(--mantine-color-dark-3))
+    transparent;
+}
+
+/* Figures in data columns align vertically; headline numbers stay proportional. */
+table td,
+table th {
+  font-variant-numeric: tabular-nums;
+}
+
 .page-card {
   border-radius: 8px;
 }
