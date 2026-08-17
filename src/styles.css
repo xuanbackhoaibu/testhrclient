@@ -159,9 +159,6 @@ table td,
 table th {
   font-variant-numeric: tabular-nums;
 }
-  border-radius: 8px;
-  padding: 6px 8px;
-}
 
 .app-user-menu-button:hover {
   background: var(--bg-subtle);
@@ -2463,6 +2460,7 @@ table th {
 .settings-theme-card.is-light .settings-theme-preview {
   background: var(--bg-subtle);
 }
+
 
 .settings-theme-card.is-light .settings-theme-preview span:first-child {
   background: #dbeafe;
