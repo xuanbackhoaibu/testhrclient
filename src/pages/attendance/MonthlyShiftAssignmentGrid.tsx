@@ -47,6 +47,10 @@ import {
   sortWorkShiftCatalog,
 } from "../../features/attendance/workShiftCatalogOrder";
 import {
+  directCellShiftDisabledReason,
+  formatShiftHoursAndWorkday,
+} from "../../features/attendance/shiftAssignmentEligibility";
+import {
   useBulkAssignShifts,
   useCancelShiftAssignmentDay,
   useIncludeShiftAssignmentRowsInTimesheet,
@@ -310,19 +314,6 @@ function cellDescription(
   return day.shift
     ? `${day.shift.code} — ${day.shift.name} · ${sourceLabel(day.source)}`
     : sourceLabel(day.source);
-}
-
-function directCellShiftDisabledReason(shift: WorkShift): string | null {
-  if (shift.startTime >= shift.endTime) return "Chưa phân ca qua ngày";
-  return shift.status === "ACTIVE" ? null : "Ca đang tạm ngưng";
-}
-
-function formatShiftHoursAndWorkday(shift: WorkShift): string {
-  const hours = shift.standardMinutes / 60;
-  const displayHours = Number.isInteger(hours)
-    ? String(hours)
-    : hours.toFixed(1);
-  return displayHours + " giờ / " + shift.dayValue + " công";
 }
 
 function Legend() {
