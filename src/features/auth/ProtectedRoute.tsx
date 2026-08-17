@@ -5,7 +5,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { ROUTES } from '../../shared/constants/routes';
 import { LoadingState } from '../../shared/components/LoadingState';
 import { useAuth } from './useAuth';
-import { getRoutePolicy } from './routePolicies';
+import { getRoutePolicy, isSuperAdmin } from './routePolicies';
 
 export function ProtectedRoute({
   children,
@@ -55,6 +55,16 @@ export function ProtectedRoute({
   }
 
   const routePolicy = route ? getRoutePolicy(route) : null;
+  if (route === ROUTES.dashboard && !isSuperAdmin(user)) {
+    return (
+      <Result
+        status="404"
+        title="404"
+        subTitle="Không tìm thấy màn hình dashboard cho tài khoản hiện tại."
+      />
+    );
+  }
+
   if (routePolicy?.kind === 'unavailable') {
     return (
       <Result status="403" title="Chức năng chưa được cấp policy" subTitle={routePolicy.reason} />

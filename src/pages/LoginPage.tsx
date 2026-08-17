@@ -1,22 +1,38 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Button,
   Checkbox,
-  SegmentedControl,
+  Group,
+  Image,
+  SimpleGrid,
   Stack,
+  Text,
   TextInput,
   PasswordInput,
+  ThemeIcon,
+  UnstyledButton,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconAlertCircle, IconLock, IconUser } from "@tabler/icons-react";
+import {
+  IconAlertCircle,
+  IconBriefcase,
+  IconBuildingSkyscraper,
+  IconCheck,
+  IconSettings,
+  IconShieldCheck,
+  IconUser,
+  IconUsers,
+} from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
 import type { DemoRole } from "../features/auth/types";
 import { useAuthStore } from "../features/auth/authStore";
 import { useAuth } from "../features/auth/useAuth";
 import { ROUTES } from "../shared/constants/routes";
+import { getPostLoginDestination } from "../features/auth/postLoginDestination";
+import "./LoginPage.css";
 
 interface LoginFormValues {
   loginIdentifier: string;
@@ -24,13 +40,48 @@ interface LoginFormValues {
   rememberMe: boolean;
 }
 
-const demoRoles: Array<{ label: string; value: DemoRole }> = [
-  { label: "Super Admin", value: "SUPER_ADMIN" },
-  { label: "Admin", value: "ADMIN" },
-  { label: "HR", value: "HR" },
-  { label: "Ban lãnh đạo", value: "BAN_LANH_DAO" },
-  { label: "Ban lãnh đạo đơn vị", value: "BAN_LANH_DAO_DON_VI" },
-  { label: "Employee", value: "EMPLOYEE" },
+const demoRoles: Array<{
+  label: string;
+  value: DemoRole;
+  description: string;
+  icon: typeof IconUser;
+}> = [
+  {
+    label: "Super Admin",
+    value: "SUPER_ADMIN",
+    description: "Toàn quyền hệ thống",
+    icon: IconShieldCheck,
+  },
+  {
+    label: "Admin",
+    value: "ADMIN",
+    description: "Quản trị vận hành",
+    icon: IconSettings,
+  },
+  {
+    label: "HR",
+    value: "HR",
+    description: "Quản lý nhân sự",
+    icon: IconUsers,
+  },
+  {
+    label: "Ban lãnh đạo",
+    value: "BAN_LANH_DAO",
+    description: "Phê duyệt và báo cáo",
+    icon: IconBriefcase,
+  },
+  {
+    label: "Ban lãnh đạo đơn vị",
+    value: "BAN_LANH_DAO_DON_VI",
+    description: "Quản lý đơn vị",
+    icon: IconBuildingSkyscraper,
+  },
+  {
+    label: "Employee",
+    value: "EMPLOYEE",
+    description: "Nhân viên",
+    icon: IconUser,
+  },
 ];
 
 function readLoginError(error: unknown) {
@@ -52,7 +103,7 @@ export function LoginPage() {
     initialValues: {
       loginIdentifier: "",
       password: "",
-      rememberMe: true,
+      rememberMe: false,
     },
     validate: {
       loginIdentifier: (value) =>
@@ -60,6 +111,12 @@ export function LoginPage() {
       password: (value) => (value ? null : "Nhập mật khẩu."),
     },
   });
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   async function handleMockLogin() {
     setSubmitting(true);
@@ -70,7 +127,10 @@ export function LoginPage() {
         navigate(ROUTES.changePassword, { replace: true });
         return;
       }
-      navigate(ROUTES.dashboard, { replace: true });
+      const authState = useAuthStore.getState();
+      navigate(getPostLoginDestination(authState.user) ?? ROUTES.root, {
+        replace: true,
+      });
     } catch (loginFailure) {
       setLoginError(readLoginError(loginFailure));
     } finally {
@@ -105,7 +165,9 @@ export function LoginPage() {
           title: "Đăng nhập thành công",
           message: "Đang mở HRM.",
         });
-        navigate(ROUTES.dashboard, { replace: true });
+        navigate(getPostLoginDestination(authState.user) ?? ROUTES.root, {
+          replace: true,
+        });
         return;
       }
 
@@ -121,28 +183,98 @@ export function LoginPage() {
   }
 
   return (
-    <Stack gap="md">
+    <Stack
+      gap="lg"
+      className={`login-card${mounted ? " login-card--mounted" : ""}`}
+    >
+      <Stack gap={4} align="center" className="login-header">
+        <Image
+          src="/logo.png"
+          alt="Hacom Holdings"
+          className="login-logo"
+          fit="contain"
+          w="auto"
+          h={72}
+          style={{ height: 72, width: "auto", maxWidth: 220 }}
+        />
+        <Text component="h1" ta="center" className="login-title" fw={700}>
+          Chào mừng trở lại với <span className="login-title-accent">HACOM HRM</span>
+        </Text>
+        <Text ta="center" size="sm" c="dimmed" fw={400} className="login-subtitle">
+          Đăng nhập vào tài khoản của bạn để tiếp tục
+        </Text>
+      </Stack>
+
       {error ? (
-        <Alert color="yellow" icon={<IconAlertCircle size={18} />}>
+        <Alert color="yellow" icon={<IconAlertCircle size={18} />} radius="lg">
           {error}
         </Alert>
       ) : null}
       {loginError ? (
-        <Alert color="red" icon={<IconAlertCircle size={18} />}>
+        <Alert color="red" icon={<IconAlertCircle size={18} />} radius="lg">
           {loginError}
         </Alert>
       ) : null}
 
       {isMockMode ? (
         <Stack gap="md">
-          <SegmentedControl
+          <Stack gap={8}>
+            <Text size="sm" fw={600} c="dimmed">
+              Chọn vai trò demo
+            </Text>
+            <SimpleGrid cols={{ base: 1, xs: 2 }} spacing="sm">
+              {demoRoles.map((item) => {
+                const Icon = item.icon;
+                const selected = role === item.value;
+                return (
+                  <UnstyledButton
+                    key={item.value}
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => setRole(item.value)}
+                    className={`role-option-card${
+                      selected ? " role-option-card--selected" : ""
+                    }`}
+                  >
+                    <Group justify="space-between" wrap="nowrap" gap="sm">
+                      <Group gap="sm" wrap="nowrap">
+                        <ThemeIcon
+                          size={36}
+                          radius="md"
+                          variant={selected ? "filled" : "light"}
+                          color="red"
+                          className={selected ? "role-icon role-icon--selected" : "role-icon"}
+                        >
+                          <Icon size={18} />
+                        </ThemeIcon>
+                        <Stack gap={0}>
+                          <Text size="sm" fw={600}>
+                            {item.label}
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            {item.description}
+                          </Text>
+                        </Stack>
+                      </Group>
+                      {selected ? (
+                        <ThemeIcon size={20} radius="xl" color="red" className="role-icon role-icon--selected">
+                          <IconCheck size={13} />
+                        </ThemeIcon>
+                      ) : null}
+                    </Group>
+                  </UnstyledButton>
+                );
+              })}
+            </SimpleGrid>
+          </Stack>
+          <Button
+            size="md"
+            radius="md"
+            loading={submitting}
+            onClick={handleMockLogin}
+            className="login-submit-btn"
             fullWidth
-            value={role}
-            data={demoRoles}
-            onChange={(value) => setRole(value as DemoRole)}
-            disabled={submitting}
-          />
-          <Button size="md" loading={submitting} onClick={handleMockLogin}>
+          >
             Đăng nhập mock
           </Button>
         </Stack>
@@ -150,28 +282,44 @@ export function LoginPage() {
         <form onSubmit={form.onSubmit(handleRealLogin)}>
           <Stack gap="md">
             <TextInput
-              label="Email / Số điện thoại / Mã nhân viên"
-              placeholder="Nhập email, số điện thoại hoặc mã nhân viên"
-              leftSection={<IconUser size={18} />}
+              label="Email hoặc mã nhân viên"
+              placeholder="Nhập email hoặc mã nhân viên"
               autoComplete="username"
               disabled={submitting}
+              radius="md"
+              size="md"
+              classNames={{ input: "login-input", label: "login-input-label" }}
               {...form.getInputProps("loginIdentifier")}
             />
             <PasswordInput
               label="Mật khẩu"
-              placeholder="Mật khẩu"
-              leftSection={<IconLock size={18} />}
+              placeholder="Nhập mật khẩu"
               autoComplete="current-password"
               disabled={submitting}
+              radius="md"
+              size="md"
+              classNames={{ input: "login-input", label: "login-input-label" }}
               {...form.getInputProps("password")}
             />
-            <Checkbox
-              label="Ghi nhớ đăng nhập"
-              disabled={submitting}
-              {...form.getInputProps("rememberMe", { type: "checkbox" })}
-            />
-            <Button type="submit" size="md" loading={submitting}>
-              Đăng nhập
+            <Group justify="space-between" wrap="nowrap" className="login-remember-row">
+              <Checkbox
+                label="Ghi nhớ đăng nhập"
+                disabled={submitting}
+                radius="sm"
+                color="red"
+                className="login-remember-checkbox"
+                {...form.getInputProps("rememberMe", { type: "checkbox" })}
+              />
+            </Group>
+            <Button
+              type="submit"
+              size="md"
+              radius="md"
+              loading={submitting}
+              className="login-submit-btn"
+              fullWidth
+            >
+              Đăng nhập ngay
             </Button>
           </Stack>
         </form>
