@@ -148,9 +148,11 @@ export interface AttendanceSyncStatus {
   manualSync: SyncJobStatus;
 }
 
-export interface AttendanceSyncStatusResponse {
-  data: AttendanceSyncStatus;
-}
+/**
+ * `api.get` already unwraps the `{ success, data }` envelope, so the sync
+ * status endpoint resolves to the status object itself.
+ */
+export type AttendanceSyncStatusResponse = AttendanceSyncStatus;
 
 // ─── Sync Runs ───────────────────────────────────────────────────────────────
 

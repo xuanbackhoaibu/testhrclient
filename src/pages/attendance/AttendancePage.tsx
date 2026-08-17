@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Badge, Card, Drawer, Group, Stack, Text, Tooltip } from '@mantine/core';
+import { Badge, Button, Card, Drawer, Group, Skeleton, Stack, Text, Tooltip } from '@mantine/core';
 import { useDisclosure, useLocalStorage } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconCheck } from '@tabler/icons-react';
+import { IconBuilding, IconCheck, IconDownload, IconRefresh } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 import { EmptyState } from '../../shared/components/EmptyState';
 import { ErrorState } from '../../shared/components/ErrorState';
@@ -17,6 +17,7 @@ import {
   useManualAttendanceSync,
 } from '../../features/attendance/useAttendanceSync';
 import { buildAttendanceDailyExportParams } from '../../features/attendance/attendanceDailyExport';
+import { summarizeAttendanceRecords } from '../../features/attendance/summarizeAttendanceRecords';
 import { useAuth } from '../../features/auth/useAuth';
 import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import { DataTable } from '../../shared/components/DataTable';
@@ -146,6 +147,7 @@ export function AttendancePage() {
   }));
 
   const [page, setPage] = useState(pageParam);
+  const [isExporting, setIsExporting] = useState(false);
 
   const queryParams = buildQueryParams({ ...filters, page, pageSize: PAGE_SIZE });
 
@@ -154,9 +156,15 @@ export function AttendancePage() {
   const { data: syncStatus, isLoading: syncStatusLoading } = useAttendanceSyncStatus();
   const manualSync = useManualAttendanceSync();
 
-  const records = data?.data ?? [];
+  const records = useMemo(() => data?.data ?? [], [data]);
   const pagination = data?.pagination;
-  const summary = data?.summary;
+  // The list endpoint does not return a summary, so derive it from the records
+  // on screen. Labelled as page-scoped in the UI rather than implying a total
+  // across every page of the current filter.
+  const summary = useMemo(
+    () => (data ? summarizeAttendanceRecords(records) : undefined),
+    [data, records],
+  );
 
   // Handle filter changes - sync to URL and localStorage
   const handleFilterChange = (newFilters: AttendanceFilters) => {
@@ -232,6 +240,7 @@ export function AttendancePage() {
     // Reusing the list-query builder keeps date/range and BioTime department
     // filters identical between the screen and downloaded CSV.
 
+    setIsExporting(true);
     try {
       await api.download(
         '/attendance/daily/export',
@@ -244,6 +253,8 @@ export function AttendancePage() {
         message: 'Không thể tải file xuất. Vui lòng thử lại sau.',
         color: 'red',
       });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -258,14 +269,14 @@ export function AttendancePage() {
       filters.mappingStatus ||
       filters.biotimeDepartmentId;
 
-    if (!syncStatus?.data?.hasAttendanceData) {
+    if (!syncStatus?.hasAttendanceData) {
       return {
         title: 'Chưa có dữ liệu chấm công',
         description: 'Hãy đồng bộ dữ liệu từ BioTime để bắt đầu.',
       };
     }
 
-    if (syncStatus?.data?.dailyToday?.lastError || syncStatus?.data?.nightly7Days?.lastError) {
+    if (syncStatus?.dailyToday?.lastError || syncStatus?.nightly7Days?.lastError) {
       return {
         title: 'Đồng bộ gần nhất thất bại',
         description: 'Hãy xem lịch sử đồng bộ để kiểm tra lỗi.',
@@ -299,44 +310,35 @@ export function AttendancePage() {
         actions={
           <Group gap="xs">
             {mayViewSyncLog && (
-              <Text
+              <Button
+                variant="default"
                 size="sm"
-                c="blue"
-                style={{ cursor: 'pointer' }}
+                leftSection={<IconBuilding size={15} />}
                 onClick={openBiotimeDepts}
               >
                 Phòng ban BioTime
-              </Text>
-            )}
-            {mayViewSyncLog && (
-              <Text
-                size="sm"
-                c="blue"
-                style={{ cursor: 'pointer' }}
-                onClick={openSyncHistory}
-              >
-                Lịch sử đồng bộ
-              </Text>
+              </Button>
             )}
             {mayExport && (
-              <Text
+              <Button
+                variant="default"
                 size="sm"
-                c="blue"
-                style={{ cursor: 'pointer' }}
-                onClick={handleExport}
+                leftSection={<IconDownload size={15} />}
+                onClick={() => void handleExport()}
+                loading={isExporting}
               >
                 Xuất CSV
-              </Text>
+              </Button>
             )}
             {maySync && (
-              <Text
+              <Button
                 size="sm"
-                c="blue"
-                style={{ cursor: 'pointer' }}
+                leftSection={<IconRefresh size={15} />}
                 onClick={handleSync}
+                loading={manualSync.isPending}
               >
                 Đồng bộ dữ liệu
-              </Text>
+              </Button>
             )}
           </Group>
         }
@@ -345,22 +347,17 @@ export function AttendancePage() {
       <Stack gap="xs">
         {/* Sync Status Card */}
         <AttendanceSyncStatusCard
-          status={syncStatus?.data}
+          status={syncStatus}
           isLoading={syncStatusLoading}
           onViewSyncHistory={openSyncHistory}
           mayViewSyncLog={mayViewSyncLog}
         />
 
-        {/* Unmapped/Conflict warning */}
-        {(summary && (summary.unmapped + summary.conflict) > 0) && (
-          <Text size="xs" c="orange">
-            Có {summary.unmapped + summary.conflict} bản ghi chấm công chưa được map với nhân sự HRM.
-            Cần xử lý để dữ liệu hiển thị trên lịch cá nhân.
-          </Text>
-        )}
-
-        {/* Summary Cards */}
-        <AttendanceSummaryCards summary={summary} />
+        {/* Summary strip */}
+        <AttendanceSummaryCards
+          summary={summary}
+          onOpenMapping={maySync ? () => navigate(ROUTES.attendanceMapping) : undefined}
+        />
 
         {/* Filter Bar */}
         <AttendanceFilterBar
@@ -368,14 +365,18 @@ export function AttendancePage() {
           onChange={handleFilterChange}
           maySync={maySync}
           onSync={handleSync}
-          onOpenMapping={() => navigate(ROUTES.attendanceMapping)}
           isSyncing={manualSync.isPending}
-          unmappedConflictCount={summary ? summary.unmapped + summary.conflict : 0}
         />
 
         {/* Data Table or Empty State */}
         {isLoading ? (
-          <ErrorState title="Đang tải dữ liệu..." />
+          <Card withBorder padding="md" className={styles.tableCard}>
+            <Stack gap="sm">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <Skeleton key={index} height={34} radius="sm" />
+              ))}
+            </Stack>
+          </Card>
         ) : error || !data ? (
           <ErrorState onRetry={() => void refetch()} />
         ) : records.length === 0 ? (
@@ -487,7 +488,7 @@ export function AttendancePage() {
                 {
                   key: 'status',
                   header: 'Trạng thái',
-                  width: 100,
+                  width: 118,
                   align: 'center',
                   render: (record) => (
                     <Tooltip
@@ -500,21 +501,23 @@ export function AttendancePage() {
                       }
                       disabled={record.status !== 'SINGLE_PUNCH' && record.status !== 'UNKNOWN'}
                     >
-                      <Badge
-                        color={STATUS_COLORS[record.status ?? ''] ?? 'gray'}
-                        variant="light"
-                        size="sm"
-                        radius="md"
-                      >
-                        {STATUS_LABELS[record.status ?? ''] ?? record.status ?? 'N/A'}
-                      </Badge>
+                      <div className={styles.badgeCell}>
+                        <Badge
+                          color={STATUS_COLORS[record.status ?? ''] ?? 'gray'}
+                          variant="light"
+                          size="sm"
+                          radius="sm"
+                        >
+                          {STATUS_LABELS[record.status ?? ''] ?? record.status ?? 'N/A'}
+                        </Badge>
+                      </div>
                     </Tooltip>
                   ),
                 },
                 {
                   key: 'mappingStatus',
                   header: 'Mapping',
-                  width: 100,
+                  width: 112,
                   align: 'center',
                   render: (record) => (
                     <Tooltip
@@ -527,14 +530,16 @@ export function AttendancePage() {
                       }
                       disabled={record.mappingStatus === 'MAPPED'}
                     >
-                      <Badge
-                        color={MAPPING_COLORS[record.mappingStatus] ?? 'gray'}
-                        variant="light"
-                        size="sm"
-                        radius="md"
-                      >
-                        {MAPPING_LABELS[record.mappingStatus] ?? record.mappingStatus}
-                      </Badge>
+                      <div className={styles.badgeCell}>
+                        <Badge
+                          color={MAPPING_COLORS[record.mappingStatus] ?? 'gray'}
+                          variant="light"
+                          size="sm"
+                          radius="sm"
+                        >
+                          {MAPPING_LABELS[record.mappingStatus] ?? record.mappingStatus}
+                        </Badge>
+                      </div>
                     </Tooltip>
                   ),
                 },

@@ -1,0 +1,101 @@
+.root {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0;
+  padding: 10px 4px;
+  border-radius: var(--mantine-radius-md);
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 16px;
+  min-width: 104px;
+  flex: 0 1 auto;
+  border-left: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5));
+}
+
+/* First item in each visual group carries no divider. */
+.stat:first-child,
+.groupStart {
+  border-left: none;
+}
+
+.label {
+  font-size: var(--mantine-font-size-xs);
+  line-height: 1.3;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-1));
+  white-space: nowrap;
+}
+
+.value {
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: light-dark(var(--mantine-color-gray-9), var(--mantine-color-dark-0));
+}
+
+/* Values that carry a status meaning tint only when non-zero. */
+.value[data-tone='warning'] {
+  color: light-dark(var(--mantine-color-orange-7), var(--mantine-color-orange-4));
+}
+
+.value[data-tone='danger'] {
+  color: light-dark(var(--mantine-color-red-7), var(--mantine-color-red-4));
+}
+
+.value[data-tone='muted'] {
+  color: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-2));
+}
+
+.share {
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-1));
+}
+
+.spacer {
+  flex: 1 1 16px;
+  min-width: 0;
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  padding: 0 12px 0 16px;
+  border-left: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5));
+}
+
+@media (max-width: 1200px) {
+  .spacer {
+    flex-basis: 100%;
+    height: 0;
+  }
+
+  .action {
+    border-left: none;
+    padding-left: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .root {
+    padding: 8px 4px;
+  }
+
+  .stat {
+    min-width: 92px;
+    padding: 2px 12px;
+  }
+
+  .value {
+    font-size: 18px;
+  }
+}

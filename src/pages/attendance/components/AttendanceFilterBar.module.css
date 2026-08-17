@@ -1,89 +1,65 @@
 .root {
-  background: var(--mantine-color-white);
-  border: 0.5px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 12px 16px;
+  background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  border-radius: var(--mantine-radius-md);
+  padding: 10px 12px;
 }
 
+/*
+ * Flex, not grid: the previous 7-column grid had no track for the action
+ * group, so "Xóa lọc" overflowed the viewport instead of wrapping.
+ */
 .row {
-  display: grid;
-  grid-template-columns:
-    minmax(280px, 1.4fr)
-    auto
-    minmax(180px, 220px)
-    minmax(140px, 160px)
-    minmax(140px, 160px)
-    auto
-    auto;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-  row-gap: 8px;
-}
-
-.searchInput {
-  flex: 1 1 260px;
-  min-width: 200px;
-}
-
-.selectInput {
-  width: 140px;
-  flex-shrink: 0;
-}
-
-.actions {
-  margin-left: auto;
-  flex-shrink: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
 
-/* Responsive: tablet */
-@media (max-width: 1200px) {
-  .row {
-    grid-template-columns: 1fr 1fr 1fr;
+.searchInput {
+  flex: 1 1 180px;
+  min-width: 150px;
+}
+
+.selectInput {
+  flex: 0 1 124px;
+  min-width: 108px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+/*
+ * Below this width the five controls plus the action group no longer fit on one
+ * line, so the group takes its own row instead of squeezing the selects.
+ */
+@media (max-width: 1180px) {
+  .searchInput {
+    flex-basis: 100%;
   }
 
-  .searchInput {
-    grid-column: 1 / -1;
+  .selectInput {
+    flex: 1 1 140px;
   }
 
   .actions {
-    grid-column: 1 / -1;
-    justify-content: flex-end;
+    flex-basis: 100%;
     margin-left: 0;
+    justify-content: flex-end;
   }
 }
 
-/* Responsive: mobile */
 @media (max-width: 768px) {
   .root {
-    padding: 12px;
+    padding: 10px;
   }
 
-  .row {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .searchInput,
   .selectInput {
-    width: 100%;
-    flex: 1 1 100%;
-  }
-
-  .actions {
-    grid-column: 1;
-    justify-content: flex-end;
-    margin-left: 0;
-  }
-}
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .root {
-    border-color: #404040;
-    background: #1e1e1e;
+    flex-basis: calc(50% - 4px);
   }
 }
