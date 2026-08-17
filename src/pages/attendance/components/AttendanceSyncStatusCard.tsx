@@ -31,11 +31,15 @@ const JOB_LABELS = {
  * running beats error, error beats success, success beats idle.
  */
 function resolveState(status: AttendanceSyncStatus): ResolvedState {
-  const jobs = [
+  const candidates: { job: SyncJob; label: string }[] = [
     { job: status.dailyToday, label: JOB_LABELS.dailyToday },
     { job: status.nightly7Days, label: JOB_LABELS.nightly7Days },
     { job: status.manualSync, label: JOB_LABELS.manualSync },
-  ].filter((entry): entry is { job: NonNullable<SyncJob>; label: string } => Boolean(entry.job));
+  ];
+  const jobs = candidates.filter(
+    (entry): entry is { job: NonNullable<SyncJob>; label: string } =>
+      Boolean(entry.job),
+  );
 
   const running = jobs.find((entry) => entry.job.isRunning);
   if (running) return { state: 'running', job: running.job, label: running.label };
