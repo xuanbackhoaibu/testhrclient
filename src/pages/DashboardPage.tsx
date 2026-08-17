@@ -1,83 +1,102 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActionIcon,
-  Badge,
   Button,
   Group,
   Menu,
-  MultiSelect,
-  Paper,
   SegmentedControl,
-  SimpleGrid,
+  Select,
   Skeleton,
-  Stack,
+  Table,
   Text,
-  ThemeIcon,
   Tooltip,
 } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import {
+  IconAddressBook,
   IconAlertTriangle,
-  IconBriefcase,
+  IconArrowRight,
+  IconCalendar,
+  IconCalendarCheck,
+  IconChartBar,
+  IconCheck,
+  IconChevronRight,
   IconClockHour4,
   IconDownload,
-  IconFileImport,
+  IconFileSpreadsheet,
+  IconFileText,
+  IconPrinter,
   IconRefresh,
+  IconTable,
+  IconTrendingDown,
+  IconTrendingUp,
   IconUserCheck,
-  IconUserMinus,
   IconUsers,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
 import { type DashboardSummaryPeriod } from "../features/dashboard/dashboardApi";
 import { useDashboardSummary } from "../features/dashboard/useDashboardSummary";
-import type {
-  DashboardAttendanceRate,
-  DashboardLateEmployee,
-  DashboardMetric,
-} from "../features/dashboard/dashboardTypes";
-import { EmptyState } from "../shared/components/EmptyState";
 import { ErrorState } from "../shared/components/ErrorState";
 import { PageHeader } from "../shared/components/PageHeader";
 import { ROUTES } from "../shared/constants/routes";
 import styles from "./DashboardPage.module.css";
 
-type MetricTone = "blue" | "green" | "teal" | "red" | "yellow" | "orange" | "indigo" | "gray";
-type TimeRange = DashboardSummaryPeriod;
+type ChartItem = {
+  label: string;
+  value: number;
+};
 
-const chartPalette = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-  "var(--chart-6)",
-  "var(--chart-7)",
+const donutColors = [
+  "#0068FF", // Primary Blue
+  "#00B4D8", // Cyan
+  "#10B981", // Emerald
+  "#F59E0B", // Amber
+  "#8B5CF6", // Purple
+  "#EC4899", // Pink
+  "#94A3B8", // Slate
 ];
-const lateThreshold = 3;
-const monthLabels = ["T-5", "T-4", "T-3", "T-2", "T-1", "T"];
 
-function formatNumber(value: number): string {
+const statusStyles: Record<
+  string,
+  { label: string; color: string; bg: string; dot: string }
+> = {
+  ACTIVE: {
+    label: "Chính thức",
+    color: "#059669",
+    bg: "#ECFDF5",
+    dot: "#10B981",
+  },
+  PROBATION: {
+    label: "Thử việc",
+    color: "#0068FF",
+    bg: "#EFF6FF",
+    dot: "#0068FF",
+  },
+  INACTIVE: {
+    label: "Tạm hoãn",
+    color: "#D97706",
+    bg: "#FFFBEB",
+    dot: "#F59E0B",
+  },
+  TERMINATED: {
+    label: "Đã thôi việc",
+    color: "#E11D48",
+    bg: "#FFF1F2",
+    dot: "#E11D48",
+  },
+};
+
+function formatNumber(value: number) {
   return value.toLocaleString("vi-VN");
 }
 
-function percent(value: number, total: number): number {
+function percent(value: number, total: number) {
   if (total <= 0) return 0;
   return Math.round((value / total) * 1000) / 10;
 }
 
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
-function statusColor(label: string) {
-  const normalized = label.toLowerCase();
-  if (normalized.includes("active") || normalized.includes("đang")) return "var(--color-primary)";
-  if (normalized.includes("probation") || normalized.includes("thử")) return "var(--color-accent)";
-  if (normalized.includes("terminated") || normalized.includes("nghỉ")) return "var(--chart-3)";
-  return "var(--chart-6)";
-}
-
-function employeeListUrl(params: Record<string, string>): string {
+function employeeListUrl(params: Record<string, string>) {
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value) searchParams.set(key, value);
@@ -85,945 +104,1501 @@ function employeeListUrl(params: Record<string, string>): string {
   return `${ROUTES.employees}?${searchParams.toString()}`;
 }
 
-function PendingQueueMiniChart({
-  leave,
-  attendance,
-  movement,
-}: {
-  leave: number;
-  attendance: number;
-  movement: number;
-}) {
-  const total = leave + attendance + movement;
-  const segments = [
-    { label: "Nghỉ", value: leave, color: "var(--chart-1)" },
-    { label: "Công", value: attendance, color: "var(--chart-2)" },
-    { label: "Điều chuyển", value: movement, color: "var(--chart-3)" },
-  ];
+function getInitials(name?: string | null) {
+  if (!name) return "NV";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
+/** Skeleton Loader chuẩn Enterprise */
+function DashboardSkeletonLoader() {
   return (
-    <div className={styles.pendingMiniChart} aria-label="Biểu đồ đơn chờ duyệt">
-      <div className={styles.pendingMiniTrack}>
-        {segments.map((segment) => (
-          <Tooltip
-            key={segment.label}
-            label={`${segment.label}: ${formatNumber(segment.value)} (${percent(segment.value, total)}%)`}
-            withArrow
-          >
-            <span
-              className={styles.pendingMiniSegment}
-              style={{
-                width: `${total ? percent(segment.value, total) : 0}%`,
-                backgroundColor: segment.color,
-              }}
-            />
-          </Tooltip>
-        ))}
+    <div className={styles.zaloDashboardContainer}>
+      <Skeleton height={46} radius="md" />
+      <Skeleton height={94} radius="md" />
+      <div className={styles.twoColumnGrid}>
+        <Skeleton height={320} radius="md" />
+        <Skeleton height={320} radius="md" />
       </div>
-      <div className={styles.pendingMiniLegend}>
-        {segments.map((segment) => (
-          <span key={segment.label}>
-            <i style={{ backgroundColor: segment.color }} />
-            {segment.label} <strong>{formatNumber(segment.value)}</strong>
-          </span>
-        ))}
+      <div className={styles.twoColumnGrid}>
+        <Skeleton height={320} radius="md" />
+        <Skeleton height={320} radius="md" />
       </div>
     </div>
   );
 }
 
-function MetricCard({
-  title,
-  value,
-  meta,
-  detail,
-  tone,
-  icon,
+/** 1. Thanh Lọc Đơn vị & Lối tắt điều hướng phân hệ HRM */
+function EnterpriseQuickBar({
+  selectedUnit,
+  unitOptions,
+  onSelectUnit,
+  onNavigate,
 }: {
-  title: string;
-  value: number;
-  meta: string;
-  detail?: React.ReactNode;
-  tone: MetricTone;
-  icon: React.ReactNode;
+  selectedUnit: string;
+  unitOptions: Array<{ value: string; label: string }>;
+  onSelectUnit: (unit: string) => void;
+  onNavigate: (path: string) => void;
 }) {
-  return (
-    <Paper className={`${styles.metricCard} ${styles[`metricCard_${tone}`]}`} p="sm">
-      <Stack gap={6} h="100%" justify="space-between">
-        <Group justify="space-between" align="flex-start" wrap="nowrap">
-          <Text size="xs" fw={600} c="dimmed" className={styles.metricLabel}>
-            {title}
-          </Text>
-          <ThemeIcon className={styles.metricIcon} variant="light" size={30}>{icon}</ThemeIcon>
-        </Group>
-        <Group align="flex-end" justify="space-between" gap={6} wrap="nowrap">
-          <Stack gap={2} miw={0}>
-            <Text className={styles.metricValue}>{formatNumber(value)}</Text>
-            <Text size="xs" c="dimmed" className={styles.metricMeta}>{meta}</Text>
-          </Stack>
-        </Group>
-      {detail ? <div className={styles.metricDetail}>{detail}</div> : null}
-      </Stack>
-    </Paper>
-  );
-}
-
-function WorkforceMovementChart({
-  hires,
-  terminations,
-}: {
-  hires: number;
-  terminations: number;
-}) {
-  const hireSeries = [Math.max(0, hires - 2), hires + 1, Math.max(0, hires - 1), hires + 2, hires, hires + 1];
-  const terminationSeries = [terminations + 1, terminations, terminations + 2, Math.max(0, terminations - 1), terminations + 1, terminations];
-  const allValues = [...hireSeries, ...terminationSeries, 1];
-  const max = Math.max(...allValues);
-  const pointsFor = (values: number[]) =>
-    values.map((value, index) => {
-      const x = 34 + index * 61;
-      const y = 190 - (value / max) * 130;
-      return { x, y, value };
-    });
-  const hirePoints = pointsFor(hireSeries);
-  const terminationPoints = pointsFor(terminationSeries);
-  const hireLine = hirePoints.map((point) => `${point.x},${point.y}`).join(" ");
-  const terminationLine = terminationPoints.map((point) => `${point.x},${point.y}`).join(" ");
-  const area = `34,190 ${hireLine} 339,190`;
+  const navLinks = [
+    { label: "Danh bạ nhân sự", icon: IconAddressBook, path: ROUTES.employees },
+    { label: "Bảng chấm công", icon: IconClockHour4, path: ROUTES.attendance },
+    { label: "Đơn từ & Nghỉ phép", icon: IconCalendar, path: ROUTES.leave },
+    { label: "Điều chuyển nội bộ", icon: IconFileText, path: ROUTES.movements },
+    { label: "Import Excel", icon: IconFileSpreadsheet, path: ROUTES.imports },
+  ];
 
   return (
-    <Paper className={styles.chartPanel} p="md">
-      <Group justify="space-between" align="flex-start" mb="sm">
-        <Stack gap={2}>
-          <Text fw={600}>Biến động nhân sự 6 tháng</Text>
-          <Text size="xs" c="dimmed">Tuyển mới và nghỉ việc theo kỳ gần nhất.</Text>
-        </Stack>
-        <Group gap="sm" className={styles.chartLegendCompact}>
-          <span><i style={{ background: "var(--chart-1)" }} />Tuyển mới</span>
-          <span><i style={{ background: "var(--chart-3)" }} />Nghỉ việc</span>
-        </Group>
-      </Group>
-      <svg className={styles.lineChart} viewBox="0 0 370 220" role="img" aria-label="Biến động nhân sự 6 tháng">
-        {[50, 85, 120, 155, 190].map((y) => (
-          <line key={y} x1="34" x2="344" y1={y} y2={y} className={styles.chartGridLine} />
-        ))}
-        <polygon points={area} className={styles.lineArea} />
-        <polyline points={hireLine} className={styles.hireLine} />
-        <polyline points={terminationLine} className={styles.terminationLine} />
-        {[hirePoints[0], hirePoints[hirePoints.length - 1]].map((point, index) => (
-          <circle key={`hire-dot-${index}`} cx={point.x} cy={point.y} r="3" className={styles.hireEndpoint} />
-        ))}
-        {[...hirePoints, ...terminationPoints].map((point, index) => (
-          <circle key={`hover-dot-${index}`} cx={point.x} cy={point.y} r="4" className={styles.lineHoverDot}>
-            <title>{formatNumber(point.value)} hồ sơ</title>
-          </circle>
-        ))}
-        {monthLabels.map((label, index) => (
-          <text key={label} x={34 + index * 61} y="214" textAnchor="middle" className={styles.axisLabel}>{label}</text>
-        ))}
-      </svg>
-    </Paper>
-  );
-}
+    <div className={`${styles.enterpriseSearchBar} ${styles.fadeInItem1}`}>
+      {/* Bộ lọc đơn vị áp dụng */}
+      <div className={styles.unitFilterGroup}>
+        <span className={styles.unitFilterLabel}>Đơn vị áp dụng:</span>
+        <Select
+          value={selectedUnit}
+          onChange={(val) => onSelectUnit(val ?? "ALL")}
+          data={unitOptions}
+          size="xs"
+          radius="md"
+          className={styles.unitSelectorBar}
+          allowDeselect={false}
+        />
+      </div>
 
-function ChartSkeleton({ dense = false }: { dense?: boolean }) {
-  return (
-    <Paper className={styles.chartPanel} p="md" aria-label="Đang tải biểu đồ">
-      <Group justify="space-between" mb="sm">
-        <Stack gap={6}>
-          <Skeleton height={18} width={220} radius="sm" />
-          <Skeleton height={12} width={280} radius="sm" />
-        </Stack>
-        <Skeleton height={24} width={92} radius="xl" />
-      </Group>
-      <Stack gap="sm">
-        <Skeleton height={dense ? 34 : 178} radius="md" />
-        <Skeleton height={dense ? 34 : 46} radius="md" />
-        <Skeleton height={dense ? 34 : 46} radius="md" />
-        <Skeleton height={dense ? 34 : 46} radius="md" />
-      </Stack>
-    </Paper>
-  );
-}
-
-function DashboardSkeleton() {
-  return (
-    <Stack gap="md">
-      <Paper p="md" className={styles.filterPanel}>
-        <Group justify="space-between" align="flex-end" gap="md">
-          <Stack gap={6}>
-            <Skeleton height={18} width={160} radius="sm" />
-            <Skeleton height={12} width={320} radius="sm" />
-          </Stack>
-          <Skeleton height={36} width={260} radius="md" />
-        </Group>
-      </Paper>
-      <SimpleGrid cols={{ base: 1, sm: 2, xl: 5 }} spacing="md">
-        {Array.from({ length: 5 }).map((_, index) => (
-          <Skeleton key={index} height={96} radius="md" />
-        ))}
-      </SimpleGrid>
-      <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
-        <ChartSkeleton />
-        <ChartSkeleton dense />
-      </SimpleGrid>
-      <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
-        <ChartSkeleton />
-        <ChartSkeleton dense />
-      </SimpleGrid>
-      <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="md">
-        <Skeleton height={300} radius="md" />
-        <Skeleton height={300} radius="md" />
-        <Skeleton height={300} radius="md" />
-      </SimpleGrid>
-    </Stack>
-  );
-}
-
-function EmptyIllustration() {
-  return (
-    <svg className={styles.emptyIllustration} viewBox="0 0 96 72" aria-hidden="true">
-      <rect x="12" y="18" width="72" height="42" rx="10" />
-      <path d="M28 42l12 9 28-30" />
-      <circle cx="22" cy="18" r="5" />
-      <circle cx="74" cy="58" r="4" />
-    </svg>
-  );
-}
-
-function DonutChart({
-  title,
-  items,
-  centerLabel,
-  onSliceClick,
-}: {
-  title: string;
-  items: DashboardMetric[];
-  centerLabel: string;
-  onSliceClick?: (item: DashboardMetric) => void;
-}) {
-  const total = items.reduce((sum, item) => sum + item.value, 0);
-  const size = 168;
-  const center = size / 2;
-  const radius = 60;
-  const gapDegrees = 2;
-  let startAngle = -90;
-  const pointOnCircle = (angle: number) => {
-    const radians = (angle * Math.PI) / 180;
-    return {
-      x: center + radius * Math.cos(radians),
-      y: center + radius * Math.sin(radians),
-    };
-  };
-  const arcPath = (start: number, end: number) => {
-    const startPoint = pointOnCircle(start);
-    const endPoint = pointOnCircle(end);
-    const largeArc = end - start > 180 ? 1 : 0;
-    return `M ${startPoint.x.toFixed(3)} ${startPoint.y.toFixed(3)} A ${radius} ${radius} 0 ${largeArc} 1 ${endPoint.x.toFixed(3)} ${endPoint.y.toFixed(3)}`;
-  };
-  const segments = total
-    ? items.map((item, index) => {
-        const ratio = item.value / total;
-        const sweep = ratio * 360;
-        const segmentStart = startAngle + gapDegrees / 2;
-        const segmentEnd = startAngle + sweep - gapDegrees / 2;
-        const segment = {
-          item,
-          color: chartPalette[index % chartPalette.length],
-          path: arcPath(segmentStart, Math.max(segmentStart + 0.1, segmentEnd)),
-          ratio,
-        };
-        startAngle += sweep;
-        return segment;
-      })
-    : [];
-
-  return (
-    <Paper className={styles.chartPanel} p="md">
-      <Group justify="space-between" align="flex-start" mb="sm">
-        <Stack gap={2}>
-          <Text fw={600}>{title}</Text>
-          <Text size="xs" c="dimmed">
-            Click vào lát biểu đồ để mở danh sách nhân sự liên quan.
-          </Text>
-        </Stack>
-        <Badge variant="light">{formatNumber(total)} nhân sự</Badge>
-      </Group>
-      {total === 0 ? (
-        <Stack align="center" py="xl">
-          <EmptyIllustration />
-          <Text size="sm" c="dimmed">Chưa có dữ liệu cơ cấu nhân sự.</Text>
-        </Stack>
-      ) : (
-        <Group align="center" gap="xl" className={styles.donutLayout}>
-          <div className={styles.donutWrap}>
-            <svg
-              className={styles.donut}
-              width={size}
-              height={size}
-              viewBox={`0 0 ${size} ${size}`}
-              preserveAspectRatio="xMidYMid meet"
-              role="img"
-              aria-label={title}
+      {/* Danh mục lối tắt điều hướng nhanh */}
+      <div className={styles.quickNavLinksRow}>
+        {navLinks.map((link) => {
+          const Icon = link.icon;
+          return (
+            <button
+              key={link.label}
+              type="button"
+              className={styles.quickNavLinkItem}
+              onClick={() => onNavigate(link.path)}
             >
-              <circle className={styles.donutTrack} cx={center} cy={center} r={radius} />
-              {segments.map((segment) => (
-                <Tooltip
-                  key={segment.item.label}
-                  label={`${segment.item.label}: ${formatNumber(segment.item.value)} (${percent(segment.item.value, total)}%)`}
-                  withArrow
-                >
-                  <path
-                    className={styles.donutSegment}
-                    d={segment.path}
-                    stroke={segment.color}
-                    tabIndex={0}
-                    role="button"
-                    aria-label={`${segment.item.label}: ${formatNumber(segment.item.value)} nhân sự, ${percent(segment.item.value, total)} phần trăm`}
-                    onClick={() => onSliceClick?.(segment.item)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        onSliceClick?.(segment.item);
-                      }
-                    }}
-                  />
-                </Tooltip>
-              ))}
-            </svg>
-            <Stack gap={0} align="center" className={styles.donutCenter}>
-              <Text fw={600} className={styles.donutTotal}>{formatNumber(total)}</Text>
-              <Text size="xs" c="dimmed">{centerLabel}</Text>
-            </Stack>
-          </div>
-          <Stack gap="xs" className={styles.legend}>
-            {segments.map((segment) => (
-              <button
-                key={segment.item.label}
-                className={styles.legendItem}
-                type="button"
-                onClick={() => onSliceClick?.(segment.item)}
-              >
-                <span className={styles.legendDot} style={{ backgroundColor: segment.color }} />
-                <span className={styles.legendLabel}>{segment.item.label}</span>
-                <span className={styles.legendValue}>
-                  <strong>{formatNumber(segment.item.value)}</strong>
-                  <small>{percent(segment.item.value, total)}%</small>
-                </span>
-              </button>
-            ))}
-          </Stack>
-        </Group>
-      )}
-    </Paper>
+              <Icon size={14} />
+              <span>{link.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
-function TopLateBarChart({ items, onViewAll }: { items: DashboardLateEmployee[]; onViewAll: () => void }) {
-  const maxLate = Math.max(...items.map((item) => item.lateCount), 1);
-
-  return (
-    <Paper className={styles.chartPanel} p="md">
-      <Group justify="space-between" mb="sm">
-        <Stack gap={2}>
-          <Text fw={600}>Nhân sự đi muộn nhiều nhất</Text>
-          <Text size="xs" c="dimmed">Ngưỡng cảnh báo: từ {lateThreshold} lần/tháng.</Text>
-        </Stack>
-        <Group gap="xs" wrap="nowrap">
-          <Badge color={items.length ? "red" : "green"} variant="light">{items.length ? `${items.length} nhân sự` : "Không phát sinh"}</Badge>
-          {items.length > 0 ? (
-            <Button variant="subtle" size="xs" onClick={onViewAll}>
-              Xem tất cả
-            </Button>
-          ) : null}
-        </Group>
-      </Group>
-      {items.length === 0 ? (
-        <Stack align="center" py="xl">
-          <EmptyIllustration />
-          <Text fw={650}>Tuyệt vời! Tháng này không có nhân sự nào đi muộn.</Text>
-        </Stack>
-      ) : (
-        <Stack gap="xs" className={styles.topLateList}>
-          {items.slice(0, 8).map((item) => {
-            const width = item.lateCount === 0 ? 0 : clamp((item.lateCount / maxLate) * 100, 8, 100);
-            const warning = item.lateCount >= lateThreshold;
-            return (
-              <Tooltip
-                key={item.employeeId}
-                label={`${item.fullName ?? item.employeeId}: ${formatNumber(item.lateCount)} lần, ${formatNumber(item.totalLateMinutes)} phút`}
-                withArrow
-              >
-                <div className={styles.barRow}>
-                  <Stack gap={4} miw={0}>
-                    <Group justify="space-between" wrap="nowrap">
-                      <Text size="sm" fw={600} className={styles.barLabel}>{item.fullName ?? item.employeeId}</Text>
-                      <Text size="sm" fw={600} className={styles.barValue}>{formatNumber(item.lateCount)} lần</Text>
-                    </Group>
-                    <div
-                      className={styles.barTrack}
-                      style={{ "--threshold": `${clamp((lateThreshold / maxLate) * 100, 0, 100)}%` } as React.CSSProperties}
-                    >
-                      <div
-                        className={`${styles.barFill} ${warning ? styles.barFill_danger : styles.barFill_normal}`}
-                        style={{ width: `${width}%` }}
-                      />
-                    </div>
-                    <Text size="xs" c="dimmed">{formatNumber(item.totalLateMinutes)} phút đi muộn</Text>
-                  </Stack>
-                </div>
-              </Tooltip>
-            );
-          })}
-        </Stack>
-      )}
-    </Paper>
-  );
-}
-
-function EmployeeStatusColumnChart({
-  title,
-  items,
-  onBarClick,
+/** 2. Băng 5 chỉ số điều hành HRM */
+function ExecutiveMetricStrip({
+  totalEmployees,
+  activeEmployees,
+  newHires,
+  terminated,
+  pendingTotal,
+  pendingLeave,
+  pendingAttendance,
+  pendingMovements,
+  onNavigate,
 }: {
-  title: string;
-  items: DashboardMetric[];
-  onBarClick?: (item: DashboardMetric) => void;
+  totalEmployees: number;
+  activeEmployees: number;
+  newHires: number;
+  terminated: number;
+  pendingTotal: number;
+  pendingLeave: number;
+  pendingAttendance: number;
+  pendingMovements: number;
+  onNavigate: (url: string) => void;
 }) {
-  const maxValue = Math.max(...items.map((item) => item.value), 1);
-  const totalValue = items.reduce((sum, current) => sum + current.value, 0);
+  const activePct = percent(activeEmployees, totalEmployees);
 
   return (
-    <Paper className={styles.chartPanel} p="md">
-      <Group justify="space-between" mb="sm">
-        <Stack gap={2}>
-          <Text fw={600}>{title}</Text>
-          <Text size="xs" c="dimmed">So sánh nhanh số lượng hồ sơ theo từng trạng thái.</Text>
-        </Stack>
-        <Badge variant="light">{formatNumber(items.reduce((sum, item) => sum + item.value, 0))} hồ sơ</Badge>
-      </Group>
-      {items.length === 0 ? (
-        <Stack align="center" py="xl">
-          <EmptyIllustration />
-          <Text size="sm" c="dimmed">Chưa có dữ liệu trạng thái nhân sự.</Text>
-        </Stack>
-      ) : (
-        <div className={styles.statusColumnChart}>
-          <div className={styles.statusColumnPlot}>
-          {items.map((item) => {
-            const height = item.value === 0 ? 0 : clamp((item.value / maxValue) * 100, 10, 100);
-            const color = statusColor(item.label);
-            return (
-              <Tooltip
-                key={item.label}
-                label={`${item.label}: ${formatNumber(item.value)} (${percent(item.value, totalValue)}%)`}
-                withArrow
-              >
-                <button
-                  className={styles.statusColumnItem}
-                  type="button"
-                  onClick={() => onBarClick?.(item)}
-                >
-                  <Text size="sm" fw={600} className={styles.statusColumnValue}>
-                    {formatNumber(item.value)}
-                  </Text>
-                  <div className={styles.statusColumnTrack}>
-                    <div
-                      className={styles.statusColumnFill}
-                      style={{ height: `${height}%`, backgroundColor: color }}
-                    />
-                  </div>
-                  <span className={styles.statusColumnDot} style={{ backgroundColor: color }} />
-                  <Text size="xs" fw={600} className={styles.statusColumnLabel} lineClamp={2}>{item.label}</Text>
-                  <Text size="xs" c="dimmed" className={styles.statusColumnPercent}>{percent(item.value, totalValue)}%</Text>
-                </button>
-              </Tooltip>
-            );
-          })}
+    <div className={`${styles.executiveMetricStrip} ${styles.fadeInItem2}`}>
+      {/* 1. Tổng nhân sự */}
+      <div
+        className={styles.metricStripCell}
+        onClick={() => onNavigate(ROUTES.employees)}
+        role="button"
+        tabIndex={0}
+      >
+        <div className={styles.metricCellHeader}>
+          <span className={styles.metricCellLabel}>Tổng nhân sự</span>
+          <span className={`${styles.metricCellBadge} ${styles.badgeNeutral}`}>
+            Toàn bộ
+          </span>
+        </div>
+        <div className={styles.metricCellValueRow}>
+          <span className={styles.metricCellValue}>
+            {formatNumber(totalEmployees)}
+          </span>
+          <div className={styles.metricCellIconBoxBlue}>
+            <IconUsers size={20} />
           </div>
         </div>
-      )}
-    </Paper>
+        <div className={styles.metricCellFooterRow}>
+          <span className={styles.metricCellSub}>Quy mô toàn hệ thống</span>
+        </div>
+      </div>
+
+      {/* 2. Đang làm việc */}
+      <div
+        className={styles.metricStripCell}
+        onClick={() => onNavigate(employeeListUrl({ status: "ACTIVE" }))}
+        role="button"
+        tabIndex={0}
+      >
+        <div className={styles.metricCellHeader}>
+          <span className={styles.metricCellLabel}>Đang làm việc</span>
+          <span className={`${styles.metricCellBadge} ${styles.badgeSuccess}`}>
+            {activePct}%
+          </span>
+        </div>
+        <div className={styles.metricCellValueRow}>
+          <span className={styles.metricCellValue}>
+            {formatNumber(activeEmployees)}
+          </span>
+          <div className={styles.metricCellIconBoxGreen}>
+            <IconUserCheck size={20} />
+          </div>
+        </div>
+        <div className={styles.metricCellFooterRow}>
+          <span className={styles.metricCellSub}>Chính thức & thử việc</span>
+        </div>
+      </div>
+
+      {/* 3. Tuyển mới kỳ này */}
+      <div
+        className={styles.metricStripCell}
+        onClick={() => onNavigate(employeeListUrl({ created: "current-period" }))}
+        role="button"
+        tabIndex={0}
+      >
+        <div className={styles.metricCellHeader}>
+          <span className={styles.metricCellLabel}>Tuyển mới kỳ này</span>
+          <span className={`${styles.metricCellBadge} ${styles.badgeInfo}`}>
+            +{newHires} mới
+          </span>
+        </div>
+        <div className={styles.metricCellValueRow}>
+          <span className={styles.metricCellValue}>{formatNumber(newHires)}</span>
+          <div className={styles.metricCellIconBoxTeal}>
+            <IconTrendingUp size={20} />
+          </div>
+        </div>
+        <div className={styles.metricCellFooterRow}>
+          <span className={styles.metricCellSub}>Hồ sơ gia nhập kỳ này</span>
+        </div>
+      </div>
+
+      {/* 4. Thôi việc kỳ này */}
+      <div
+        className={styles.metricStripCell}
+        onClick={() => onNavigate(employeeListUrl({ status: "TERMINATED" }))}
+        role="button"
+        tabIndex={0}
+      >
+        <div className={styles.metricCellHeader}>
+          <span className={styles.metricCellLabel}>Thôi việc kỳ này</span>
+          <span className={`${styles.metricCellBadge} ${styles.badgeDanger}`}>
+            -{terminated}
+          </span>
+        </div>
+        <div className={styles.metricCellValueRow}>
+          <span className={styles.metricCellValue}>{formatNumber(terminated)}</span>
+          <div className={styles.metricCellIconBoxRose}>
+            <IconTrendingDown size={20} />
+          </div>
+        </div>
+        <div className={styles.metricCellFooterRow}>
+          <span className={styles.metricCellSub}>Biến động giảm nhân sự</span>
+        </div>
+      </div>
+
+      {/* 5. Yêu cầu chờ duyệt */}
+      <div
+        className={styles.metricStripCell}
+        onClick={() => onNavigate(ROUTES.leave)}
+        role="button"
+        tabIndex={0}
+      >
+        <div className={styles.metricCellHeader}>
+          <span className={styles.metricCellLabel}>Yêu cầu chờ duyệt</span>
+          <span
+            className={`${styles.metricCellBadge} ${
+              pendingTotal > 0 ? styles.badgeWarning : styles.badgeSuccess
+            }`}
+          >
+            {pendingTotal > 0 ? `${pendingTotal} việc` : "Hoàn tất"}
+          </span>
+        </div>
+        <div className={styles.metricCellValueRow}>
+          <span className={styles.metricCellValue}>
+            {formatNumber(pendingTotal)}
+          </span>
+          <div className={styles.metricCellIconBoxAmber}>
+            <IconClockHour4 size={20} />
+          </div>
+        </div>
+        <div className={styles.metricCellFooterRow}>
+          <span className={styles.metricCellSub}>
+            {pendingLeave} phép, {pendingAttendance} công, {pendingMovements} chuyển
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }
 
-function AttendanceStackedBars({ items }: { items: DashboardAttendanceRate[] }) {
-  const averageRate = items.length
-    ? items.reduce((sum, item) => sum + item.attendanceRate, 0) / items.length
-    : 0;
+/** 3. Biểu đồ tròn (Donut Chart) SVG hoàn toàn tương tác trên hình tròn */
+function DonutStructureChart({
+  title,
+  items,
+  onItemClick,
+}: {
+  title: string;
+  items: ChartItem[];
+  onItemClick?: (item: ChartItem) => void;
+}) {
+  const [viewMode, setViewMode] = useState<"chart" | "table">("chart");
+  const [hoveredItem, setHoveredItem] = useState<ChartItem | null>(null);
+
+  const total = items.reduce((sum, item) => sum + item.value, 0);
+  const nonZeroItems = useMemo(
+    () => items.filter((item) => item.value > 0),
+    [items],
+  );
+
+  // Cấu hình thông số hình học SVG Donut
+  const radius = 56;
+  const circumference = 2 * Math.PI * radius;
+
+  const slices = useMemo(() => {
+    return nonZeroItems.reduce<
+      Array<{
+        item: ChartItem;
+        fraction: number;
+        percentVal: number;
+        strokeDasharray: string;
+        strokeDashoffset: number;
+        color: string;
+      }>
+    >((acc, item, index) => {
+      const fraction = total > 0 ? item.value / total : 0;
+      const prevSlice = acc[acc.length - 1];
+      const strokeDashoffset = prevSlice
+        ? prevSlice.strokeDashoffset - prevSlice.fraction * circumference
+        : 0;
+      const strokeDasharray = `${fraction * circumference} ${circumference}`;
+      const color = donutColors[index % donutColors.length];
+
+      return [
+        ...acc,
+        {
+          item,
+          fraction,
+          percentVal: percent(item.value, total),
+          strokeDasharray,
+          strokeDashoffset,
+          color,
+        },
+      ];
+    }, []);
+  }, [nonZeroItems, total, circumference]);
+
+  const centerNumber = hoveredItem ? formatNumber(hoveredItem.value) : formatNumber(total);
+  const centerLabel = hoveredItem ? hoveredItem.label : "Tổng nhân sự";
+  const centerSub = hoveredItem
+    ? `${percent(hoveredItem.value, total)}%`
+    : `${items.length} đơn vị`;
 
   return (
-    <Paper className={styles.chartPanel} p="md">
-      <Group justify="space-between" mb="sm">
-        <Stack gap={2}>
-          <Text fw={600}>Tỷ lệ chuyên cần theo phòng ban</Text>
-          <Text size="xs" c="dimmed">So sánh ngày đi làm và ngày vắng/nghỉ.</Text>
-        </Stack>
-        <Badge variant="light">{averageRate.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}% TB</Badge>
-      </Group>
-      {items.length === 0 ? (
-        <Stack align="center" py="xl">
-          <EmptyIllustration />
-          <Text size="sm" c="dimmed">Chưa có dữ liệu chuyên cần theo phòng ban.</Text>
-        </Stack>
-      ) : (
-        <Stack gap="sm" className={styles.attendanceList}>
-          <Group gap="md" className={styles.chartLegendCompact}>
-            <span><i style={{ background: "var(--color-accent)" }} />Ngày đi làm</span>
-            <span><i style={{ background: "var(--chart-7)" }} />Vắng/nghỉ</span>
-          </Group>
-          {items.slice(0, 8).map((item) => {
-            const label = item.departmentName ?? item.unitName ?? "-";
-            const absentDays = Math.max(0, item.workDays - item.attendedDays);
-            const attendedPercent = percent(item.attendedDays, item.workDays);
-            const absentPercent = 100 - attendedPercent;
-            return (
-              <Tooltip
-                key={label}
-                label={`${label}: ${formatNumber(item.attendedDays)} ngày đi làm, ${formatNumber(absentDays)} ngày vắng/nghỉ (${item.attendanceRate.toLocaleString("vi-VN")}%)`}
-                withArrow
+    <div className={styles.cardContainer}>
+      <div className={styles.cardHeader}>
+        <div>
+          <Text className={styles.cardTitle}>{title}</Text>
+        </div>
+        <Group gap={8}>
+          <SegmentedControl
+            size="xs"
+            value={viewMode}
+            onChange={(val) => setViewMode(val as "chart" | "table")}
+            data={[
+              {
+                value: "chart",
+                label: (
+                  <Tooltip label="Xem dạng biểu đồ" withArrow>
+                    <IconChartBar size={14} style={{ display: "block" }} />
+                  </Tooltip>
+                ),
+              },
+              {
+                value: "table",
+                label: (
+                  <Tooltip label="Xem dạng bảng" withArrow>
+                    <IconTable size={14} style={{ display: "block" }} />
+                  </Tooltip>
+                ),
+              },
+            ]}
+          />
+          <span className={styles.pillBadge}>{formatNumber(total)} nhân sự</span>
+        </Group>
+      </div>
+
+      <div className={styles.cardBodyUniform}>
+        {viewMode === "chart" ? (
+          <div className={styles.donutBody}>
+            <div className={styles.donutGraphicBox}>
+              <svg
+                viewBox="0 0 160 160"
+                className={styles.donutInteractiveSvg}
+                role="img"
+                aria-label={title}
               >
-                <div className={styles.stackedRow}>
-                  <Group justify="space-between" wrap="nowrap">
-                    <Text size="sm" fw={600} truncate>{label}</Text>
-                    <Badge size="sm" variant="light" color={item.attendanceRate >= 95 ? "green" : "yellow"}>
-                      {item.attendanceRate.toLocaleString("vi-VN")}%
-                    </Badge>
-                  </Group>
-                  <div className={styles.stackedTrack}>
-                    <div className={styles.stackedAttend} style={{ width: `${attendedPercent}%` }} />
-                    <div className={styles.stackedAbsent} style={{ width: `${absentPercent}%` }} />
-                  </div>
-                  <Text size="xs" c="dimmed">
-                    {formatNumber(item.attendedDays)} ngày đi làm · {formatNumber(absentDays)} ngày vắng/nghỉ
-                  </Text>
-                </div>
-              </Tooltip>
-            );
-          })}
-        </Stack>
-      )}
-    </Paper>
+                {/* Vòng nền mờ */}
+                <circle
+                  cx="80"
+                  cy="80"
+                  r={radius}
+                  fill="transparent"
+                  stroke="#F1F5F9"
+                  strokeWidth="20"
+                />
+
+                {/* Các lát cắt tương tác xoay góc -90 độ để bắt đầu từ đỉnh 12h */}
+                <g transform="rotate(-90 80 80)">
+                  {slices.map((slice) => {
+                    const isHovered = hoveredItem?.label === slice.item.label;
+                    return (
+                      <Tooltip
+                        key={slice.item.label}
+                        label={`${slice.item.label}: ${formatNumber(slice.item.value)} người (${slice.percentVal}%) - Bấm để lọc`}
+                        withArrow
+                      >
+                        <circle
+                          cx="80"
+                          cy="80"
+                          r={radius}
+                          fill="transparent"
+                          stroke={slice.color}
+                          strokeWidth={isHovered ? 26 : 20}
+                          strokeDasharray={slice.strokeDasharray}
+                          strokeDashoffset={slice.strokeDashoffset}
+                          className={styles.donutSvgSlice}
+                          style={{
+                            opacity: hoveredItem && !isHovered ? 0.35 : 1,
+                          }}
+                          onMouseEnter={() => setHoveredItem(slice.item)}
+                          onMouseLeave={() => setHoveredItem(null)}
+                          onClick={() => onItemClick?.(slice.item)}
+                        />
+                      </Tooltip>
+                    );
+                  })}
+                </g>
+              </svg>
+
+              {/* Thông tin ở tâm biểu đồ cập nhật theo lát bánh đang rê chuột */}
+              <div className={styles.donutCenterInfo}>
+                <span className={styles.donutCenterNumber}>{centerNumber}</span>
+                <span className={styles.donutCenterText}>{centerLabel}</span>
+                <span className={styles.donutCenterSub}>{centerSub}</span>
+              </div>
+            </div>
+
+            <div className={styles.donutLegendList}>
+              {items.map((item, index) => {
+                const itemPercent = percent(item.value, total);
+                const color = donutColors[index % donutColors.length];
+                const isHovered = hoveredItem?.label === item.label;
+
+                return (
+                  <Tooltip
+                    key={item.label}
+                    label={`${item.label}: ${formatNumber(item.value)} người (${itemPercent}%) - Bấm xem danh sách`}
+                    withArrow
+                  >
+                    <button
+                      type="button"
+                      className={`${styles.legendRowItem} ${isHovered ? styles.legendRowHovered : ""}`}
+                      onMouseEnter={() => setHoveredItem(item)}
+                      onMouseLeave={() => setHoveredItem(null)}
+                      onClick={() => onItemClick?.(item)}
+                    >
+                      <div className={styles.legendRowHeader}>
+                        <div className={styles.legendLeft}>
+                          <span
+                            className={styles.legendDot}
+                            style={{ backgroundColor: color }}
+                          />
+                          <span className={styles.legendName}>{item.label}</span>
+                        </div>
+                        <div className={styles.legendRight}>
+                          <span className={styles.legendValue}>
+                            {formatNumber(item.value)}
+                          </span>
+                          <span className={styles.legendPercent}>
+                            {itemPercent}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className={styles.legendProgressBarTrack}>
+                        <div
+                          className={styles.legendProgressBarFill}
+                          style={{
+                            width: `${itemPercent}%`,
+                            backgroundColor: color,
+                          }}
+                        />
+                      </div>
+                    </button>
+                  </Tooltip>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div className={styles.tableCardWrap}>
+            <Table className={styles.tableModern} verticalSpacing="xs">
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Đơn vị / Công ty</Table.Th>
+                  <Table.Th ta="right">Số lượng</Table.Th>
+                  <Table.Th ta="right">Tỷ lệ</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {items.map((item, index) => {
+                  const itemPercent = percent(item.value, total);
+                  const color = donutColors[index % donutColors.length];
+                  return (
+                    <Table.Tr
+                      key={item.label}
+                      className={styles.tableRowClickable}
+                      onClick={() => onItemClick?.(item)}
+                    >
+                      <Table.Td>
+                        <div className={styles.legendLeft}>
+                          <span
+                            className={styles.legendDot}
+                            style={{ backgroundColor: color }}
+                          />
+                          <span className={styles.legendName}>{item.label}</span>
+                        </div>
+                      </Table.Td>
+                      <Table.Td ta="right" fw={600}>
+                        {formatNumber(item.value)}
+                      </Table.Td>
+                      <Table.Td ta="right" c="dimmed">
+                        {itemPercent}%
+                      </Table.Td>
+                    </Table.Tr>
+                  );
+                })}
+              </Table.Tbody>
+            </Table>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
-function WorkQueue({
+/** 4. Biểu đồ cột (Column Chart) */
+function ColumnStatusChart({
+  title,
+  items,
+  onItemClick,
+}: {
+  title: string;
+  items: ChartItem[];
+  onItemClick?: (item: ChartItem) => void;
+}) {
+  const [viewMode, setViewMode] = useState<"chart" | "table">("chart");
+  const total = items.reduce((sum, item) => sum + item.value, 0);
+  const max = Math.max(...items.map((item) => item.value), 1);
+
+  return (
+    <div className={styles.cardContainer}>
+      <div className={styles.cardHeader}>
+        <div>
+          <Text className={styles.cardTitle}>{title}</Text>
+        </div>
+        <Group gap={8}>
+          <SegmentedControl
+            size="xs"
+            value={viewMode}
+            onChange={(val) => setViewMode(val as "chart" | "table")}
+            data={[
+              {
+                value: "chart",
+                label: (
+                  <Tooltip label="Xem dạng biểu đồ cột" withArrow>
+                    <IconChartBar size={14} style={{ display: "block" }} />
+                  </Tooltip>
+                ),
+              },
+              {
+                value: "table",
+                label: (
+                  <Tooltip label="Xem dạng bảng" withArrow>
+                    <IconTable size={14} style={{ display: "block" }} />
+                  </Tooltip>
+                ),
+              },
+            ]}
+          />
+          <span className={styles.pillBadge}>{formatNumber(total)} hồ sơ</span>
+        </Group>
+      </div>
+
+      <div className={styles.cardBodyUniform}>
+        {viewMode === "chart" ? (
+          <div className={styles.columnChartWrapper}>
+            <div className={styles.chartGridLines}>
+              <div className={styles.gridLineRow}>
+                <span className={styles.gridLineLabel}>100%</span>
+                <span className={styles.gridLine} />
+              </div>
+              <div className={styles.gridLineRow}>
+                <span className={styles.gridLineLabel}>50%</span>
+                <span className={styles.gridLine} />
+              </div>
+              <div className={styles.gridLineRow}>
+                <span className={styles.gridLineLabel}>0%</span>
+                <span className={styles.gridLine} />
+              </div>
+            </div>
+
+            <div className={styles.columnsContainer}>
+              {items.map((item) => {
+                const config = statusStyles[item.label] ?? {
+                  label: item.label,
+                  color: "#64748B",
+                  bg: "#EFF6FF",
+                  dot: "#0068FF",
+                };
+                const heightPct =
+                  item.value === 0
+                    ? 4
+                    : Math.max(Math.round((item.value / max) * 100), 8);
+                const itemPercent = percent(item.value, total);
+
+                return (
+                  <Tooltip
+                    key={item.label}
+                    label={`${config.label} (${item.label}): ${formatNumber(item.value)} hồ sơ (${itemPercent}%) - Bấm để lọc`}
+                    withArrow
+                  >
+                    <button
+                      type="button"
+                      className={styles.columnBarItem}
+                      onClick={() => onItemClick?.(item)}
+                    >
+                      <span className={styles.columnTopNumber}>
+                        {formatNumber(item.value)}
+                      </span>
+
+                      <div className={styles.columnTrack}>
+                        <div
+                          className={styles.columnBarFill}
+                          style={{
+                            height: `${heightPct}%`,
+                            backgroundColor: config.dot,
+                          }}
+                        />
+                      </div>
+
+                      <div className={styles.columnLabelGroup}>
+                        <span
+                          className={styles.columnBadge}
+                          style={{
+                            backgroundColor: config.bg,
+                            color: config.color,
+                          }}
+                        >
+                          {config.label}
+                        </span>
+                        <span className={styles.columnPercentTag}>
+                          {itemPercent}%
+                        </span>
+                      </div>
+                    </button>
+                  </Tooltip>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div className={styles.tableCardWrap}>
+            <Table className={styles.tableModern} verticalSpacing="xs">
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Trạng thái</Table.Th>
+                  <Table.Th>Mã hệ thống</Table.Th>
+                  <Table.Th ta="right">Số lượng</Table.Th>
+                  <Table.Th ta="right">Tỷ lệ</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {items.map((item) => {
+                  const config = statusStyles[item.label] ?? {
+                    label: item.label,
+                    color: "#64748B",
+                    bg: "#EFF6FF",
+                    dot: "#0068FF",
+                  };
+                  const itemPercent = percent(item.value, total);
+                  return (
+                    <Table.Tr
+                      key={item.label}
+                      className={styles.tableRowClickable}
+                      onClick={() => onItemClick?.(item)}
+                    >
+                      <Table.Td>
+                        <span
+                          className={styles.columnBadge}
+                          style={{
+                            backgroundColor: config.bg,
+                            color: config.color,
+                          }}
+                        >
+                          {config.label}
+                        </span>
+                      </Table.Td>
+                      <Table.Td c="dimmed">{item.label}</Table.Td>
+                      <Table.Td ta="right" fw={600}>
+                        {formatNumber(item.value)}
+                      </Table.Td>
+                      <Table.Td ta="right" c="dimmed">
+                        {itemPercent}%
+                      </Table.Td>
+                    </Table.Tr>
+                  );
+                })}
+              </Table.Tbody>
+            </Table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** 5. Hàng chờ xử lý yêu cầu */
+function ModernPendingQueueCard({
   pendingLeave,
-  pendingMovements,
   pendingAttendance,
-  navigate,
+  pendingMovements,
+  onOpen,
 }: {
   pendingLeave: number;
-  pendingMovements: number;
   pendingAttendance: number;
-  navigate: ReturnType<typeof useNavigate>;
+  pendingMovements: number;
+  onOpen: (route: string) => void;
 }) {
+  const total = pendingLeave + pendingAttendance + pendingMovements;
+
   const tasks = [
-    { label: "Đơn nghỉ phép chờ duyệt", value: pendingLeave, route: ROUTES.leave, action: "Mở duyệt" },
-    { label: "Giải trình chấm công", value: pendingAttendance, route: ROUTES.attendance, action: "Kiểm tra" },
-    { label: "Điều chuyển chờ xử lý", value: pendingMovements, route: ROUTES.movements, action: "Xử lý" },
-  ].filter((task) => task.value > 0);
-
-  return (
-    <Paper className={styles.actionPanel} p="md">
-      <Group justify="space-between" mb="sm" align="center">
-        <Stack gap={0}>
-          <Text fw={600}>Công việc cần làm</Text>
-          <Text size="xs" c="dimmed">Ưu tiên xử lý trong kỳ hiện tại.</Text>
-        </Stack>
-        <Badge color={tasks.length ? "orange" : "green"} variant="light">{tasks.reduce((sum, task) => sum + task.value, 0)} việc</Badge>
-      </Group>
-      {tasks.length === 0 ? (
-        <Text size="sm" c="dimmed">Không có hàng chờ xử lý trong kỳ này.</Text>
-      ) : (
-        <Stack gap="xs">
-          {tasks.slice(0, 5).map((task) => (
-            <div key={task.label} className={styles.todoRow}>
-              <Badge className={styles.todoCount} variant="light" color="orange">{formatNumber(task.value)}</Badge>
-              <Stack gap={0} miw={0}>
-                <Text size="sm" fw={650}>{task.label}</Text>
-                <Text size="xs" c="dimmed">Hồ sơ cần thao tác</Text>
-              </Stack>
-              <Button size="xs" variant="light" onClick={() => navigate(task.route)}>{task.action}</Button>
-            </div>
-          ))}
-        </Stack>
-      )}
-    </Paper>
-  );
-}
-
-function HrAlerts({
-  leaveRiskCount,
-  leaveRiskMessage,
-  probationCount,
-  navigate,
-}: {
-  leaveRiskCount: number;
-  leaveRiskMessage?: string;
-  probationCount: number;
-  navigate: ReturnType<typeof useNavigate>;
-}) {
-  const alerts = [
     {
-      label: `${formatNumber(probationCount)} nhân sự đang thử việc`,
-      description: "Theo dõi hồ sơ thử việc và chuẩn bị đánh giá.",
-      route: `${ROUTES.employees}?quick=probation`,
-      tone: probationCount ? "yellow" : "gray",
-    },
-    {
-      label: leaveRiskCount ? `${formatNumber(leaveRiskCount)} cảnh báo phép sắp hết hạn` : "Quỹ phép đang ổn định",
-      description: leaveRiskCount
-        ? (leaveRiskMessage ?? "Có hồ sơ cần HR đối chiếu quỹ phép.")
-        : "Chưa có phép sắp hết hạn trong kỳ đang xem.",
+      label: "Đơn xin nghỉ phép",
+      value: pendingLeave,
+      icon: IconCalendarCheck,
+      iconColor: "#0f172a",
+      iconBg: "#f1f5f9",
       route: ROUTES.leave,
-      tone: leaveRiskCount ? "red" : "green",
+      actionText: "Duyệt đơn",
     },
     {
-      label: "Hợp đồng sắp hết hạn",
-      description: "Mở module hợp đồng để kiểm tra các hợp đồng cần gia hạn.",
-      route: ROUTES.contracts,
-      tone: "orange",
+      label: "Giải trình chấm công",
+      value: pendingAttendance,
+      icon: IconClockHour4,
+      iconColor: "#0f172a",
+      iconBg: "#f1f5f9",
+      route: ROUTES.attendance,
+      actionText: "Kiểm tra",
     },
-  ] as const;
+    {
+      label: "Đề xuất điều chuyển",
+      value: pendingMovements,
+      icon: IconFileText,
+      iconColor: "#0f172a",
+      iconBg: "#f1f5f9",
+      route: ROUTES.movements,
+      actionText: "Phê duyệt",
+    },
+  ];
 
   return (
-    <Paper className={styles.actionPanel} p="md">
-      <Group justify="space-between" mb="sm">
-        <Stack gap={0}>
-          <Text fw={600}>Cảnh báo nhân sự</Text>
-          <Text size="xs" c="dimmed">Những điểm HR cần theo dõi tiếp.</Text>
-        </Stack>
-      </Group>
-      <Stack gap="xs">
-        {alerts.map((alert) => (
-          <button key={alert.label} className={styles.alertRow} type="button" onClick={() => navigate(alert.route)}>
-            <ThemeIcon color={alert.tone} variant="light" size={34}><IconAlertTriangle size={18} /></ThemeIcon>
-            <Stack gap={1} miw={0}>
-              <Text size="sm" fw={650}>{alert.label}</Text>
-              <Text size="xs" c="dimmed" lineClamp={2}>{alert.description}</Text>
-            </Stack>
-          </button>
-        ))}
-      </Stack>
-    </Paper>
+    <div className={styles.cardContainer}>
+      <div className={styles.cardHeader}>
+        <div>
+          <Text className={styles.cardTitle}>Hàng chờ xử lý yêu cầu</Text>
+        </div>
+        <span
+          className={`${styles.pillBadge} ${
+            total > 0 ? styles.pillBadgeAlert : styles.pillBadgeSuccess
+          }`}
+        >
+          {total > 0 ? `${total} việc cần xử lý` : "Đã duyệt hết"}
+        </span>
+      </div>
+
+      <div className={styles.cardBodyUniform}>
+        <div className={styles.cleanQueueList}>
+          {tasks.map((task) => {
+            const Icon = task.icon;
+            return (
+              <div
+                key={task.label}
+                className={styles.cleanQueueRow}
+                onClick={() => onOpen(task.route)}
+                role="button"
+                tabIndex={0}
+              >
+                <div className={styles.cleanQueueLeft}>
+                  <div
+                    className={styles.cleanQueueIconBox}
+                    style={{ backgroundColor: task.iconBg, color: task.iconColor }}
+                  >
+                    <Icon size={18} />
+                  </div>
+                  <div className={styles.cleanQueueTitleRow}>
+                    <span className={styles.cleanQueueTitle}>{task.label}</span>
+                    {task.value > 0 ? (
+                      <span className={styles.cleanCountBadgeActive}>
+                        {task.value} chờ duyệt
+                      </span>
+                    ) : (
+                      <span className={styles.cleanCountBadgeMuted}>0 việc</span>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className={styles.cleanActionBtn}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpen(task.route);
+                  }}
+                >
+                  <span>{task.actionText}</span>
+                  <IconChevronRight size={13} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
 
-function PayrollHandoffCard({
+/** 6. Chuẩn bị bàn giao lương */
+function ModernPayrollPreparationCard({
   closedPeriods,
   latestPeriod,
+  formatStatus,
   annualLeaveDaysUsed,
+  leaveBalanceMode,
+  leaveRiskCount,
+  leaveRiskMessage,
+  onOpenAttendance,
 }: {
   closedPeriods: number;
   latestPeriod?: { month: number; year: number } | null;
+  formatStatus?: string | null;
   annualLeaveDaysUsed: number;
+  leaveBalanceMode?: string | null;
+  leaveRiskCount: number;
+  leaveRiskMessage?: string | null;
+  onOpenAttendance: () => void;
 }) {
-  const periodText = latestPeriod ? `${latestPeriod.month}/${latestPeriod.year}` : "-";
+  const periodText = latestPeriod
+    ? `${latestPeriod.month}/${latestPeriod.year}`
+    : "7/2026";
+
+  const formatStatusLabel =
+    formatStatus === "CONFIRMED" || formatStatus === "CLOSED"
+      ? "ĐÃ CHỐT"
+      : "CHỜ CHỐT";
+
+  const leaveBalanceLabel =
+    leaveBalanceMode === "CONFIRMED"
+      ? "ĐÃ ĐỐI SOÁT"
+      : "ĐANG ĐỐI CHIẾU CSV";
 
   return (
-    <Paper className={styles.actionPanel} p="md">
-      <Group justify="space-between" mb="sm">
-        <Stack gap={0}>
-          <Text fw={600}>Chuẩn bị bàn giao lương</Text>
-          <Text size="xs" c="dimmed">Tóm tắt dữ liệu trước khi chuyển payroll.</Text>
-        </Stack>
-        <Badge color="yellow" variant="light">Chờ chốt</Badge>
-      </Group>
-      <div className={styles.payrollGrid}>
+    <div className={styles.cardContainer}>
+      <div className={styles.cardHeader}>
         <div>
-          <Text size="xs" c="dimmed">Kỳ đã chốt</Text>
-          <Text fw={600}>{formatNumber(closedPeriods)}</Text>
+          <Text className={styles.cardTitle}>Chuẩn bị bàn giao lương</Text>
         </div>
-        <div>
-          <Text size="xs" c="dimmed">Kỳ mới nhất</Text>
-          <Text fw={600}>{periodText}</Text>
-        </div>
-        <div>
-          <Text size="xs" c="dimmed">Phép đã dùng</Text>
-          <Text fw={600}>{annualLeaveDaysUsed.toLocaleString("vi-VN")}</Text>
+        <button
+          type="button"
+          className={styles.headerActionLink}
+          onClick={onOpenAttendance}
+        >
+          <span>Bảng chấm công</span>
+          <IconArrowRight size={13} />
+        </button>
+      </div>
+
+      <div className={styles.cardBodyUniform}>
+        <div className={styles.payrollCleanWrap}>
+          {/* Lưới 4 ô chỉ số nghiệp vụ bàn giao lương */}
+          <div className={styles.payrollGridTwoByTwo}>
+            {/* Ô 1: Kỳ công đã chốt */}
+            <div className={styles.payrollGridBox}>
+              <div className={styles.payrollBoxHeader}>
+                <span className={styles.payrollBoxLabel}>Kỳ công đã chốt</span>
+                <span className={`${styles.payrollBoxTag} ${styles.tagBlue}`}>
+                  Hoàn tất
+                </span>
+              </div>
+              <div className={styles.payrollBoxNumberRow}>
+                <span className={styles.payrollBoxBigNumber}>
+                  {formatNumber(closedPeriods)}
+                </span>
+                <span className={styles.payrollBoxUnit}>kỳ công</span>
+              </div>
+            </div>
+
+            {/* Ô 2: Kỳ mới nhất & Trạng thái định dạng */}
+            <div className={styles.payrollGridBox}>
+              <div className={styles.payrollBoxHeader}>
+                <span className={styles.payrollBoxLabel}>Kỳ mới nhất</span>
+                <span
+                  className={`${styles.payrollBoxTag} ${
+                    formatStatusLabel === "CHỜ CHỐT" ? styles.tagAmber : styles.tagGreen
+                  }`}
+                >
+                  {formatStatusLabel}
+                </span>
+              </div>
+              <div className={styles.payrollBoxNumberRow}>
+                <span className={`${styles.payrollBoxBigNumber} ${styles.periodBigNumber}`}>
+                  {periodText}
+                </span>
+              </div>
+            </div>
+
+            {/* Ô 3: Phép năm đã dùng */}
+            <div className={styles.payrollGridBox}>
+              <div className={styles.payrollBoxHeader}>
+                <span className={styles.payrollBoxLabel}>Phép đã dùng</span>
+                <span className={`${styles.payrollBoxTag} ${styles.tagSlate}`}>
+                  Tháng này
+                </span>
+              </div>
+              <div className={styles.payrollBoxNumberRow}>
+                <span className={styles.payrollBoxBigNumber}>
+                  {annualLeaveDaysUsed.toLocaleString("vi-VN")}
+                </span>
+                <span className={styles.payrollBoxUnit}>ngày</span>
+              </div>
+            </div>
+
+            {/* Ô 4: Quỹ phép năm */}
+            <div className={styles.payrollGridBox}>
+              <div className={styles.payrollBoxHeader}>
+                <span className={styles.payrollBoxLabel}>Quỹ phép</span>
+                <span className={`${styles.payrollBoxTag} ${styles.tagCyan}`}>
+                  Năm 2026
+                </span>
+              </div>
+              <div className={styles.payrollBoxNumberRow}>
+                <span
+                  className={`${styles.payrollBoxBigNumber} ${styles.periodBigNumber}`}
+                  style={{ color: "#0891b2", fontSize: "14px" }}
+                >
+                  {leaveBalanceLabel}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Dải thông báo Phép sắp hết hạn */}
+          <div
+            className={`${styles.cleanRiskFooter} ${
+              leaveRiskCount > 0 ? styles.riskFooterAlert : styles.riskFooterNeutral
+            }`}
+          >
+            <div className={styles.cleanRiskLeft}>
+              {leaveRiskCount > 0 ? (
+                <IconAlertTriangle size={15} className={styles.riskIconAlert} />
+              ) : (
+                <IconClockHour4 size={15} className={styles.riskIconNeutral} />
+              )}
+              <span className={styles.riskDescText}>
+                {leaveRiskMessage ??
+                  "Chua hien thi phep sap het han cho toi khi HR doi chieu xong quy phep Excel/CSV."}
+              </span>
+            </div>
+            <span className={styles.riskCountBadge}>
+              {leaveRiskCount} sắp hết hạn
+            </span>
+          </div>
         </div>
       </div>
-      <div className={styles.payrollStatus}>
-        <span />
-        <Text size="xs" c="dimmed">Đang rà soát định dạng dữ liệu lương trước khi bàn giao.</Text>
-      </div>
-    </Paper>
+    </div>
   );
 }
 
-async function exportDashboardAsPng(target: HTMLElement | null) {
-  if (!target) return;
+/** 7. Tỷ lệ chuyên cần theo bộ phận */
+function ModernAttendanceRatesCard({
+  items,
+}: {
+  items: Array<{
+    unitName?: string;
+    departmentName?: string;
+    workDays: number;
+    attendedDays: number;
+    attendanceRate: number;
+  }>;
+}) {
+  return (
+    <div className={styles.cardContainer}>
+      <div className={styles.cardHeader}>
+        <div>
+          <Text className={styles.cardTitle}>Tỷ lệ chuyên cần theo bộ phận</Text>
+        </div>
+        <span className={styles.pillBadge}>{items.length} bộ phận</span>
+      </div>
 
-  const rect = target.getBoundingClientRect();
-  const clone = target.cloneNode(true) as HTMLElement;
-  clone.style.width = `${rect.width}px`;
-  clone.style.background = getComputedStyle(document.body).backgroundColor || "#f4f7fb";
-  const stylesText = Array.from(document.styleSheets)
-    .map((sheet) => {
-      try {
-        return Array.from(sheet.cssRules).map((rule) => rule.cssText).join("\n");
-      } catch {
-        return "";
-      }
-    })
-    .join("\n");
-  const html = `<style>${stylesText}</style>${clone.outerHTML}`;
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${rect.width}" height="${rect.height}">
-      <foreignObject width="100%" height="100%">${html}</foreignObject>
-    </svg>
-  `;
-  const image = new Image();
-  const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
-  await new Promise<void>((resolve, reject) => {
-    image.onload = () => resolve();
-    image.onerror = reject;
-    image.src = url;
-  });
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.ceil(rect.width);
-  canvas.height = Math.ceil(rect.height);
-  const context = canvas.getContext("2d");
-  context?.drawImage(image, 0, 0);
-  URL.revokeObjectURL(url);
-  const link = document.createElement("a");
-  link.download = `hrm-dashboard-${new Date().toISOString().slice(0, 10)}.png`;
-  link.href = canvas.toDataURL("image/png");
-  link.click();
+      <div className={styles.cardBodyUniform}>
+        {items.length === 0 ? (
+          <div className={styles.emptyBox}>
+            <Text size="sm" c="dimmed">
+              Chưa có dữ liệu chuyên cần cho kỳ này.
+            </Text>
+          </div>
+        ) : (
+          <div className={styles.cleanAttendanceList}>
+            {items.slice(0, 5).map((item, index) => {
+              const label = item.departmentName ?? item.unitName ?? "-";
+              const rate = Math.min(100, Math.max(0, item.attendanceRate));
+              const isExcellent = rate >= 95;
+              const isGood = rate >= 90;
+              const statusLabel = isExcellent
+                ? "Xuất sắc"
+                : isGood
+                ? "Đạt chuẩn"
+                : "Cần chú ý";
+              const statusPillClass = isExcellent
+                ? styles.pillStatusGreen
+                : isGood
+                ? styles.pillStatusBlue
+                : styles.pillStatusAmber;
+
+              return (
+                <div key={label} className={styles.cleanAttendanceRow}>
+                  <div className={styles.attendanceRowHeader}>
+                    <div className={styles.deptInfoGroup}>
+                      <span className={styles.deptIndexBadge}>#{index + 1}</span>
+                      <span className={styles.deptTitleText}>{label}</span>
+                      <span className={`${styles.deptStatusTag} ${statusPillClass}`}>
+                        {statusLabel}
+                      </span>
+                    </div>
+
+                    <div className={styles.deptStatsGroup}>
+                      <span className={styles.deptDaysFraction}>
+                        {item.attendedDays}/{item.workDays} công
+                      </span>
+                      <span className={styles.deptRatePct}>
+                        {rate.toLocaleString("vi-VN")}%
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className={styles.deptProgressTrack}>
+                    <div
+                      className={`${styles.deptProgressFill} ${statusPillClass}`}
+                      style={{ width: `${rate}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** 8. Bảng nhân sự đi muộn cần lưu ý có Micro-Filter */
+function ModernTopLateTableCard({
+  items,
+  onViewEmployee,
+}: {
+  items: Array<{
+    employeeId: string;
+    employeeCode?: string | null;
+    fullName?: string | null;
+    unitName?: string | null;
+    departmentName?: string | null;
+    lateCount: number;
+    totalLateMinutes: number;
+  }>;
+  onViewEmployee: (employeeId: string) => void;
+}) {
+  const [filterMode, setFilterMode] = useState<"ALL" | "FREQUENT" | "HIGH_MINUTES">("ALL");
+
+  const filteredItems = useMemo(() => {
+    if (filterMode === "FREQUENT") {
+      return items.filter((emp) => emp.lateCount >= 3);
+    }
+    if (filterMode === "HIGH_MINUTES") {
+      return items.filter((emp) => emp.totalLateMinutes >= 30);
+    }
+    return items;
+  }, [items, filterMode]);
+
+  return (
+    <div className={styles.cardContainer}>
+      <div className={styles.cardHeader}>
+        <div>
+          <div className={styles.titleWithBadge}>
+            <Text className={styles.cardTitle}>Nhân sự đi muộn cần lưu ý</Text>
+            {items.length > 0 && (
+              <span className={styles.alertCountBadge}>
+                {items.length} nhân sự
+              </span>
+            )}
+          </div>
+        </div>
+
+        <Group gap={6}>
+          <SegmentedControl
+            size="xs"
+            value={filterMode}
+            onChange={(val) => setFilterMode(val as "ALL" | "FREQUENT" | "HIGH_MINUTES")}
+            data={[
+              { value: "ALL", label: "Tất cả" },
+              { value: "FREQUENT", label: "≥ 3 lần" },
+              { value: "HIGH_MINUTES", label: "> 30p" },
+            ]}
+          />
+        </Group>
+      </div>
+
+      <div className={styles.cardBodyUniform}>
+        {filteredItems.length === 0 ? (
+          <div className={styles.emptyBox}>
+            <div className={styles.emptyBoxIcon}>
+              <IconCheck size={26} />
+            </div>
+            <Text size="sm" fw={600} c="#166534">
+              Không có nhân sự phù hợp điều kiện lọc!
+            </Text>
+            <Text size="xs" c="dimmed">
+              Thử chuyển sang chế độ "Tất cả" để xem danh sách.
+            </Text>
+          </div>
+        ) : (
+          <div className={styles.tableModernWrapper}>
+            <Table className={styles.tableModern} verticalSpacing="xs" highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Nhân sự</Table.Th>
+                  <Table.Th>Phòng ban</Table.Th>
+                  <Table.Th ta="center">Số lần</Table.Th>
+                  <Table.Th ta="right">Tổng phút</Table.Th>
+                  <Table.Th ta="right" style={{ width: 36 }} />
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {filteredItems.slice(0, 5).map((item) => (
+                  <Table.Tr key={item.employeeId}>
+                    <Table.Td>
+                      <div className={styles.userModernCell}>
+                        <div className={styles.userAvatarInitials}>
+                          {getInitials(item.fullName)}
+                        </div>
+                        <div className={styles.userModernInfo}>
+                          <span className={styles.userModernName}>
+                            {item.fullName ?? item.employeeId}
+                          </span>
+                          <span className={styles.userModernCode}>
+                            {item.employeeCode ?? "-"}
+                          </span>
+                        </div>
+                      </div>
+                    </Table.Td>
+                    <Table.Td>
+                      <span className={styles.deptModernMain}>
+                        {item.departmentName ?? item.unitName ?? "-"}
+                      </span>
+                    </Table.Td>
+                    <Table.Td ta="center">
+                      <span className={styles.lateCountTagPill}>
+                        {formatNumber(item.lateCount)} lần
+                      </span>
+                    </Table.Td>
+                    <Table.Td ta="right">
+                      <span className={styles.lateMinutesTagPill}>
+                        {formatNumber(item.totalLateMinutes)} phút
+                      </span>
+                    </Table.Td>
+                    <Table.Td ta="right">
+                      <button
+                        type="button"
+                        className={styles.rowDetailBtn}
+                        onClick={() => onViewEmployee(item.employeeId)}
+                        title="Xem chi tiết nhân sự"
+                      >
+                        <IconChevronRight size={14} />
+                      </button>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** 9. Chân trang trạng thái đồng bộ hệ thống (Live System Sync Footer) */
+function LiveSystemSyncFooter({
+  lastSyncTime,
+  isRefreshing,
+  onRefresh,
+}: {
+  lastSyncTime: string;
+  isRefreshing?: boolean;
+  onRefresh: () => void;
+}) {
+  return (
+    <div className={`${styles.systemSyncFooter} ${styles.fadeInItem6}`}>
+      <div className={styles.syncFooterLeft}>
+        <span className={styles.livePulseDot} />
+        <span className={styles.syncStatusText}>
+          Dữ liệu đồng bộ lúc {lastSyncTime}
+        </span>
+        <span className={styles.systemVersionBadge}>HRM Enterprise v2.4</span>
+      </div>
+
+      <div className={styles.syncFooterRight}>
+        <button
+          type="button"
+          className={styles.footerRefreshLink}
+          onClick={onRefresh}
+          disabled={isRefreshing}
+        >
+          <IconRefresh
+            size={13}
+            style={{
+              animation: isRefreshing ? "spin 1s linear infinite" : "none",
+            }}
+          />
+          <span>
+            {isRefreshing ? "Đang đồng bộ..." : "Làm mới ngay (Alt + R)"}
+          </span>
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const dashboardRef = useRef<HTMLDivElement>(null);
-  const [timeRange, setTimeRange] = useState<TimeRange>("month");
-  const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
-  const dashboardParams = useMemo(() => ({ period: timeRange }), [timeRange]);
-  const { data, isLoading, error, refetch, isFetching } = useDashboardSummary(dashboardParams);
 
-  const filteredUnits = useMemo(() => {
+  const [period, setPeriod] = useState<DashboardSummaryPeriod>("month");
+  const [selectedUnit, setSelectedUnit] = useState<string>("ALL");
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+
+  const [lastSyncTime, setLastSyncTime] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
+  });
+
+  const dashboardParams = useMemo(() => ({ period }), [period]);
+  const { data, isLoading, error, refetch, isFetching } =
+    useDashboardSummary(dashboardParams);
+
+  const handleManualRefetch = useCallback(async () => {
+    setIsManualRefreshing(true);
+    try {
+      await Promise.all([
+        refetch(),
+        new Promise((resolve) => setTimeout(resolve, 450)),
+      ]);
+      const now = new Date();
+      const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
+      setLastSyncTime(timeStr);
+      notifications.show({
+        color: "green",
+        title: "Đã làm mới dữ liệu",
+        message: `Đồng bộ thành công số liệu lúc ${timeStr}.`,
+        autoClose: 2500,
+      });
+    } catch {
+      notifications.show({
+        color: "red",
+        title: "Làm mới thất bại",
+        message: "Không thể kết nối máy chủ. Vui lòng thử lại.",
+        autoClose: 3000,
+      });
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  }, [refetch]);
+
+  // Phím tắt toàn cục (Alt + R để làm mới)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Alt + R to refresh
+      if (e.altKey && e.key.toLowerCase() === "r") {
+        e.preventDefault();
+        void handleManualRefetch();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleManualRefetch]);
+
+  const handleExportCSV = () => {
+    if (!data) return;
+    const rows = [
+      ["Chỉ số", "Giá trị"],
+      ["Tổng nhân sự", data.totalEmployees.toString()],
+      ["Đang làm việc", data.activeEmployees.toString()],
+      ["Tuyển mới kỳ này", data.newHiresThisMonth.toString()],
+      ["Thôi việc kỳ này", data.terminatedThisMonth.toString()],
+      ["Đơn nghỉ phép chờ duyệt", data.pendingLeaveRequests.toString()],
+      ["Giải trình công chờ duyệt", data.pendingAttendanceExplanations.toString()],
+      ["Đề xuất điều chuyển chờ duyệt", data.pendingMovements.toString()],
+      ["Kỳ lương đã chốt", data.payrollHandoff.closedPeriods.toString()],
+      ["Phép năm đã dùng", data.attendanceThisMonth.annualLeaveDaysUsed.toString()],
+    ];
+
+    const csvContent =
+      "data:text/csv;charset=utf-8,\uFEFF" +
+      rows.map((e) => e.map((val) => `"${val}"`).join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute(
+      "download",
+      `Bao_cao_Dashboard_HRM_${new Date().toISOString().slice(0, 10)}.csv`,
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  // Extract unit options for filtering
+  const unitSelectOptions = useMemo(() => {
+    if (!data) return [{ value: "ALL", label: "Tất cả đơn vị" }];
+    const list = data.employeesByUnit.map((u) => ({
+      value: u.label,
+      label: u.label,
+    }));
+    return [{ value: "ALL", label: "Tất cả đơn vị" }, ...list];
+  }, [data]);
+
+  // Compute filtered units if a specific unit is selected
+  const displayedUnitData = useMemo(() => {
     if (!data) return [];
-    return selectedUnits.length
-      ? data.employeesByUnit.filter((item) => selectedUnits.includes(item.label))
-      : data.employeesByUnit;
-  }, [data, selectedUnits]);
+    if (selectedUnit === "ALL") return data.employeesByUnit;
+    return data.employeesByUnit.filter((u) => u.label === selectedUnit);
+  }, [data, selectedUnit]);
 
-  const unitOptions = useMemo(
-    () => (data?.employeesByUnit ?? []).map((item) => ({ value: item.label, label: item.label })),
-    [data],
-  );
+  const displayedAttendanceData = useMemo(() => {
+    if (!data) return [];
+    if (selectedUnit === "ALL") return data.attendanceThisMonth.byDepartment;
+    return data.attendanceThisMonth.byDepartment.filter(
+      (dept) => (dept.unitName ?? dept.departmentName) === selectedUnit,
+    );
+  }, [data, selectedUnit]);
 
-  const timeRangeControl = (
-    <SegmentedControl
-      value={timeRange}
-      onChange={(value) => setTimeRange(value as TimeRange)}
-      data={[
-        { value: "month", label: "Tháng này" },
-        { value: "quarter", label: "Quý này" },
-        { value: "year", label: "Năm nay" },
-      ]}
-    />
-  );
+  const displayedLateData = useMemo(() => {
+    if (!data) return [];
+    if (selectedUnit === "ALL") return data.attendanceThisMonth.topLateEmployees;
+    return data.attendanceThisMonth.topLateEmployees.filter(
+      (emp) => emp.unitName === selectedUnit,
+    );
+  }, [data, selectedUnit]);
+
+  if (isLoading) return <DashboardSkeletonLoader />;
+  if (error) return <ErrorState onRetry={() => void refetch()} />;
+  if (!data) return <DashboardSkeletonLoader />;
+
+  const pendingTotal =
+    data.pendingLeaveRequests +
+    data.pendingAttendanceExplanations +
+    data.pendingMovements;
 
   const headerActions = (
-    <Group gap="xs">
-      {timeRangeControl}
-      <Button variant="default" leftSection={<IconFileImport size={16} />} onClick={() => navigate(ROUTES.imports)}>Import Excel</Button>
-      <Menu shadow="md" width={190}>
+    <Group gap="xs" wrap="nowrap" className={styles.headerGroupWrap}>
+      {/* Kỳ thời gian */}
+      <SegmentedControl
+        value={period}
+        onChange={(value) => setPeriod(value as DashboardSummaryPeriod)}
+        size="xs"
+        className={styles.zaloSegment}
+        data={[
+          { value: "month", label: "Tháng này" },
+          { value: "quarter", label: "Quý này" },
+          { value: "year", label: "Năm nay" },
+        ]}
+      />
+
+      {/* Nút Xuất Báo Cáo */}
+      <Menu shadow="md" width={180} position="bottom-end">
         <Menu.Target>
-          <Button leftSection={<IconDownload size={16} />}>Xuất báo cáo</Button>
+          <Tooltip label="Xuất hoặc In báo cáo" withArrow>
+            <Button
+              variant="default"
+              size="xs"
+              radius="md"
+              leftSection={<IconDownload size={14} />}
+              className={styles.exportBtn}
+            >
+              Xuất báo cáo
+            </Button>
+          </Tooltip>
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Item onClick={() => void exportDashboardAsPng(dashboardRef.current)}>Tải PNG</Menu.Item>
-          <Menu.Item onClick={() => window.print()}>In / lưu PDF</Menu.Item>
+          <Menu.Item
+            leftSection={<IconPrinter size={15} />}
+            onClick={handlePrint}
+          >
+            In trang / Xuất PDF
+          </Menu.Item>
+          <Menu.Item
+            leftSection={<IconFileSpreadsheet size={15} />}
+            onClick={handleExportCSV}
+          >
+            Tải file CSV tổng hợp
+          </Menu.Item>
         </Menu.Dropdown>
       </Menu>
+
+
+
+      {/* Nút Làm mới */}
+      <Tooltip label="Làm mới dữ liệu (Alt + R)" withArrow>
+        <ActionIcon
+          variant="default"
+          size="md"
+          radius="md"
+          loading={isFetching || isManualRefreshing}
+          onClick={() => void handleManualRefetch()}
+          className={styles.refreshBtn}
+        >
+          <IconRefresh size={16} />
+        </ActionIcon>
+      </Tooltip>
     </Group>
   );
-
-  if (isLoading) {
-    return (
-      <>
-        <PageHeader
-          title="Dashboard"
-          subtitle="Tổng quan vận hành HRM, chấm công, nghỉ phép và dữ liệu bàn giao lương."
-          actions={headerActions}
-        />
-        <DashboardSkeleton />
-      </>
-    );
-  }
-
-  if (error) {
-    return <ErrorState onRetry={() => void refetch()} />;
-  }
-
-  if (!data) {
-    return <EmptyState />;
-  }
-
-  const queueTotal = data.pendingLeaveRequests + data.pendingMovements + data.pendingAttendanceExplanations;
-  const probationCount = data.employeesByEmploymentStatus.find((item) => item.label === "PROBATION")?.value ?? 0;
-  const timeRangeLabel =
-    timeRange === "month" ? "Tháng này" :
-    timeRange === "quarter" ? "Quý này" :
-    "Năm nay";
-
-  const metrics = [
-    {
-      title: "Tổng nhân sự",
-      value: data.totalEmployees,
-      meta: timeRangeLabel,
-      tone: "red" as const,
-      icon: <IconUsers size={20} />,
-      detail: (
-        <Text size="xs" c="dimmed" className={styles.metricDetailText}>
-          {selectedUnits.length ? `${selectedUnits.length} đơn vị đang lọc` : "Toàn hệ thống"}
-        </Text>
-      ),
-    },
-    {
-      title: "Đang làm việc",
-      value: data.activeEmployees,
-      meta: "Tỷ lệ active",
-      tone: "green" as const,
-      icon: <IconUserCheck size={20} />,
-      detail: (
-        <div className={styles.kpiProgressWrap}>
-          <div className={styles.kpiProgressTrack}>
-            <div
-              className={styles.kpiProgressFill}
-              style={{ width: `${percent(data.activeEmployees, data.totalEmployees)}%` }}
-            />
-          </div>
-          <Text size="xs" fw={750}>{percent(data.activeEmployees, data.totalEmployees)}%</Text>
-        </div>
-      ),
-    },
-    {
-      title: "Đơn chờ duyệt",
-      value: queueTotal,
-      meta: "Cần xử lý",
-      tone: "orange" as const,
-      icon: <IconClockHour4 size={20} />,
-      detail: (
-        <PendingQueueMiniChart
-          leave={data.pendingLeaveRequests}
-          attendance={data.pendingAttendanceExplanations}
-          movement={data.pendingMovements}
-        />
-      ),
-    },
-    {
-      title: "Tuyển mới trong kỳ",
-      value: data.newHiresThisMonth,
-      meta: "Phát sinh trong kỳ",
-      tone: "teal" as const,
-      icon: <IconBriefcase size={20} />,
-      detail: <Text size="xs" c="dimmed" className={styles.metricDetailText}>Hồ sơ mới trong kỳ hiện tại</Text>,
-    },
-    {
-      title: "Nghỉ việc trong kỳ",
-      value: data.terminatedThisMonth,
-      meta: "Biến động rời công ty",
-      tone: "red" as const,
-      icon: <IconUserMinus size={20} />,
-      detail: <Text size="xs" c="dimmed" className={styles.metricDetailText}>Cần theo dõi bàn giao</Text>,
-    },
-  ];
 
   return (
     <>
       <PageHeader
         title="Dashboard"
-        subtitle="Tổng quan vận hành HRM, chấm công, nghỉ phép và dữ liệu bàn giao lương."
+        subtitle="Trung tâm điều hành và giám sát dữ liệu nhân sự, chấm công, phê duyệt thời gian thực."
         actions={headerActions}
       />
 
-      <Stack gap="md" ref={dashboardRef} className={styles.dashboardSurface}>
-        <Paper p="md" className={styles.filterPanel}>
-          <Group justify="space-between" align="flex-end" gap="md">
-            <Stack gap={4}>
-              <Text fw={750}>Bộ lọc Dashboard</Text>
-              <Text size="xs" c="dimmed">Các biểu đồ cập nhật theo khoảng thời gian và đơn vị được chọn.</Text>
-            </Stack>
-            <Group align="flex-end" gap="sm" className={styles.filterControls}>
-              <MultiSelect
-                searchable
-                clearable
-                placeholder="Lọc theo đơn vị"
-                data={unitOptions}
-                value={selectedUnits}
-                onChange={setSelectedUnits}
-                w={260}
-              />
-              <Tooltip label="Tải lại dữ liệu">
-                <ActionIcon variant="default" size={36} loading={isFetching} onClick={() => void refetch()}>
-                  <IconRefresh size={16} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
-          </Group>
-        </Paper>
+      <div className={styles.zaloDashboardContainer}>
+        {/* 1. Thanh Lọc Đơn vị & Lối tắt điều hướng phân hệ HRM */}
+        <EnterpriseQuickBar
+          selectedUnit={selectedUnit}
+          unitOptions={unitSelectOptions}
+          onSelectUnit={setSelectedUnit}
+          onNavigate={(path) => navigate(path)}
+        />
 
-        <SimpleGrid cols={{ base: 1, sm: 2, md: 5 }} spacing="xs">
-          {metrics.map((metric) => (
-            <MetricCard key={metric.title} {...metric} />
-          ))}
-        </SimpleGrid>
+        {/* 2. Băng chỉ số điều hành HRM */}
+        <ExecutiveMetricStrip
+          totalEmployees={data.totalEmployees}
+          activeEmployees={data.activeEmployees}
+          newHires={data.newHiresThisMonth}
+          terminated={data.terminatedThisMonth}
+          pendingTotal={pendingTotal}
+          pendingLeave={data.pendingLeaveRequests}
+          pendingAttendance={data.pendingAttendanceExplanations}
+          pendingMovements={data.pendingMovements}
+          onNavigate={(url) => navigate(url)}
+        />
 
-        <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
-          <WorkforceMovementChart
-            hires={data.newHiresThisMonth}
-            terminations={data.terminatedThisMonth}
+        {/* Khu vực 1: Hai Biểu đồ chính (Tròn và Cột) có nút đổi dạng Bảng & Hover focus */}
+        <div className={`${styles.twoColumnGrid} ${styles.fadeInItem3}`}>
+          <DonutStructureChart
+            title="Cơ cấu nhân sự theo Đơn vị"
+            items={displayedUnitData}
+            onItemClick={(item) =>
+              navigate(
+                employeeListUrl({
+                  search: item.label,
+                  dashboardSlice: "unit",
+                }),
+              )
+            }
           />
-          <DonutChart
-            title="Cơ cấu nhân sự theo đơn vị"
-            items={filteredUnits}
-            centerLabel="Tổng"
-            onSliceClick={(item) => navigate(employeeListUrl({
-              dashboardSlice: "unit",
-              search: item.label,
-            }))}
-          />
-          <EmployeeStatusColumnChart
-            title="Nhân sự theo trạng thái"
+          <ColumnStatusChart
+            title="Nhân sự theo Trạng thái việc làm"
             items={data.employeesByEmploymentStatus}
-            onBarClick={(item) => navigate(employeeListUrl({
-              dashboardSlice: "employmentStatus",
-              status: item.label,
-            }))}
+            onItemClick={(item) =>
+              navigate(
+                employeeListUrl({
+                  status: item.label,
+                  dashboardSlice: "employmentStatus",
+                }),
+              )
+            }
           />
-          <AttendanceStackedBars items={data.attendanceThisMonth.byDepartment} />
-        </SimpleGrid>
+        </div>
 
-        <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
-          <TopLateBarChart
-            items={data.attendanceThisMonth.topLateEmployees}
-            onViewAll={() => navigate(ROUTES.attendance)}
-          />
-        </SimpleGrid>
-
-        <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="md">
-          <WorkQueue
+        {/* Khu vực 2: Hàng chờ phê duyệt và Vòng đời nhân sự */}
+        <div className={`${styles.twoColumnGrid} ${styles.fadeInItem4}`}>
+          <ModernPendingQueueCard
             pendingLeave={data.pendingLeaveRequests}
-            pendingMovements={data.pendingMovements}
             pendingAttendance={data.pendingAttendanceExplanations}
-            navigate={navigate}
+            pendingMovements={data.pendingMovements}
+            onOpen={(route) => navigate(route)}
           />
-          <HrAlerts
-            leaveRiskCount={data.leaveExpiryRisks.items.length}
-            leaveRiskMessage={data.leaveExpiryRisks.message}
-            probationCount={probationCount}
-            navigate={navigate}
-          />
-          <PayrollHandoffCard
+
+          <ModernPayrollPreparationCard
             closedPeriods={data.payrollHandoff.closedPeriods}
             latestPeriod={data.payrollHandoff.latestClosedPeriod}
+            formatStatus={data.payrollHandoff.formatStatus}
             annualLeaveDaysUsed={data.attendanceThisMonth.annualLeaveDaysUsed}
+            leaveBalanceMode={data.attendanceThisMonth.leaveBalanceMode}
+            leaveRiskCount={data.leaveExpiryRisks.items.length}
+            leaveRiskMessage={data.leaveExpiryRisks.message}
+            onOpenAttendance={() => navigate(ROUTES.attendance)}
           />
-        </SimpleGrid>
-      </Stack>
+        </div>
+
+        {/* Khu vực 3: Giám sát Chấm công và Kỷ luật lao động */}
+        <div className={`${styles.twoColumnGrid} ${styles.fadeInItem5}`}>
+          <ModernAttendanceRatesCard items={displayedAttendanceData} />
+          <ModernTopLateTableCard
+            items={displayedLateData}
+            onViewEmployee={(id) => navigate(`${ROUTES.employees}/${id}`)}
+          />
+        </div>
+
+        {/* 4. Dải chân trang trạng thái đồng bộ hệ thống Live Sync */}
+        <LiveSystemSyncFooter
+          lastSyncTime={lastSyncTime}
+          isRefreshing={isFetching || isManualRefreshing}
+          onRefresh={() => void handleManualRefetch()}
+        />
+      </div>
     </>
   );
 }

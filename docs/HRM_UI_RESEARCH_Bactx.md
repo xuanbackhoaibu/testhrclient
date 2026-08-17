@@ -2361,3 +2361,15 @@ Cập nhật bổ sung:
   - Mobile dưới `768px` dùng panel gần full width, giảm padding và giới hạn scroll để không tràn màn hình.
   - Bỏ nút `Đọc tất cả` khỏi header, chỉ giữ số lượng thông báo chưa đọc.
   - Bỏ tiếp dòng mô tả quyền và số chưa đọc trong header panel; chức năng unread vẫn giữ ở badge chuông và tab `Chưa đọc`.
+- Reset Dashboard về baseline từ nhánh `main`:
+  - Khôi phục `src/pages/DashboardPage.tsx` và `src/pages/DashboardPage.module.css` theo bản mới nhất từ `hacom/main`.
+  - Bỏ các thử nghiệm bố cục/màu/biểu đồ Dashboard trước đó để chuẩn bị chỉnh sửa lại từ đầu theo yêu cầu nghiệm thu mới.
+- Làm lại Dashboard từ baseline `main` theo hướng Zalo Web:
+  - Bố cục HRM gồm 4 vùng: KPI tổng quan, `Phân tích nhân sự`, `Vận hành HRM`, `Chấm công cần chú ý`.
+  - KPI rút còn 5 chỉ số chính: tổng nhân sự, đang làm việc, đơn chờ xử lý, tuyển mới, nghỉ việc.
+  - Tạo đúng 1 biểu đồ tròn `Nhân sự theo đơn vị`, hiển thị tổng ở giữa và legend bên cạnh.
+  - Tạo đúng 1 biểu đồ cột `Nhân sự theo trạng thái`, so sánh số hồ sơ theo từng trạng thái.
+  - Các khối vận hành dùng list/card phẳng kiểu Zalo Web: hàng chờ xử lý, bàn giao lương và bảng nhân sự đi muộn.
+  - Thêm lại `DashboardPage.module.css` để kiểm soát giao diện flat, hover xanh nhạt, responsive và dark mode.
+
+
