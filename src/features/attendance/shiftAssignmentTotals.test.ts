@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  sumAssignmentTotals,
   summarizeAssignedPerDay,
   summarizeAssignmentRow,
 } from './shiftAssignmentTotals';
@@ -49,13 +50,15 @@ describe('summarizeAssignmentRow', () => {
     expect(totals.unassignedWorkingDays).toBe(0);
   });
 
-  it('ngày lễ tách riêng, kể cả khi đã phân ca', () => {
+  it('ngày lễ vẫn đếm riêng, và ca phân trên ngày lễ vẫn tính công', () => {
     const totals = summarizeAssignmentRow([
       day({ day: 1, holidayName: 'Quốc khánh' }),
       day({ day: 2, holidayName: 'Quốc khánh', shift: someShift }),
     ]);
     expect(totals.holidayDays).toBe(2);
-    expect(totals.assignedDays).toBe(0);
+    // Mã ca là căn cứ tính công, nên ca đã phân trên ngày lễ không bị bỏ.
+    expect(totals.assignedDays).toBe(1);
+    expect(totals.workDays).toBe(1);
   });
 
   it('ngày ngoài khoảng tính công không vào cột nào khác', () => {
@@ -90,6 +93,12 @@ describe('summarizeAssignmentRow', () => {
 
   it('dòng rỗng trả về toàn số 0', () => {
     expect(summarizeAssignmentRow([])).toEqual({
+      workDays: 0,
+      publicHolidayDays: 0,
+      annualLeaveDays: 0,
+      personalLeaveDays: 0,
+      compensatoryLeaveDays: 0,
+      totalDays: 0,
       assignedDays: 0,
       unassignedWorkingDays: 0,
       offDays: 0,
@@ -98,11 +107,30 @@ describe('summarizeAssignmentRow', () => {
     });
   });
 
-  it('ca 24 giờ vẫn đếm là 1 ngày vì payload chưa có dayValue', () => {
+  it('ca 24 giờ là 1 ngày nhưng tính 3 công theo danh mục', () => {
     const totals = summarizeAssignmentRow([
       day({ day: 1, shift: { id: 's2', code: 'VH3', name: 'Ca 24h' } }),
     ]);
     expect(totals.assignedDays).toBe(1);
+    expect(totals.workDays).toBe(3);
+  });
+
+  it('ca vận hành 12 giờ tính 1.5 công', () => {
+    const totals = summarizeAssignmentRow([
+      day({ day: 1, shift: { id: 's3', code: 'VH1', name: 'Ca ngày' } }),
+      day({ day: 2, shift: { id: 's4', code: 'VH2', name: 'Ca đêm' } }),
+    ]);
+    expect(totals.workDays).toBe(3);
+    expect(totals.assignedDays).toBe(2);
+  });
+
+  it('ca nửa ngày S1 vào cả công làm việc và nghỉ phép', () => {
+    const totals = summarizeAssignmentRow([
+      day({ day: 1, shift: { id: 's5', code: 'S1', name: 'Sáng, chiều nghỉ P' } }),
+    ]);
+    expect(totals.workDays).toBe(0.5);
+    expect(totals.annualLeaveDays).toBe(0.5);
+    expect(totals.totalDays).toBe(1);
   });
 });
 
@@ -132,5 +160,46 @@ describe('summarizeAssignedPerDay', () => {
 
   it('không có dòng nào thì mỗi ngày là 0', () => {
     expect(summarizeAssignedPerDay([], 3)).toEqual([0, 0, 0]);
+  });
+});
+
+describe('sumAssignmentTotals', () => {
+  it('cộng nhiều dòng và giữ cột (6) khớp tổng (1)..(5)', () => {
+    const a = summarizeAssignmentRow([
+      day({ day: 1, shift: { id: 's', code: 'VH1', name: 'Ca ngày' } }),
+      day({ day: 2, shift: { id: 's', code: 'S1', name: 'Nửa ngày' } }),
+    ]);
+    const b = summarizeAssignmentRow([
+      day({ day: 1, shift: { id: 's', code: 'VH3', name: 'Ca 24h' } }),
+    ]);
+    const sum = sumAssignmentTotals([a, b]);
+
+    expect(sum.workDays).toBe(1.5 + 0.5 + 3);
+    expect(sum.annualLeaveDays).toBe(0.5);
+    expect(sum.assignedDays).toBe(3);
+    expect(sum.totalDays).toBe(
+      sum.workDays +
+        sum.publicHolidayDays +
+        sum.annualLeaveDays +
+        sum.personalLeaveDays +
+        sum.compensatoryLeaveDays,
+    );
+  });
+
+  it('không để lại đuôi dấu phẩy động khi cộng nhiều nửa công', () => {
+    const half = summarizeAssignmentRow([
+      day({ day: 1, shift: { id: 's', code: 'S1', name: 'Nửa ngày' } }),
+    ]);
+    const sum = sumAssignmentTotals(Array.from({ length: 7 }, () => half));
+    expect(sum.workDays).toBe(3.5);
+    expect(sum.annualLeaveDays).toBe(3.5);
+  });
+
+  it('danh sách rỗng trả về toàn số 0', () => {
+    expect(sumAssignmentTotals([])).toMatchObject({
+      workDays: 0,
+      totalDays: 0,
+      assignedDays: 0,
+    });
   });
 });

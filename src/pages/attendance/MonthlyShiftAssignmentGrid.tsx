@@ -51,6 +51,7 @@ import {
   formatShiftHoursAndWorkday,
 } from "../../features/attendance/shiftAssignmentEligibility";
 import {
+  sumAssignmentTotals,
   summarizeAssignedPerDay,
   summarizeAssignmentRow,
   type ShiftAssignmentRowTotals,
@@ -108,36 +109,43 @@ const fixedColumnsWidth =
   fixedColumns[fixedColumns.length - 1].width;
 
 /*
- * Cột tổng ở cuối bảng, xếp theo mẫu BCC: các cột thành phần rồi cột tổng.
+ * Năm cột công đầu tiên đúng theo bảng chấm công mẫu, quy ra SỐ CÔNG theo danh
+ * mục 'Ca làm việc' (shiftPayrollCatalog.ts) — không phải đếm số ngày. Cột (6)
+ * là tổng của (1)..(5).
  *
- * Đây là tổng của LỊCH ĐÃ PHÂN, không phải công thực tế — bảng phân ca không có
- * ký hiệu chấm công nên không dựng được cột Nghỉ phép / Nghỉ bù / Nghỉ việc
- * riêng như mẫu; những cột đó nằm ở Bảng công tháng. Xem shiftAssignmentTotals.ts.
+ * Ba cột cuối là thông tin riêng của bảng phân ca, giúp thấy lịch còn hở chỗ
+ * nào: ngày làm việc chưa có ca, ngày nghỉ theo lịch, ngày ngoài khoảng tính
+ * công. Mẫu Excel không có ba cột này.
  */
 const totalColumns = [
-  {
-    key: "assignedDays",
-    label: "Ngày\nđã phân ca\n(1)",
-    width: 74,
-  },
+  { key: "workDays", label: "Công làm việc\nthực tế\n(1)", width: 78 },
+  { key: "publicHolidayDays", label: "Nghỉ Lễ\n(2)", width: 62 },
+  { key: "annualLeaveDays", label: "Nghỉ\nPhép\n(3)", width: 62 },
+  { key: "personalLeaveDays", label: "Nghỉ Việc\nriêng\n(4)", width: 68 },
+  { key: "compensatoryLeaveDays", label: "Nghỉ bù\n(5)", width: 62 },
+] as const;
+const TOTAL_SUM_COLUMN_WIDTH = 92;
+/** Cột chẩn đoán riêng của bảng phân ca, đứng sau cột tổng (6). */
+const diagnosticColumns = [
   {
     key: "unassignedWorkingDays",
-    label: "Ngày làm việc\nchưa phân ca\n(2)",
-    width: 82,
+    label: "Ngày làm việc\nchưa phân ca",
+    width: 84,
     highlightWhenPositive: true,
   },
-  { key: "holidayDays", label: "Ngày lễ\n(3)", width: 60 },
-  { key: "offDays", label: "Nghỉ\ntheo ca\n(4)", width: 62 },
-  {
-    key: "outOfWindowDays",
-    label: "Ngoài khoảng\ntính công\n(5)",
-    width: 74,
-  },
+  { key: "offDays", label: "Nghỉ\ntheo ca", width: 62 },
+  { key: "outOfWindowDays", label: "Ngoài khoảng\ntính công", width: 78 },
 ] as const;
-const TOTAL_SUM_COLUMN_WIDTH = 86;
 const totalColumnsWidth =
   totalColumns.reduce((sum, column) => sum + column.width, 0) +
-  TOTAL_SUM_COLUMN_WIDTH;
+  TOTAL_SUM_COLUMN_WIDTH +
+  diagnosticColumns.reduce((sum, column) => sum + column.width, 0);
+
+/* Số công luôn là bội của 0.5, nên "23.5" chứ không phải "23.50", và số tròn
+   hiện "24" như trên bảng chấm công giấy. */
+function formatWorkdayValue(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
 const EMPTY_ROWS: ShiftAssignmentGridRow[] = [];
 const EMPTY_SELECTION = new Set<string>();
 
@@ -664,24 +672,7 @@ export function MonthlyShiftAssignmentGrid({
     [dayMetas.length, pageRows],
   );
   const columnTotals = useMemo(
-    () =>
-      pageRows.reduce<ShiftAssignmentRowTotals>(
-        (sum, item) => ({
-          assignedDays: sum.assignedDays + item.totals.assignedDays,
-          unassignedWorkingDays:
-            sum.unassignedWorkingDays + item.totals.unassignedWorkingDays,
-          offDays: sum.offDays + item.totals.offDays,
-          holidayDays: sum.holidayDays + item.totals.holidayDays,
-          outOfWindowDays: sum.outOfWindowDays + item.totals.outOfWindowDays,
-        }),
-        {
-          assignedDays: 0,
-          unassignedWorkingDays: 0,
-          offDays: 0,
-          holidayDays: 0,
-          outOfWindowDays: 0,
-        },
-      ),
+    () => sumAssignmentTotals(pageRows.map((item) => item.totals)),
     [pageRows],
   );
   const selectablePageRows = pageRows.filter((item) => item.row.canInclude);
@@ -1297,8 +1288,9 @@ export function MonthlyShiftAssignmentGrid({
           <Legend />
           <Text size="xs" c="dimmed">
             Ca cá nhân đang chồng ngày sẽ được báo lỗi; hệ thống không tự ghi đè
-            lịch sử. Các cột tổng bên phải đếm theo lịch đã phân, chưa phải công
-            thực tế — nghỉ phép, nghỉ bù và công thực tế xem ở Bảng công tháng.
+            lịch sử. Cột (1)–(6) quy số công theo danh mục ca (ca 12 giờ 1.5
+            công, ca 24 giờ 3 công) và tính trên lịch đã phân — công chốt cuối kỳ
+            vẫn lấy ở Bảng công tháng sau khi có dữ liệu chấm công.
           </Text>
         </Group>
       </Paper>
@@ -1433,7 +1425,7 @@ export function MonthlyShiftAssignmentGrid({
                   <Table.Th
                     rowSpan={2}
                     style={{
-                      background: "#e6f2df",
+                      background: "#dcecd2",
                       minWidth: TOTAL_SUM_COLUMN_WIDTH,
                       padding: "5px 4px",
                       textAlign: "center",
@@ -1442,8 +1434,25 @@ export function MonthlyShiftAssignmentGrid({
                       width: TOTAL_SUM_COLUMN_WIDTH,
                     }}
                   >
-                    {"Tổng ngày\n(6)=(1)+(2)+\n(3)+(4)+(5)"}
+                    {"Tổng ngày công\nthực tế\n(6)=(1)+(2)+\n(3)+(4)+(5)"}
                   </Table.Th>
+                  {diagnosticColumns.map((column) => (
+                    <Table.Th
+                      key={column.key}
+                      rowSpan={2}
+                      style={{
+                        background: "#eef2f7",
+                        minWidth: column.width,
+                        padding: "5px 4px",
+                        textAlign: "center",
+                        verticalAlign: "middle",
+                        whiteSpace: "pre-line",
+                        width: column.width,
+                      }}
+                    >
+                      {column.label}
+                    </Table.Th>
+                  ))}
                 </Table.Tr>
                 <Table.Tr>
                   {dayMetas.map((meta) => (
@@ -1491,7 +1500,12 @@ export function MonthlyShiftAssignmentGrid({
                         </Text>
                       </Table.Td>
                       <Table.Td
-                        colSpan={dayMetas.length + totalColumns.length + 1}
+                        colSpan={
+                          dayMetas.length +
+                          totalColumns.length +
+                          1 +
+                          diagnosticColumns.length
+                        }
                         style={{ background: "#d9d2e9", padding: "7px 10px" }}
                       />
                     </Table.Tr>
@@ -2014,6 +2028,40 @@ export function MonthlyShiftAssignmentGrid({
                           })}
                           {totalColumns.map((column) => {
                             const value = item.totals[column.key];
+                            return (
+                              <Table.Td
+                                key={column.key}
+                                style={{
+                                  background: "#fbfdfa",
+                                  fontVariantNumeric: "tabular-nums",
+                                  padding: "4px 6px",
+                                  textAlign: "center",
+                                }}
+                              >
+                                <Text
+                                  size="xs"
+                                  fw={value > 0 ? 600 : 400}
+                                  c={value > 0 ? undefined : "dimmed"}
+                                >
+                                  {formatWorkdayValue(value)}
+                                </Text>
+                              </Table.Td>
+                            );
+                          })}
+                          <Table.Td
+                            style={{
+                              background: "#f1f8ec",
+                              fontVariantNumeric: "tabular-nums",
+                              padding: "4px 6px",
+                              textAlign: "center",
+                            }}
+                          >
+                            <Text size="xs" fw={700}>
+                              {formatWorkdayValue(item.totals.totalDays)}
+                            </Text>
+                          </Table.Td>
+                          {diagnosticColumns.map((column) => {
+                            const value = item.totals[column.key];
                             const warn =
                               "highlightWhenPositive" in column &&
                               column.highlightWhenPositive &&
@@ -2022,7 +2070,7 @@ export function MonthlyShiftAssignmentGrid({
                               <Table.Td
                                 key={column.key}
                                 style={{
-                                  background: warn ? "#fff5f5" : "#fbfdfa",
+                                  background: warn ? "#fff5f5" : "#f8fafc",
                                   fontVariantNumeric: "tabular-nums",
                                   padding: "4px 6px",
                                   textAlign: "center",
@@ -2044,22 +2092,6 @@ export function MonthlyShiftAssignmentGrid({
                               </Table.Td>
                             );
                           })}
-                          <Table.Td
-                            style={{
-                              background: "#f1f8ec",
-                              fontVariantNumeric: "tabular-nums",
-                              padding: "4px 6px",
-                              textAlign: "center",
-                            }}
-                          >
-                            <Text size="xs" fw={700}>
-                              {item.totals.assignedDays +
-                                item.totals.unassignedWorkingDays +
-                                item.totals.holidayDays +
-                                item.totals.offDays +
-                                item.totals.outOfWindowDays}
-                            </Text>
-                          </Table.Td>
                         </Table.Tr>
                       );
                     })}
@@ -2100,7 +2132,7 @@ export function MonthlyShiftAssignmentGrid({
                           fw={600}
                           c={perDayAssigned[index] ? undefined : "dimmed"}
                         >
-                          {perDayAssigned[index] ?? 0}
+                          {formatWorkdayValue(perDayAssigned[index] ?? 0)}
                         </Text>
                       </Table.Td>
                     ))}
@@ -2115,7 +2147,7 @@ export function MonthlyShiftAssignmentGrid({
                         }}
                       >
                         <Text size="xs" fw={700}>
-                          {columnTotals[column.key]}
+                          {formatWorkdayValue(columnTotals[column.key])}
                         </Text>
                       </Table.Td>
                     ))}
@@ -2128,13 +2160,24 @@ export function MonthlyShiftAssignmentGrid({
                       }}
                     >
                       <Text size="xs" fw={700}>
-                        {columnTotals.assignedDays +
-                          columnTotals.unassignedWorkingDays +
-                          columnTotals.holidayDays +
-                          columnTotals.offDays +
-                          columnTotals.outOfWindowDays}
+                        {formatWorkdayValue(columnTotals.totalDays)}
                       </Text>
                     </Table.Td>
+                    {diagnosticColumns.map((column) => (
+                      <Table.Td
+                        key={column.key}
+                        style={{
+                          background: "#eef2f7",
+                          fontVariantNumeric: "tabular-nums",
+                          padding: "6px 6px",
+                          textAlign: "center",
+                        }}
+                      >
+                        <Text size="xs" fw={700}>
+                          {columnTotals[column.key]}
+                        </Text>
+                      </Table.Td>
+                    ))}
                   </Table.Tr>
                 ) : null}
               </Table.Tbody>
