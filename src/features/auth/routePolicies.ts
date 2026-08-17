@@ -21,6 +21,7 @@ export const ROUTE_POLICIES: Record<string, RoutePolicy> = {
   [ROUTES.timesheetGrid]: { kind: 'permission', permissions: [HR_PERMISSIONS.ATTENDANCE_READ] },
   [ROUTES.timesheetPeriods]: { kind: 'permission', permissions: [HR_PERMISSIONS.ATTENDANCE_READ] },
   [ROUTES.workShifts]: { kind: 'permission', permissions: [HR_PERMISSIONS.ATTENDANCE_READ] },
+  [ROUTES.weeklyShifts]: { kind: 'permission', permissions: [HR_PERMISSIONS.ATTENDANCE_READ] },
   [ROUTES.holidays]: { kind: 'permission', permissions: [HR_PERMISSIONS.ATTENDANCE_READ] },
   [ROUTES.shiftAssignments]: { kind: 'permission', permissions: [HR_PERMISSIONS.ATTENDANCE_READ] },
   [ROUTES.calendar]: { kind: 'authenticated' },
