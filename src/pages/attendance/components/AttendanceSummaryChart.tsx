@@ -1,4 +1,4 @@
-import { Tooltip } from '@mantine/core';
+import { useMemo, useState } from 'react';
 import type { AttendanceSummary } from '../../../features/attendance/attendanceTypes';
 import type { SummaryScope } from './AttendanceSummaryCards';
 import styles from './AttendanceSummaryChart.module.css';
@@ -89,16 +89,48 @@ function buildMappingSegments(summary: AttendanceSummary): Segment[] {
   ];
 }
 
-interface StackedBarProps {
+/** Round the axis top up to a clean 1 / 2 / 5 x 10^n step. */
+function niceCeiling(max: number): number {
+  if (max <= 0) return 1;
+  const magnitude = 10 ** Math.floor(Math.log10(max));
+  const normalized = max / magnitude;
+  const step = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  return step * magnitude;
+}
+
+const formatCount = (value: number) => value.toLocaleString('vi-VN');
+
+interface ColumnChartProps {
   title: string;
   segments: Segment[];
   caption: string;
 }
 
-function StackedBar({ title, segments, caption }: StackedBarProps) {
+function ColumnChart({ title, segments, caption }: ColumnChartProps) {
+  // Click pins a column; hover/focus previews one while nothing is pinned.
+  const [pinnedKey, setPinnedKey] = useState<string | null>(null);
+  const [hoverKey, setHoverKey] = useState<string | null>(null);
+  const activeKey = pinnedKey ?? hoverKey;
+
   const counted = segments.reduce((sum, s) => sum + s.value, 0);
-  const visible = segments.filter((s) => s.value > 0);
+  const axisTop = useMemo(
+    () => niceCeiling(Math.max(...segments.map((s) => s.value), 0)),
+    [segments],
+  );
   const share = (value: number) => (counted > 0 ? (value / counted) * 100 : 0);
+  const active = segments.find((s) => s.key === activeKey) ?? null;
+
+  if (counted === 0) {
+    return (
+      <div className={styles.panel}>
+        <div className={styles.heading}>
+          <span className={styles.title}>{title}</span>
+          <span className={styles.total}>{caption}</span>
+        </div>
+        <p className={styles.empty}>Chưa có dữ liệu để dựng biểu đồ.</p>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.panel}>
@@ -107,63 +139,77 @@ function StackedBar({ title, segments, caption }: StackedBarProps) {
         <span className={styles.total}>{caption}</span>
       </div>
 
-      {counted === 0 ? (
-        <p className={styles.empty}>Chưa có dữ liệu để dựng biểu đồ.</p>
-      ) : (
-        <>
+      <div className={styles.plotWrap}>
+        <div className={styles.plot}>
+          {/* No gridlines or y-axis: every column is already directly labelled,
+              and the skill puts direct labels ahead of grid chrome. */}
           <div
-            className={styles.bar}
+            className={styles.columns}
             role="img"
-            aria-label={`${title}: ${visible
-              .map((s) => `${s.label} ${s.value}, ${share(s.value).toFixed(0)}%`)
+            aria-label={`${title}: ${segments
+              .map((s) => `${s.label} ${formatCount(s.value)}, ${share(s.value).toFixed(0)}%`)
               .join('; ')}`}
           >
-            {visible.map((segment) => {
-              const pct = share(segment.value);
+            {segments.map((segment) => {
+              const height = axisTop > 0 ? (segment.value / axisTop) * 100 : 0;
               return (
-                <Tooltip
+                <button
+                  type="button"
                   key={segment.key}
-                  label={`${segment.label}: ${segment.value.toLocaleString('vi-VN')} (${pct.toFixed(1)}%) — ${segment.hint}`}
-                  withArrow
-                  multiline
-                  w={280}
-                  openDelay={120}
+                  className={styles.column}
+                  data-active={segment.key === activeKey ? 'true' : undefined}
+                  onPointerEnter={() => setHoverKey(segment.key)}
+                  onPointerLeave={() => setHoverKey(null)}
+                  onFocus={() => setHoverKey(segment.key)}
+                  onBlur={() => setHoverKey(null)}
+                  onClick={() =>
+                    setPinnedKey((current) => (current === segment.key ? null : segment.key))
+                  }
+                  aria-pressed={segment.key === pinnedKey}
+                  aria-label={`${segment.label}: ${formatCount(segment.value)} bản ghi, ${share(
+                    segment.value,
+                  ).toFixed(0)}%`}
                 >
-                  <div
-                    className={styles.segment}
+                  {/* Value rides the cap so the number never depends on hover. */}
+                  <span className={styles.columnValue}>{formatCount(segment.value)}</span>
+                  <span
+                    className={styles.columnBar}
                     data-tone={segment.tone}
-                    style={{ width: `${pct}%` }}
-                  >
-                    {/* Direct-label only where the text actually fits. */}
-                    {pct >= 12 && (
-                      <span className={styles.segmentLabel}>{pct.toFixed(0)}%</span>
-                    )}
-                  </div>
-                </Tooltip>
+                    data-empty={segment.value === 0 ? 'true' : undefined}
+                    style={{ height: `${height}%` }}
+                  />
+                  <span className={styles.columnLabel}>{segment.label}</span>
+                </button>
               );
             })}
           </div>
+        </div>
 
-          <div className={styles.legend}>
-            {segments.map((segment) => (
-              <span
-                key={segment.key}
-                className={styles.legendItem}
-                data-zero={segment.value === 0 ? 'true' : undefined}
-              >
-                <span className={styles.swatch} data-tone={segment.tone} aria-hidden="true" />
-                {segment.label}
-                <span className={styles.legendValue}>
-                  {segment.value.toLocaleString('vi-VN')}
+        {/* Detail panel in a reserved row, so opening it never shifts the plot. */}
+        <div className={styles.detailSlot}>
+          {active ? (
+            <div className={styles.detailCard} role="status">
+              <span className={styles.detailMain}>
+                <span className={styles.detailHead}>
+                  <span className={styles.swatch} data-tone={active.tone} aria-hidden="true" />
+                  {active.label}
                 </span>
-                {segment.value > 0 && (
-                  <span className={styles.legendShare}>{share(segment.value).toFixed(0)}%</span>
-                )}
+                <span className={styles.detailValue}>{formatCount(active.value)}</span>
               </span>
-            ))}
-          </div>
-        </>
-      )}
+              <span className={styles.detailBody}>
+                <span className={styles.detailShare}>
+                  {share(active.value).toFixed(1)}% của {formatCount(counted)} bản ghi
+                </span>
+                <span className={styles.detailHint}>{active.hint}</span>
+              </span>
+            </div>
+          ) : (
+            <p className={styles.detailIdle}>
+              Di chuột hoặc chọn một cột để xem chi tiết.
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -181,8 +227,8 @@ export function AttendanceSummaryChart({
   // Only claim full coverage when the counts really span the filter.
   const caption =
     scope === 'filter'
-      ? `${summary.total.toLocaleString('vi-VN')} bản ghi`
-      : `${statusCounted.toLocaleString('vi-VN')}/${summary.total.toLocaleString('vi-VN')} bản ghi (trang này)`;
+      ? `${formatCount(summary.total)} bản ghi`
+      : `${formatCount(statusCounted)}/${formatCount(summary.total)} bản ghi (trang này)`;
 
   const mappingSegments = buildMappingSegments(summary).filter(
     // Conflict has no backend bucket yet; drop the slot instead of drawing a zero.
@@ -191,12 +237,12 @@ export function AttendanceSummaryChart({
 
   return (
     <div className={styles.root}>
-      <StackedBar
+      <ColumnChart
         title="Phân bổ trạng thái chấm công"
         segments={statusSegments}
         caption={caption}
       />
-      <StackedBar
+      <ColumnChart
         title="Tình trạng liên kết nhân sự"
         segments={mappingSegments}
         caption={caption}
