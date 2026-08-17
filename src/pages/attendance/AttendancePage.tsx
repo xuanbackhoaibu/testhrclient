@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Badge, Card, Drawer, Group, Stack, Text, Tooltip } from '@mantine/core';
+import { Badge, Button, Card, Drawer, Group, Skeleton, Stack, Text, Tooltip } from '@mantine/core';
 import { useDisclosure, useLocalStorage } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconCheck } from '@tabler/icons-react';
+import { IconBuilding, IconCheck, IconDownload, IconRefresh } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 import { EmptyState } from '../../shared/components/EmptyState';
 import { ErrorState } from '../../shared/components/ErrorState';
@@ -17,6 +17,8 @@ import {
   useManualAttendanceSync,
 } from '../../features/attendance/useAttendanceSync';
 import { buildAttendanceDailyExportParams } from '../../features/attendance/attendanceDailyExport';
+import { summarizeAttendanceRecords } from '../../features/attendance/summarizeAttendanceRecords';
+import { addMinutesToTime } from '../../features/attendance/shiftTime';
 import { useAuth } from '../../features/auth/useAuth';
 import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import { DataTable } from '../../shared/components/DataTable';
@@ -24,12 +26,15 @@ import type { AttendanceDailyFilterParams } from '../../features/attendance/atte
 import { AttendanceFilterBar } from './components/AttendanceFilterBar';
 import { AttendanceSyncStatusCard } from './components/AttendanceSyncStatusCard';
 import { AttendanceSummaryCards } from './components/AttendanceSummaryCards';
+import { AttendanceSummaryChart } from './components/AttendanceSummaryChart';
+import type { SummaryScope } from './components/AttendanceSummaryCards';
 import { ManualSyncModal } from './components/ManualSyncModal';
 import { AttendanceSyncRunsTable } from './components/AttendanceSyncRunsTable';
 import { BioTimeDepartmentsTable } from './components/BioTimeDepartmentsTable';
 import styles from './AttendancePage.module.css';
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+const DEFAULT_PAGE_SIZE = 50;
 
 // Short status labels to avoid badge truncation
 const STATUS_LABELS: Record<string, string> = {
@@ -54,6 +59,12 @@ const MAPPING_LABELS: Record<string, string> = {
   AUTO_MAPPED: 'Tự map',
   UNMAPPED: 'Chưa map',
   CONFLICT: 'Trùng mã',
+};
+
+// Why a record carries no shift, keyed by the resolver's own source value.
+const SHIFT_ABSENT_HINTS: Record<string, string> = {
+  UNASSIGNED: 'Nhân sự chưa được phân ca nên chưa có mốc để tính đi muộn.',
+  DEFAULT: 'Ngày nghỉ, ngày lễ, hoặc bản ghi đồng bộ trước khi hệ thống lưu ca.',
 };
 
 const MAPPING_COLORS: Record<string, string> = {
@@ -146,17 +157,34 @@ export function AttendancePage() {
   }));
 
   const [page, setPage] = useState(pageParam);
+  const [pageSize, setPageSize] = useState(() => {
+    const fromUrl = Number(searchParams.get('pageSize'));
+    return PAGE_SIZE_OPTIONS.includes(fromUrl) ? fromUrl : DEFAULT_PAGE_SIZE;
+  });
+  const [isExporting, setIsExporting] = useState(false);
+  const [chartOpened, { toggle: toggleChart }] = useDisclosure(false);
 
-  const queryParams = buildQueryParams({ ...filters, page, pageSize: PAGE_SIZE });
+  const queryParams = buildQueryParams({ ...filters, page, pageSize });
 
   // Queries
   const { data, isLoading, error, refetch, isFetching } = useAttendanceDailyRecords(queryParams);
   const { data: syncStatus, isLoading: syncStatusLoading } = useAttendanceSyncStatus();
   const manualSync = useManualAttendanceSync();
 
-  const records = data?.data ?? [];
+  const records = useMemo(() => data?.data ?? [], [data]);
   const pagination = data?.pagination;
-  const summary = data?.summary;
+  // The backend summary covers every record matching the filter. Older API
+  // builds omit it, so fall back to tallying the page — but keep the record
+  // total from pagination, which is always the full filtered count.
+  const summary = useMemo(() => {
+    if (!data) return undefined;
+    if (data.summary) return data.summary;
+    return {
+      ...summarizeAttendanceRecords(records),
+      total: data.pagination?.total ?? records.length,
+    };
+  }, [data, records]);
+  const summaryScope: SummaryScope = data?.summary ? 'filter' : 'page';
 
   // Handle filter changes - sync to URL and localStorage
   const handleFilterChange = (newFilters: AttendanceFilters) => {
@@ -177,11 +205,14 @@ export function AttendancePage() {
     setSearchParams(params, { replace: true });
   };
 
-  const handlePageChange = (newPage: number) => {
+  // DataTable reports both values; a page-size change arrives as (1, newSize).
+  const handlePageChange = (newPage: number, newPageSize: number) => {
     setPage(newPage);
+    setPageSize(newPageSize);
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
       params.set('page', String(newPage));
+      params.set('pageSize', String(newPageSize));
       return params;
     }, { replace: true });
   };
@@ -226,12 +257,13 @@ export function AttendancePage() {
   // Export handler
   const handleExport = async () => {
     const params = buildAttendanceDailyExportParams(
-      buildQueryParams({ ...filters, page: 1, pageSize: PAGE_SIZE }),
+      buildQueryParams({ ...filters, page: 1, pageSize }),
     );
     // Export all matching records, not just the page visible in the table.
     // Reusing the list-query builder keeps date/range and BioTime department
     // filters identical between the screen and downloaded CSV.
 
+    setIsExporting(true);
     try {
       await api.download(
         '/attendance/daily/export',
@@ -244,6 +276,8 @@ export function AttendancePage() {
         message: 'Không thể tải file xuất. Vui lòng thử lại sau.',
         color: 'red',
       });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -258,14 +292,14 @@ export function AttendancePage() {
       filters.mappingStatus ||
       filters.biotimeDepartmentId;
 
-    if (!syncStatus?.data?.hasAttendanceData) {
+    if (!syncStatus?.hasAttendanceData) {
       return {
         title: 'Chưa có dữ liệu chấm công',
         description: 'Hãy đồng bộ dữ liệu từ BioTime để bắt đầu.',
       };
     }
 
-    if (syncStatus?.data?.dailyToday?.lastError || syncStatus?.data?.nightly7Days?.lastError) {
+    if (syncStatus?.dailyToday?.lastError || syncStatus?.nightly7Days?.lastError) {
       return {
         title: 'Đồng bộ gần nhất thất bại',
         description: 'Hãy xem lịch sử đồng bộ để kiểm tra lỗi.',
@@ -299,44 +333,35 @@ export function AttendancePage() {
         actions={
           <Group gap="xs">
             {mayViewSyncLog && (
-              <Text
+              <Button
+                variant="default"
                 size="sm"
-                c="blue"
-                style={{ cursor: 'pointer' }}
+                leftSection={<IconBuilding size={15} />}
                 onClick={openBiotimeDepts}
               >
                 Phòng ban BioTime
-              </Text>
-            )}
-            {mayViewSyncLog && (
-              <Text
-                size="sm"
-                c="blue"
-                style={{ cursor: 'pointer' }}
-                onClick={openSyncHistory}
-              >
-                Lịch sử đồng bộ
-              </Text>
+              </Button>
             )}
             {mayExport && (
-              <Text
+              <Button
+                variant="default"
                 size="sm"
-                c="blue"
-                style={{ cursor: 'pointer' }}
-                onClick={handleExport}
+                leftSection={<IconDownload size={15} />}
+                onClick={() => void handleExport()}
+                loading={isExporting}
               >
                 Xuất CSV
-              </Text>
+              </Button>
             )}
             {maySync && (
-              <Text
+              <Button
                 size="sm"
-                c="blue"
-                style={{ cursor: 'pointer' }}
+                leftSection={<IconRefresh size={15} />}
                 onClick={handleSync}
+                loading={manualSync.isPending}
               >
                 Đồng bộ dữ liệu
-              </Text>
+              </Button>
             )}
           </Group>
         }
@@ -345,22 +370,22 @@ export function AttendancePage() {
       <Stack gap="xs">
         {/* Sync Status Card */}
         <AttendanceSyncStatusCard
-          status={syncStatus?.data}
+          status={syncStatus}
           isLoading={syncStatusLoading}
           onViewSyncHistory={openSyncHistory}
           mayViewSyncLog={mayViewSyncLog}
         />
 
-        {/* Unmapped/Conflict warning */}
-        {(summary && (summary.unmapped + summary.conflict) > 0) && (
-          <Text size="xs" c="orange">
-            Có {summary.unmapped + summary.conflict} bản ghi chấm công chưa được map với nhân sự HRM.
-            Cần xử lý để dữ liệu hiển thị trên lịch cá nhân.
-          </Text>
-        )}
+        {/* Summary strip */}
+        <AttendanceSummaryCards
+          summary={summary}
+          scope={summaryScope}
+          onOpenMapping={maySync ? () => navigate(ROUTES.attendanceMapping) : undefined}
+          chartOpened={chartOpened}
+          onToggleChart={toggleChart}
+        />
 
-        {/* Summary Cards */}
-        <AttendanceSummaryCards summary={summary} />
+        {chartOpened && <AttendanceSummaryChart summary={summary} scope={summaryScope} />}
 
         {/* Filter Bar */}
         <AttendanceFilterBar
@@ -368,14 +393,18 @@ export function AttendancePage() {
           onChange={handleFilterChange}
           maySync={maySync}
           onSync={handleSync}
-          onOpenMapping={() => navigate(ROUTES.attendanceMapping)}
           isSyncing={manualSync.isPending}
-          unmappedConflictCount={summary ? summary.unmapped + summary.conflict : 0}
         />
 
         {/* Data Table or Empty State */}
         {isLoading ? (
-          <ErrorState title="Đang tải dữ liệu..." />
+          <Card withBorder padding="md" className={styles.tableCard}>
+            <Stack gap="sm">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <Skeleton key={index} height={34} radius="sm" />
+              ))}
+            </Stack>
+          </Card>
         ) : error || !data ? (
           <ErrorState onRetry={() => void refetch()} />
         ) : records.length === 0 ? (
@@ -446,6 +475,58 @@ export function AttendancePage() {
                   ),
                 },
                 {
+                  // Sits beside the punch times so the reader can compare the
+                  // punch against the threshold that judged it.
+                  key: 'shift',
+                  header: 'Ca',
+                  width: 92,
+                  align: 'center',
+                  render: (record) => {
+                    if (!record.shiftCode) {
+                      return (
+                        <Tooltip
+                          label={SHIFT_ABSENT_HINTS[record.shiftSource ?? ''] ?? SHIFT_ABSENT_HINTS.DEFAULT}
+                          withArrow
+                          openDelay={200}
+                        >
+                          <Text size="sm" c="dimmed">—</Text>
+                        </Tooltip>
+                      );
+                    }
+
+                    const threshold =
+                      record.shiftStartTime && record.shiftLateThresholdMinutes !== null
+                        ? addMinutesToTime(
+                            record.shiftStartTime,
+                            record.shiftLateThresholdMinutes,
+                          )
+                        : null;
+
+                    return (
+                      <Tooltip
+                        label={
+                          threshold
+                            ? `Ca ${record.shiftCode} vào ${record.shiftStartTime}; vào sau ${threshold} mới tính đi muộn.`
+                            : `Ca ${record.shiftCode}`
+                        }
+                        withArrow
+                        openDelay={200}
+                      >
+                        <Stack gap={0}>
+                          <Text size="sm" fw={500}>
+                            {record.shiftCode}
+                          </Text>
+                          {threshold && (
+                            <Text size="xs" c="dimmed" className={styles.timeCell}>
+                              ≤{threshold}
+                            </Text>
+                          )}
+                        </Stack>
+                      </Tooltip>
+                    );
+                  },
+                },
+                {
                   key: 'firstPunch',
                   header: 'Vào',
                   width: 70,
@@ -487,7 +568,7 @@ export function AttendancePage() {
                 {
                   key: 'status',
                   header: 'Trạng thái',
-                  width: 100,
+                  width: 118,
                   align: 'center',
                   render: (record) => (
                     <Tooltip
@@ -500,21 +581,23 @@ export function AttendancePage() {
                       }
                       disabled={record.status !== 'SINGLE_PUNCH' && record.status !== 'UNKNOWN'}
                     >
-                      <Badge
-                        color={STATUS_COLORS[record.status ?? ''] ?? 'gray'}
-                        variant="light"
-                        size="sm"
-                        radius="md"
-                      >
-                        {STATUS_LABELS[record.status ?? ''] ?? record.status ?? 'N/A'}
-                      </Badge>
+                      <div className={styles.badgeCell}>
+                        <Badge
+                          color={STATUS_COLORS[record.status ?? ''] ?? 'gray'}
+                          variant="light"
+                          size="sm"
+                          radius="sm"
+                        >
+                          {STATUS_LABELS[record.status ?? ''] ?? record.status ?? 'N/A'}
+                        </Badge>
+                      </div>
                     </Tooltip>
                   ),
                 },
                 {
                   key: 'mappingStatus',
                   header: 'Mapping',
-                  width: 100,
+                  width: 112,
                   align: 'center',
                   render: (record) => (
                     <Tooltip
@@ -527,14 +610,16 @@ export function AttendancePage() {
                       }
                       disabled={record.mappingStatus === 'MAPPED'}
                     >
-                      <Badge
-                        color={MAPPING_COLORS[record.mappingStatus] ?? 'gray'}
-                        variant="light"
-                        size="sm"
-                        radius="md"
-                      >
-                        {MAPPING_LABELS[record.mappingStatus] ?? record.mappingStatus}
-                      </Badge>
+                      <div className={styles.badgeCell}>
+                        <Badge
+                          color={MAPPING_COLORS[record.mappingStatus] ?? 'gray'}
+                          variant="light"
+                          size="sm"
+                          radius="sm"
+                        >
+                          {MAPPING_LABELS[record.mappingStatus] ?? record.mappingStatus}
+                        </Badge>
+                      </div>
                     </Tooltip>
                   ),
                 },
@@ -543,6 +628,7 @@ export function AttendancePage() {
               meta={pagination ?? undefined}
               loading={isFetching}
               onPageChange={handlePageChange}
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
             />
           </Card>
         )}

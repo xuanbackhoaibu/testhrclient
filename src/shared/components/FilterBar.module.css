@@ -1,3 +1,9 @@
+/*
+ * Single-row filter strip shared by the operational screens.
+ *
+ * Flex, not grid: a fixed column count leaves the action group without a track
+ * and pushes it off-screen once the controls no longer fit.
+ */
 .root {
   background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
   border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
@@ -5,10 +11,6 @@
   padding: 10px 12px;
 }
 
-/*
- * Flex, not grid: the previous 7-column grid had no track for the action
- * group, so "Xóa lọc" overflowed the viewport instead of wrapping.
- */
 .row {
   display: flex;
   flex-wrap: wrap;
@@ -16,14 +18,20 @@
   gap: 8px;
 }
 
-.searchInput {
+/* Fields opt into a width class so every screen sizes controls the same way. */
+.grow {
   flex: 1 1 180px;
   min-width: 150px;
 }
 
-.selectInput {
-  flex: 0 1 124px;
-  min-width: 108px;
+.field {
+  flex: 0 1 150px;
+  min-width: 116px;
+}
+
+.fieldWide {
+  flex: 0 1 200px;
+  min-width: 160px;
 }
 
 .actions {
@@ -34,16 +42,13 @@
   flex: 0 0 auto;
 }
 
-/*
- * Below this width the five controls plus the action group no longer fit on one
- * line, so the group takes its own row instead of squeezing the selects.
- */
-@media (max-width: 1180px) {
-  .searchInput {
+@media (max-width: 900px) {
+  .grow {
     flex-basis: 100%;
   }
 
-  .selectInput {
+  .field,
+  .fieldWide {
     flex: 1 1 140px;
   }
 
@@ -59,7 +64,8 @@
     padding: 10px;
   }
 
-  .selectInput {
+  .field,
+  .fieldWide {
     flex-basis: calc(50% - 4px);
   }
 }

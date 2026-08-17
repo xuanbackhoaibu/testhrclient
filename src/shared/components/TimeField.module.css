@@ -1,0 +1,22 @@
+.timeRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Equal halves so the colon stays centred whatever the field width. */
+.part {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.part input {
+  font-variant-numeric: tabular-nums;
+}
+
+.colon {
+  flex: none;
+  font-weight: 600;
+  color: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-2));
+  user-select: none;
+}

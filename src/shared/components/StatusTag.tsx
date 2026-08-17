@@ -1,4 +1,5 @@
 import { Badge } from '@mantine/core';
+import styles from './StatusTag.module.css';
 
 const STATUS_COLOR_MAP: Record<string, string> = {
   ACTIVE: 'green',
@@ -59,14 +60,19 @@ const STATUS_LABEL_MAP: Record<string, string> = {
 export function StatusTag({ status }: { status?: string | null }) {
   if (!status) {
     return (
-      <Badge color="gray" variant="light">
+      <Badge color="gray" variant="light" radius="sm" className={styles.badge}>
         -
       </Badge>
     );
   }
 
   return (
-    <Badge color={STATUS_COLOR_MAP[status] ?? 'gray'} variant="light" radius="sm">
+    <Badge
+      color={STATUS_COLOR_MAP[status] ?? 'gray'}
+      variant="light"
+      radius="sm"
+      className={styles.badge}
+    >
       {STATUS_LABEL_MAP[status] ?? `Khác: ${status}`}
     </Badge>
   );

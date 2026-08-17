@@ -11,7 +11,6 @@ import {
   Popover,
   ScrollArea,
   Select,
-  SimpleGrid,
   Skeleton,
   Stack,
   Table,
@@ -23,7 +22,6 @@ import {
   IconAlertTriangle,
   IconCalendarTime,
   IconExternalLink,
-  IconInfoCircle,
   IconRefresh,
   IconSearch,
   IconUserCheck,
@@ -66,6 +64,9 @@ import { useDepartmentsSelect } from "../../features/organization/useDepartments
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { HrmDateInput } from "../../shared/components/HrmDateInput";
 import { ROUTES } from "../../shared/constants/routes";
+import { InfoBanner } from "../../shared/components/InfoBanner";
+import { FilterBar } from "../../shared/components/FilterBar";
+import filterStyles from "../../shared/components/FilterBar.module.css";
 import { useImeSafeSearch } from "../../shared/hooks/useImeSafeSearch";
 import { formatDate } from "../../shared/utils/date";
 import { includesNormalizedSearch } from "../../shared/utils/normalizeSearchText";
@@ -1004,7 +1005,7 @@ export function MonthlyShiftAssignmentGrid({
 
   return (
     <Stack gap="md">
-      <Alert icon={<IconInfoCircle size={18} />} color="blue" variant="light">
+      <InfoBanner title="Cách phân ca và quan hệ với BCC" collapsible>
         Phân ca ở đây tạo <b>ca cá nhân</b> cho các CBNV được tích chọn; ca cá
         nhân ưu tiên hơn ca phòng ban và đơn vị. Nhấn ô <b>—</b> để chọn ca trực
         tiếp cho đúng CBNV/ngày; thao tác này luôn đưa CBNV vào BCC. Chủ nhật
@@ -1014,54 +1015,62 @@ export function MonthlyShiftAssignmentGrid({
         chọn “Đưa vào BCC cùng ca” khi chỉ muốn lập kế hoạch ca. Với CBNV đã có
         ca, dùng <b>Đưa vào BCC</b> để bổ sung bảng công mà không tạo lại ca.
         Sau đó mở đúng kỳ, bấm <b>Cập nhật bảng công</b> rồi mới xuất Excel.
-      </Alert>
+      </InfoBanner>
 
-      <Paper withBorder p="md" radius="md">
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 5 }} spacing="sm">
-          <Select
-            label="Kỳ công"
-            data={monthOptions}
-            value={String(month)}
-            allowDeselect={false}
-            onChange={(value) => setMonth(Number(value ?? month))}
-          />
-          <Select
-            label="Năm"
-            data={yearOptions}
-            value={String(year)}
-            allowDeselect={false}
-            onChange={(value) => setYear(Number(value ?? year))}
-          />
-          <Select
-            label="Đơn vị"
-            placeholder="Chọn đơn vị"
-            data={unitOptions}
-            value={selectedUnitId}
-            searchable
-            disabled={unitsQuery.isLoading}
-            onChange={(value) => {
-              setRequestedUnitId(value);
-              setDepartmentId(null);
-            }}
-          />
-          <Select
-            label="Phòng ban"
-            placeholder="Tất cả phòng ban"
-            data={departmentOptions}
-            value={departmentId}
-            searchable
-            clearable
-            disabled={!selectedUnitId || departmentsQuery.isLoading}
-            onChange={setDepartmentId}
-          />
-          <TextInput
-            label="Nhân sự"
-            placeholder="Tìm tên, MCB hoặc mã nhân sự"
-            leftSection={<IconSearch size={16} />}
-            {...searchInput.inputProps}
-          />
-        </SimpleGrid>
-      </Paper>
+      <FilterBar>
+        <Select
+          aria-label="Kỳ công"
+          data={monthOptions}
+          value={String(month)}
+          allowDeselect={false}
+          onChange={(value) => setMonth(Number(value ?? month))}
+          size="sm"
+          className={filterStyles.field}
+        />
+        <Select
+          aria-label="Năm"
+          data={yearOptions}
+          value={String(year)}
+          allowDeselect={false}
+          onChange={(value) => setYear(Number(value ?? year))}
+          size="sm"
+          className={filterStyles.field}
+        />
+        <Select
+          aria-label="Đơn vị"
+          placeholder="Chọn đơn vị"
+          data={unitOptions}
+          value={selectedUnitId}
+          searchable
+          disabled={unitsQuery.isLoading}
+          onChange={(value) => {
+            setRequestedUnitId(value);
+            setDepartmentId(null);
+          }}
+          size="sm"
+          className={filterStyles.fieldWide}
+        />
+        <Select
+          aria-label="Phòng ban"
+          placeholder="Tất cả phòng ban"
+          data={departmentOptions}
+          value={departmentId}
+          searchable
+          clearable
+          disabled={!selectedUnitId || departmentsQuery.isLoading}
+          onChange={setDepartmentId}
+          size="sm"
+          className={filterStyles.fieldWide}
+        />
+        <TextInput
+          aria-label="Nhân sự"
+          placeholder="Tìm tên, MCB hoặc mã nhân sự"
+          leftSection={<IconSearch size={15} />}
+          {...searchInput.inputProps}
+          size="sm"
+          className={filterStyles.grow}
+        />
+      </FilterBar>
 
       {!selectedUnitId && !unitsQuery.isLoading ? (
         <Alert color="yellow" variant="light" title="Chưa có đơn vị để phân ca">
