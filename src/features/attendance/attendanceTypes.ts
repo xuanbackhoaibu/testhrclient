@@ -40,6 +40,14 @@ export interface AttendanceDailyRecord {
   totalTime: string | null;
   totalMinutes: number | null;
   status: AttendanceStatusBiometric | null;
+  /**
+   * Ca đã dùng để ra `status`, chụp lại lúc đồng bộ. Null với ngày nghỉ, ngày
+   * lễ, nhân sự chưa phân ca, và với dữ liệu đồng bộ trước khi có 4 cột này.
+   */
+  shiftCode: string | null;
+  shiftStartTime: string | null;
+  shiftLateThresholdMinutes: number | null;
+  shiftSource: string | null;
   mappingStatus: MappingStatus;
   syncStatus: SyncStatusValue;
 }

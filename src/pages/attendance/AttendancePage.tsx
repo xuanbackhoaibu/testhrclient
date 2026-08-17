@@ -18,6 +18,7 @@ import {
 } from '../../features/attendance/useAttendanceSync';
 import { buildAttendanceDailyExportParams } from '../../features/attendance/attendanceDailyExport';
 import { summarizeAttendanceRecords } from '../../features/attendance/summarizeAttendanceRecords';
+import { addMinutesToTime } from '../../features/attendance/shiftTime';
 import { useAuth } from '../../features/auth/useAuth';
 import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import { DataTable } from '../../shared/components/DataTable';
@@ -58,6 +59,12 @@ const MAPPING_LABELS: Record<string, string> = {
   AUTO_MAPPED: 'Tự map',
   UNMAPPED: 'Chưa map',
   CONFLICT: 'Trùng mã',
+};
+
+// Why a record carries no shift, keyed by the resolver's own source value.
+const SHIFT_ABSENT_HINTS: Record<string, string> = {
+  UNASSIGNED: 'Nhân sự chưa được phân ca nên chưa có mốc để tính đi muộn.',
+  DEFAULT: 'Ngày nghỉ, ngày lễ, hoặc bản ghi đồng bộ trước khi hệ thống lưu ca.',
 };
 
 const MAPPING_COLORS: Record<string, string> = {
@@ -466,6 +473,58 @@ export function AttendancePage() {
                       {record.deptName ?? '-'}
                     </Text>
                   ),
+                },
+                {
+                  // Sits beside the punch times so the reader can compare the
+                  // punch against the threshold that judged it.
+                  key: 'shift',
+                  header: 'Ca',
+                  width: 92,
+                  align: 'center',
+                  render: (record) => {
+                    if (!record.shiftCode) {
+                      return (
+                        <Tooltip
+                          label={SHIFT_ABSENT_HINTS[record.shiftSource ?? ''] ?? SHIFT_ABSENT_HINTS.DEFAULT}
+                          withArrow
+                          openDelay={200}
+                        >
+                          <Text size="sm" c="dimmed">—</Text>
+                        </Tooltip>
+                      );
+                    }
+
+                    const threshold =
+                      record.shiftStartTime && record.shiftLateThresholdMinutes !== null
+                        ? addMinutesToTime(
+                            record.shiftStartTime,
+                            record.shiftLateThresholdMinutes,
+                          )
+                        : null;
+
+                    return (
+                      <Tooltip
+                        label={
+                          threshold
+                            ? `Ca ${record.shiftCode} vào ${record.shiftStartTime}; vào sau ${threshold} mới tính đi muộn.`
+                            : `Ca ${record.shiftCode}`
+                        }
+                        withArrow
+                        openDelay={200}
+                      >
+                        <Stack gap={0}>
+                          <Text size="sm" fw={500}>
+                            {record.shiftCode}
+                          </Text>
+                          {threshold && (
+                            <Text size="xs" c="dimmed" className={styles.timeCell}>
+                              ≤{threshold}
+                            </Text>
+                          )}
+                        </Stack>
+                      </Tooltip>
+                    );
+                  },
                 },
                 {
                   key: 'firstPunch',
