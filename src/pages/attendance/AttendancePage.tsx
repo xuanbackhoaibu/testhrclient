@@ -25,12 +25,14 @@ import type { AttendanceDailyFilterParams } from '../../features/attendance/atte
 import { AttendanceFilterBar } from './components/AttendanceFilterBar';
 import { AttendanceSyncStatusCard } from './components/AttendanceSyncStatusCard';
 import { AttendanceSummaryCards } from './components/AttendanceSummaryCards';
+import type { SummaryScope } from './components/AttendanceSummaryCards';
 import { ManualSyncModal } from './components/ManualSyncModal';
 import { AttendanceSyncRunsTable } from './components/AttendanceSyncRunsTable';
 import { BioTimeDepartmentsTable } from './components/BioTimeDepartmentsTable';
 import styles from './AttendancePage.module.css';
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+const DEFAULT_PAGE_SIZE = 50;
 
 // Short status labels to avoid badge truncation
 const STATUS_LABELS: Record<string, string> = {
@@ -147,9 +149,13 @@ export function AttendancePage() {
   }));
 
   const [page, setPage] = useState(pageParam);
+  const [pageSize, setPageSize] = useState(() => {
+    const fromUrl = Number(searchParams.get('pageSize'));
+    return PAGE_SIZE_OPTIONS.includes(fromUrl) ? fromUrl : DEFAULT_PAGE_SIZE;
+  });
   const [isExporting, setIsExporting] = useState(false);
 
-  const queryParams = buildQueryParams({ ...filters, page, pageSize: PAGE_SIZE });
+  const queryParams = buildQueryParams({ ...filters, page, pageSize });
 
   // Queries
   const { data, isLoading, error, refetch, isFetching } = useAttendanceDailyRecords(queryParams);
@@ -158,13 +164,11 @@ export function AttendancePage() {
 
   const records = useMemo(() => data?.data ?? [], [data]);
   const pagination = data?.pagination;
-  // The list endpoint does not return a summary, so derive it from the records
-  // on screen. Labelled as page-scoped in the UI rather than implying a total
-  // across every page of the current filter.
-  const summary = useMemo(
-    () => (data ? summarizeAttendanceRecords(records) : undefined),
-    [data, records],
-  );
+  // Prefer the backend summary: it covers every record matching the filter.
+  // Falling back to a page-scoped tally keeps the strip populated if an older
+  // API build omits it.
+  const summary = data ? (data.summary ?? summarizeAttendanceRecords(records)) : undefined;
+  const summaryScope: SummaryScope = data?.summary ? 'filter' : 'page';
 
   // Handle filter changes - sync to URL and localStorage
   const handleFilterChange = (newFilters: AttendanceFilters) => {
@@ -185,11 +189,14 @@ export function AttendancePage() {
     setSearchParams(params, { replace: true });
   };
 
-  const handlePageChange = (newPage: number) => {
+  // DataTable reports both values; a page-size change arrives as (1, newSize).
+  const handlePageChange = (newPage: number, newPageSize: number) => {
     setPage(newPage);
+    setPageSize(newPageSize);
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
       params.set('page', String(newPage));
+      params.set('pageSize', String(newPageSize));
       return params;
     }, { replace: true });
   };
@@ -234,7 +241,7 @@ export function AttendancePage() {
   // Export handler
   const handleExport = async () => {
     const params = buildAttendanceDailyExportParams(
-      buildQueryParams({ ...filters, page: 1, pageSize: PAGE_SIZE }),
+      buildQueryParams({ ...filters, page: 1, pageSize }),
     );
     // Export all matching records, not just the page visible in the table.
     // Reusing the list-query builder keeps date/range and BioTime department
@@ -356,6 +363,7 @@ export function AttendancePage() {
         {/* Summary strip */}
         <AttendanceSummaryCards
           summary={summary}
+          scope={summaryScope}
           onOpenMapping={maySync ? () => navigate(ROUTES.attendanceMapping) : undefined}
         />
 
@@ -548,6 +556,7 @@ export function AttendancePage() {
               meta={pagination ?? undefined}
               loading={isFetching}
               onPageChange={handlePageChange}
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
             />
           </Card>
         )}

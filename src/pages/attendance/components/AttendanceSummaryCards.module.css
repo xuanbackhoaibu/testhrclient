@@ -3,7 +3,7 @@
   flex-wrap: wrap;
   align-items: stretch;
   gap: 0;
-  padding: 10px 4px;
+  padding: 12px 4px;
   border-radius: var(--mantine-radius-md);
   border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
   background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
@@ -12,9 +12,9 @@
 .stat {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   padding: 2px 16px;
-  min-width: 104px;
+  min-width: 108px;
   flex: 0 1 auto;
   border-left: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5));
 }
@@ -32,16 +32,26 @@
   white-space: nowrap;
 }
 
+.figure {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
 .value {
-  font-size: 20px;
+  font-size: 21px;
   font-weight: 650;
-  line-height: 1.2;
+  line-height: 1.15;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   color: light-dark(var(--mantine-color-gray-9), var(--mantine-color-dark-0));
 }
 
-/* Values that carry a status meaning tint only when non-zero. */
+/* Status tints; muted marks a zero count so it recedes rather than alarms. */
+.value[data-tone='positive'] {
+  color: light-dark(var(--mantine-color-teal-7), var(--mantine-color-teal-4));
+}
+
 .value[data-tone='warning'] {
   color: light-dark(var(--mantine-color-orange-7), var(--mantine-color-orange-4));
 }
@@ -55,10 +65,46 @@
 }
 
 .share {
-  font-size: var(--mantine-font-size-xs);
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-1));
+}
+
+/* Thin proportion bar: reads at a glance without becoming a chart. */
+.track {
+  display: block;
+  height: 3px;
+  margin-top: 2px;
+  border-radius: 999px;
+  background: light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5));
+  overflow: hidden;
+}
+
+.trackFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-2));
+  transition: width 200ms ease-out;
+}
+
+.trackFill[data-tone='positive'] {
+  background: light-dark(var(--mantine-color-teal-6), var(--mantine-color-teal-5));
+}
+
+.trackFill[data-tone='warning'] {
+  background: light-dark(var(--mantine-color-orange-6), var(--mantine-color-orange-5));
+}
+
+.trackFill[data-tone='danger'] {
+  background: light-dark(var(--mantine-color-red-6), var(--mantine-color-red-5));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trackFill {
+    transition: none;
+  }
 }
 
 .spacer {
@@ -81,17 +127,17 @@
 
   .action {
     border-left: none;
-    padding-left: 16px;
+    padding: 6px 16px 0;
   }
 }
 
 @media (max-width: 768px) {
   .root {
-    padding: 8px 4px;
+    padding: 10px 4px;
   }
 
   .stat {
-    min-width: 92px;
+    min-width: 96px;
     padding: 2px 12px;
   }
 

@@ -44,6 +44,13 @@ export interface AttendanceDailyRecord {
   syncStatus: SyncStatusValue;
 }
 
+/**
+ * Totals for every record matching the current filter, computed by the backend
+ * over the whole result set rather than the page on screen.
+ *
+ * `mapped` already includes AUTO_MAPPED, and the backend reports no CONFLICT
+ * bucket, so both are optional here and only rendered when present.
+ */
 export interface AttendanceSummary {
   total: number;
   present: number;
@@ -52,9 +59,9 @@ export interface AttendanceSummary {
   singlePunch: number;
   unknown: number;
   mapped: number;
-  autoMapped: number;
   unmapped: number;
-  conflict: number;
+  autoMapped?: number;
+  conflict?: number;
 }
 
 // ─── Mapping Stats ────────────────────────────────────────────────────────────
