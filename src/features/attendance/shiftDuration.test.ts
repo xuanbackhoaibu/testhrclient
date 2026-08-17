@@ -57,10 +57,29 @@ describe('computeShiftWorkingMinutes', () => {
     ).toBe(240);
   });
 
-  it('trả null cho ca qua ngày vì bộ tính công chưa xử lý', () => {
+  it('tính đúng ca qua ngày 22:00–06:00 = 8 tiếng', () => {
     expect(
       computeShiftWorkingMinutes({ startTime: '22:00', endTime: '06:00' }),
-    ).toBeNull();
+    ).toBe(480);
+  });
+
+  it('tính đúng ca đêm BV5 18:30–06:30 = 12 tiếng', () => {
+    expect(
+      computeShiftWorkingMinutes({ startTime: '18:30', endTime: '06:30' }),
+    ).toBe(720);
+  });
+
+  it('ca qua ngày có nghỉ giữa ca sau nửa đêm được trừ đúng', () => {
+    // 22:00→06:00 = 480', nghỉ 00:00–00:30 nằm trong ca → còn 450'.
+    expect(
+      computeShiftWorkingMinutes({
+        startTime: '22:00',
+        endTime: '06:00',
+        breakStart: '00:00',
+        breakEnd: '00:30',
+        breakDeducted: true,
+      }),
+    ).toBe(450);
   });
 
   it('trả null khi giờ vào bằng giờ tan ca', () => {

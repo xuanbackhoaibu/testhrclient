@@ -745,9 +745,7 @@ export function WorkShiftsPage() {
             >
               {computedMinutes === null ? (
                 <span className={formStyles.previewLabel}>
-                  {isOvernightShift(form.values.startTime, form.values.endTime)
-                    ? "Ca qua ngày — hệ thống chưa tính được giờ công."
-                    : "Nhập giờ vào ca và giờ tan ca để xem giờ công."}
+                  Nhập giờ vào ca và giờ tan ca để xem giờ công.
                 </span>
               ) : (
                 <>
