@@ -1,0 +1,109 @@
+/*
+ * Shift form layout.
+ *
+ * Fields sat on a plain SimpleGrid before, so a field carrying a description
+ * pushed its own input down while its neighbour stayed put — the two inputs in
+ * a row ended up 19–34px apart. Here every row is a grid whose items stretch,
+ * and the input is pinned to the bottom of the cell, so inputs line up whatever
+ * the label or hint above them does.
+ */
+.row {
+  display: grid;
+  gap: 12px 14px;
+  align-items: end;
+}
+
+.row[data-cols='2'] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.row[data-cols='3'] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 640px) {
+  .row[data-cols='2'],
+  .row[data-cols='3'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Section heading: quieter than a Title, still a real landmark. */
+.section {
+  margin-top: 4px;
+}
+
+.sectionTitle {
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+  color: light-dark(var(--mantine-color-gray-8), var(--mantine-color-dark-0));
+}
+
+.sectionHint {
+  margin-top: 1px;
+  font-size: var(--mantine-font-size-xs);
+  line-height: 1.45;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-1));
+}
+
+/* Live summary of what the entered times add up to. */
+.preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 18px;
+  padding: 10px 14px;
+  border-radius: var(--mantine-radius-md);
+  border: 1px solid light-dark(var(--mantine-color-teal-2), var(--mantine-color-teal-9));
+  background: light-dark(var(--mantine-color-teal-0), var(--mantine-color-dark-6));
+}
+
+.preview[data-tone='pending'] {
+  border-color: light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+}
+
+.previewLabel {
+  font-size: var(--mantine-font-size-xs);
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-1));
+}
+
+.previewValue {
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: light-dark(var(--mantine-color-gray-9), var(--mantine-color-dark-0));
+}
+
+.previewItem {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+/* Advanced block stays visually attached to the section it refines. */
+.advanced {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: var(--mantine-radius-sm);
+  border: 1px dashed light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+}
+
+.advancedToggle {
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 500;
+  color: light-dark(var(--mantine-color-blue-7), var(--mantine-color-blue-4));
+}
+
+.footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 8px -16px -16px;
+  padding: 12px 16px;
+  border-top: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5));
+  background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+}

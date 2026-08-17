@@ -26,6 +26,7 @@ import {
   IconPlus,
   IconTrash,
   IconUsers,
+  IconSearch,
 } from "@tabler/icons-react";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
@@ -55,6 +56,7 @@ import { useUnitsSelect } from "../../features/organization/useUnits";
 import { DataTable, type DataTableColumn } from "../../shared/components/DataTable";
 import { HrmDateInput } from "../../shared/components/HrmDateInput";
 import { PageHeader } from "../../shared/components/PageHeader";
+import { SectionCard } from "../../shared/components/SectionCard";
 import { formatDate } from "../../shared/utils/date";
 
 const WEEKDAY_EDITOR_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
@@ -170,6 +172,8 @@ function yearMonthFromIso(value: string): { year: number; month: number } {
   };
 }
 
+const ASSIGNMENTS_PAGE_SIZE = 10;
+
 function WeeklyShiftAssignmentsPanel({
   template,
   canEdit,
@@ -177,6 +181,11 @@ function WeeklyShiftAssignmentsPanel({
   const unitsQuery = useUnitsSelect();
   const assignmentsQuery = useWeeklyShiftAssignments({ templateId: template.id });
   const cancelAssignments = useCancelWeeklyShiftAssignments();
+  // The endpoint returns every assignment at once, so the list is paged here
+  // instead of rendering hundreds of rows down the page.
+  const [expanded, setExpanded] = useState(false);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [cancelling, setCancelling] = useState<WeeklyShiftAssignment | null>(
     null,
   );
@@ -194,6 +203,43 @@ function WeeklyShiftAssignmentsPanel({
     cancelling?.effectiveTo && cancelling.effectiveTo < cancelPeriodEnd
       ? cancelling.effectiveTo
       : cancelPeriodEnd;
+  const allAssignments = useMemo(
+    () => assignmentsQuery.data ?? [],
+    [assignmentsQuery.data],
+  );
+
+  const filteredAssignments = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+    if (!keyword) return allAssignments;
+    return allAssignments.filter((assignment) => {
+      const name = assignment.employee?.fullName?.toLowerCase() ?? "";
+      const code = assignment.employee?.employeeCode?.toLowerCase() ?? "";
+      return name.includes(keyword) || code.includes(keyword);
+    });
+  }, [allAssignments, search]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredAssignments.length / ASSIGNMENTS_PAGE_SIZE),
+  );
+  const currentPage = Math.min(page, totalPages);
+  const pagedAssignments = useMemo(
+    () =>
+      filteredAssignments.slice(
+        (currentPage - 1) * ASSIGNMENTS_PAGE_SIZE,
+        currentPage * ASSIGNMENTS_PAGE_SIZE,
+      ),
+    [filteredAssignments, currentPage],
+  );
+  const assignmentsMeta = {
+    page: currentPage,
+    pageSize: ASSIGNMENTS_PAGE_SIZE,
+    total: filteredAssignments.length,
+    totalPages,
+    hasNextPage: currentPage < totalPages,
+    hasPreviousPage: currentPage > 1,
+  };
+
   const cancelUnit = useMemo(
     () =>
       (unitsQuery.data ?? []).find((unit) => unit.id === cancelling?.unitId) ??
@@ -338,32 +384,60 @@ function WeeklyShiftAssignmentsPanel({
 
   return (
     <>
-      <Stack gap="xs">
-        <Group justify="space-between" align="center">
-          <Stack gap={1}>
-            <Title order={3} size="h5">
-              Lịch Ca tuần đã áp dụng
-            </Title>
-            <Text size="sm" c="dimmed">
-              Chỉ hiển thị lịch đã áp của mẫu “{template.name}”. Hủy theo khoảng
-              chỉ tách/xóa lịch Ca tuần trong kỳ, không xóa BCC hay ngoại lệ theo ngày.
-            </Text>
+      <SectionCard
+        title="Lịch Ca tuần đã áp dụng"
+        count={`${allAssignments.length} lịch`}
+        description={
+          expanded
+            ? `Chỉ hiển thị lịch đã áp của mẫu “${template.name}”. Hủy theo khoảng chỉ tách/xóa lịch Ca tuần trong kỳ, không xóa BCC hay ngoại lệ theo ngày.`
+            : undefined
+        }
+        actions={
+          <Button
+            size="xs"
+            variant={expanded ? "subtle" : "light"}
+            onClick={() => setExpanded((value) => !value)}
+            aria-expanded={expanded}
+          >
+            {expanded ? "Thu gọn" : "Xem danh sách"}
+          </Button>
+        }
+        flushHeader={!expanded}
+      >
+        {expanded && (
+          <Stack gap="xs" p="sm" pt={0}>
+            <TextInput
+              placeholder="Tìm theo tên hoặc mã nhân sự..."
+              leftSection={<IconSearch size={15} />}
+              value={search}
+              onChange={(event) => {
+                setSearch(event.currentTarget.value);
+                setPage(1);
+              }}
+              size="sm"
+              maw={320}
+            />
+            <DataTable
+              data={pagedAssignments}
+              columns={columns}
+              rowKey={(assignment) => assignment.id}
+              loading={assignmentsQuery.isLoading}
+              error={assignmentsQuery.error}
+              onRetry={() => void assignmentsQuery.refetch()}
+              meta={assignmentsMeta}
+              onPageChange={(nextPage) => setPage(nextPage)}
+              emptyTitle={
+                search ? "Không tìm thấy nhân sự" : "Mẫu này chưa được áp dụng"
+              }
+              emptyDescription={
+                search
+                  ? "Thử từ khóa khác hoặc xóa ô tìm kiếm."
+                  : "Áp ca tuần cho CBNV để tạo lịch có thể kiểm tra và hủy theo đúng khoảng hiệu lực."
+              }
+            />
           </Stack>
-          <Text size="sm" c="dimmed">
-            {(assignmentsQuery.data ?? []).length} lịch
-          </Text>
-        </Group>
-        <DataTable
-          data={assignmentsQuery.data ?? []}
-          columns={columns}
-          rowKey={(assignment) => assignment.id}
-          loading={assignmentsQuery.isLoading}
-          error={assignmentsQuery.error}
-          onRetry={() => void assignmentsQuery.refetch()}
-          emptyTitle="Mẫu này chưa được áp dụng"
-          emptyDescription="Áp ca tuần cho CBNV để tạo lịch có thể kiểm tra và hủy theo đúng khoảng hiệu lực."
-        />
-      </Stack>
+        )}
+      </SectionCard>
 
       <Modal
         opened={Boolean(cancelling)}

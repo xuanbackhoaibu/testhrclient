@@ -1,7 +1,7 @@
 .root {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: fit-content;
 }
 
@@ -9,50 +9,53 @@
   display: inline-flex;
   align-items: center;
   padding: 2px;
-  border: 1px solid #d8dee8;
-  border-radius: 10px;
-  background: #ffffff;
+  border: 1px solid light-dark(var(--mantine-color-gray-4), var(--mantine-color-dark-4));
+  border-radius: var(--mantine-radius-sm);
+  background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-6));
   flex-shrink: 0;
 }
 
 .modeToggle button {
-  height: 32px;
-  padding: 0 12px;
+  height: 30px;
+  padding: 0 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: calc(var(--mantine-radius-sm) - 2px);
   background: transparent;
-  color: #334155;
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
   font-size: 13px;
   font-weight: 600;
   line-height: 1;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
   white-space: nowrap;
 }
 
 .modeToggle button:hover:not(.active) {
-  background: #f1f3f5;
+  background: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-5));
+}
+
+.modeToggle button:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 1px;
 }
 
 .modeToggle button.active {
-  background: #1976d2;
-  color: #ffffff;
+  background: var(--mantine-primary-color-filled);
+  color: var(--mantine-color-white);
 }
 
 .rangeInputs {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .rangeSeparator {
-  color: #64748b;
-  font-size: 14px;
-  font-weight: 400;
+  color: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-2));
+  font-size: var(--mantine-font-size-sm);
   user-select: none;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .root {
     width: 100%;
@@ -62,25 +65,5 @@
   .rangeInputs {
     width: 100%;
     flex-wrap: wrap;
-  }
-}
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .modeToggle {
-    border-color: #495057;
-    background: #212529;
-  }
-
-  .modeToggle button {
-    color: #e9ecef;
-  }
-
-  .modeToggle button:hover:not(.active) {
-    background: #343a40;
-  }
-
-  .rangeSeparator {
-    color: #adb5bd;
   }
 }

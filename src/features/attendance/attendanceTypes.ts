@@ -40,10 +40,25 @@ export interface AttendanceDailyRecord {
   totalTime: string | null;
   totalMinutes: number | null;
   status: AttendanceStatusBiometric | null;
+  /**
+   * Ca đã dùng để ra `status`, chụp lại lúc đồng bộ. Null với ngày nghỉ, ngày
+   * lễ, nhân sự chưa phân ca, và với dữ liệu đồng bộ trước khi có 4 cột này.
+   */
+  shiftCode: string | null;
+  shiftStartTime: string | null;
+  shiftLateThresholdMinutes: number | null;
+  shiftSource: string | null;
   mappingStatus: MappingStatus;
   syncStatus: SyncStatusValue;
 }
 
+/**
+ * Totals for every record matching the current filter, computed by the backend
+ * over the whole result set rather than the page on screen.
+ *
+ * `mapped` already includes AUTO_MAPPED, and the backend reports no CONFLICT
+ * bucket, so both are optional here and only rendered when present.
+ */
 export interface AttendanceSummary {
   total: number;
   present: number;
@@ -52,9 +67,9 @@ export interface AttendanceSummary {
   singlePunch: number;
   unknown: number;
   mapped: number;
-  autoMapped: number;
   unmapped: number;
-  conflict: number;
+  autoMapped?: number;
+  conflict?: number;
 }
 
 // ─── Mapping Stats ────────────────────────────────────────────────────────────
@@ -148,9 +163,11 @@ export interface AttendanceSyncStatus {
   manualSync: SyncJobStatus;
 }
 
-export interface AttendanceSyncStatusResponse {
-  data: AttendanceSyncStatus;
-}
+/**
+ * `api.get` already unwraps the `{ success, data }` envelope, so the sync
+ * status endpoint resolves to the status object itself.
+ */
+export type AttendanceSyncStatusResponse = AttendanceSyncStatus;
 
 // ─── Sync Runs ───────────────────────────────────────────────────────────────
 

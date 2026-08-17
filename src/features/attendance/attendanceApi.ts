@@ -11,6 +11,7 @@ import type {
   AttendanceDailyRecord,
   AttendanceDailyRecordsResponse,
   AttendanceDailyFilterParams,
+  AttendanceSummary,
   AttendanceSyncStatusResponse,
   AttendanceSyncRunsResponse,
   SyncRunsFilterParams,
@@ -34,8 +35,18 @@ const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
 export async function listAttendanceDailyRecords(
   params: AttendanceDailyFilterParams = {},
 ): Promise<AttendanceDailyRecordsResponse> {
-  const response = await api.get<PaginatedData<AttendanceDailyRecord> & { summary?: unknown }>('/attendance/daily', { params });
-  return normalizePaginatedResponse<AttendanceDailyRecord>(response, params) as AttendanceDailyRecordsResponse;
+  const response = await api.get<
+    PaginatedData<AttendanceDailyRecord> & { summary?: AttendanceSummary }
+  >('/attendance/daily', { params });
+  const normalized = normalizePaginatedResponse<AttendanceDailyRecord>(
+    response,
+    params,
+  ) as AttendanceDailyRecordsResponse;
+
+  // normalizePaginatedResponse keeps only items/pagination, so carry the
+  // backend summary across: it covers every record matching the filter,
+  // not just the page being displayed.
+  return { ...normalized, summary: response?.summary };
 }
 
 export async function getAttendanceSyncStatus(): Promise<AttendanceSyncStatusResponse> {

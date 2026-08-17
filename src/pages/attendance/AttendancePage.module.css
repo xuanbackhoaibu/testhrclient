@@ -1,10 +1,16 @@
 .tableCard {
-  border-radius: 14px;
+  border-radius: var(--mantine-radius-md);
   overflow: hidden;
+  /*
+   * Lets the table's ScrollArea take over horizontal scrolling. Without this
+   * the flex/grid parent sizes to the table's min-width and pushes the whole
+   * page sideways on narrower screens.
+   */
+  min-width: 0;
 }
 
 .dateCell {
-  fontVariantNumeric: tabular-nums;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -21,55 +27,64 @@
 .numericCell {
   font-variant-numeric: tabular-nums;
   text-align: right;
-  padding-right: 8px !important;
+  padding-right: 8px;
 }
 
-/* Table header styling */
-:global(.data-table-heading) {
-  font-size: 12px !important;
-  font-weight: 700 !important;
-  color: #475569 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.02em !important;
-  white-space: nowrap !important;
-  background: #f8fafc !important;
+/*
+ * Table chrome. Scoped to this page's card so other DataTable screens keep
+ * their own styling; theming goes through Mantine tokens so the app's colour
+ * scheme toggle works (prefers-color-scheme alone ignored an explicit choice).
+ */
+.tableCard :global(.data-table-heading) {
+  font-size: 12px;
+  font-weight: 700;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-1));
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
   height: 44px;
-  padding: 0 16px !important;
-  border-bottom: 1px solid #e5e7eb !important;
+  padding: 0 16px;
+  border-bottom: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
 }
 
-/* Table row styling */
-:global(.data-table-shell tr) {
+.tableCard :global(.data-table-shell tr) {
   height: 46px;
 }
 
-:global(.data-table-shell td) {
-  padding: 0 16px !important;
-  vertical-align: middle !important;
-  font-size: 14px;
-  color: #111827;
-  border-bottom: 1px solid #edf0f4;
+.tableCard :global(.data-table-shell td) {
+  padding: 0 16px;
+  vertical-align: middle;
+  font-size: var(--mantine-font-size-sm);
+  color: light-dark(var(--mantine-color-gray-9), var(--mantine-color-dark-0));
+  border-bottom: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5));
 }
 
-/* Hover effect */
-:global(.data-table-shell tbody tr:hover td) {
-  background: #f8fbff !important;
+.tableCard :global(.data-table-shell tbody tr:last-of-type td) {
+  border-bottom: none;
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  :global(.data-table-heading) {
-    color: #e9ecef !important;
-    background: #212529 !important;
-    border-bottom-color: #495057 !important;
-  }
+.tableCard :global(.data-table-shell tbody tr:hover td) {
+  background: light-dark(var(--mantine-color-blue-0), var(--mantine-color-dark-5));
+}
 
-  :global(.data-table-shell td) {
-    color: #e9ecef;
-    border-bottom-color: #343a40;
-  }
+/*
+ * Status and mapping badges sit in narrow columns; Mantine truncates the label
+ * to an ellipsis when the badge inherits the cell width. Let them size to their
+ * own text instead so "Chưa map" reads in full.
+ */
+.badgeCell {
+  display: flex;
+  justify-content: center;
+}
 
-  :global(.data-table-shell tbody tr:hover td) {
-    background: #2a2d30 !important;
-  }
+.badgeCell :global(.mantine-Badge-root) {
+  max-width: none;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.badgeCell :global(.mantine-Badge-label) {
+  overflow: visible;
+  text-overflow: clip;
 }

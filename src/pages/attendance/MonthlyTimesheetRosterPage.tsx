@@ -1,14 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  Alert,
   Badge,
   Button,
   Checkbox,
   Group,
   Paper,
   Select,
-  SimpleGrid,
   Stack,
   Text,
   TextInput,
@@ -18,10 +16,8 @@ import {
   IconAlertTriangle,
   IconCalendarTime,
   IconExternalLink,
-  IconInfoCircle,
   IconSearch,
   IconUserCheck,
-  IconUsers,
 } from "@tabler/icons-react";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
@@ -43,6 +39,9 @@ import {
 } from "../../shared/components/DataTable";
 import { HrmDateInput } from "../../shared/components/HrmDateInput";
 import { PageHeader } from "../../shared/components/PageHeader";
+import { InfoBanner } from "../../shared/components/InfoBanner";
+import { FilterBar } from "../../shared/components/FilterBar";
+import filterStyles from "../../shared/components/FilterBar.module.css";
 import { useImeSafeSearch } from "../../shared/hooks/useImeSafeSearch";
 import { ROUTES } from "../../shared/constants/routes";
 import { formatDate } from "../../shared/utils/date";
@@ -436,7 +435,8 @@ export function MonthlyTimesheetRosterPage() {
       {
         key: "attendanceFrom",
         header: "Từ tính công",
-        minWidth: 150,
+        // Fits dd/mm/yyyy plus the clear and calendar buttons.
+        minWidth: 172,
         render: (row) => {
           const draft = drafts[row.employeeId] ?? createDraft(row);
           return (
@@ -457,7 +457,7 @@ export function MonthlyTimesheetRosterPage() {
       {
         key: "attendanceTo",
         header: "Đến ngày",
-        minWidth: 150,
+        minWidth: 172,
         render: (row) => {
           const draft = drafts[row.employeeId] ?? createDraft(row);
           return (
@@ -527,84 +527,86 @@ export function MonthlyTimesheetRosterPage() {
       />
 
       <Stack gap="md">
-        <Paper withBorder p="md" radius="md">
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 5 }} spacing="sm">
-            <Select
-              label="Kỳ công"
-              data={monthOptions}
-              value={String(month)}
-              allowDeselect={false}
-              onChange={(value) => setMonth(Number(value ?? month))}
-            />
-            <Select
-              label="Năm"
-              data={yearOptions}
-              value={String(year)}
-              allowDeselect={false}
-              onChange={(value) => setYear(Number(value ?? year))}
-            />
-            <Select
-              label="Đơn vị"
-              placeholder="Chọn đơn vị"
-              data={unitOptions}
-              value={selectedUnitId}
-              searchable
-              disabled={unitsQuery.isLoading}
-              onChange={(value) => {
-                setRequestedUnitId(value);
-                setDepartmentId(null);
-              }}
-            />
-            <Select
-              label="Phòng ban"
-              placeholder="Tất cả phòng ban"
-              data={departmentOptions}
-              value={departmentId}
-              clearable
-              searchable
-              disabled={!selectedUnitId || departmentsQuery.isLoading}
-              onChange={setDepartmentId}
-            />
-            <TextInput
-              label="Tìm nhân sự"
-              placeholder="Tên, MCB hoặc mã nhân sự"
-              rightSection={<IconSearch size={16} />}
-              {...searchInput.inputProps}
-            />
-          </SimpleGrid>
-        </Paper>
+        <FilterBar>
+          <Select
+            aria-label="Kỳ công"
+            data={monthOptions}
+            value={String(month)}
+            allowDeselect={false}
+            onChange={(value) => setMonth(Number(value ?? month))}
+            size="sm"
+            className={filterStyles.field}
+          />
+          <Select
+            aria-label="Năm"
+            data={yearOptions}
+            value={String(year)}
+            allowDeselect={false}
+            onChange={(value) => setYear(Number(value ?? year))}
+            size="sm"
+            className={filterStyles.field}
+          />
+          <Select
+            aria-label="Đơn vị"
+            placeholder="Chọn đơn vị"
+            data={unitOptions}
+            value={selectedUnitId}
+            searchable
+            disabled={unitsQuery.isLoading}
+            onChange={(value) => {
+              setRequestedUnitId(value);
+              setDepartmentId(null);
+            }}
+            size="sm"
+            className={filterStyles.fieldWide}
+          />
+          <Select
+            aria-label="Phòng ban"
+            placeholder="Tất cả phòng ban"
+            data={departmentOptions}
+            value={departmentId}
+            clearable
+            searchable
+            disabled={!selectedUnitId || departmentsQuery.isLoading}
+            onChange={setDepartmentId}
+            size="sm"
+            className={filterStyles.fieldWide}
+          />
+          <TextInput
+            aria-label="Tìm nhân sự"
+            placeholder="Tên, MCB hoặc mã nhân sự"
+            leftSection={<IconSearch size={15} />}
+            {...searchInput.inputProps}
+            size="sm"
+            className={filterStyles.grow}
+          />
+        </FilterBar>
 
         {!selectedUnitId ? (
-          <Alert color="blue" icon={<IconInfoCircle size={18} />}>
+          <InfoBanner>
             Chọn đơn vị để lập danh sách sắp ca tháng và đưa CBNV vào BCC.
-          </Alert>
+          </InfoBanner>
         ) : null}
 
         {selectedUnitId && !rosterQuery.isLoading && !roster ? (
-          <Alert
-            color="blue"
-            title="Chưa khởi tạo bảng sắp ca"
-            icon={<IconUsers size={18} />}
-          >
-            <Stack gap="sm">
-              <Text size="sm">
+          <InfoBanner tone="warning" title="Chưa khởi tạo bảng sắp ca">
+            <Stack gap="sm" align="flex-start">
+              <Text size="sm" inherit>
                 Danh sách dưới đây chỉ là dữ liệu xem trước. Khởi tạo để lưu
                 snapshot CBNV, ngày vào làm và ngày nghỉ việc cho kỳ này.
               </Text>
               {canEdit ? (
-                <Group>
-                  <Button
-                    size="sm"
-                    leftSection={<IconUserCheck size={16} />}
-                    loading={initializeRoster.isPending}
-                    onClick={() => void handleInitialize()}
-                  >
-                    Khởi tạo bảng sắp ca
-                  </Button>
-                </Group>
+                <Button
+                  size="xs"
+                  leftSection={<IconUserCheck size={15} />}
+                  loading={initializeRoster.isPending}
+                  onClick={() => void handleInitialize()}
+                >
+                  Khởi tạo bảng sắp ca
+                </Button>
               ) : null}
             </Stack>
-          </Alert>
+          </InfoBanner>
         ) : null}
 
         {selectedUnitId && roster ? (

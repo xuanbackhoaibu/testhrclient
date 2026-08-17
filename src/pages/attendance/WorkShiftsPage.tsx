@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
@@ -10,13 +10,14 @@ import {
   Modal,
   NumberInput,
   Select,
-  SimpleGrid,
   Stack,
   Switch,
   Text,
   TextInput,
   Textarea,
   Title,
+  Tooltip,
+  UnstyledButton,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
@@ -43,6 +44,11 @@ import {
   sortWorkShiftCatalog,
 } from "../../features/attendance/workShiftCatalogOrder";
 import { buildShiftAssignmentUrl } from "../../features/attendance/shiftAssignmentNavigation";
+import { addMinutesToTime } from "../../features/attendance/shiftTime";
+import {
+  computeShiftWorkingMinutes,
+  formatWorkingMinutes,
+} from "../../features/attendance/shiftDuration";
 import {
   WEEKDAY_LABELS,
   type WorkShift,
@@ -52,6 +58,9 @@ import {
   type DataTableColumn,
 } from "../../shared/components/DataTable";
 import { PageHeader } from "../../shared/components/PageHeader";
+import { InfoBanner } from "../../shared/components/InfoBanner";
+import { TimeField } from "../../shared/components/TimeField";
+import formStyles from "./components/WorkShiftForm.module.css";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 
@@ -97,14 +106,6 @@ function isOvernightShift(startTime: string, endTime: string): boolean {
   return startTime >= endTime;
 }
 
-function formatWindow(
-  open: string | null | undefined,
-  scheduled: string,
-  close: string | null | undefined,
-) {
-  return `${open ?? "—"} → ${scheduled} → ${close ?? "—"}`;
-}
-
 function formatWorkingDuration(minutes: number): string {
   const hours = minutes / 60;
   return Number.isInteger(hours) ? `${hours} giờ` : `${minutes} phút`;
@@ -137,6 +138,7 @@ export function WorkShiftsPage() {
   const canEdit = can(HR_PERMISSIONS.ATTENDANCE_UPDATE);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [editing, setEditing] = useState<WorkShift | null>(null);
   const [deleting, setDeleting] = useState<WorkShift | null>(null);
 
@@ -201,9 +203,54 @@ export function WorkShiftsPage() {
     [shiftsQuery.data],
   );
 
+  // Working minutes implied by the times on screen, so HR sees the result
+  // before saving instead of multiplying hours by 60 themselves.
+  const computedMinutes = computeShiftWorkingMinutes({
+    startTime: form.values.startTime,
+    endTime: form.values.endTime,
+    breakStart: form.values.breakStart,
+    breakEnd: form.values.breakEnd,
+    breakDeducted: form.values.breakDeducted,
+  });
+  const standardMinutesAuto =
+    computedMinutes !== null && computedMinutes === form.values.standardMinutes;
+
+  // Keep the standard-minutes field in step with the times while HR has not
+  // overridden it. Editing an existing shift starts from the stored value, so
+  // the ref only unlocks once the times actually change in this session.
+  const lastAutoMinutes = useRef<number | null>(null);
+  useEffect(() => {
+    if (computedMinutes === null) return;
+    const current = form.values.standardMinutes;
+    const untouched =
+      lastAutoMinutes.current === null || current === lastAutoMinutes.current;
+    if (untouched && current !== computedMinutes) {
+      form.setFieldValue("standardMinutes", computedMinutes);
+    }
+    lastAutoMinutes.current = computedMinutes;
+    // form identity is stable across renders in Mantine's useForm
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [computedMinutes]);
+
+  // handleSubmit derives the late threshold from the check-in window when one
+  // is set, so the preview must show the same figure the shift will use.
+  const checkInWindow = form.values.checkInEnd
+    ? minutesBetween(form.values.startTime, form.values.checkInEnd)
+    : null;
+  const effectiveLateMinutes =
+    checkInWindow !== null && checkInWindow >= 0
+      ? checkInWindow
+      : form.values.lateThresholdMinutes;
+  const effectiveLateAt = addMinutesToTime(
+    form.values.startTime,
+    effectiveLateMinutes,
+  );
+
   function openCreate() {
     setEditing(null);
     form.setValues(emptyForm);
+    lastAutoMinutes.current = emptyForm.standardMinutes;
+    setAdvancedOpen(false);
     setDrawerOpen(true);
   }
 
@@ -230,6 +277,16 @@ export function WorkShiftsPage() {
         note: shift.note ?? "",
         status: shift.status,
       });
+      // Treat the stored value as HR's own until the times change.
+      lastAutoMinutes.current = shift.standardMinutes;
+      setAdvancedOpen(
+        Boolean(
+          shift.checkInStart ||
+            shift.checkInEnd ||
+            shift.checkOutStart ||
+            shift.checkOutEnd,
+        ),
+      );
       setDrawerOpen(true);
     },
     [form],
@@ -381,35 +438,44 @@ export function WorkShiftsPage() {
         render: (record) => record.groupName ?? "—",
       },
       {
-        key: "checkIn",
-        header: "Khung check-in",
-        minWidth: 200,
-        render: (record) =>
-          formatWindow(
-            record.checkInStart,
-            record.startTime,
-            record.checkInEnd,
-          ),
+        key: "hours",
+        header: "Giờ ca",
+        minWidth: 168,
+        render: (record) => (
+          <Stack gap={2}>
+            <Text size="sm" fw={500} style={{ fontVariantNumeric: "tabular-nums" }}>
+              {record.startTime} – {record.endTime}
+            </Text>
+            <Text size="xs" c="dimmed">
+              {record.breakStart && record.breakEnd
+                ? `Nghỉ ${record.breakStart}–${record.breakEnd}${record.breakDeducted ? " (trừ)" : ""}`
+                : "Không nghỉ giữa ca"}
+            </Text>
+          </Stack>
+        ),
       },
       {
-        key: "break",
-        header: "Nghỉ giữa ca",
-        minWidth: 170,
-        render: (record) =>
-          record.breakStart && record.breakEnd
-            ? `${record.breakStart} – ${record.breakEnd}${record.breakDeducted ? " (trừ)" : " (không trừ)"}`
-            : "Không",
-      },
-      {
-        key: "checkOut",
-        header: "Khung check-out",
-        minWidth: 210,
-        render: (record) =>
-          formatWindow(
-            record.checkOutStart,
-            record.endTime,
-            record.checkOutEnd,
-          ),
+        // The figure that decides whether a punch counts as late.
+        key: "lateThreshold",
+        header: "Ngưỡng muộn",
+        width: 128,
+        align: "center",
+        render: (record) => (
+          <Tooltip
+            label={`Vào sau ${addMinutesToTime(record.startTime, record.lateThresholdMinutes)} mới bị đánh dấu đi muộn.`}
+            withArrow
+            openDelay={200}
+          >
+            <Stack gap={0} align="center">
+              <Text size="sm" fw={500} style={{ fontVariantNumeric: "tabular-nums" }}>
+                {record.lateThresholdMinutes} phút
+              </Text>
+              <Text size="xs" c="dimmed" style={{ fontVariantNumeric: "tabular-nums" }}>
+                sau {addMinutesToTime(record.startTime, record.lateThresholdMinutes)}
+              </Text>
+            </Stack>
+          </Tooltip>
+        ),
       },
       {
         key: "work",
@@ -482,27 +548,19 @@ export function WorkShiftsPage() {
         }
       />
 
-      <Stack gap="lg">
-        <Alert
-          icon={<IconInfoCircle size={18} />}
-          color="blue"
-          variant="light"
+      <Stack gap="sm">
+        <InfoBanner
           title="Quy tắc chấm công: quá ngưỡng ca mới tính đi muộn"
+          collapsible
         >
           Mốc check-in/check-out ở giữa là giờ chuẩn của ca. Nếu nhập mốc đóng
           check-in hoặc mở check-out, hệ thống tự dùng chênh lệch đó làm ngưỡng
           đánh dấu đi muộn/về sớm; hiện chỉ ghi nhận, <b>chưa trừ công</b>.
-        </Alert>
-
-        <Alert
-          color="orange"
-          variant="light"
-          icon={<IconInfoCircle size={18} />}
-        >
+          <br />
           Ca kết thúc sang ngày hôm sau được lưu để quản lý danh mục, nhưng chưa
           thể phân ca: bộ tính công hiện tại chỉ xử lý một ngày. Các ca này được
           đánh dấu tạm ngưng để không chấm công sai.
-        </Alert>
+        </InfoBanner>
 
         <DataTable
           data={orderedShifts}
@@ -600,115 +658,154 @@ export function WorkShiftsPage() {
       >
         <form onSubmit={form.onSubmit((values) => void handleSubmit(values))}>
           <Stack gap="sm">
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <div className={formStyles.row} data-cols="2">
               <TextInput
                 label="Mã ca"
                 placeholder="HC1"
+                description="Chữ in hoa, không dấu. Không sửa được sau khi tạo."
                 withAsterisk
                 disabled={Boolean(editing)}
                 {...form.getInputProps("code")}
               />
               <TextInput
-                label="Loại ca"
+                label="Tên ca"
                 placeholder="Ca hành chính vào 7h30"
+                description="Tên hiển thị trên bảng công và khi phân ca."
                 withAsterisk
                 {...form.getInputProps("name")}
               />
+            </div>
+
+            <div className={formStyles.row} data-cols="2">
               <TextInput
-                label="Nhóm"
+                label="Nhóm ca"
                 placeholder="Hành chính / Nhà máy"
+                description="Dùng để gom nhóm trong danh sách. Có thể bỏ trống."
                 {...form.getInputProps("groupName")}
               />
-            </SimpleGrid>
+              <div />
+            </div>
 
-            <Text size="sm" fw={600} mt="xs">
-              Bắt đầu ca làm việc
-            </Text>
-            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
-              <TextInput
-                label="Bắt đầu check-in"
-                placeholder="07:00"
-                {...form.getInputProps("checkInStart")}
-              />
-              <TextInput
-                label="Giờ check-in"
-                placeholder="07:30"
+            <div className={formStyles.section}>
+              <div className={formStyles.sectionTitle}>Giờ làm việc</div>
+              <p className={formStyles.sectionHint}>
+                Giờ nhân viên phải có mặt và được tan ca.
+              </p>
+            </div>
+
+            <div className={formStyles.row} data-cols="2">
+              <TimeField
+                label="Giờ vào ca"
                 withAsterisk
-                {...form.getInputProps("startTime")}
+                value={form.values.startTime}
+                onChange={(value) => form.setFieldValue("startTime", value)}
+                error={form.errors.startTime}
               />
-              <TextInput
-                label="Kết thúc check-in"
-                placeholder="07:40"
-                {...form.getInputProps("checkInEnd")}
-              />
-            </SimpleGrid>
-
-            <Text size="sm" fw={600} mt="xs">
-              Kết thúc ca làm việc
-            </Text>
-            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
-              <TextInput
-                label="Bắt đầu check-out"
-                placeholder="16:50"
-                {...form.getInputProps("checkOutStart")}
-              />
-              <TextInput
-                label="Giờ check-out"
-                placeholder="17:00"
+              <TimeField
+                label="Giờ tan ca"
                 withAsterisk
-                {...form.getInputProps("endTime")}
+                value={form.values.endTime}
+                onChange={(value) => form.setFieldValue("endTime", value)}
+                error={form.errors.endTime}
               />
-              <TextInput
-                label="Kết thúc check-out"
-                placeholder="17:10"
-                {...form.getInputProps("checkOutEnd")}
-              />
-            </SimpleGrid>
+            </div>
 
-            {isOvernightShift(form.values.startTime, form.values.endTime) ? (
-              <Alert
-                color="orange"
-                variant="light"
-                icon={<IconInfoCircle size={18} />}
-              >
-                Đây là ca qua ngày. Ca vẫn được lưu vào danh mục, nhưng chưa thể
-                kích hoạt hoặc phân ca cho tới khi bộ tính công hỗ trợ log của
-                ngày kế tiếp.
-              </Alert>
-            ) : null}
+            <div className={formStyles.section}>
+              <div className={formStyles.sectionTitle}>Nghỉ giữa ca</div>
+              <p className={formStyles.sectionHint}>
+                Bỏ trống nếu ca không có giờ nghỉ, ví dụ ca sáng thứ 7.
+              </p>
+            </div>
 
-            <Text size="sm" fw={600} mt="xs">
-              Nghỉ giữa ca
-            </Text>
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-              <TextInput
+            <div className={formStyles.row} data-cols="2">
+              <TimeField
                 label="Bắt đầu nghỉ"
-                placeholder="12:00"
-                {...form.getInputProps("breakStart")}
+                value={form.values.breakStart}
+                onChange={(value) => form.setFieldValue("breakStart", value)}
+                error={form.errors.breakStart}
               />
-              <TextInput
+              <TimeField
                 label="Kết thúc nghỉ"
-                placeholder="13:00"
-                {...form.getInputProps("breakEnd")}
+                value={form.values.breakEnd}
+                onChange={(value) => form.setFieldValue("breakEnd", value)}
+                error={form.errors.breakEnd}
               />
-            </SimpleGrid>
+            </div>
 
             <Switch
-              label="Nghỉ trưa bị trừ vào giờ làm"
+              label="Trừ giờ nghỉ khỏi giờ công"
+              description="Tắt nếu công ty vẫn tính công cho giờ nghỉ."
               {...form.getInputProps("breakDeducted", { type: "checkbox" })}
             />
 
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            {/* Shows what the entered times add up to, before saving. */}
+            <div
+              className={formStyles.preview}
+              data-tone={computedMinutes === null ? "pending" : undefined}
+            >
+              {computedMinutes === null ? (
+                <span className={formStyles.previewLabel}>
+                  {isOvernightShift(form.values.startTime, form.values.endTime)
+                    ? "Ca qua ngày — hệ thống chưa tính được giờ công."
+                    : "Nhập giờ vào ca và giờ tan ca để xem giờ công."}
+                </span>
+              ) : (
+                <>
+                  <span className={formStyles.previewItem}>
+                    <span className={formStyles.previewLabel}>Giờ công mỗi ngày</span>
+                    <span className={formStyles.previewValue}>
+                      {formatWorkingMinutes(computedMinutes)}
+                    </span>
+                  </span>
+                  <span className={formStyles.previewItem}>
+                    <span className={formStyles.previewLabel}>Tính đi muộn khi vào sau</span>
+                    <span className={formStyles.previewValue}>{effectiveLateAt}</span>
+                  </span>
+                  <span className={formStyles.previewItem}>
+                    <span className={formStyles.previewLabel}>Số công</span>
+                    <span className={formStyles.previewValue}>
+                      {form.values.dayValue}
+                    </span>
+                  </span>
+                </>
+              )}
+            </div>
+
+            {isOvernightShift(form.values.startTime, form.values.endTime) ? (
+              <InfoBanner tone="warning" title="Ca kết thúc sang ngày hôm sau">
+                Ca vẫn được lưu vào danh mục, nhưng chưa thể kích hoạt hoặc phân
+                ca cho tới khi bộ tính công hỗ trợ log của ngày kế tiếp.
+              </InfoBanner>
+            ) : null}
+
+            <div className={formStyles.section}>
+              <div className={formStyles.sectionTitle}>Quy tắc chấm công</div>
+              <p className={formStyles.sectionHint}>
+                Chỉ đánh dấu để HR rà soát, hệ thống chưa tự trừ công.
+              </p>
+            </div>
+
+            <div className={formStyles.row} data-cols="2">
               <NumberInput
-                label="Số phút công chuẩn"
-                withAsterisk
-                min={1}
-                max={1440}
-                {...form.getInputProps("standardMinutes")}
+                label="Đi muộn quá (phút)"
+                description="Vào trong khoảng này vẫn coi là đúng giờ."
+                min={0}
+                max={240}
+                {...form.getInputProps("lateThresholdMinutes")}
               />
               <NumberInput
+                label="Về sớm quá (phút)"
+                description="Về trong khoảng này vẫn coi là đủ giờ."
+                min={0}
+                max={240}
+                {...form.getInputProps("earlyLeaveThresholdMinutes")}
+              />
+            </div>
+
+            <div className={formStyles.row} data-cols="2">
+              <NumberInput
                 label="Số công của ca"
-                description="Thứ 7 làm 4 tiếng vẫn để 1 — tính cả ngày công"
+                description="Thứ 7 làm 4 tiếng vẫn để 1 nếu tính đủ ngày công."
                 min={0}
                 max={3}
                 step={0.5}
@@ -716,22 +813,72 @@ export function WorkShiftsPage() {
                 {...form.getInputProps("dayValue")}
               />
               <NumberInput
-                label="Ngưỡng đánh dấu đi muộn (phút)"
-                description="Mặc định 10; chỉ quá ngưỡng mới bị đánh dấu, chưa trừ công"
-                min={0}
-                max={240}
-                {...form.getInputProps("lateThresholdMinutes")}
+                label="Giờ công chuẩn (phút)"
+                description={
+                  standardMinutesAuto
+                    ? "Hệ thống tự tính từ giờ ca."
+                    : "Đang nhập tay, khác với giờ ca."
+                }
+                min={1}
+                max={1440}
+                {...form.getInputProps("standardMinutes")}
               />
-              <NumberInput
-                label="Ngưỡng đánh dấu về sớm (phút)"
-                min={0}
-                max={240}
-                {...form.getInputProps("earlyLeaveThresholdMinutes")}
-              />
-            </SimpleGrid>
+            </div>
+
+            <div className={formStyles.advanced}>
+              <UnstyledButton
+                className={formStyles.advancedToggle}
+                onClick={() => setAdvancedOpen((value) => !value)}
+                aria-expanded={advancedOpen}
+              >
+                {advancedOpen ? "Ẩn" : "Mở"} thiết lập nâng cao — khẩu độ máy chấm công
+              </UnstyledButton>
+
+              {advancedOpen ? (
+                <Stack gap="sm" mt="sm">
+                  <Text size="xs" c="dimmed">
+                    Khoảng thời gian máy chấm công nhận dữ liệu. Bỏ trống nếu
+                    không giới hạn. Lưu ý: nếu điền “Đóng nhận vào ca”, hệ thống
+                    lấy khoảng từ giờ vào ca tới mốc đó làm ngưỡng đi muộn, thay
+                    cho ô “Đi muộn quá (phút)” ở trên.
+                  </Text>
+
+                  <div className={formStyles.row} data-cols="2">
+                    <TimeField
+                      label="Mở nhận vào ca"
+                      value={form.values.checkInStart}
+                      onChange={(value) => form.setFieldValue("checkInStart", value)}
+                      error={form.errors.checkInStart}
+                    />
+                    <TimeField
+                      label="Đóng nhận vào ca"
+                      value={form.values.checkInEnd}
+                      onChange={(value) => form.setFieldValue("checkInEnd", value)}
+                      error={form.errors.checkInEnd}
+                    />
+                  </div>
+
+                  <div className={formStyles.row} data-cols="2">
+                    <TimeField
+                      label="Mở nhận tan ca"
+                      value={form.values.checkOutStart}
+                      onChange={(value) => form.setFieldValue("checkOutStart", value)}
+                      error={form.errors.checkOutStart}
+                    />
+                    <TimeField
+                      label="Đóng nhận tan ca"
+                      value={form.values.checkOutEnd}
+                      onChange={(value) => form.setFieldValue("checkOutEnd", value)}
+                      error={form.errors.checkOutEnd}
+                    />
+                  </div>
+                </Stack>
+              ) : null}
+            </div>
 
             <Textarea
               label="Ghi chú"
+              placeholder="Ví dụ: áp dụng cho khối văn phòng từ tháng 9."
               minRows={2}
               {...form.getInputProps("note")}
             />
@@ -747,7 +894,7 @@ export function WorkShiftsPage() {
               />
             ) : null}
 
-            <Group justify="flex-end" mt="md">
+            <div className={formStyles.footer}>
               <Button variant="default" onClick={() => setDrawerOpen(false)}>
                 Hủy
               </Button>
@@ -756,9 +903,9 @@ export function WorkShiftsPage() {
                 loading={createShift.isPending || updateShift.isPending}
                 disabled={!canEdit}
               >
-                Lưu
+                {editing ? "Lưu thay đổi" : "Tạo ca"}
               </Button>
-            </Group>
+            </div>
           </Stack>
         </form>
       </Drawer>

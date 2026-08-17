@@ -1,0 +1,15 @@
+/*
+ * Mantine caps a Badge at its container width and truncates the label, which
+ * turned "Đang dùng" into "ĐANG D…" inside narrow table cells. Status text is
+ * short by design, so let the badge size to its own content instead.
+ */
+.badge {
+  max-width: none;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.badge :global(.mantine-Badge-label) {
+  overflow: visible;
+  text-overflow: clip;
+}
