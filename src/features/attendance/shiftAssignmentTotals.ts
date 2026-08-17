@@ -1,3 +1,4 @@
+import { summarizeShiftPayroll } from './shiftPayrollCatalog';
 import type {
   ShiftAssignmentGridDay,
   ShiftAssignmentGridRow,
@@ -6,18 +7,28 @@ import type {
 /**
  * Tổng kết một dòng phân ca trong tháng.
  *
- * LƯU Ý PHẠM VI: đây là tổng của **lịch đã phân**, không phải công thực tế.
- * Bảng phân ca chỉ giữ ca được gán cho từng ngày; nó không có ký hiệu chấm công
- * (P, L, NB, VR…) nên không thể dựng đủ 6 cột như mẫu Excel BCC. Các cột nghỉ
- * phép / nghỉ bù / nghỉ việc riêng chỉ có sau khi CBNV vào BCC và có dữ liệu
- * chấm công — chúng nằm ở Bảng công tháng (bccSummary.ts + TimesheetGridPage).
+ * Sáu cột đầu là 6 cột của bảng chấm công mẫu, quy ra SỐ CÔNG theo danh mục
+ * 'Ca làm việc' (xem shiftPayrollCatalog.ts): ca vận hành 12 giờ là 1.5 công, ca
+ * 24 giờ là 3 công, ca nửa ngày S1 vừa cho 0.5 công làm việc vừa cho 0.5 công
+ * nghỉ phép. Nhờ mã nghỉ có công làm việc bằng 0 nên totalDays không cộng trùng.
  *
- * Ngoài ra API grid hiện chỉ trả { id, code, name } cho mỗi ca, không có
- * dayValue, nên "ngày có ca" đếm theo số ngày chứ không quy ra số công: một ca
- * 24 giờ (dayValue 3) vẫn tính là 1 ngày. Muốn cột này ra đúng số công thì phải
- * bổ sung dayValue vào payload phía API trước.
+ * Các cột sau đó là thông tin riêng của bảng phân ca (không có trong mẫu):
+ * ngày còn thiếu ca, ngày nghỉ theo lịch, ngày ngoài khoảng tính công — đây là
+ * phần giúp HR thấy việc phân ca còn hở chỗ nào.
  */
 export interface ShiftAssignmentRowTotals {
+  /** (1) Công làm việc thực tế, quy theo số công của ca. */
+  workDays: number;
+  /** (2) Nghỉ lễ. */
+  publicHolidayDays: number;
+  /** (3) Nghỉ phép. */
+  annualLeaveDays: number;
+  /** (4) Nghỉ việc riêng. */
+  personalLeaveDays: number;
+  /** (5) Nghỉ bù. */
+  compensatoryLeaveDays: number;
+  /** (6) = (1)+(2)+(3)+(4)+(5). */
+  totalDays: number;
   /** Số ngày đã có ca trong khoảng tính công. */
   assignedDays: number;
   /** Ngày lịch công cho làm việc nhưng chưa phân ca — phần việc còn thiếu. */
@@ -35,43 +46,84 @@ function isHoliday(day: ShiftAssignmentGridDay): boolean {
 }
 
 /**
- * Phân loại mỗi ngày vào đúng một nhóm, để các cột cộng lại bằng số ngày trong
- * tháng thay vì đếm trùng.
+ * Sáu cột công tính từ mã ca đã phân; các cột đếm ngày phân loại mỗi ngày vào
+ * đúng một nhóm nên chúng cộng lại bằng số ngày trong tháng.
  */
 export function summarizeAssignmentRow(
   days: readonly ShiftAssignmentGridDay[],
 ): ShiftAssignmentRowTotals {
-  const totals: ShiftAssignmentRowTotals = {
-    assignedDays: 0,
-    unassignedWorkingDays: 0,
-    offDays: 0,
-    holidayDays: 0,
-    outOfWindowDays: 0,
-  };
+  let assignedDays = 0;
+  let unassignedWorkingDays = 0;
+  let offDays = 0;
+  let holidayDays = 0;
+  let outOfWindowDays = 0;
+  const codes: (string | null)[] = [];
 
   for (const day of days) {
     // Ngoài khoảng tính công thì không quy được về ca hay nghỉ.
     if (!day.inAttendanceWindow) {
-      totals.outOfWindowDays += 1;
+      outOfWindowDays += 1;
       continue;
     }
-    // Ngày lễ tách riêng: có phân ca hay không vẫn là ngày lễ.
-    if (isHoliday(day)) {
-      totals.holidayDays += 1;
-      continue;
-    }
+    // Ca đã phân vẫn tính công kể cả trên ngày lễ: mã ca là căn cứ tính, còn
+    // cột "Ngày lễ" bên dưới chỉ để HR đối chiếu lịch.
     if (day.shift) {
-      totals.assignedDays += 1;
+      codes.push(day.shift.code);
+      assignedDays += 1;
+    }
+    if (isHoliday(day)) {
+      holidayDays += 1;
       continue;
     }
+    if (day.shift) continue;
     if (day.isWorkingDay || day.calendarIsWorkingDay) {
-      totals.unassignedWorkingDays += 1;
+      unassignedWorkingDays += 1;
       continue;
     }
-    totals.offDays += 1;
+    offDays += 1;
   }
 
-  return totals;
+  const payroll = summarizeShiftPayroll(codes);
+
+  return {
+    ...payroll,
+    assignedDays,
+    unassignedWorkingDays,
+    offDays,
+    holidayDays,
+    outOfWindowDays,
+  };
+}
+
+const EMPTY_TOTALS: ShiftAssignmentRowTotals = {
+  workDays: 0,
+  publicHolidayDays: 0,
+  annualLeaveDays: 0,
+  personalLeaveDays: 0,
+  compensatoryLeaveDays: 0,
+  totalDays: 0,
+  assignedDays: 0,
+  unassignedWorkingDays: 0,
+  offDays: 0,
+  holidayDays: 0,
+  outOfWindowDays: 0,
+};
+
+/** Cộng các dòng lại cho dòng "Tổng cộng" dưới bảng. */
+export function sumAssignmentTotals(
+  rows: readonly ShiftAssignmentRowTotals[],
+): ShiftAssignmentRowTotals {
+  const sum = { ...EMPTY_TOTALS };
+  for (const row of rows) {
+    for (const key of Object.keys(EMPTY_TOTALS) as (keyof ShiftAssignmentRowTotals)[]) {
+      sum[key] += row[key];
+    }
+  }
+  // Công là bội của 0.5; cộng dồn nhiều dòng dễ để lại đuôi dấu phẩy động.
+  for (const key of Object.keys(EMPTY_TOTALS) as (keyof ShiftAssignmentRowTotals)[]) {
+    sum[key] = Math.round(sum[key] * 2) / 2;
+  }
+  return sum;
 }
 
 export function summarizeAssignmentRowFor(
