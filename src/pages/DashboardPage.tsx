@@ -12,6 +12,9 @@ import styles from "./DashboardPage.module.css";
 
 type Tone = ChartTone;
 
+// Ngưỡng chuyên cần coi là đạt, dùng chung cho màu thanh và vạch mục tiêu.
+const ATTENDANCE_TARGET = 95;
+
 const formatCount = (value: number) => value.toLocaleString("vi-VN");
 
 /** Status keys the API returns, mapped onto the validated status palette. */
@@ -90,18 +93,32 @@ function AttendanceRateList({
   }>;
   labelKey: "unitName" | "departmentName";
 }) {
+  const visible = items.slice(0, 6);
+
+  // Tỉ lệ chuyên cần luôn dồn ở vùng cao (90-100%), nên vẽ từ 0% khiến mọi
+  // phòng ban trông bằng nhau. Cắt trục ở dưới giá trị thấp nhất để phần chênh
+  // lệch thật sự nhìn thấy được, và neo đáy trục theo bội số 5 cho dễ đọc.
+  const lowest = Math.min(...visible.map((item) => item.attendanceRate), ATTENDANCE_TARGET);
+  const axisMin = Math.max(0, Math.floor((lowest - 2) / 5) * 5);
+  const axisSpan = Math.max(1, 100 - axisMin);
+  const toPercent = (value: number) =>
+    Math.min(Math.max(((value - axisMin) / axisSpan) * 100, 0), 100);
+
   return (
     <Paper p="md" radius="md" className={styles.panel}>
       <Stack gap="sm">
-        <span className={styles.sectionTitle}>{title}</span>
-        {items.length === 0 ? (
+        <Group justify="space-between" align="baseline" gap="md">
+          <span className={styles.sectionTitle}>{title}</span>
+          <span className={styles.sectionCaption}>Mục tiêu {ATTENDANCE_TARGET}%</span>
+        </Group>
+        {visible.length === 0 ? (
           <Text size="sm" c="dimmed">
             Chưa có dữ liệu công tháng này.
           </Text>
         ) : (
           <Stack gap="xs">
-            {items.slice(0, 6).map((item) => {
-              const good = item.attendanceRate >= 95;
+            {visible.map((item) => {
+              const good = item.attendanceRate >= ATTENDANCE_TARGET;
               return (
                 <div key={item[labelKey] ?? "unknown"} className={styles.rankRow}>
                   <span className={styles.rankLabel} title={item[labelKey] ?? "-"}>
@@ -110,13 +127,20 @@ function AttendanceRateList({
                   <span className={styles.rankValue}>
                     {item.attendanceRate.toLocaleString("vi-VN")}%
                   </span>
-                  <span className={styles.rankTrack}>
+                  <span
+                    className={styles.meterTrack}
+                    style={{ gridColumn: "1 / -1" }}
+                    role="img"
+                    aria-label={`${item[labelKey] ?? "Không rõ"}: ${item.attendanceRate.toLocaleString("vi-VN")}%, mục tiêu ${ATTENDANCE_TARGET}%`}
+                  >
+                    <span
+                      className={styles.targetMark}
+                      style={{ left: `${toPercent(ATTENDANCE_TARGET)}%` }}
+                    />
                     <span
                       className={styles.meterFill}
                       data-tone={good ? "good" : "warning"}
-                      style={{
-                        width: `${Math.min(Math.max(item.attendanceRate, 0), 100)}%`,
-                      }}
+                      style={{ width: `${toPercent(item.attendanceRate)}%` }}
                     />
                   </span>
                   <Text size="xs" c="dimmed" style={{ gridColumn: "1 / -1" }}>
@@ -125,6 +149,14 @@ function AttendanceRateList({
                 </div>
               );
             })}
+            <Group justify="space-between" gap="xs">
+              <Text size="xs" c="dimmed">
+                {axisMin}%
+              </Text>
+              <Text size="xs" c="dimmed">
+                100%
+              </Text>
+            </Group>
           </Stack>
         )}
       </Stack>

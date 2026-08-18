@@ -133,10 +133,25 @@
 
 /* Attendance-rate meter: unfilled track is a lighter step of the same ramp. */
 .meterTrack {
+  position: relative;
   height: 8px;
   border-radius: 4px;
   background: var(--dash-track);
   overflow: hidden;
+}
+
+/* Vạch mục tiêu: trục bị cắt đáy nên cần mốc tham chiếu để đọc được thanh. */
+.targetMark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-1px);
+  background: light-dark(
+    var(--mantine-color-gray-6),
+    var(--mantine-color-dark-2)
+  );
+  z-index: 1;
 }
 
 .meterFill {
