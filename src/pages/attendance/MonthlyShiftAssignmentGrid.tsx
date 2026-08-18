@@ -1,4 +1,11 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
@@ -42,6 +49,12 @@ import {
   weekdayForShiftAssignmentDate,
 } from "../../features/attendance/shiftAssignmentWeekdays";
 import { useAuth } from "../../features/auth/useAuth";
+import {
+  moveItem,
+  readWorkShiftUserOrder,
+  sortWorkShiftsByUserOrder,
+  writeWorkShiftUserOrder,
+} from "../../features/attendance/workShiftUserOrder";
 import {
   getWorkShiftCatalogOrder,
   sortWorkShiftCatalog,
@@ -403,7 +416,7 @@ export function MonthlyShiftAssignmentGrid({
   requestedShiftId = null,
 }: MonthlyShiftAssignmentGridProps) {
   const navigate = useNavigate();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const canEdit = can(HR_PERMISSIONS.ATTENDANCE_UPDATE);
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -421,6 +434,12 @@ export function MonthlyShiftAssignmentGrid({
   const [cellShiftCancellationError, setCellShiftCancellationError] =
     useState<string | null>(null);
   const [cellShiftSearch, setCellShiftSearch] = useState("");
+  const [workShiftOrder, setWorkShiftOrder] = useState<string[]>(() =>
+    readWorkShiftUserOrder(user?.id),
+  );
+  const [draggingShiftCode, setDraggingShiftCode] = useState<string | null>(
+    null,
+  );
   const [cellShiftError, setCellShiftError] = useState<string | null>(null);
   const [cellShiftApplyingId, setCellShiftApplyingId] = useState<string | null>(
     null,
@@ -527,19 +546,57 @@ export function MonthlyShiftAssignmentGrid({
    * giữ lại để ô vẫn cho thấy nó đang là ca gì.
    */
   const pickerCurrentShiftId = cellShiftPicker?.day.shift?.id ?? null;
-  const cellShiftOptions = useMemo(
+  const selectableShifts = useMemo(
     () =>
-      sortWorkShiftCatalog(shiftsQuery.data).filter(
+      sortWorkShiftsByUserOrder(shiftsQuery.data, workShiftOrder).filter(
         (shift) =>
           Boolean(shift.startTime && shift.endTime) &&
-          (shift.status === "ACTIVE" || shift.id === pickerCurrentShiftId) &&
-          includesNormalizedSearch(
-            [shift.code, shift.name, shift.groupName ?? ""].join(" "),
-            cellShiftSearch,
-          ),
+          (shift.status === "ACTIVE" || shift.id === pickerCurrentShiftId),
       ),
-    [cellShiftSearch, pickerCurrentShiftId, shiftsQuery.data],
+    [pickerCurrentShiftId, shiftsQuery.data, workShiftOrder],
   );
+  /*
+   * Số TT bám theo danh sách đầy đủ, không theo kết quả lọc: gõ tìm kiếm rồi
+   * thấy ca số 7 vẫn là số 7 giúp HR đối chiếu nhanh, thay vì bị đánh lại từ 1.
+   */
+  const shiftDisplayNumbers = useMemo(
+    () => new Map(selectableShifts.map((shift, index) => [shift.id, index + 1])),
+    [selectableShifts],
+  );
+  const cellShiftOptions = useMemo(
+    () =>
+      selectableShifts.filter((shift) =>
+        includesNormalizedSearch(
+          [shift.code, shift.name, shift.groupName ?? ""].join(" "),
+          cellShiftSearch,
+        ),
+      ),
+    [cellShiftSearch, selectableShifts],
+  );
+
+  /*
+   * Kéo thả sắp thứ tự ca. Chỉ cho kéo khi danh sách đang không lọc: kéo trên
+   * kết quả tìm kiếm thì vị trí thả không tương ứng vị trí thật trong danh mục,
+   * HR sẽ nhận được một thứ tự khác hẳn thứ họ nhìn thấy.
+   */
+  const shiftReorderEnabled = cellShiftSearch.trim() === "";
+  const handleShiftReorder = useCallback(
+    (fromCode: string, toCode: string) => {
+      if (fromCode === toCode) return;
+      const codes = selectableShifts.map((shift) => shift.code);
+      const from = codes.indexOf(fromCode);
+      const to = codes.indexOf(toCode);
+      if (from === -1 || to === -1) return;
+      const nextOrder = moveItem(codes, from, to);
+      setWorkShiftOrder(nextOrder);
+      writeWorkShiftUserOrder(user?.id, nextOrder);
+    },
+    [selectableShifts, user?.id],
+  );
+  const resetShiftOrder = useCallback(() => {
+    setWorkShiftOrder([]);
+    writeWorkShiftUserOrder(user?.id, []);
+  }, [user?.id]);
 
   const hasActiveDirectShift = useMemo(
     () =>
@@ -1842,6 +1899,27 @@ export function MonthlyShiftAssignmentGrid({
                                             value={cellShiftSearch}
                                             onChange={setCellShiftSearch}
                                           />
+                                          <Group
+                                            justify="space-between"
+                                            gap="xs"
+                                            wrap="nowrap"
+                                          >
+                                            <Text size="10px" c="dimmed">
+                                              {shiftReorderEnabled
+                                                ? "Kéo dòng để đổi thứ tự ca — thứ tự này chỉ áp dụng cho tài khoản của bạn."
+                                                : "Xoá ô tìm kiếm để kéo đổi thứ tự ca."}
+                                            </Text>
+                                            {workShiftOrder.length ? (
+                                              <Button
+                                                size="compact-xs"
+                                                variant="subtle"
+                                                color="gray"
+                                                onClick={resetShiftOrder}
+                                              >
+                                                Thứ tự mặc định
+                                              </Button>
+                                            ) : null}
+                                          </Group>
                                           {cellShiftError ? (
                                             <Alert
                                               color="red"
@@ -1911,18 +1989,65 @@ export function MonthlyShiftAssignmentGrid({
                                                         ) ||
                                                         cellShiftMutationPending ||
                                                         isCurrentShift;
+                                                      const isDragging =
+                                                        draggingShiftCode ===
+                                                        shift.code;
                                                       return (
                                                         <Table.Tr
                                                           key={shift.id}
-                                                          style={
-                                                            isCurrentShift
-                                                              ? { background: "#eff6ff" }
-                                                              : undefined
+                                                          draggable={
+                                                            shiftReorderEnabled
                                                           }
+                                                          onDragStart={() =>
+                                                            setDraggingShiftCode(
+                                                              shift.code,
+                                                            )
+                                                          }
+                                                          onDragEnd={() =>
+                                                            setDraggingShiftCode(
+                                                              null,
+                                                            )
+                                                          }
+                                                          onDragOver={(event) => {
+                                                            if (
+                                                              !shiftReorderEnabled ||
+                                                              !draggingShiftCode
+                                                            )
+                                                              return;
+                                                            event.preventDefault();
+                                                          }}
+                                                          onDrop={(event) => {
+                                                            if (
+                                                              !shiftReorderEnabled ||
+                                                              !draggingShiftCode
+                                                            )
+                                                              return;
+                                                            event.preventDefault();
+                                                            handleShiftReorder(
+                                                              draggingShiftCode,
+                                                              shift.code,
+                                                            );
+                                                            setDraggingShiftCode(
+                                                              null,
+                                                            );
+                                                          }}
+                                                          style={{
+                                                            background:
+                                                              isCurrentShift
+                                                                ? "#eff6ff"
+                                                                : undefined,
+                                                            cursor:
+                                                              shiftReorderEnabled
+                                                                ? "grab"
+                                                                : undefined,
+                                                            opacity: isDragging
+                                                              ? 0.5
+                                                              : undefined,
+                                                          }}
                                                         >
                                                           <Table.Td>
-                                                            {getWorkShiftCatalogOrder(
-                                                              shift.code,
+                                                            {shiftDisplayNumbers.get(
+                                                              shift.id,
                                                             ) ?? "—"}
                                                           </Table.Td>
                                                           <Table.Td>
