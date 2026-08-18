@@ -2372,4 +2372,124 @@ Cập nhật bổ sung:
   - Các khối vận hành dùng list/card phẳng kiểu Zalo Web: hàng chờ xử lý, bàn giao lương và bảng nhân sự đi muộn.
   - Thêm lại `DashboardPage.module.css` để kiểm soát giao diện flat, hover xanh nhạt, responsive và dark mode.
 
+## 43. Nâng Cấp Giao Diện Dashboard & Tinh Gọn Vận Hành (Cập Nhật Mới Nhất)
+
+### 43.1. Tinh giản Header & Bỏ hoàn toàn các thành phần thừa
+- **Xóa bỏ nút "+ Thêm nhân sự" và dropdown chọn đơn vị** ở thanh trên cùng để tránh trùng lặp tính năng.
+- **Xóa bỏ hoàn toàn cụm chọn kỳ thời gian ("Tháng này | Quý này | Năm nay"):**
+  - Xóa component `SegmentedControl` khỏi header.
+  - Dọn sạch mã nguồn liên quan: biến state `period`, types `DashboardSummaryPeriod`, và class CSS `.zaloSegment`.
+- Header điều hành hiện tại chỉ gồm: Tiêu đề Dashboard, mô tả ngắn, cụm menu `Xuất báo cáo` (In/PDF/CSV) và nút `Làm mới dữ liệu` (Alt + R).
+
+### 43.2. Thanh Lối tắt & Bộ lọc Đơn vị tích hợp (Enterprise Quick Access Bar)
+- **Loại bỏ ô tìm kiếm Spotlight** không cần thiết trên Dashboard.
+- **Tích hợp bộ lọc "Đơn vị áp dụng"** (Tất cả đơn vị, Khối HCNS, Khối Kinh doanh,...) ở phía bên trái thanh lối tắt để người dùng chọn phạm vi số liệu trực quan.
+- Phía bên phải giữ 5 nút lối tắt nghiệp vụ nhanh: `Danh bạ nhân sự`, `Bảng chấm công`, `Đơn từ & Nghỉ phép`, `Điều chuyển nội bộ`, `Import Excel`.
+
+### 43.3. Băng 5 Chỉ số Điều hành HRM (KPI Strip) - Tối giản & Bỏ Icon
+- **Loại bỏ toàn bộ đường line biểu đồ sparklines zig-zag** gây rối mắt bên trong các thẻ.
+- **Loại bỏ toàn bộ icon** trong cả 5 thẻ chỉ số (*Tổng nhân sự, Đang làm việc, Tuyển mới kỳ này, Thôi việc kỳ này, Yêu cầu chờ duyệt*).
+- Bố cục 5 thẻ trở nên phẳng, thoáng đãng, nổi bật con số to rõ ràng (24px tabular-nums) kèm nhãn phân loại và phụ đề phạm vi thống kê.
+
+### 43.4. Biểu đồ Tròn Cơ cấu Nhân sự theo Đơn vị (Interactive Vector Donut)
+- Chuyển sang định dạng SVG tương tác 2 chiều:
+  - Rê chuột vào múi tròn: Múi đó nở rộng (stroke-width 26px), các múi còn lại mờ nhẹ, tooltip hiển thị tên đơn vị, số lượng và % chính xác.
+  - Click trực tiếp vào múi tròn: Điều hướng sang trang Danh sách nhân sự đã được lọc theo đơn vị tương ứng.
+- **Tâm biểu đồ phản hồi động thời gian thực (Live Center Focus):**
+  - Mặc định: Hiển thị tổng số nhân sự toàn công ty.
+  - Khi hover vào bất kỳ múi nào: Tâm biểu đồ tự động đổi sang số lượng, tên và tỷ lệ % của chính đơn vị đó.
+- Đồng bộ tương tác 2 chiều mượt mà giữa hình tròn SVG và danh sách legend bên phải.
+
+### 43.5. Biểu đồ Cột Nhân sự theo Trạng thái Việc làm (Column Chart)
+- **Chuyển toàn bộ màu chữ sang màu đen/tối đồng nhất:**
+  - Nhãn trạng thái (*Chính thức, Thử việc, Tạm hoãn, Đã thôi việc*), số lượng trên đầu cột (*6, 2, 1, 1*), tỷ lệ phần trăm (*60%, 20%, 10%, 10%*) và các mốc trục (*100%, 50%, 0%*).
+- **Bỏ hoàn toàn các khung bọc badge xung quanh nhãn trạng thái:** Hiển thị dạng chữ phẳng màu đen gọn gàng, thoáng mắt.
+
+### 43.6. Thẻ "Hàng chờ xử lý yêu cầu"
+- **Chuyển nhãn số lượng sang góc phải:** Badge hiển thị `{total} việc cần xử lý` (hoặc `Đã duyệt hết`).
+- **Chuyển màu badge sang màu đen/trung tính:** Không còn dùng màu đỏ cảnh báo (`#fee2e2` / `#dc2626`).
+- **Giữ các icon công việc:** Đơn nghỉ phép, Giải trình chấm công, Đề xuất điều chuyển với tone màu trung tính, loại bỏ toàn bộ text mô tả phụ không cần thiết.
+- Nút hành động kiểm tra/duyệt đơn dạng viền mảnh, hover tinh tế.
+
+### 43.7. Thẻ "Chuẩn bị bàn giao lương"
+- **Đồng bộ bố cục 4 ô chuyên sâu có chiều cao bằng nhau (`min-height: 64px`):**
+  - **Ô 1:** `Kỳ công đã chốt` + Tag `Hoàn tất` | `1 kỳ công`.
+  - **Ô 2:** `Kỳ mới nhất` + Tag `CHỜ CHỐT` | `7/2026`.
+  - **Ô 3:** `Phép đã dùng` + Tag `Tháng này` | `8,5 ngày`.
+  - **Ô 4:** `Quỹ phép` + Tag `Năm 2026` | `ĐANG ĐỐI CHIẾU CSV` (đã xóa lặp từ).
+- **Dải cảnh báo chân thẻ:** Badge `0 sắp hết hạn` và thông báo đối chiếu quỹ phép Excel/CSV.
+
+### 43.8. Bảng "Nhân sự đi muộn cần lưu ý"
+- **Badge số lượng trên tiêu đề:** `2 nhân sự` chuyển sang badge trung tính/đen (không dùng màu đỏ).
+- **Micro-Filter chuyển nhanh:** Gắn cụm nút lọc `Tất cả` | `≥ 3 lần` | `> 30p` ngay trên header bảng.
+- **Badge số lần và phút đi muộn:** Đồng bộ sang màu trung tính/đen.
+
+### 43.9. Chân trang đồng bộ thời gian thực (Live System Sync Footer) & Chức năng Làm mới
+- Hiển thị thông tin đồng bộ rõ nét: **`Dữ liệu đồng bộ lúc HH:mm:ss`** đi kèm chấm xung nhịp xanh (`livePulseRing`).
+- Loại bỏ badge thừa `HRM Enterprise v2.4`.
+- Nút **"Làm mới"** tích hợp badge phím tắt **`Alt + R`**, hiệu ứng xoay spinner và thông báo Toast Mantine xác nhận thời gian đồng bộ chính xác đến từng giây.
+
+### 43.10. Đồng bộ Chế độ Nền Tối (Dark Mode) chuẩn Mantine
+- Tái cấu trúc toàn bộ `DashboardPage.module.css` sử dụng biến theme và cơ chế `light-dark()` chuẩn mực của Mantine.
+- Toàn bộ background, border, typography, chart background circles và hover states chuyển đổi nhịp nhàng giữa nền sáng $\leftrightarrow$ tối, đồng bộ 100% với các trang Chấm công, Phân ca, Nhân sự và Layout chung.
+- Nút **Thu gọn** menu thanh bên (`MainLayout.tsx`) khi hover chuyển sang **màu xanh thương hiệu (`#0068FF` / `#EFF6FF`)** đồng bộ với toàn bộ trang web (thay vì màu đỏ).
+
+## 44. Nâng Cấp & Hoàn Thiện Trung Tâm Cài Đặt Hệ Thống (Settings Center)
+
+### 44.1. Kiến trúc Cửa sổ Cài đặt Modal theo Phong cách Zalo Web
+- **Bố cục Modal toàn màn hình:** Khi truy cập `/settings`, giao diện phủ backdrop làm mờ toàn trang với cửa sổ trung tâm bo góc hiện đại, kích thước tối ưu `860px x 700px`.
+- **Cơ chế đóng linh hoạt:** Hỗ trợ nút `X` góc trên bên phải và tự động đóng khi click chuột ra vùng nền ngoài (backdrop click).
+- **Cột Menu điều hướng bên trái (240px):**
+  - Danh mục gọn gàng gồm 6 phân hệ: `Cài đặt chung`, `Tài khoản và bảo mật`, `Ngôn ngữ`, `Quản lý dữ liệu`, `Giao diện`, `Thông báo`.
+  - Icon kích thước 16px, typography thanh thoát không in đậm, hiệu ứng chuyển tab active nền xanh nhạt `#E8F3FF` và vạch xanh `#0B64D8`.
+- **Vùng nội dung bên phải:** Không giới hạn chiều rộng cứng, co giãn tối ưu cho card thông tin và tự động thích ứng với cả 2 chế độ Sáng / Tối.
+
+### 44.2. Module "Giao diện" (Theme & Font Size)
+- **Chuyển đổi Chế độ Nền (Theme Mode):**
+  - Hỗ trợ 3 tùy chọn: `Sáng` (Light), `Tối` (Dark), `Theo hệ thống` (Auto).
+  - Thumbnail thiết kế trực quan theo phong cách Zalo Web mô phỏng giao diện app, avatar và bong bóng hội thoại.
+  - Tích hợp Toast thông báo Mantine ngay khi áp dụng.
+- **Điều chỉnh Cỡ chữ Toàn Ứng dụng (Font Size Mode):**
+  - 3 mức kích thước: `Nhỏ` (Small), `Vừa` (Medium - mặc định), `Lớn` (Large).
+  - Gắn thuộc tính `data-hrm-font-size` lên thẻ gốc `<html>` và lưu cấu hình vào `localStorage` key `hrm:appearance-font-size`.
+  - Toàn bộ body text, bảng biểu, thanh menu và các component Mantine tự động điều chỉnh tỷ lệ mượt mà.
+- **Tinh gọn giao diện:** Đã loại bỏ hoàn toàn khối `Hình nền chat` và tùy chọn `Sử dụng Avatar làm hình nền` để giao diện Cài đặt tập trung và gọn nhẹ hơn.
+
+### 44.3. Module "Ngôn ngữ & Đa ngữ hóa" (i18n Multi-Language)
+- **3 Chế độ Ngôn ngữ Hiển thị:**
+  - `Tiếng Việt` (VI): Chuẩn hóa cho môi trường vận hành HRM doanh nghiệp trong nước.
+  - `English` (EN): Hỗ trợ môi trường làm việc song ngữ quốc tế.
+  - `Theo hệ thống` (AUTO): Tự động phát hiện theo locale của trình duyệt (`navigator.language`).
+- **Cơ chế Áp dụng Tức thì (Real-time i18n Engine):**
+  - Tích hợp bộ giải pháp `translateUiText` và `applyAppLanguage` (`src/shared/i18n/appLanguage.ts`).
+  - Khi thay đổi, hệ thống lưu vào `localStorage` key `hrm:appearance-language`, cập nhật thuộc tính `document.documentElement.lang` và phát sự kiện `hrm:language-changed`.
+  - Thanh Sidebar, Header, Tooltip, Menu tài khoản và chính Modal Cài đặt tự động đổi ngôn ngữ ngay lập tức mà không cần tải lại trang.
+
+### 44.4. Module "Tài khoản và Bảo mật" (Account & Security)
+- **Thẻ Hồ sơ Đại diện (Profile Card):** Hiển thị Avatar ký tự đầu, Tên người dùng và Email tài khoản hiện hành.
+- **Lưới Thông tin Chi tiết Chuẩn hóa:**
+  - `User`: Tên đầy đủ của tài khoản.
+  - `Auth user ID`: Mã định danh xác thực hệ thống.
+  - `Account status`: Trạng thái tài khoản (Active/Inactive).
+  - `Employee ID`: Mã hồ sơ nhân sự liên kết.
+  - `Roles`: Danh sách vai trò/nhóm quyền phân bổ.
+  - `Data scopes`: Phạm vi dữ liệu được phép truy cập (Đơn vị / Phòng ban).
+- Giữ nguyên nhãn chuẩn kỹ thuật tiếng Anh, loại bỏ các mô tả suy đoán để bảo đảm tính chính xác của dữ liệu.
+
+### 44.5. Module "Thông báo" (Notification Hub Settings)
+- **Kiểm soát Trạng thái Thông báo Toàn cục:**
+  - Chuyển đổi trạng thái `Bật` / `Tắt` thông báo nhanh chóng với hình minh họa thiết bị.
+  - Cập nhật trực tiếp vào `localStorage` và phát event đồng bộ ngay lập tức với biểu tượng chuông thông báo trên Header.
+- **Tùy chọn Âm thanh Thông báo:**
+  - Bật/Tắt nút chuyển đổi (Switch) `Phát âm thanh khi có tin nhắn & thông báo mới`.
+  - Nút Switch được đồng bộ sang **màu xanh (`color="blue"`)** đồng nhất với toàn bộ hệ thống web (thay vì màu đỏ).
+- **Phân quyền Sự kiện Thông minh:** Tự động lọc và chỉ cấu hình các loại thông báo mà tài khoản thực tế có quyền xem (Nghỉ phép, Chấm công, Điều chuyển, v.v.).
+
+### 44.6. Module "Cài đặt chung & Quản lý Dữ liệu"
+- **Cấu hình Runtime Hệ thống:** Hiển thị trực quan các tham số môi trường: `API base URL`, `Auth mode`, `Mock mode`, `Auth service endpoint`, `Redirect URI`.
+- **Quản lý Dữ liệu:** Khối quản lý bộ nhớ đệm tạm thời (Cache & Data storage) được thiết kế tối giản, đồng bộ Dark Mode toàn diện.
+
+
+
+
 

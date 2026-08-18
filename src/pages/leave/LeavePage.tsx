@@ -1,29 +1,43 @@
 import { useMemo, useState } from 'react';
-import { ActionIcon, Group, Select, Stack, Text } from '@mantine/core';
+import {
+  ActionIcon,
+  Badge,
+  Group,
+  SegmentedControl,
+  Select,
+  Stack,
+  Text,
+  Tooltip,
+} from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconTrash } from '@tabler/icons-react';
+import {
+  IconCalendarCheck,
+  IconFilterOff,
+  IconListDetails,
+  IconTrash,
+} from '@tabler/icons-react';
 
 import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import { useAuth } from '../../features/auth/useAuth';
-
 import type {
   LeaveApprovalStep,
   LeavePolicyType,
   LeaveRequest,
 } from '../../features/leave/leaveTypes';
-import { useDeleteCancelledLeaveRequest, useLeaveRequests, useLeaveTypes } from '../../features/leave/useLeaveRequests';
+import {
+  useDeleteCancelledLeaveRequest,
+  useLeaveRequests,
+  useLeaveTypes,
+} from '../../features/leave/useLeaveRequests';
 import { useEmployees } from '../../features/employees/useEmployees';
 import { LEAVE_TYPE_OPTIONS } from '../../shared/constants/statuses';
 import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
 import { ConfirmActionModal } from '../../shared/components/ConfirmActionModal';
 import { ErrorState } from '../../shared/components/ErrorState';
-import { FilterBar } from '../../shared/components/FilterBar';
-import filterStyles from '../../shared/components/FilterBar.module.css';
 import { LoadingState } from '../../shared/components/LoadingState';
-import { PageHeader } from '../../shared/components/PageHeader';
-import { SectionCard } from '../../shared/components/SectionCard';
-import { StatusTag } from '../../shared/components/StatusTag';
 import { formatDate } from '../../shared/utils/date';
+import styles from './LeavePage.module.css';
+
 const EMPLOYEE_SELECT_PAGE_SIZE = 20;
 const CATALOG_PAGE_SIZE = 10;
 
@@ -105,7 +119,7 @@ function sessionRangeLabel(record: LeaveRequest) {
 function noticeLabel(record: LeaveRequest) {
   const actual = record.noticeActualDays ?? '-';
   const required = record.noticeRequiredDays ?? '-';
-  return record.lateSubmission ? `Trễ hạn (${actual}/${required})` : `${actual}/${required}`;
+  return record.lateSubmission ? `Trễ hạn (${actual}/${required})` : `${actual}/${required} ngày`;
 }
 
 function approvalLabel(step: LeaveApprovalStep | null) {
@@ -118,6 +132,38 @@ function approvalLabel(step: LeaveApprovalStep | null) {
 
 function policyName(record: LeavePolicyType) {
   return labelFrom(LEAVE_TYPE_LABELS, record.code) || record.name;
+}
+
+function getInitials(name?: string | null): string {
+  if (!name) return 'HR';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function renderZaloStatus(status?: string | null) {
+  if (!status) return null;
+  const label = labelFrom(REQUEST_STATUS_LABELS, status);
+  let statusClass = styles.statusDraft;
+
+  switch (status) {
+    case 'SUBMITTED':
+      statusClass = styles.statusSubmitted;
+      break;
+    case 'APPROVED':
+      statusClass = styles.statusApproved;
+      break;
+    case 'REJECTED':
+      statusClass = styles.statusRejected;
+      break;
+    case 'CANCELLED':
+      statusClass = styles.statusCancelled;
+      break;
+    default:
+      statusClass = styles.statusDraft;
+  }
+
+  return <span className={`${styles.zaloStatusTag} ${statusClass}`}>{label}</span>;
 }
 
 const leaveTypeOptions = LEAVE_TYPE_OPTIONS.map((item) => ({
@@ -133,6 +179,8 @@ const statusOptions = REQUEST_STATUS_OPTIONS.map((item) => ({
 export function LeavePage() {
   const { can } = useAuth();
   const canDeleteCancelled = can(HR_PERMISSIONS.LEAVE_CANCEL);
+
+  const [activeTab, setActiveTab] = useState<'requests' | 'catalog'>('requests');
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeSelectOption | null>(null);
   const [deletingRequest, setDeletingRequest] = useState<LeaveRequest | null>(null);
@@ -144,40 +192,32 @@ export function LeavePage() {
     leaveType: undefined as string | undefined,
     status: undefined as string | undefined,
   });
+
   const { data, isLoading, error, refetch } = useLeaveRequests(params);
   const { data: leaveTypes = [], isLoading: isLeaveTypesLoading } = useLeaveTypes();
   const deleteCancelledLeaveRequest = useDeleteCancelledLeaveRequest();
+
   const employeesQuery = useEmployees({
     search: employeeSearch.trim() || undefined,
     page: 1,
     pageSize: EMPLOYEE_SELECT_PAGE_SIZE,
   });
-  const employeeOptions = useMemo<EmployeeSelectOption[]>(
-    () => {
-      const options = (employeesQuery.data?.items ?? []).map((employee) => ({
-        value: employee.id,
-        label: employee.fullName,
-      }));
 
-      if (
-        selectedEmployee &&
-        !options.some((option) => option.value === selectedEmployee.value)
-      ) {
-        return [selectedEmployee, ...options];
-      }
+  const employeeOptions = useMemo<EmployeeSelectOption[]>(() => {
+    const options = (employeesQuery.data?.items ?? []).map((employee) => ({
+      value: employee.id,
+      label: employee.fullName,
+    }));
 
-      return options;
-    },
-    [employeesQuery.data?.items, selectedEmployee],
-  );
+    if (selectedEmployee && !options.some((option) => option.value === selectedEmployee.value)) {
+      return [selectedEmployee, ...options];
+    }
 
-  if (isLoading) {
-    return <LoadingState />;
-  }
+    return options;
+  }, [employeesQuery.data?.items, selectedEmployee]);
 
-  if (error || !data) {
-    return <ErrorState onRetry={() => void refetch()} />;
-  }
+  const activeFilterCount =
+    (params.employeeId ? 1 : 0) + (params.leaveType ? 1 : 0) + (params.status ? 1 : 0);
 
   const currentApprovalStep = (record: LeaveRequest) =>
     record.status === 'SUBMITTED'
@@ -202,103 +242,114 @@ export function LeavePage() {
     }
   }
 
+  function handleClearFilters() {
+    setSelectedEmployee(null);
+    setParams({
+      page: 1,
+      pageSize: params.pageSize,
+      employeeId: undefined,
+      leaveType: undefined,
+      status: undefined,
+    });
+  }
 
+  if (isLoading) {
+    return <LoadingState />;
+  }
+
+  if (error || !data) {
+    return <ErrorState onRetry={() => void refetch()} />;
+  }
 
   const requestColumns: DataTableColumn<LeaveRequest>[] = [
     {
       key: 'employee',
       header: 'Nhân viên',
-      minWidth: 190,
-      render: (record) => (
-        <Stack gap={0}>
-          <Text size="sm" fw={500}>
-            {record.employeeName ?? record.employee?.fullName ?? record.employeeId}
-          </Text>
-          <Text size="xs" c="dimmed">
-            {record.employee?.employeeCode ?? record.employeeId}
-          </Text>
-        </Stack>
-      ),
+      minWidth: 210,
+      render: (record) => {
+        const name = record.employeeName ?? record.employee?.fullName ?? record.employeeId;
+        const code = record.employee?.employeeCode ?? record.employeeId;
+        return (
+          <div className={styles.employeeCell}>
+            <div className={styles.zaloAvatar}>{getInitials(name)}</div>
+            <div className={styles.employeeInfo}>
+              <span className={styles.employeeName}>{name}</span>
+              <span className={styles.employeeCode}>{code}</span>
+            </div>
+          </div>
+        );
+      },
     },
     {
       key: 'leaveType',
       header: 'Loại nghỉ',
-      minWidth: 150,
+      minWidth: 160,
       render: (record) => (
-        <Text size="sm">{labelFrom(LEAVE_TYPE_LABELS, record.leaveType)}</Text>
+        <Badge variant="light" color="gray" size="sm">
+          {labelFrom(LEAVE_TYPE_LABELS, record.leaveType)}
+        </Badge>
       ),
     },
     {
-      key: 'startDate',
-      header: 'Từ ngày',
-      width: 108,
-      align: 'center',
+      key: 'dateRange',
+      header: 'Thời gian nghỉ',
+      minWidth: 180,
       render: (record) => (
-        <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
-          {formatDate(record.startDate)}
-        </Text>
+        <Stack gap={3}>
+          <div className={styles.dateRangeText}>
+            <span>{formatDate(record.startDate)}</span>
+            <span>→</span>
+            <span>{formatDate(record.endDate)}</span>
+          </div>
+          <span className={styles.sessionPill}>{sessionRangeLabel(record)}</span>
+        </Stack>
       ),
-    },
-    {
-      key: 'endDate',
-      header: 'Đến ngày',
-      width: 108,
-      align: 'center',
-      render: (record) => (
-        <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
-          {formatDate(record.endDate)}
-        </Text>
-      ),
-    },
-    {
-      key: 'session',
-      header: 'Buổi nghỉ',
-      minWidth: 130,
-      render: (record) => <Text size="sm">{sessionRangeLabel(record)}</Text>,
     },
     {
       key: 'totalDays',
       header: 'Số ngày',
-      width: 84,
+      width: 90,
       align: 'right',
       render: (record) => (
-        <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
-          {record.totalDays ?? '-'}
-        </Text>
+        <span className={styles.daysNumber}>
+          {record.totalDays != null ? `${record.totalDays} ngày` : '-'}
+        </span>
       ),
     },
     {
       key: 'notice',
       header: 'Báo trước',
-      width: 116,
+      width: 120,
       align: 'center',
       render: (record) => (
-        <Text size="sm" c={record.lateSubmission ? 'orange.7' : undefined}>
+        <span className={record.lateSubmission ? styles.noticeLate : styles.noticeNormal}>
           {noticeLabel(record)}
-        </Text>
+        </span>
       ),
     },
     {
       key: 'status',
       header: 'Trạng thái',
-      width: 168,
+      width: 170,
       render: (record) => (
-        <Group gap={4} wrap="nowrap">
-          <StatusTag status={record.status} />
+        <Group gap={6} wrap="nowrap">
+          {renderZaloStatus(record.status)}
           {record.status === 'CANCELLED' && canDeleteCancelled ? (
-            <ActionIcon
-              variant="subtle"
-              color="red"
-              size="sm"
-              aria-label={
-                'Xóa đơn nghỉ phép đã hủy của ' +
-                (record.employeeName ?? record.employee?.fullName ?? record.employeeId)
-              }
-              disabled={deleteCancelledLeaveRequest.isPending}
-              onClick={() => setDeletingRequest(record)}
-            >
-              <IconTrash size={15} />
-            </ActionIcon>
+            <Tooltip label="Xóa đơn đã hủy" withArrow>
+              <ActionIcon
+                variant="subtle"
+                color="red"
+                size="sm"
+                aria-label={
+                  'Xóa đơn nghỉ phép đã hủy của ' +
+                  (record.employeeName ?? record.employee?.fullName ?? record.employeeId)
+                }
+                disabled={deleteCancelledLeaveRequest.isPending}
+                onClick={() => setDeletingRequest(record)}
+              >
+                <IconTrash size={14} />
+              </ActionIcon>
+            </Tooltip>
           ) : null}
         </Group>
       ),
@@ -306,20 +357,17 @@ export function LeavePage() {
     {
       key: 'approval',
       header: 'Luồng duyệt',
-      minWidth: 180,
+      minWidth: 190,
       render: (record) => (
-        <Text size="sm" c="dimmed">
+        <span className={styles.approvalStepText}>
           {approvalLabel(currentApprovalStep(record))}
-        </Text>
+        </span>
       ),
     },
   ];
 
   // The catalog endpoint returns every symbol at once, so page it here.
-  const catalogTotalPages = Math.max(
-    1,
-    Math.ceil(leaveTypes.length / CATALOG_PAGE_SIZE),
-  );
+  const catalogTotalPages = Math.max(1, Math.ceil(leaveTypes.length / CATALOG_PAGE_SIZE));
   const catalogCurrentPage = Math.min(catalogPage, catalogTotalPages);
   const pagedLeaveTypes = leaveTypes.slice(
     (catalogCurrentPage - 1) * CATALOG_PAGE_SIZE,
@@ -338,18 +386,18 @@ export function LeavePage() {
     {
       key: 'symbol',
       header: 'Ký hiệu',
-      width: 84,
+      width: 90,
       align: 'center',
       render: (record) => (
-        <Text size="sm" fw={600}>
+        <Badge variant="outline" color="dark" size="md" fw={700}>
           {record.displaySymbol}
-        </Text>
+        </Badge>
       ),
     },
     {
       key: 'code',
       header: 'Mã',
-      minWidth: 150,
+      minWidth: 140,
       render: (record) => (
         <Text size="sm" c="dimmed">
           {record.code}
@@ -359,10 +407,12 @@ export function LeavePage() {
     {
       key: 'name',
       header: 'Tên ký hiệu',
-      minWidth: 200,
+      minWidth: 220,
       render: (record) => (
-        <Stack gap={0}>
-          <Text size="sm">{policyName(record)}</Text>
+        <Stack gap={2}>
+          <Text size="sm" fw={600}>
+            {policyName(record)}
+          </Text>
           {record.note ? (
             <Text size="xs" c="dimmed">
               {record.note}
@@ -374,10 +424,10 @@ export function LeavePage() {
     {
       key: 'dayValue',
       header: 'Giá trị ngày',
-      width: 106,
+      width: 110,
       align: 'right',
       render: (record) => (
-        <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
+        <Text size="sm" fw={600} style={{ fontVariantNumeric: 'tabular-nums' }}>
           {record.dayValue ?? '-'}
         </Text>
       ),
@@ -385,65 +435,113 @@ export function LeavePage() {
     {
       key: 'quotaMode',
       header: 'Quỹ phép',
-      minWidth: 160,
+      minWidth: 170,
       render: (record) => (
-        <Text size="sm">{labelFrom(QUOTA_MODE_LABELS, record.quotaMode)}</Text>
+        <Badge variant="dot" color="blue" size="sm">
+          {labelFrom(QUOTA_MODE_LABELS, record.quotaMode)}
+        </Badge>
       ),
     },
     {
       key: 'hrRule',
       header: 'Quy tắc HR',
-      width: 150,
-      render: (record) => <StatusTag status={record.hrRuleStatus} />,
+      width: 140,
+      render: (record) => (
+        <Badge variant="light" color={record.hrRuleStatus === 'ACTIVE' ? 'green' : 'gray'} size="sm">
+          {record.hrRuleStatus === 'ACTIVE' ? 'Áp dụng' : record.hrRuleStatus ?? '—'}
+        </Badge>
+      ),
     },
     {
       key: 'annual',
       header: 'Trừ phép năm',
-      width: 122,
+      width: 125,
       align: 'center',
       render: (record) => (
-        <Text size="sm">{record.deductsAnnualLeave ? 'Có' : 'Không'}</Text>
+        <Badge
+          variant="light"
+          color={record.deductsAnnualLeave ? 'blue' : 'gray'}
+          size="sm"
+        >
+          {record.deductsAnnualLeave ? 'Có' : 'Không'}
+        </Badge>
       ),
     },
     {
       key: 'attachment',
       header: 'Chứng từ',
-      width: 112,
+      width: 115,
       align: 'center',
       render: (record) => (
-        <Text size="sm">{record.requiresAttachment ? 'Bắt buộc' : 'Không'}</Text>
+        <Badge
+          variant="light"
+          color={record.requiresAttachment ? 'orange' : 'gray'}
+          size="sm"
+        >
+          {record.requiresAttachment ? 'Bắt buộc' : 'Không'}
+        </Badge>
       ),
     },
   ];
 
   return (
-    <>
-      <PageHeader
-        title="Quản lý nghỉ phép"
-        subtitle="Theo dõi trạng thái đơn và quy tắc ký hiệu nghỉ phép trước khi đối chiếu bảng công. Tạo và xử lý đơn thực hiện trên Hacom Chat."
-      />
+    <div className={styles.zaloLeaveWrapper}>
+      {/* 1. Header Bar with Zalo Web Tabs */}
+      <div className={styles.zaloHeaderRow}>
+        <div className={styles.zaloTitleArea}>
+          <h1 className={styles.zaloMainTitle}>Quản lý nghỉ phép</h1>
+          <span className={styles.zaloSubtitle}>
+            Theo dõi trạng thái đơn nghỉ phép, luồng phê duyệt và danh mục ký hiệu đối chiếu bảng công.
+          </span>
+        </div>
 
-      <Stack gap="sm">
-        <SectionCard
-          title="Danh sách đơn nghỉ phép"
-          count={`${data.pagination.total} đơn`}
-          flushHeader
-        >
-          <Stack gap="xs" px="sm" pb="sm">
-            <FilterBar>
+        <SegmentedControl
+          size="xs"
+          value={activeTab}
+          onChange={(val) => setActiveTab(val as 'requests' | 'catalog')}
+          className={styles.zaloSegmentTabs}
+          data={[
+            {
+              value: 'requests',
+              label: (
+                <div className={styles.zaloTabItem}>
+                  <IconCalendarCheck size={14} />
+                  <span>Đơn nghỉ phép</span>
+                  <span className={styles.zaloTabBadge}>{data.pagination.total}</span>
+                </div>
+              ),
+            },
+            {
+              value: 'catalog',
+              label: (
+                <div className={styles.zaloTabItem}>
+                  <IconListDetails size={14} />
+                  <span>Bảng ký hiệu</span>
+                  <span className={styles.zaloTabBadge}>{leaveTypes.length}</span>
+                </div>
+              ),
+            },
+          ]}
+        />
+      </div>
+
+      {/* 2. Flat Zalo Web Card containing Toolbar & Table */}
+      <div className={styles.zaloMainCard}>
+        {/* Toolbar with Filters (Only on requests tab) */}
+        {activeTab === 'requests' && (
+          <div className={styles.zaloToolbar}>
+            <div className={styles.zaloFiltersLeft}>
               <Select
                 aria-label="Nhân viên"
-                placeholder="Nhân viên"
+                placeholder="Chọn nhân viên"
                 data={employeeOptions}
                 value={selectedEmployee?.value ?? null}
                 clearable
                 searchable
-                size="sm"
-                className={filterStyles.fieldWide}
+                size="xs"
+                className={styles.zaloFilterEmp}
                 nothingFoundMessage={
-                  employeesQuery.isFetching
-                    ? 'Đang tải nhân viên...'
-                    : 'Không tìm thấy nhân viên'
+                  employeesQuery.isFetching ? 'Đang tải nhân viên...' : 'Không tìm thấy nhân viên'
                 }
                 onSearchChange={setEmployeeSearch}
                 onChange={(value) => {
@@ -457,14 +555,15 @@ export function LeavePage() {
                   }));
                 }}
               />
+
               <Select
                 aria-label="Loại nghỉ"
-                placeholder="Loại nghỉ"
+                placeholder="Loại nghỉ phép"
                 data={leaveTypeOptions}
                 value={params.leaveType ?? null}
                 clearable
-                size="sm"
-                className={filterStyles.fieldWide}
+                size="xs"
+                className={styles.zaloFilterType}
                 onChange={(value) =>
                   setParams((current) => ({
                     ...current,
@@ -473,14 +572,15 @@ export function LeavePage() {
                   }))
                 }
               />
+
               <Select
                 aria-label="Trạng thái"
-                placeholder="Trạng thái"
+                placeholder="Trạng thái duyệt"
                 data={statusOptions}
                 value={params.status ?? null}
                 clearable
-                size="sm"
-                className={filterStyles.field}
+                size="xs"
+                className={styles.zaloFilterStatus}
                 onChange={(value) =>
                   setParams((current) => ({
                     ...current,
@@ -489,41 +589,46 @@ export function LeavePage() {
                   }))
                 }
               />
-            </FilterBar>
+            </div>
 
-            <DataTable
-              data={data.items}
-              columns={requestColumns}
-              rowKey={(record) => record.id}
-              meta={data.pagination}
-              onPageChange={(page, pageSize) =>
-                setParams((current) => ({ ...current, page, pageSize }))
-              }
-              emptyTitle="Chưa có đơn nghỉ phép"
-              emptyDescription="Đơn được tạo và xử lý trên Hacom Chat, sau đó hiển thị tại đây."
-            />
-          </Stack>
-        </SectionCard>
+            {activeFilterCount > 0 && (
+              <button
+                type="button"
+                className={styles.zaloClearFilterBtn}
+                onClick={handleClearFilters}
+              >
+                <IconFilterOff size={13} />
+                <span>Xóa bộ lọc ({activeFilterCount})</span>
+              </button>
+            )}
+          </div>
+        )}
 
-        <SectionCard
-          title="Danh mục ký hiệu nghỉ phép"
-          count={`${leaveTypes.length} ký hiệu`}
-          description="Ký hiệu dùng khi đối chiếu bảng công tháng."
-          flushHeader
-        >
-          <Stack gap="xs" px="sm" pb="sm">
-            <DataTable
-              data={pagedLeaveTypes}
-              columns={catalogColumns}
-              rowKey={(record) => record.id}
-              loading={isLeaveTypesLoading}
-              meta={catalogMeta}
-              onPageChange={(page) => setCatalogPage(page)}
-              emptyTitle="Chưa có ký hiệu nghỉ phép"
-            />
-          </Stack>
-        </SectionCard>
-      </Stack>
+        {/* Table Content */}
+        {activeTab === 'requests' ? (
+          <DataTable
+            data={data.items}
+            columns={requestColumns}
+            rowKey={(record) => record.id}
+            meta={data.pagination}
+            onPageChange={(page, pageSize) =>
+              setParams((current) => ({ ...current, page, pageSize }))
+            }
+            emptyTitle="Chưa có đơn nghỉ phép"
+            emptyDescription="Đơn được tạo và xử lý trên Hacom Chat, sau đó tự động đồng bộ tại đây."
+          />
+        ) : (
+          <DataTable
+            data={pagedLeaveTypes}
+            columns={catalogColumns}
+            rowKey={(record) => record.id}
+            loading={isLeaveTypesLoading}
+            meta={catalogMeta}
+            onPageChange={(page) => setCatalogPage(page)}
+            emptyTitle="Chưa có ký hiệu nghỉ phép"
+          />
+        )}
+      </div>
 
       <ConfirmActionModal
         opened={deletingRequest !== null}
@@ -538,6 +643,6 @@ export function LeavePage() {
           }
         }}
       />
-    </>
+    </div>
   );
 }

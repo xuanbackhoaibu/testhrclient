@@ -129,6 +129,7 @@ export function DataTable<T>({
               {selectable && (
                 <Table.Th w={40}>
                   <Checkbox
+                    color="blue"
                     checked={allOnPageSelected}
                     indeterminate={!allOnPageSelected && someOnPageSelected}
                     onChange={toggleAll}
@@ -158,11 +159,12 @@ export function DataTable<T>({
                   key={id}
                   className={onRowClick ? 'data-table-row-clickable' : undefined}
                   onClick={onRowClick ? () => onRowClick(record) : undefined}
-                  bg={isSelected ? 'var(--hacom-primary-tint)' : undefined}
+                  bg={isSelected ? 'light-dark(#eff6ff, var(--mantine-color-dark-6))' : undefined}
                 >
                   {selectable && (
                     <Table.Td onClick={(e) => e.stopPropagation()}>
                       <Checkbox
+                        color="blue"
                         checked={isSelected}
                         onChange={() => toggleRow(id)}
                         aria-label="Chọn dòng"

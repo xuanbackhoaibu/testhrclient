@@ -281,10 +281,12 @@ export function MainLayout() {
           <Group className="app-sidebar-footer" justify="center" visibleFrom="md">
             <Button
               variant="subtle"
+              color="blue"
               size="xs"
               fullWidth
               leftSection={<IconChevronLeft size={15} />}
               onClick={() => setDesktopCollapsed(true)}
+              className="app-sidebar-collapse-btn"
             >
               {t("Thu gọn")}
             </Button>

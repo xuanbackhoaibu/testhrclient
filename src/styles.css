@@ -94,6 +94,27 @@ body {
   padding-top: 10px;
 }
 
+.app-sidebar-collapse-btn {
+  color: #475569;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 130ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-sidebar-collapse-btn:hover {
+  background: #eff6ff !important;
+  color: #0068ff !important;
+}
+
+:root[data-mantine-color-scheme='dark'] .app-sidebar-collapse-btn {
+  color: #94a3b8;
+}
+
+:root[data-mantine-color-scheme='dark'] .app-sidebar-collapse-btn:hover {
+  background: #1e293b !important;
+  color: #3b82f6 !important;
+}
+
 @media (min-width: 48em) {
   .app-shell:not(.is-sidebar-collapsed) .app-shell-header {
     left: 260px;

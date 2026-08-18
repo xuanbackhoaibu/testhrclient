@@ -28,14 +28,9 @@ import {
   IconPrinter,
   IconRefresh,
   IconTable,
-  IconTrendingDown,
-  IconTrendingUp,
-  IconUserCheck,
-  IconUsers,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
-import { type DashboardSummaryPeriod } from "../features/dashboard/dashboardApi";
 import { useDashboardSummary } from "../features/dashboard/useDashboardSummary";
 import { ErrorState } from "../shared/components/ErrorState";
 import { PageHeader } from "../shared/components/PageHeader";
@@ -229,9 +224,6 @@ function ExecutiveMetricStrip({
           <span className={styles.metricCellValue}>
             {formatNumber(totalEmployees)}
           </span>
-          <div className={styles.metricCellIconBoxBlue}>
-            <IconUsers size={20} />
-          </div>
         </div>
         <div className={styles.metricCellFooterRow}>
           <span className={styles.metricCellSub}>Quy mô toàn hệ thống</span>
@@ -255,9 +247,6 @@ function ExecutiveMetricStrip({
           <span className={styles.metricCellValue}>
             {formatNumber(activeEmployees)}
           </span>
-          <div className={styles.metricCellIconBoxGreen}>
-            <IconUserCheck size={20} />
-          </div>
         </div>
         <div className={styles.metricCellFooterRow}>
           <span className={styles.metricCellSub}>Chính thức & thử việc</span>
@@ -279,9 +268,6 @@ function ExecutiveMetricStrip({
         </div>
         <div className={styles.metricCellValueRow}>
           <span className={styles.metricCellValue}>{formatNumber(newHires)}</span>
-          <div className={styles.metricCellIconBoxTeal}>
-            <IconTrendingUp size={20} />
-          </div>
         </div>
         <div className={styles.metricCellFooterRow}>
           <span className={styles.metricCellSub}>Hồ sơ gia nhập kỳ này</span>
@@ -303,9 +289,6 @@ function ExecutiveMetricStrip({
         </div>
         <div className={styles.metricCellValueRow}>
           <span className={styles.metricCellValue}>{formatNumber(terminated)}</span>
-          <div className={styles.metricCellIconBoxRose}>
-            <IconTrendingDown size={20} />
-          </div>
         </div>
         <div className={styles.metricCellFooterRow}>
           <span className={styles.metricCellSub}>Biến động giảm nhân sự</span>
@@ -333,9 +316,6 @@ function ExecutiveMetricStrip({
           <span className={styles.metricCellValue}>
             {formatNumber(pendingTotal)}
           </span>
-          <div className={styles.metricCellIconBoxAmber}>
-            <IconClockHour4 size={20} />
-          </div>
         </div>
         <div className={styles.metricCellFooterRow}>
           <span className={styles.metricCellSub}>
@@ -459,7 +439,8 @@ function DonutStructureChart({
                   cy="80"
                   r={radius}
                   fill="transparent"
-                  stroke="#F1F5F9"
+                  stroke="currentColor"
+                  className={styles.donutBackgroundCircle}
                   strokeWidth="20"
                 />
 
@@ -708,13 +689,7 @@ function ColumnStatusChart({
                       </div>
 
                       <div className={styles.columnLabelGroup}>
-                        <span
-                          className={styles.columnBadge}
-                          style={{
-                            backgroundColor: config.bg,
-                            color: config.color,
-                          }}
-                        >
+                        <span className={styles.columnBadge}>
                           {config.label}
                         </span>
                         <span className={styles.columnPercentTag}>
@@ -754,13 +729,7 @@ function ColumnStatusChart({
                       onClick={() => onItemClick?.(item)}
                     >
                       <Table.Td>
-                        <span
-                          className={styles.columnBadge}
-                          style={{
-                            backgroundColor: config.bg,
-                            color: config.color,
-                          }}
-                        >
+                        <span className={styles.columnBadge}>
                           {config.label}
                         </span>
                       </Table.Td>
@@ -802,8 +771,6 @@ function ModernPendingQueueCard({
       label: "Đơn xin nghỉ phép",
       value: pendingLeave,
       icon: IconCalendarCheck,
-      iconColor: "#0f172a",
-      iconBg: "#f1f5f9",
       route: ROUTES.leave,
       actionText: "Duyệt đơn",
     },
@@ -811,8 +778,6 @@ function ModernPendingQueueCard({
       label: "Giải trình chấm công",
       value: pendingAttendance,
       icon: IconClockHour4,
-      iconColor: "#0f172a",
-      iconBg: "#f1f5f9",
       route: ROUTES.attendance,
       actionText: "Kiểm tra",
     },
@@ -820,8 +785,6 @@ function ModernPendingQueueCard({
       label: "Đề xuất điều chuyển",
       value: pendingMovements,
       icon: IconFileText,
-      iconColor: "#0f172a",
-      iconBg: "#f1f5f9",
       route: ROUTES.movements,
       actionText: "Phê duyệt",
     },
@@ -833,11 +796,7 @@ function ModernPendingQueueCard({
         <div>
           <Text className={styles.cardTitle}>Hàng chờ xử lý yêu cầu</Text>
         </div>
-        <span
-          className={`${styles.pillBadge} ${
-            total > 0 ? styles.pillBadgeAlert : styles.pillBadgeSuccess
-          }`}
-        >
+        <span className={styles.pillBadge}>
           {total > 0 ? `${total} việc cần xử lý` : "Đã duyệt hết"}
         </span>
       </div>
@@ -855,10 +814,7 @@ function ModernPendingQueueCard({
                 tabIndex={0}
               >
                 <div className={styles.cleanQueueLeft}>
-                  <div
-                    className={styles.cleanQueueIconBox}
-                    style={{ backgroundColor: task.iconBg, color: task.iconColor }}
-                  >
+                  <div className={styles.cleanQueueIconBox}>
                     <Icon size={18} />
                   </div>
                   <div className={styles.cleanQueueTitleRow}>
@@ -1162,7 +1118,7 @@ function ModernTopLateTableCard({
           <div className={styles.titleWithBadge}>
             <Text className={styles.cardTitle}>Nhân sự đi muộn cần lưu ý</Text>
             {items.length > 0 && (
-              <span className={styles.alertCountBadge}>
+              <span className={styles.pillBadge}>
                 {items.length} nhân sự
               </span>
             )}
@@ -1275,19 +1231,19 @@ function LiveSystemSyncFooter({
   return (
     <div className={`${styles.systemSyncFooter} ${styles.fadeInItem6}`}>
       <div className={styles.syncFooterLeft}>
-        <span className={styles.livePulseDot} />
+        <span className={styles.livePulseRing} />
         <span className={styles.syncStatusText}>
-          Dữ liệu đồng bộ lúc {lastSyncTime}
+          Dữ liệu đồng bộ lúc <strong>{lastSyncTime}</strong>
         </span>
-        <span className={styles.systemVersionBadge}>HRM Enterprise v2.4</span>
       </div>
 
       <div className={styles.syncFooterRight}>
         <button
           type="button"
-          className={styles.footerRefreshLink}
+          className={styles.footerRefreshBtn}
           onClick={onRefresh}
           disabled={isRefreshing}
+          title="Phím tắt: Alt + R"
         >
           <IconRefresh
             size={13}
@@ -1295,9 +1251,8 @@ function LiveSystemSyncFooter({
               animation: isRefreshing ? "spin 1s linear infinite" : "none",
             }}
           />
-          <span>
-            {isRefreshing ? "Đang đồng bộ..." : "Làm mới ngay (Alt + R)"}
-          </span>
+          <span>{isRefreshing ? "Đang đồng bộ..." : "Làm mới"}</span>
+          <span className={styles.footerKbdShortcut}>Alt + R</span>
         </button>
       </div>
     </div>
@@ -1307,7 +1262,6 @@ function LiveSystemSyncFooter({
 export function DashboardPage() {
   const navigate = useNavigate();
 
-  const [period, setPeriod] = useState<DashboardSummaryPeriod>("month");
   const [selectedUnit, setSelectedUnit] = useState<string>("ALL");
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
@@ -1316,7 +1270,7 @@ export function DashboardPage() {
     return `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
   });
 
-  const dashboardParams = useMemo(() => ({ period }), [period]);
+  const dashboardParams = useMemo(() => ({}), []);
   const { data, isLoading, error, refetch, isFetching } =
     useDashboardSummary(dashboardParams);
 
@@ -1442,19 +1396,6 @@ export function DashboardPage() {
 
   const headerActions = (
     <Group gap="xs" wrap="nowrap" className={styles.headerGroupWrap}>
-      {/* Kỳ thời gian */}
-      <SegmentedControl
-        value={period}
-        onChange={(value) => setPeriod(value as DashboardSummaryPeriod)}
-        size="xs"
-        className={styles.zaloSegment}
-        data={[
-          { value: "month", label: "Tháng này" },
-          { value: "quarter", label: "Quý này" },
-          { value: "year", label: "Năm nay" },
-        ]}
-      />
-
       {/* Nút Xuất Báo Cáo */}
       <Menu shadow="md" width={180} position="bottom-end">
         <Menu.Target>

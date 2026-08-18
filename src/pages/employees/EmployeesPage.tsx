@@ -1176,7 +1176,7 @@ export function EmployeesPage() {
         width: 100,
         align: "center",
         render: (record) => (
-          <Text size="sm" c={record.biotimeEmployeeCode ? "blue" : "dimmed"}>
+          <Text size="sm" c={record.biotimeEmployeeCode ? "hacomRed" : "dimmed"}>
             {record.biotimeEmployeeCode ?? "—"}
           </Text>
         ),
@@ -1491,6 +1491,7 @@ export function EmployeesPage() {
                     {employeeColumnOptions.map((item) => (
                       <Menu.Item key={item.key} onClick={() => toggleColumn(item.key)}>
                         <Checkbox
+                          color="blue"
                           checked={visibleColumnSet.has(item.key)}
                           label={item.label}
                           readOnly

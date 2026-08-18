@@ -105,6 +105,16 @@ export const mantineTheme: MantineThemeOverride = createTheme({
         horizontalSpacing: 'md',
       },
     },
+    Checkbox: {
+      defaultProps: {
+        color: 'blue',
+      },
+    },
+    Switch: {
+      defaultProps: {
+        color: 'blue',
+      },
+    },
   },
 });
 

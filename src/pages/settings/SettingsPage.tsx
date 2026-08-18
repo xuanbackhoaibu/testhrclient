@@ -135,7 +135,6 @@ export function SettingsPage() {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<SettingsSection>('appearance');
-  const [useAvatarBackground, setUseAvatarBackground] = useState(false);
   const [fontSizeMode, setFontSizeMode] = useState<FontSizeMode>(() => readFontSizeMode());
   const [languageMode, setLanguageMode] = useState<AppLanguageMode>(() => readAppLanguageMode());
   const [notificationSoundEnabled, setNotificationSoundEnabled] = useState(true);
@@ -362,17 +361,7 @@ export function SettingsPage() {
                 })}
               </div>
 
-              <div>
-                <Title order={3} className="settings-zalo-section-title" mb="sm">{t('Hình nền chat')}</Title>
-                <Group justify="space-between" className="settings-zalo-section-card settings-zalo-row">
-                  <Text size="sm">{t('Sử dụng Avatar làm hình nền')}</Text>
-                  <Switch
-                    checked={useAvatarBackground}
-                    onChange={(event) => setUseAvatarBackground(event.currentTarget.checked)}
-                    aria-label={t('Sử dụng Avatar làm hình nền')}
-                  />
-                </Group>
-              </div>
+
 
               <div>
                 <Title order={3} className="settings-zalo-section-title" mb="sm">{t('Cỡ chữ')}</Title>
@@ -439,6 +428,7 @@ export function SettingsPage() {
                 <Group justify="space-between" className="settings-zalo-section-card settings-zalo-row">
                   <Text size="sm">{t('Phát âm thanh khi có tin nhắn & thông báo mới')}</Text>
                   <Switch
+                    color="blue"
                     checked={notificationSoundEnabled}
                     onChange={(event) => setNotificationSoundEnabled(event.currentTarget.checked)}
                     aria-label="Phát âm thanh khi có tin nhắn và thông báo mới"
