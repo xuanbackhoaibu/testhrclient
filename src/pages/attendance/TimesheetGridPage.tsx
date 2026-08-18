@@ -21,6 +21,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
+  IconAlertTriangle,
   IconCalendarStats,
   IconDownload,
   IconFilter,
@@ -47,6 +48,8 @@ import {
   listTimesheetMonths,
   type TimesheetMonth,
 } from "../../features/attendance/timesheetRecomputeRange";
+import { clearTimesheetMonthStale } from "../../features/attendance/timesheetStaleMonths";
+import { useTimesheetMonthStale } from "../../features/attendance/useTimesheetStaleMonth";
 import {
   SYMBOL_OPTIONS,
   type TimesheetGridDay,
@@ -671,6 +674,7 @@ export function TimesheetGridPage() {
   const isGridScopeLoading = gridQuery.isLoading || isGridPlaceholderData;
   const adjustDay = useAdjustTimesheetDay();
   const recomputeJob = useTimesheetRecomputeJob();
+  const timesheetIsStale = useTimesheetMonthStale(year, month);
   const autoFullAttendance = useSetAutoFullAttendance();
   const rows = useMemo(
     () => (isGridPlaceholderData ? [] : (gridQuery.data?.rows ?? [])),
@@ -1098,6 +1102,8 @@ export function TimesheetGridPage() {
         job.skippedLocked + job.skippedAdjusted + job.skippedClosed;
 
       if (job.status === "SUCCEEDED") {
+        // Bảng công của các kỳ vừa tính lại đã khớp lịch ca, gỡ cảnh báo cũ.
+        listTimesheetMonths(start, end).forEach(clearTimesheetMonthStale);
         notifications.show({
           color: "green",
           title: `Đã cập nhật bảng công: ${rangeLabel}`,
@@ -1296,6 +1302,34 @@ export function TimesheetGridPage() {
             tháng đó, kể cả nhân sự đã nghỉ hoặc chuyển đơn vị sau này.
           </Text>
         </InfoBanner>
+
+        {timesheetIsStale && !recomputeJob.isRunning ? (
+          <Alert
+            color="orange"
+            variant="light"
+            icon={<IconAlertTriangle size={18} />}
+            title="Bảng công chưa khớp lịch ca vừa đổi"
+          >
+            <Group justify="space-between" gap="sm" wrap="wrap" align="center">
+              <Text size="sm" inherit>
+                Lịch ca của kỳ này vừa thay đổi ở màn Phân ca. Bảng công dưới
+                đây vẫn là kết quả tính trước đó — bấm Cập nhật bảng công để áp
+                lại. Ngày đã chốt hoặc HR sửa tay vẫn được giữ nguyên.
+              </Text>
+              {canEdit ? (
+                <Button
+                  size="xs"
+                  color="orange"
+                  leftSection={<IconRefresh size={15} />}
+                  disabled={isGridScopeLoading || autoFullAttendance.isPending}
+                  onClick={openRecomputeRangeModal}
+                >
+                  Cập nhật bảng công
+                </Button>
+              ) : null}
+            </Group>
+          </Alert>
+        ) : null}
 
         {recomputeJob.status !== "IDLE" ? (
           <Paper withBorder radius="sm" p="sm">

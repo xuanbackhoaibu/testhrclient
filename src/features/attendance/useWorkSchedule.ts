@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { markTimesheetMonthStale } from "./timesheetStaleMonths";
+
 import {
   applyWeeklyShiftTemplate,
   bulkAssignShifts,
@@ -215,6 +217,9 @@ export function useBulkAssignShifts() {
       bulkAssignShifts(payload),
     onSuccess: (_result, payload) => {
       void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
+      // Lịch ca đổi thì bảng công đã tính của kỳ này thành cũ, kể cả khi lần
+      // này không đưa ai vào BCC — người đã ở trong BCC vẫn đổi ca.
+      markTimesheetMonthStale(payload);
       if (payload.includeInTimesheet) {
         void queryClient.invalidateQueries({ queryKey: ["timesheet"] });
       }
@@ -228,9 +233,10 @@ export function useCancelShiftAssignmentDay() {
   return useMutation({
     mutationFn: (payload: CancelShiftAssignmentDayPayload) =>
       cancelShiftAssignmentDay(payload),
-    onSuccess: () => {
+    onSuccess: (_result, payload) => {
       void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
       void queryClient.invalidateQueries({ queryKey: ["timesheet"] });
+      markTimesheetMonthStale(payload);
     },
   });
 }
@@ -241,9 +247,10 @@ export function useReplaceShiftAssignmentDay() {
   return useMutation({
     mutationFn: (payload: ReplaceShiftAssignmentDayPayload) =>
       replaceShiftAssignmentDay(payload),
-    onSuccess: () => {
+    onSuccess: (_result, payload) => {
       void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
       void queryClient.invalidateQueries({ queryKey: ["timesheet"] });
+      markTimesheetMonthStale(payload);
     },
   });
 }
@@ -253,9 +260,10 @@ export function useIncludeShiftAssignmentRowsInTimesheet() {
   return useMutation({
     mutationFn: (payload: IncludeShiftAssignmentRowsInTimesheetPayload) =>
       includeShiftAssignmentRowsInTimesheet(payload),
-    onSuccess: () => {
+    onSuccess: (_result, payload) => {
       void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
       void queryClient.invalidateQueries({ queryKey: ["timesheet"] });
+      markTimesheetMonthStale(payload);
     },
   });
 }
@@ -312,9 +320,10 @@ export function useApplyWeeklyShiftTemplate() {
   return useMutation({
     mutationFn: (payload: ApplyWeeklyShiftTemplatePayload) =>
       applyWeeklyShiftTemplate(payload),
-    onSuccess: () => {
+    onSuccess: (_result, payload) => {
       void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
       void queryClient.invalidateQueries({ queryKey: ["timesheet"] });
+      markTimesheetMonthStale(payload);
     },
   });
 }
@@ -334,9 +343,10 @@ export function useCancelWeeklyShiftAssignments() {
   return useMutation({
     mutationFn: (payload: CancelWeeklyShiftAssignmentsPayload) =>
       cancelWeeklyShiftAssignments(payload),
-    onSuccess: () => {
+    onSuccess: (_result, payload) => {
       void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
       void queryClient.invalidateQueries({ queryKey: ["timesheet"] });
+      markTimesheetMonthStale(payload);
     },
   });
 }
