@@ -1,13 +1,15 @@
-import { useState } from 'react';
-import { Button, Card, Col, Input, Modal, Row, Select, Space, Table } from 'antd';
+import { useMemo, useState } from 'react';
+import { Button, Grid, Modal, Paper, Select, Stack, Text, TextInput } from '@mantine/core';
 
 import type { AuditLog } from '../../features/audit/auditTypes';
 import { useAuditLogs } from '../../features/audit/useAuditLogs';
-import { ErrorState } from '../../shared/components/ErrorState';
-import { LoadingState } from '../../shared/components/LoadingState';
+import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
+import { NormalizedSearchInput } from '../../shared/components/NormalizedSearchInput';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { formatDateTime } from '../../shared/utils/date';
 import { HrmDateInput } from '../../shared/components/HrmDateInput';
+
+const ENTITY_TYPES = ['EMPLOYEE', 'LEAVE_REQUEST', 'DEPARTMENT', 'UNIT', 'CONTRACT', 'IMPORT_BATCH'];
 
 export function AuditLogsPage() {
   const [selected, setSelected] = useState<AuditLog | null>(null);
@@ -24,84 +26,138 @@ export function AuditLogsPage() {
   });
   const { data, isLoading, error, refetch } = useAuditLogs(params);
 
-  if (isLoading) {
-    return <LoadingState />;
-  }
-
-  if (error || !data) {
-    return <ErrorState onRetry={() => void refetch()} />;
-  }
+  const columns = useMemo<DataTableColumn<AuditLog>[]>(
+    () => [
+      { key: 'entityType', header: 'Loại thực thể', render: (record) => record.entityType },
+      { key: 'entityId', header: 'ID thực thể', render: (record) => record.entityId },
+      { key: 'action', header: 'Hành động', render: (record) => record.action },
+      { key: 'actorName', header: 'Người thao tác', render: (record) => record.actorName },
+      { key: 'createdAt', header: 'Thời điểm tạo', render: (record) => formatDateTime(record.createdAt) },
+      {
+        key: 'actions',
+        header: 'Thao tác',
+        render: (record) => (
+          <Button size="xs" variant="light" onClick={() => setSelected(record)}>
+            Chi tiết
+          </Button>
+        ),
+      },
+    ],
+    [],
+  );
 
   return (
     <>
       <PageHeader title="Nhật ký audit" subtitle="Theo dõi ai thay đổi thực thể nào và trước/sau ra sao." />
-      <Card className="page-card">
-        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
-          <Row gutter={12}>
-            <Col xs={24} md={6}>
-              <Select allowClear placeholder="Loại thực thể" style={{ width: '100%' }} options={['EMPLOYEE', 'LEAVE_REQUEST', 'DEPARTMENT', 'UNIT', 'CONTRACT', 'IMPORT_BATCH'].map((item) => ({ value: item, label: item }))} onChange={(value) => setParams((current) => ({ ...current, entityType: value }))} />
-            </Col>
-            <Col xs={24} md={4}>
-              <Input placeholder="ID thực thể" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, entityId: value })); }} />
-            </Col>
-            <Col xs={24} md={4}>
-              <Input placeholder="Hành động" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, action: value })); }} />
-            </Col>
-            <Col xs={24} md={4}>
-              <Input placeholder="ID người thao tác" onChange={(event) => { const value = event.target.value || undefined; setParams((current) => ({ ...current, actorUserId: value })); }} />
-            </Col>
-            <Col xs={24} md={3}>
+      <Paper className="page-card" p="lg" radius="md">
+        <Stack gap="md">
+          <Grid gap="sm">
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <Select
+                clearable
+                placeholder="Loại thực thể"
+                aria-label="Loại thực thể"
+                data={ENTITY_TYPES}
+                value={params.entityType ?? null}
+                onChange={(value) =>
+                  setParams((current) => ({ ...current, page: 1, entityType: value ?? undefined }))
+                }
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              <TextInput
+                placeholder="ID thực thể"
+                aria-label="ID thực thể"
+                onChange={(event) => {
+                  const value = event.currentTarget.value || undefined;
+                  setParams((current) => ({ ...current, page: 1, entityId: value }));
+                }}
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              <TextInput
+                placeholder="Hành động"
+                aria-label="Hành động"
+                onChange={(event) => {
+                  const value = event.currentTarget.value || undefined;
+                  setParams((current) => ({ ...current, page: 1, action: value }));
+                }}
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              <TextInput
+                placeholder="ID người thao tác"
+                aria-label="ID người thao tác"
+                onChange={(event) => {
+                  const value = event.currentTarget.value || undefined;
+                  setParams((current) => ({ ...current, page: 1, actorUserId: value }));
+                }}
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 3 }}>
               <HrmDateInput
                 value={params.fromDate ?? null}
-                onChange={(value) => setParams((current) => ({ ...current, fromDate: value ?? undefined }))}
+                onChange={(value) =>
+                  setParams((current) => ({ ...current, page: 1, fromDate: value ?? undefined }))
+                }
                 placeholder="Từ ngày"
-                style={{ width: '100%' }}
+                aria-label="Từ ngày"
               />
-            </Col>
-            <Col xs={24} md={3}>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 3 }}>
               <HrmDateInput
                 value={params.toDate ?? null}
-                onChange={(value) => setParams((current) => ({ ...current, toDate: value ?? undefined }))}
+                onChange={(value) =>
+                  setParams((current) => ({ ...current, page: 1, toDate: value ?? undefined }))
+                }
                 placeholder="Đến ngày"
-                style={{ width: '100%' }}
+                aria-label="Đến ngày"
               />
-            </Col>
-          </Row>
+            </Grid.Col>
+          </Grid>
 
-          <Input.Search placeholder="Tìm loại thực thể, người thao tác, ID thực thể" allowClear onSearch={(search) => setParams((current) => ({ ...current, search }))} />
-
-          <Table
-            rowKey="id"
-            dataSource={data.items}
-            pagination={{
-              current: data.pagination.page,
-              pageSize: data.pagination.pageSize,
-              total: data.pagination.total,
-              onChange: (page, pageSize) => setParams((current) => ({ ...current, page, pageSize })),
-            }}
-            columns={[
-              { title: 'Loại thực thể', dataIndex: 'entityType' },
-              { title: 'ID thực thể', dataIndex: 'entityId' },
-              { title: 'Hành động', dataIndex: 'action' },
-              { title: 'Người thao tác', dataIndex: 'actorName' },
-              { title: 'Thời điểm tạo', render: (_, record) => formatDateTime(record.createdAt) },
-              { title: 'Thao tác', render: (_, record) => <Button onClick={() => setSelected(record)}>Chi tiết</Button> },
-            ]}
+          <NormalizedSearchInput
+            value={params.search}
+            onChange={(search) => setParams((current) => ({ ...current, page: 1, search }))}
+            placeholder="Tìm loại thực thể, người thao tác, ID thực thể"
+            aria-label="Tìm nhật ký audit"
           />
-        </Space>
-      </Card>
 
-      <Modal open={Boolean(selected)} title="Chi tiết nhật ký audit" footer={null} width={900} onCancel={() => setSelected(null)}>
-        <Space orientation="vertical" style={{ width: '100%' }}>
-          <div>
-            <strong>Trước</strong>
+          <DataTable
+            data={data?.items ?? []}
+            columns={columns}
+            rowKey={(record) => record.id}
+            meta={data?.pagination}
+            loading={isLoading}
+            error={error}
+            onRetry={() => void refetch()}
+            onPageChange={(page, pageSize) => setParams((current) => ({ ...current, page, pageSize }))}
+            emptyTitle="Chưa có nhật ký"
+            emptyDescription="Không có bản ghi audit phù hợp với bộ lọc hiện tại."
+          />
+        </Stack>
+      </Paper>
+
+      <Modal
+        opened={Boolean(selected)}
+        title="Chi tiết nhật ký audit"
+        size={900}
+        onClose={() => setSelected(null)}
+      >
+        <Stack gap="md">
+          <Stack gap={4}>
+            <Text fw={600} size="sm">
+              Trước
+            </Text>
             <pre className="json-block">{JSON.stringify(selected?.beforeJson ?? {}, null, 2)}</pre>
-          </div>
-          <div>
-            <strong>Sau</strong>
+          </Stack>
+          <Stack gap={4}>
+            <Text fw={600} size="sm">
+              Sau
+            </Text>
             <pre className="json-block">{JSON.stringify(selected?.afterJson ?? {}, null, 2)}</pre>
-          </div>
-        </Space>
+          </Stack>
+        </Stack>
       </Modal>
     </>
   );

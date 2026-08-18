@@ -1,4 +1,4 @@
-import { Group, Paper, SimpleGrid, Stack, Table, Text } from "@mantine/core";
+import { Group, Paper, SimpleGrid, Stack, Text } from "@mantine/core";
 
 import { useDashboardSummary } from "../features/dashboard/useDashboardSummary";
 import { EmptyState } from "../shared/components/EmptyState";
@@ -9,10 +9,13 @@ import { getStatusLabel } from "../shared/constants/statusLabels";
 import { BarChart } from "./dashboard/BarChart";
 import { DonutChart, type ChartTone } from "./dashboard/DonutChart";
 import styles from "./DashboardPage.module.css";
+import { formatNumber as formatCount } from "../shared/utils/format";
 
 type Tone = ChartTone;
 
-const formatCount = (value: number) => value.toLocaleString("vi-VN");
+// Ngưỡng chuyên cần coi là đạt, dùng chung cho màu thanh và vạch mục tiêu.
+const ATTENDANCE_TARGET = 95;
+
 
 /** Status keys the API returns, mapped onto the validated status palette. */
 const STATUS_TONES: Record<string, Tone> = {
@@ -90,18 +93,32 @@ function AttendanceRateList({
   }>;
   labelKey: "unitName" | "departmentName";
 }) {
+  const visible = items.slice(0, 6);
+
+  // Tỉ lệ chuyên cần luôn dồn ở vùng cao (90-100%), nên vẽ từ 0% khiến mọi
+  // phòng ban trông bằng nhau. Cắt trục ở dưới giá trị thấp nhất để phần chênh
+  // lệch thật sự nhìn thấy được, và neo đáy trục theo bội số 5 cho dễ đọc.
+  const lowest = Math.min(...visible.map((item) => item.attendanceRate), ATTENDANCE_TARGET);
+  const axisMin = Math.max(0, Math.floor((lowest - 2) / 5) * 5);
+  const axisSpan = Math.max(1, 100 - axisMin);
+  const toPercent = (value: number) =>
+    Math.min(Math.max(((value - axisMin) / axisSpan) * 100, 0), 100);
+
   return (
     <Paper p="md" radius="md" className={styles.panel}>
       <Stack gap="sm">
-        <span className={styles.sectionTitle}>{title}</span>
-        {items.length === 0 ? (
+        <Group justify="space-between" align="baseline" gap="md">
+          <span className={styles.sectionTitle}>{title}</span>
+          <span className={styles.sectionCaption}>Mục tiêu {ATTENDANCE_TARGET}%</span>
+        </Group>
+        {visible.length === 0 ? (
           <Text size="sm" c="dimmed">
             Chưa có dữ liệu công tháng này.
           </Text>
         ) : (
           <Stack gap="xs">
-            {items.slice(0, 6).map((item) => {
-              const good = item.attendanceRate >= 95;
+            {visible.map((item) => {
+              const good = item.attendanceRate >= ATTENDANCE_TARGET;
               return (
                 <div key={item[labelKey] ?? "unknown"} className={styles.rankRow}>
                   <span className={styles.rankLabel} title={item[labelKey] ?? "-"}>
@@ -110,13 +127,20 @@ function AttendanceRateList({
                   <span className={styles.rankValue}>
                     {item.attendanceRate.toLocaleString("vi-VN")}%
                   </span>
-                  <span className={styles.rankTrack}>
+                  <span
+                    className={styles.meterTrack}
+                    style={{ gridColumn: "1 / -1" }}
+                    role="img"
+                    aria-label={`${item[labelKey] ?? "Không rõ"}: ${item.attendanceRate.toLocaleString("vi-VN")}%, mục tiêu ${ATTENDANCE_TARGET}%`}
+                  >
+                    <span
+                      className={styles.targetMark}
+                      style={{ left: `${toPercent(ATTENDANCE_TARGET)}%` }}
+                    />
                     <span
                       className={styles.meterFill}
                       data-tone={good ? "good" : "warning"}
-                      style={{
-                        width: `${Math.min(Math.max(item.attendanceRate, 0), 100)}%`,
-                      }}
+                      style={{ width: `${toPercent(item.attendanceRate)}%` }}
                     />
                   </span>
                   <Text size="xs" c="dimmed" style={{ gridColumn: "1 / -1" }}>
@@ -125,79 +149,15 @@ function AttendanceRateList({
                 </div>
               );
             })}
+            <Group justify="space-between" gap="xs">
+              <Text size="xs" c="dimmed">
+                {axisMin}%
+              </Text>
+              <Text size="xs" c="dimmed">
+                100%
+              </Text>
+            </Group>
           </Stack>
-        )}
-      </Stack>
-    </Paper>
-  );
-}
-
-function TopLateTable({
-  items,
-}: {
-  items: Array<{
-    employeeId: string;
-    employeeCode?: string | null;
-    fullName?: string | null;
-    unitName?: string | null;
-    departmentName?: string | null;
-    lateCount: number;
-    totalLateMinutes: number;
-  }>;
-}) {
-  return (
-    <Paper p="md" radius="md" className={styles.panel}>
-      <Stack gap="sm">
-        <Group justify="space-between" align="baseline" gap="md">
-          <span className={styles.sectionTitle}>Nhân sự đi muộn nhiều nhất</span>
-          <span className={styles.sectionCaption}>Tháng này</span>
-        </Group>
-        {items.length === 0 ? (
-          <Text size="sm" c="dimmed">
-            Chưa ghi nhận lần đi muộn trong tháng này.
-          </Text>
-        ) : (
-          <Table highlightOnHover verticalSpacing="sm" withRowBorders={false}>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Nhân sự</Table.Th>
-                <Table.Th>Đơn vị</Table.Th>
-                <Table.Th ta="right">Lần</Table.Th>
-                <Table.Th ta="right">Phút</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {items.map((item) => (
-                <Table.Tr key={item.employeeId}>
-                  <Table.Td>
-                    <Stack gap={0}>
-                      <Text size="sm" fw={600}>
-                        {item.fullName ?? item.employeeId}
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        {item.employeeCode ?? "-"}
-                      </Text>
-                    </Stack>
-                  </Table.Td>
-                  <Table.Td>
-                    <Stack gap={0}>
-                      <Text size="sm">{item.unitName ?? "-"}</Text>
-                      <Text size="xs" c="dimmed">
-                        {item.departmentName ?? "-"}
-                      </Text>
-                    </Stack>
-                  </Table.Td>
-                  {/* Số lần là thông tin chính, số phút là phụ. */}
-                  <Table.Td ta="right" fw={600}>
-                    {formatCount(item.lateCount)}
-                  </Table.Td>
-                  <Table.Td ta="right" c="dimmed">
-                    {formatCount(item.totalLateMinutes)}
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
         )}
       </Stack>
     </Paper>
@@ -302,8 +262,6 @@ export function DashboardPage() {
             />
           </ChartPanel>
         </SimpleGrid>
-
-        <TopLateTable items={data.attendanceThisMonth.topLateEmployees} />
 
         {/* Top-aligned: the two lists rarely have the same row count, and a
             stretched short panel leaves a large void under its last row. */}

@@ -129,11 +129,6 @@ export function sumAssignmentTotals(
   return sum;
 }
 
-export function summarizeAssignmentRowFor(
-  row: Pick<ShiftAssignmentGridRow, 'days'>,
-): ShiftAssignmentRowTotals {
-  return summarizeAssignmentRow(row.days);
-}
 
 /**
  * Dòng "Tổng cộng" dưới bảng: mỗi cột ngày cộng SỐ CÔNG của các ca phân trong

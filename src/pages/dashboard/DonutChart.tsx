@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import styles from './DashboardCharts.module.css';
+import { formatNumber as formatCount } from '../../shared/utils/format';
 
 export type ChartTone = 'good' | 'warning' | 'critical' | 'unknown' | 'accent';
 
@@ -23,7 +24,6 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 /** Surface gap between slices, expressed along the arc. */
 const GAP = 3;
 
-const formatCount = (value: number) => value.toLocaleString('vi-VN');
 
 /**
  * Part-to-whole at a glance. Capped at a handful of slices by the caller —

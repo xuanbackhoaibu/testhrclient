@@ -9,7 +9,6 @@ import {
   listTimesheetConfirmations,
   listTimesheetPeriods,
   openTimesheetPeriod,
-  recomputeTimesheet,
   reopenTimesheetPeriod,
   setAutoFullAttendance,
   updateMonthlyTimesheetRosterMembers,
@@ -19,7 +18,6 @@ import type {
   InitializeMonthlyTimesheetRosterPayload,
   MonthlyTimesheetRosterQuery,
   OpenTimesheetPeriodPayload,
-  RecomputePayload,
   ReopenTimesheetPeriodPayload,
   SetAutoFullAttendancePayload,
   TimesheetGridQuery,
@@ -95,14 +93,6 @@ export function useAdjustTimesheetDay() {
   });
 }
 
-export function useRecomputeTimesheet() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: RecomputePayload) => recomputeTimesheet(payload),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: timesheetKeys.all }),
-  });
-}
 
 export function useSetAutoFullAttendance() {
   const queryClient = useQueryClient();

@@ -256,7 +256,7 @@ export function RolesPage() {
                   {STATUS_LABEL[role.status ?? 'active']}
                 </Badge>
                 <Tooltip label="Xem chi tiết">
-                  <ActionIcon variant="subtle" size="sm" onClick={(e) => { e.stopPropagation(); handleOpenDetail(role); }}>
+                  <ActionIcon variant="subtle" size="sm" aria-label="Xem chi tiết vai trò" onClick={(e) => { e.stopPropagation(); handleOpenDetail(role); }}>
                     <IconEye size={16} />
                   </ActionIcon>
                 </Tooltip>
@@ -411,7 +411,7 @@ export function RolesPage() {
                       <Text size="xs" ff="monospace" c="blue">{g.key}</Text>
                     </Stack>
                     {canManage && (
-                      <ActionIcon variant="subtle" color="red" size="sm" loading={removeGroupMutation.isPending}
+                      <ActionIcon variant="subtle" color="red" size="sm" aria-label={`Gỡ nhóm quyền ${g.name ?? ''}`.trim()} loading={removeGroupMutation.isPending}
                         onClick={() => removeGroupMutation.mutate({ roleId: detail.id, groupId: g.id })}>
                         <IconTrash size={14} />
                       </ActionIcon>
@@ -453,7 +453,7 @@ export function RolesPage() {
                       {canReadTechnicalCatalog && <Text size="xs" ff="monospace" c="blue">{p.key}</Text>}
                     </Stack>
                     {canManage && (
-                      <ActionIcon variant="subtle" color="red" size="sm" loading={removePermMutation.isPending}
+                      <ActionIcon variant="subtle" color="red" size="sm" aria-label={`Gỡ quyền ${p.key ?? ''}`.trim()} loading={removePermMutation.isPending}
                         onClick={() => removePermMutation.mutate({ roleId: detail.id, permId: p.id })}>
                         <IconTrash size={14} />
                       </ActionIcon>

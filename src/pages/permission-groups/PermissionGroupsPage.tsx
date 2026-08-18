@@ -210,7 +210,7 @@ export function PermissionGroupsPage() {
                 </Table.Td>
                 <Table.Td>
                   <Tooltip label="Xem chi tiết">
-                    <ActionIcon variant="subtle" onClick={() => handleOpenDetail(group)}>
+                    <ActionIcon variant="subtle" aria-label="Xem chi tiết nhóm quyền" onClick={() => handleOpenDetail(group)}>
                       <IconEye size={16} />
                     </ActionIcon>
                   </Tooltip>
@@ -397,6 +397,7 @@ export function PermissionGroupsPage() {
                       variant="subtle"
                       color="red"
                       size="sm"
+                      aria-label={`Gỡ quyền ${perm.key ?? ''}`.trim()}
                       loading={removePermMutation.isPending}
                       onClick={() => removePermMutation.mutate({ groupId: detail.id, permissionId: perm.id })}
                     >

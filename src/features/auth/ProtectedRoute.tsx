@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
-import { Button, Result } from 'antd';
+import { Button } from '@mantine/core';
 import { Navigate, useLocation } from 'react-router-dom';
 
 import { ROUTES } from '../../shared/constants/routes';
 import { LoadingState } from '../../shared/components/LoadingState';
+import { StatusResult } from '../../shared/components/StatusResult';
 import { useAuth } from './useAuth';
 import { getRoutePolicy, isSuperAdmin } from './routePolicies';
 
@@ -31,18 +32,18 @@ export function ProtectedRoute({
 
   if (!user) {
     return (
-      <Result
+      <StatusResult
         status="error"
         title="503 - Không thể xác minh quyền"
         subTitle={error ?? 'Dịch vụ authority hiện không khả dụng.'}
-        extra={<Button onClick={() => void refreshCurrentUser()}>Thử lại</Button>}
+        extra={<Button variant="light" onClick={() => void refreshCurrentUser()}>Thử lại</Button>}
       />
     );
   }
 
   if (user.accountStatus !== 'ACTIVE') {
     return (
-      <Result
+      <StatusResult
         status="403"
         title="Tài khoản không hoạt động"
         subTitle="Trạng thái tài khoản hiện tại không cho phép truy cập HRM."
@@ -57,7 +58,7 @@ export function ProtectedRoute({
   const routePolicy = route ? getRoutePolicy(route) : null;
   if (route === ROUTES.dashboard && !isSuperAdmin(user)) {
     return (
-      <Result
+      <StatusResult
         status="404"
         title="404"
         subTitle="Không tìm thấy màn hình dashboard cho tài khoản hiện tại."
@@ -67,7 +68,7 @@ export function ProtectedRoute({
 
   if (routePolicy?.kind === 'unavailable') {
     return (
-      <Result status="403" title="Chức năng chưa được cấp policy" subTitle={routePolicy.reason} />
+      <StatusResult status="403" title="Chức năng chưa được cấp policy" subTitle={routePolicy.reason} />
     );
   }
   const requiredPermissions =
@@ -82,7 +83,7 @@ export function ProtectedRoute({
 
   if (!routeAllowed) {
     return (
-      <Result
+      <StatusResult
         status="403"
         title="403"
         subTitle="Bạn không có quyền truy cập chức năng này."
