@@ -1,4 +1,4 @@
-import { Group, Paper, SimpleGrid, Stack, Table, Text } from "@mantine/core";
+import { Group, Paper, SimpleGrid, Stack, Text } from "@mantine/core";
 
 import { useDashboardSummary } from "../features/dashboard/useDashboardSummary";
 import { EmptyState } from "../shared/components/EmptyState";
@@ -132,78 +132,6 @@ function AttendanceRateList({
   );
 }
 
-function TopLateTable({
-  items,
-}: {
-  items: Array<{
-    employeeId: string;
-    employeeCode?: string | null;
-    fullName?: string | null;
-    unitName?: string | null;
-    departmentName?: string | null;
-    lateCount: number;
-    totalLateMinutes: number;
-  }>;
-}) {
-  return (
-    <Paper p="md" radius="md" className={styles.panel}>
-      <Stack gap="sm">
-        <Group justify="space-between" align="baseline" gap="md">
-          <span className={styles.sectionTitle}>Nhân sự đi muộn nhiều nhất</span>
-          <span className={styles.sectionCaption}>Tháng này</span>
-        </Group>
-        {items.length === 0 ? (
-          <Text size="sm" c="dimmed">
-            Chưa ghi nhận lần đi muộn trong tháng này.
-          </Text>
-        ) : (
-          <Table highlightOnHover verticalSpacing="sm" withRowBorders={false}>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Nhân sự</Table.Th>
-                <Table.Th>Đơn vị</Table.Th>
-                <Table.Th ta="right">Lần</Table.Th>
-                <Table.Th ta="right">Phút</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {items.map((item) => (
-                <Table.Tr key={item.employeeId}>
-                  <Table.Td>
-                    <Stack gap={0}>
-                      <Text size="sm" fw={600}>
-                        {item.fullName ?? item.employeeId}
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        {item.employeeCode ?? "-"}
-                      </Text>
-                    </Stack>
-                  </Table.Td>
-                  <Table.Td>
-                    <Stack gap={0}>
-                      <Text size="sm">{item.unitName ?? "-"}</Text>
-                      <Text size="xs" c="dimmed">
-                        {item.departmentName ?? "-"}
-                      </Text>
-                    </Stack>
-                  </Table.Td>
-                  {/* Số lần là thông tin chính, số phút là phụ. */}
-                  <Table.Td ta="right" fw={600}>
-                    {formatCount(item.lateCount)}
-                  </Table.Td>
-                  <Table.Td ta="right" c="dimmed">
-                    {formatCount(item.totalLateMinutes)}
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        )}
-      </Stack>
-    </Paper>
-  );
-}
-
 export function DashboardPage() {
   const { data, isLoading, error, refetch } = useDashboardSummary();
 
@@ -302,8 +230,6 @@ export function DashboardPage() {
             />
           </ChartPanel>
         </SimpleGrid>
-
-        <TopLateTable items={data.attendanceThisMonth.topLateEmployees} />
 
         {/* Top-aligned: the two lists rarely have the same row count, and a
             stretched short panel leaves a large void under its last row. */}
