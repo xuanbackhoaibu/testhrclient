@@ -6,8 +6,9 @@ body,
 }
 
 body {
-  background: #f6f8fb;
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-8));
   font-family:
+    'Inter Variable',
     Inter,
     -apple-system,
     BlinkMacSystemFont,
@@ -70,22 +71,18 @@ table th {
   padding: 24px;
 }
 
-.metric-card .ant-statistic {
-  width: 100%;
-}
-
 .app-nav-link {
   width: 100%;
   min-height: 34px;
   border-radius: 6px;
-  color: #334155;
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
   font-size: 14px;
   font-weight: 500;
 }
 
 .app-nav-link[data-active='true'] {
-  color: #0b5ed7;
-  background: #eaf2ff;
+  color: var(--mantine-color-blue-7);
+  background: light-dark(var(--mantine-color-blue-0), var(--mantine-color-blue-9));
 }
 
 .brand-logo-image {
@@ -116,12 +113,12 @@ table th {
 }
 
 .data-table-footer {
-  border-top: 1px solid #edf0f5;
+  border-top: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-4));
 }
 
 .timesheet-bcc-table {
-  border-color: #d9e0e8;
-  color: #1f2937;
+  border-color: light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  color: light-dark(var(--mantine-color-gray-8), var(--mantine-color-dark-0));
   font-size: 12px;
 }
 
@@ -132,7 +129,7 @@ table th {
 }
 
 .timesheet-bcc-table th {
-  color: #334155;
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
   font-size: 11px;
   font-weight: 650;
   line-height: 1.15;
@@ -151,7 +148,7 @@ table th {
 }
 
 .work-report-permission-matrix .mantine-Table-th {
-  background: #f8fafc;
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
 }
 
 .work-report-employee-cell {
@@ -163,26 +160,6 @@ table th {
 
 .work-report-employee-cell:hover > * {
   color: var(--mantine-color-blue-7);
-}
-
-/* AntD powers workflow/import tables; give it the same quiet table language. */
-.ant-table-wrapper .ant-table {
-  border: 1px solid #e8edf3;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.ant-table-wrapper .ant-table-thead > tr > th {
-  background: #f8fafc;
-  color: #475569;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.ant-table-wrapper .ant-table-tbody > tr > td,
-.ant-table-wrapper .ant-table-thead > tr > th {
-  padding-top: 10px;
-  padding-bottom: 10px;
 }
 
 @media (max-width: 900px) {
@@ -199,4 +176,18 @@ table th {
   text-overflow: ellipsis;
   vertical-align: bottom;
   white-space: nowrap;
+}
+
+/*
+ * Tiêu đề: Inter ở cỡ lớn giãn mặc định trông rời rạc, siết tracking để tiêu đề
+ * đọc thành một khối. Craft floor dừng ở -0.04em; -0.02 tới -0.025em đọc tốt hơn.
+ */
+:where(h1, h2, h3, .mantine-Title-root) {
+  letter-spacing: -0.021em;
+}
+
+/* Số liệu trong bảng và thẻ chỉ số căn cột thẳng hàng khi đọc lướt. */
+.mantine-Table-root,
+.tileValue {
+  font-variant-numeric: tabular-nums;
 }

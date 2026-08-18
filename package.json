@@ -16,6 +16,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
     "@hacom/chat-shared-types": "file:../chat-shared-types",
     "@mantine/core": "^9.2.1",
     "@mantine/dates": "^9.2.1",
