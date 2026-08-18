@@ -402,6 +402,9 @@ function cellDescription(
     !day.isLocked
       ? "Đủ công mặc định"
       : null,
+    // Mã ca đứng trước mọi thông tin khác: HR mở tooltip chủ yếu để đối chiếu
+    // ô này đang tính theo ca nào so với lịch ở màn Phân ca.
+    day.shiftCode ? `Ca ${day.shiftCode}` : null,
     day.holidayName,
     day.source === "HOLIDAY_UNPAID" ? "Ngày lễ không lương" : null,
     day.source === "UNASSIGNED" ? "Chưa phân ca — chưa tính công" : null,
