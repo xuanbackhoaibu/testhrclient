@@ -203,7 +203,30 @@ export interface BulkShiftAssignmentPayload {
    * false để vẫn hỗ trợ trường hợp chỉ lập kế hoạch ca.
    */
   includeInTimesheet?: boolean;
+  /**
+   * Ca mới đè ca cá nhân đã có trong khoảng áp thay vì báo lỗi chồng ngày.
+   * Phần ca cũ nằm ngoài khoảng áp vẫn được backend giữ nguyên.
+   */
+  overwriteExisting?: boolean;
   note?: string;
+}
+
+/** Hủy ca cá nhân của nhiều CBNV trong một khoảng ngày; BCC giữ nguyên. */
+export interface BulkCancelShiftAssignmentDaysPayload {
+  month: number;
+  year: number;
+  unitId: string;
+  employeeIds: string[];
+  effectiveFrom: string;
+  effectiveTo: string;
+}
+
+export interface BulkCancelShiftAssignmentDaysResult {
+  cancelled: number;
+  /** Ô không có ca cá nhân để hủy: ngày lễ, ngoài khoảng công, hoặc ca dùng chung. */
+  skipped: number;
+  recomputeRequired: boolean;
+  affected: Array<{ employeeId: string; date: string }>;
 }
 
 export interface BulkShiftAssignmentResult {

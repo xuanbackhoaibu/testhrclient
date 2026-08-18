@@ -30,6 +30,7 @@ import {
   IconCalendarTime,
   IconExternalLink,
   IconRefresh,
+  IconTrash,
   IconSearch,
   IconUserCheck,
   IconUsers,
@@ -50,6 +51,7 @@ import {
 } from "../../features/attendance/shiftAssignmentWeekdays";
 import { useAuth } from "../../features/auth/useAuth";
 import { ShiftPickerTable } from "./ShiftPickerTable";
+import { ConfirmActionModal } from "../../shared/components/ConfirmActionModal";
 import {
   moveItem,
   readWorkShiftUserOrder,
@@ -72,6 +74,7 @@ import {
 } from "../../features/attendance/shiftAssignmentTotals";
 import {
   useBulkAssignShifts,
+  useBulkCancelShiftAssignmentDays,
   useCancelShiftAssignmentDay,
   useIncludeShiftAssignmentRowsInTimesheet,
   useReplaceShiftAssignmentDay,
@@ -472,6 +475,8 @@ export function MonthlyShiftAssignmentGrid({
   const unitsQuery = useUnitsSelect();
   const shiftsQuery = useWorkShifts();
   const bulkAssign = useBulkAssignShifts();
+  const bulkCancelDays = useBulkCancelShiftAssignmentDays();
+  const [bulkCancelConfirmOpen, setBulkCancelConfirmOpen] = useState(false);
   const cancelShiftAssignmentDay = useCancelShiftAssignmentDay();
   const replaceShiftAssignmentDay = useReplaceShiftAssignmentDay();
   const includeInTimesheet = useIncludeShiftAssignmentRowsInTimesheet();
@@ -955,6 +960,7 @@ export function MonthlyShiftAssignmentGrid({
           shiftId: shift.id,
           ...singleDayShiftAssignmentScope(picker.day.date),
           includeInTimesheet: true,
+          overwriteExisting: true,
         });
         notifications.show({
           color: "green",
@@ -1061,6 +1067,12 @@ export function MonthlyShiftAssignmentGrid({
         effectiveFrom,
         effectiveTo,
         includeInTimesheet: includeInTimesheetWithShift,
+        /*
+         * Ca vừa chọn luôn thắng ca cũ trong khoảng áp: HR chốt ca mới là ý
+         * định rõ ràng, bắt họ đi hủy từng ca cũ trước chỉ tạo thêm thao tác.
+         * Backend vẫn giữ nguyên phần ca cũ nằm ngoài khoảng áp.
+         */
+        overwriteExisting: true,
         ...(assignmentWeekdays ? { weekdays: assignmentWeekdays } : {}),
       });
       setSelectionState({ scope: selectionScope, employeeIds: new Set() });
@@ -1079,6 +1091,35 @@ export function MonthlyShiftAssignmentGrid({
           error instanceof Error && error.message
             ? error.message
             : "Kiểm tra khoảng ngày hoặc ca cá nhân đang chồng lấn rồi thử lại.",
+      });
+    }
+  }
+
+  async function bulkCancelSelectedDays() {
+    if (!selectedUnitId || !selectedEmployeeIds.size) return;
+    setBulkCancelConfirmOpen(false);
+    try {
+      const result = await bulkCancelDays.mutateAsync({
+        month,
+        year,
+        unitId: selectedUnitId,
+        employeeIds: [...selectedEmployeeIds],
+        effectiveFrom,
+        effectiveTo,
+      });
+      setSelectionState({ scope: selectionScope, employeeIds: new Set() });
+      notifications.show({
+        color: result.cancelled ? "green" : "orange",
+        title: result.cancelled ? "Đã hủy ca" : "Không có ca nào để hủy",
+        message: result.cancelled
+          ? `Đã hủy ${result.cancelled} ngày ca cá nhân. CBNV vẫn ở trong BCC; mở Bảng công rồi bấm Cập nhật bảng công để áp lại.`
+          : "Các ngày đã chọn không có ca cá nhân nào. Ca theo phòng ban, đơn vị hoặc ca tuần phải sửa ở đúng quy tắc nguồn.",
+      });
+    } catch {
+      notifications.show({
+        color: "red",
+        title: "Không hủy được ca",
+        message: "Kiểm tra lại khoảng ngày và trạng thái kỳ công.",
       });
     }
   }
@@ -1344,6 +1385,24 @@ export function MonthlyShiftAssignmentGrid({
               onClick={() => void includeSelectedInTimesheet()}
             >
               Đưa vào BCC
+            </Button>
+            <Button
+              variant="light"
+              color="red"
+              leftSection={<IconTrash size={17} />}
+              loading={bulkCancelDays.isPending}
+              disabled={
+                tableIsDisabled ||
+                bulkAssign.isPending ||
+                includeInTimesheet.isPending ||
+                bulkCancelDays.isPending ||
+                !selectedEmployeeIds.size ||
+                !effectiveFrom ||
+                !effectiveTo
+              }
+              onClick={() => setBulkCancelConfirmOpen(true)}
+            >
+              Hủy ca
             </Button>
           </Group>
           <Group gap="xs">
@@ -2233,6 +2292,15 @@ export function MonthlyShiftAssignmentGrid({
         </Stack>
       ) : null}
 
+      <ConfirmActionModal
+        opened={bulkCancelConfirmOpen}
+        title="Hủy ca hàng loạt"
+        message={`Hủy ca cá nhân của ${selectedEmployeeIds.size} CBNV từ ${formatDate(effectiveFrom)} đến ${formatDate(effectiveTo)}? Ca theo phòng ban, đơn vị và ca tuần vẫn giữ nguyên. CBNV vẫn ở trong BCC.`}
+        confirmLabel="Hủy ca"
+        loading={bulkCancelDays.isPending}
+        onClose={() => setBulkCancelConfirmOpen(false)}
+        onConfirm={() => void bulkCancelSelectedDays()}
+      />
     </Stack>
   );
 }
