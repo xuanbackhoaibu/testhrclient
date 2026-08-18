@@ -94,26 +94,6 @@ export function useCalendarView() {
   };
 }
 
-export function useSelectedOwner() {
-  const [selectedOwner, setSelectedOwner] = useState<SelectedOwner | null>(null);
-
-  const isViewingOthers = selectedOwner !== null;
-
-  const selectOwner = useCallback((owner: SelectedOwner | null) => {
-    setSelectedOwner(owner);
-  }, []);
-
-  const clearOwner = useCallback(() => {
-    setSelectedOwner(null);
-  }, []);
-
-  return {
-    selectedOwner,
-    isViewingOthers,
-    selectOwner,
-    clearOwner,
-  };
-}
 
 export function useCalendarMutations() {
   const createEvent = useCallback(
