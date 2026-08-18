@@ -1358,9 +1358,9 @@
 
 .footerRefreshBtn:hover:not(:disabled) {
   background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-5));
-  border-color: light-dark(#fca5a5, var(--hacom-primary, #D71920));
-  color: #D71920;
-  box-shadow: 0 2px 6px rgba(215, 25, 32, 0.08);
+  border-color: light-dark(#c7ddff, var(--mantine-color-blue-6));
+  color: #0068ff;
+  box-shadow: 0 2px 6px rgba(0, 104, 255, 0.08);
 }
 
 .footerRefreshBtn:disabled {

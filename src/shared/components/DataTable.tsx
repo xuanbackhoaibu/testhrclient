@@ -204,6 +204,7 @@ export function DataTable<T>({
                 value={meta.page}
                 onChange={(page) => onPageChange(page, meta.pageSize)}
                 size="sm"
+                color="blue"
               />
             </Box>
           </Group>

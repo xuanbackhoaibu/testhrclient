@@ -51,6 +51,7 @@ const translations: Record<string, string> = {
   'Người dùng': 'User',
   'Người dùng và tài khoản': 'Users and accounts',
   'Nghỉ phép': 'Leave',
+  'Quản lý nghỉ phép': 'Leave Management',
   'Nhân sự': 'Employees',
   'Nhóm quyền': 'Permission groups',
   'Nhỏ': 'Small',

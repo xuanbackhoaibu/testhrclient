@@ -72,19 +72,9 @@ function buildMockNotice(startDate: string, totalDays: number) {
   };
 }
 
-function ensureMockNotice(leave: LeaveRequest) {
-  if (leave.noticeRequiredDays === undefined || leave.noticeActualDays === undefined) {
-    Object.assign(leave, buildMockNotice(leave.startDate, leave.totalDays));
-  }
-}
-
 export async function listLeaveRequests(params: ListQueryParams = {}): Promise<PaginatedResponse<LeaveRequest>> {
   if (isMockMode) {
     await mockDelay();
-    mockLeaveRequests.forEach((item) => {
-      ensureMockApprovalSteps(item);
-      ensureMockNotice(item);
-    });
     const filtered = mockLeaveRequests
       .filter((item) => (params.employeeId ? item.employeeId === params.employeeId : true))
       .filter((item) => (params.leaveType ? item.leaveType === params.leaveType : true))

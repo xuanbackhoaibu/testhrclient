@@ -115,6 +115,11 @@ export const mantineTheme: MantineThemeOverride = createTheme({
         color: 'blue',
       },
     },
+    Pagination: {
+      defaultProps: {
+        color: 'blue',
+      },
+    },
   },
 });
 

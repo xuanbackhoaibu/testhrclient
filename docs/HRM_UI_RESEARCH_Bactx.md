@@ -2489,6 +2489,29 @@ Cập nhật bổ sung:
 - **Cấu hình Runtime Hệ thống:** Hiển thị trực quan các tham số môi trường: `API base URL`, `Auth mode`, `Mock mode`, `Auth service endpoint`, `Redirect URI`.
 - **Quản lý Dữ liệu:** Khối quản lý bộ nhớ đệm tạm thời (Cache & Data storage) được thiết kế tối giản, đồng bộ Dark Mode toàn diện.
 
+---
+
+## 45. NÂNG CẤP GIAO DIỆN QUẢN LÝ NGHỈ PHÉP (ZALO WEB FLAT UI)
+
+### 45.1. Bối cảnh và Mục tiêu Nâng cấp
+- **Vị trí cốt lõi:** Trang **Nghỉ phép (`/leave`)** là đích đến trực tiếp khi người quản lý click nút *"Duyệt đơn"* từ Hàng chờ xử lý trên Dashboard.
+- **Mục tiêu:** Chuyển đổi giao diện từ các thẻ Card rời rạc sang ngôn ngữ **phẳng, hiện đại chuẩn Zalo Web**, tăng mật độ hiển thị thông tin, tối ưu trải nghiệm duyệt đơn hàng ngày cho HR và Trưởng bộ phận.
+
+### 45.2. Các Cải tiến UI/UX Nổi bật
+1. **Thanh Chuyển Đổi Tab Zalo Web (Segmented Control):**
+   - Đặt ngay trên thanh tiêu đề: `Đơn nghỉ phép (X)` và `Bảng ký hiệu (Y)`.
+   - Thiết kế dạng pill trượt êm ái, tích hợp badge số lượng thực tế trực quan.
+2. **Thanh Bộ Lọc Tinh Gọn 1 Hàng (Flat Zalo Toolbar):**
+   - Gom gọn ô chọn/tìm kiếm nhân viên, loại nghỉ phép và trạng thái duyệt trên 1 hàng phẳng liền mạch với bảng.
+   - Nút `Xóa bộ lọc` thông minh tự động xuất hiện khi có điều kiện lọc đang kích hoạt.
+3. **Bảng Danh Sách Đơn Nghỉ Phép Hiện Đại:**
+   - **Avatar Zalo-style:** Hiển thị avatar tròn với ký tự viết hoa đầu trên nền màu pastel dịu nhẹ.
+   - **Khoảng thời gian nghỉ:** Định dạng ngày `DD/MM/YYYY` kèm mũi tên `→` và chip buổi nghỉ (*Cả ngày, Sáng, Chiều*).
+   - **Badge Trạng Thái Zalo Soft Pill:** Màu sắc pastel dịu mắt (`Đang trình duyệt` - xanh dương nhạt, `Đã duyệt` - xanh lá nhạt, `Từ chối/Hủy` - xám nhẹ).
+4. **Bảng Danh Mục Ký Hiệu Phẳng & Tinh Tế:**
+   - Cột **Ký hiệu nghỉ phép:** Chuyển sang hiển thị chữ phẳng in đậm (`fw={700}`) không đóng khung bo viền thừa, đồng bộ với phong cách biểu đồ cột của Dashboard.
+   - Hỗ trợ đầy đủ Dark/Light Mode bằng biến Mantine `light-dark()`.
+
 
 
 

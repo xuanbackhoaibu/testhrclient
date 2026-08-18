@@ -84,7 +84,7 @@ export const navGroups: NavGroup[] = [
         items: [
           { label: "Điều chuyển", path: ROUTES.movements, icon: IconTransfer },
           { label: "Hợp đồng", path: ROUTES.contracts, icon: IconBriefcase },
-          { label: "Nghỉ phép", path: ROUTES.leave, icon: IconCalendarCheck },
+          { label: "Quản lý nghỉ phép", path: ROUTES.leave, icon: IconCalendarCheck },
           {
             label: "Cấu hình duyệt phép",
             path: ROUTES.leaveApprovalAssignments,
@@ -163,7 +163,7 @@ export const routeTitles: Record<string, string> = {
   [ROUTES.positions]: "Chức danh",
   [ROUTES.movements]: "Điều chuyển",
   [ROUTES.contracts]: "Hợp đồng",
-  [ROUTES.leave]: "Nghỉ phép",
+  [ROUTES.leave]: "Quản lý nghỉ phép",
   [ROUTES.leaveApprovalAssignments]: "Cấu hình duyệt phép",
   [ROUTES.attendance]: "Chấm công",
   [ROUTES.attendanceMapping]: "Xử lý mapping",

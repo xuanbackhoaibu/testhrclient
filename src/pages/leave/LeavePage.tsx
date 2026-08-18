@@ -1,21 +1,22 @@
 import { useMemo, useState } from 'react';
 import {
   ActionIcon,
-  Badge,
+  Avatar,
+  Box,
+  Button,
+  Drawer,
   Group,
+  Modal,
+  Paper,
   SegmentedControl,
   Select,
+  SimpleGrid,
   Stack,
   Text,
   Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import {
-  IconCalendarCheck,
-  IconFilterOff,
-  IconListDetails,
-  IconTrash,
-} from '@tabler/icons-react';
+import { IconTrash } from '@tabler/icons-react';
 
 import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import { useAuth } from '../../features/auth/useAuth';
@@ -35,8 +36,8 @@ import { DataTable, type DataTableColumn } from '../../shared/components/DataTab
 import { ConfirmActionModal } from '../../shared/components/ConfirmActionModal';
 import { ErrorState } from '../../shared/components/ErrorState';
 import { LoadingState } from '../../shared/components/LoadingState';
+import { StatusTag } from '../../shared/components/StatusTag';
 import { formatDate } from '../../shared/utils/date';
-import styles from './LeavePage.module.css';
 
 const EMPLOYEE_SELECT_PAGE_SIZE = 20;
 const CATALOG_PAGE_SIZE = 10;
@@ -117,9 +118,12 @@ function sessionRangeLabel(record: LeaveRequest) {
 }
 
 function noticeLabel(record: LeaveRequest) {
+  if (record.noticeActualDays == null && record.noticeRequiredDays == null) {
+    return '-';
+  }
   const actual = record.noticeActualDays ?? '-';
   const required = record.noticeRequiredDays ?? '-';
-  return record.lateSubmission ? `Trễ hạn (${actual}/${required})` : `${actual}/${required} ngày`;
+  return record.lateSubmission ? `Trễ hạn (${actual}/${required})` : `Đúng hạn (${actual}/${required})`;
 }
 
 function approvalLabel(step: LeaveApprovalStep | null) {
@@ -141,31 +145,6 @@ function getInitials(name?: string | null): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function renderZaloStatus(status?: string | null) {
-  if (!status) return null;
-  const label = labelFrom(REQUEST_STATUS_LABELS, status);
-  let statusClass = styles.statusDraft;
-
-  switch (status) {
-    case 'SUBMITTED':
-      statusClass = styles.statusSubmitted;
-      break;
-    case 'APPROVED':
-      statusClass = styles.statusApproved;
-      break;
-    case 'REJECTED':
-      statusClass = styles.statusRejected;
-      break;
-    case 'CANCELLED':
-      statusClass = styles.statusCancelled;
-      break;
-    default:
-      statusClass = styles.statusDraft;
-  }
-
-  return <span className={`${styles.zaloStatusTag} ${statusClass}`}>{label}</span>;
-}
-
 const leaveTypeOptions = LEAVE_TYPE_OPTIONS.map((item) => ({
   value: item,
   label: labelFrom(LEAVE_TYPE_LABELS, item),
@@ -184,6 +163,12 @@ export function LeavePage() {
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeSelectOption | null>(null);
   const [deletingRequest, setDeletingRequest] = useState<LeaveRequest | null>(null);
+  const [selectedLeave, setSelectedLeave] = useState<LeaveRequest | null>(null);
+  const [previewAttachment, setPreviewAttachment] = useState<{
+    url: string;
+    title: string;
+    employeeName?: string;
+  } | null>(null);
   const [catalogPage, setCatalogPage] = useState(1);
   const [params, setParams] = useState({
     page: 1,
@@ -193,7 +178,7 @@ export function LeavePage() {
     status: undefined as string | undefined,
   });
 
-  const { data, isLoading, error, refetch } = useLeaveRequests(params);
+  const { data, isLoading, error, refetch, isFetching } = useLeaveRequests(params);
   const { data: leaveTypes = [], isLoading: isLeaveTypesLoading } = useLeaveTypes();
   const deleteCancelledLeaveRequest = useDeleteCancelledLeaveRequest();
 
@@ -228,6 +213,9 @@ export function LeavePage() {
     try {
       await deleteCancelledLeaveRequest.mutateAsync(record.id);
       setDeletingRequest(null);
+      if (selectedLeave?.id === record.id) {
+        setSelectedLeave(null);
+      }
       notifications.show({
         title: 'Đã xóa đơn',
         message: 'Đơn nghỉ phép đã hủy được xóa khỏi danh sách.',
@@ -265,44 +253,61 @@ export function LeavePage() {
     {
       key: 'employee',
       header: 'Nhân viên',
-      minWidth: 210,
+      minWidth: 200,
       render: (record) => {
         const name = record.employeeName ?? record.employee?.fullName ?? record.employeeId;
         const code = record.employee?.employeeCode ?? record.employeeId;
         return (
-          <div className={styles.employeeCell}>
-            <div className={styles.zaloAvatar}>{getInitials(name)}</div>
-            <div className={styles.employeeInfo}>
-              <span className={styles.employeeName}>{name}</span>
-              <span className={styles.employeeCode}>{code}</span>
-            </div>
-          </div>
+          <Group gap="xs" wrap="nowrap">
+            <Avatar radius="xl" size={32} color="blue">
+              {getInitials(name)}
+            </Avatar>
+            <Stack gap={1}>
+              <Text size="sm" fw={600} lineClamp={1}>
+                {name}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {code}
+              </Text>
+            </Stack>
+          </Group>
         );
       },
     },
     {
       key: 'leaveType',
       header: 'Loại nghỉ',
-      minWidth: 160,
+      minWidth: 150,
       render: (record) => (
-        <Badge variant="light" color="gray" size="sm">
-          {labelFrom(LEAVE_TYPE_LABELS, record.leaveType)}
-        </Badge>
+        <Text size="sm">{labelFrom(LEAVE_TYPE_LABELS, record.leaveType)}</Text>
       ),
     },
     {
-      key: 'dateRange',
-      header: 'Thời gian nghỉ',
-      minWidth: 180,
+      key: 'startDate',
+      header: 'Từ ngày',
+      width: 110,
       render: (record) => (
-        <Stack gap={3}>
-          <div className={styles.dateRangeText}>
-            <span>{formatDate(record.startDate)}</span>
-            <span>→</span>
-            <span>{formatDate(record.endDate)}</span>
-          </div>
-          <span className={styles.sessionPill}>{sessionRangeLabel(record)}</span>
-        </Stack>
+        <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
+          {formatDate(record.startDate)}
+        </Text>
+      ),
+    },
+    {
+      key: 'endDate',
+      header: 'Đến ngày',
+      width: 110,
+      render: (record) => (
+        <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
+          {formatDate(record.endDate)}
+        </Text>
+      ),
+    },
+    {
+      key: 'session',
+      header: 'Buổi nghỉ',
+      width: 120,
+      render: (record) => (
+        <Text size="sm">{sessionRangeLabel(record)}</Text>
       ),
     },
     {
@@ -311,29 +316,32 @@ export function LeavePage() {
       width: 90,
       align: 'right',
       render: (record) => (
-        <span className={styles.daysNumber}>
-          {record.totalDays != null ? `${record.totalDays} ngày` : '-'}
-        </span>
+        <Text size="sm" fw={700} style={{ fontVariantNumeric: 'tabular-nums' }}>
+          {record.totalDays ?? '-'}
+        </Text>
       ),
     },
     {
       key: 'notice',
       header: 'Báo trước',
-      width: 120,
-      align: 'center',
+      width: 130,
       render: (record) => (
-        <span className={record.lateSubmission ? styles.noticeLate : styles.noticeNormal}>
+        <Text
+          size="sm"
+          c={record.lateSubmission ? 'orange.7' : undefined}
+          style={{ fontVariantNumeric: 'tabular-nums' }}
+        >
           {noticeLabel(record)}
-        </span>
+        </Text>
       ),
     },
     {
       key: 'status',
       header: 'Trạng thái',
-      width: 170,
+      width: 160,
       render: (record) => (
-        <Group gap={6} wrap="nowrap">
-          {renderZaloStatus(record.status)}
+        <Group gap={6} wrap="nowrap" onClick={(e) => e.stopPropagation()}>
+          <StatusTag status={record.status} />
           {record.status === 'CANCELLED' && canDeleteCancelled ? (
             <Tooltip label="Xóa đơn đã hủy" withArrow>
               <ActionIcon
@@ -357,16 +365,15 @@ export function LeavePage() {
     {
       key: 'approval',
       header: 'Luồng duyệt',
-      minWidth: 190,
+      minWidth: 180,
       render: (record) => (
-        <span className={styles.approvalStepText}>
+        <Text size="xs" c="dimmed">
           {approvalLabel(currentApprovalStep(record))}
-        </span>
+        </Text>
       ),
     },
   ];
 
-  // The catalog endpoint returns every symbol at once, so page it here.
   const catalogTotalPages = Math.max(1, Math.ceil(leaveTypes.length / CATALOG_PAGE_SIZE));
   const catalogCurrentPage = Math.min(catalogPage, catalogTotalPages);
   const pagedLeaveTypes = leaveTypes.slice(
@@ -389,9 +396,9 @@ export function LeavePage() {
       width: 90,
       align: 'center',
       render: (record) => (
-        <Badge variant="outline" color="dark" size="md" fw={700}>
+        <Text size="sm" fw={700}>
           {record.displaySymbol}
-        </Badge>
+        </Text>
       ),
     },
     {
@@ -437,20 +444,14 @@ export function LeavePage() {
       header: 'Quỹ phép',
       minWidth: 170,
       render: (record) => (
-        <Badge variant="dot" color="blue" size="sm">
-          {labelFrom(QUOTA_MODE_LABELS, record.quotaMode)}
-        </Badge>
+        <Text size="sm">{labelFrom(QUOTA_MODE_LABELS, record.quotaMode)}</Text>
       ),
     },
     {
       key: 'hrRule',
       header: 'Quy tắc HR',
-      width: 140,
-      render: (record) => (
-        <Badge variant="light" color={record.hrRuleStatus === 'ACTIVE' ? 'green' : 'gray'} size="sm">
-          {record.hrRuleStatus === 'ACTIVE' ? 'Áp dụng' : record.hrRuleStatus ?? '—'}
-        </Badge>
-      ),
+      width: 150,
+      render: (record) => <StatusTag status={record.hrRuleStatus} />,
     },
     {
       key: 'annual',
@@ -458,79 +459,64 @@ export function LeavePage() {
       width: 125,
       align: 'center',
       render: (record) => (
-        <Badge
-          variant="light"
-          color={record.deductsAnnualLeave ? 'blue' : 'gray'}
-          size="sm"
-        >
-          {record.deductsAnnualLeave ? 'Có' : 'Không'}
-        </Badge>
+        <Text size="sm">{record.deductsAnnualLeave ? 'Có' : 'Không'}</Text>
       ),
     },
     {
       key: 'attachment',
       header: 'Chứng từ',
-      width: 115,
+      minWidth: 130,
       align: 'center',
-      render: (record) => (
-        <Badge
-          variant="light"
-          color={record.requiresAttachment ? 'orange' : 'gray'}
-          size="sm"
-        >
-          {record.requiresAttachment ? 'Bắt buộc' : 'Không'}
-        </Badge>
-      ),
+      render: (record) => {
+        if (!record.requiresAttachment) {
+          return <Text size="sm" c="dimmed">Không</Text>;
+        }
+        return (
+          <Text size="sm" c="blue.7" fw={500}>
+            {record.attachmentMinDays ? `Bắt buộc (≥ ${record.attachmentMinDays} ngày)` : 'Bắt buộc'}
+          </Text>
+        );
+      },
     },
   ];
 
   return (
-    <div className={styles.zaloLeaveWrapper}>
-      {/* 1. Header Bar with Zalo Web Tabs */}
-      <div className={styles.zaloHeaderRow}>
-        <div className={styles.zaloTitleArea}>
-          <h1 className={styles.zaloMainTitle}>Quản lý nghỉ phép</h1>
-          <span className={styles.zaloSubtitle}>
-            Theo dõi trạng thái đơn nghỉ phép, luồng phê duyệt và danh mục ký hiệu đối chiếu bảng công.
-          </span>
-        </div>
+    <Stack gap="sm">
+      <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+        <Text size="xs" c="dimmed">
+          Theo dõi trạng thái đơn và quy tắc ký hiệu nghỉ phép trước khi đối chiếu bảng công. Tạo và xử lý đơn thực hiện trên Hacom Chat.
+        </Text>
 
         <SegmentedControl
           size="xs"
           value={activeTab}
           onChange={(val) => setActiveTab(val as 'requests' | 'catalog')}
-          className={styles.zaloSegmentTabs}
           data={[
             {
               value: 'requests',
-              label: (
-                <div className={styles.zaloTabItem}>
-                  <IconCalendarCheck size={14} />
-                  <span>Đơn nghỉ phép</span>
-                  <span className={styles.zaloTabBadge}>{data.pagination.total}</span>
-                </div>
-              ),
+              label: `Đơn nghỉ phép (${data.pagination.total})`,
             },
             {
               value: 'catalog',
-              label: (
-                <div className={styles.zaloTabItem}>
-                  <IconListDetails size={14} />
-                  <span>Bảng ký hiệu</span>
-                  <span className={styles.zaloTabBadge}>{leaveTypes.length}</span>
-                </div>
-              ),
+              label: `Bảng ký hiệu (${leaveTypes.length})`,
             },
           ]}
         />
-      </div>
+      </Group>
 
-      {/* 2. Flat Zalo Web Card containing Toolbar & Table */}
-      <div className={styles.zaloMainCard}>
-        {/* Toolbar with Filters (Only on requests tab) */}
+      <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
+        <Group justify="flex-start" align="baseline" gap="xs" px="md" py="xs" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+          <Text size="sm" fw={500}>
+            {activeTab === 'requests' ? 'Danh sách đơn nghỉ phép' : 'Danh mục ký hiệu nghỉ phép'}
+          </Text>
+          <Text size="xs" c="dimmed">
+            {activeTab === 'requests' ? `${data.pagination.total} đơn` : `${leaveTypes.length} ký hiệu`}
+          </Text>
+        </Group>
+
         {activeTab === 'requests' && (
-          <div className={styles.zaloToolbar}>
-            <div className={styles.zaloFiltersLeft}>
+          <Group justify="space-between" px="md" py="xs" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+            <Group gap="xs" wrap="wrap" style={{ flex: 1 }}>
               <Select
                 aria-label="Nhân viên"
                 placeholder="Chọn nhân viên"
@@ -539,7 +525,7 @@ export function LeavePage() {
                 clearable
                 searchable
                 size="xs"
-                className={styles.zaloFilterEmp}
+                w={240}
                 nothingFoundMessage={
                   employeesQuery.isFetching ? 'Đang tải nhân viên...' : 'Không tìm thấy nhân viên'
                 }
@@ -563,7 +549,7 @@ export function LeavePage() {
                 value={params.leaveType ?? null}
                 clearable
                 size="xs"
-                className={styles.zaloFilterType}
+                w={180}
                 onChange={(value) =>
                   setParams((current) => ({
                     ...current,
@@ -580,7 +566,7 @@ export function LeavePage() {
                 value={params.status ?? null}
                 clearable
                 size="xs"
-                className={styles.zaloFilterStatus}
+                w={150}
                 onChange={(value) =>
                   setParams((current) => ({
                     ...current,
@@ -589,28 +575,39 @@ export function LeavePage() {
                   }))
                 }
               />
-            </div>
+            </Group>
 
-            {activeFilterCount > 0 && (
-              <button
-                type="button"
-                className={styles.zaloClearFilterBtn}
-                onClick={handleClearFilters}
+            <Group gap="xs">
+              {activeFilterCount > 0 && (
+                <Button
+                  size="xs"
+                  variant="subtle"
+                  color="gray"
+                  onClick={handleClearFilters}
+                >
+                  Xóa lọc ({activeFilterCount})
+                </Button>
+              )}
+
+              <Button
+                size="xs"
+                variant="default"
+                loading={isFetching}
+                onClick={() => void refetch()}
               >
-                <IconFilterOff size={13} />
-                <span>Xóa bộ lọc ({activeFilterCount})</span>
-              </button>
-            )}
-          </div>
+                Làm mới
+              </Button>
+            </Group>
+          </Group>
         )}
 
-        {/* Table Content */}
         {activeTab === 'requests' ? (
           <DataTable
             data={data.items}
             columns={requestColumns}
             rowKey={(record) => record.id}
             meta={data.pagination}
+            onRowClick={(record) => setSelectedLeave(record)}
             onPageChange={(page, pageSize) =>
               setParams((current) => ({ ...current, page, pageSize }))
             }
@@ -628,7 +625,210 @@ export function LeavePage() {
             emptyTitle="Chưa có ký hiệu nghỉ phép"
           />
         )}
-      </div>
+      </Paper>
+
+      <Drawer
+        opened={selectedLeave !== null}
+        onClose={() => setSelectedLeave(null)}
+        position="right"
+        size="md"
+        title={<Text fw={700} size="sm">Chi tiết đơn nghỉ phép</Text>}
+      >
+        {selectedLeave && (
+          <Stack gap="md">
+            <Paper withBorder p="sm" radius="md">
+              <Group justify="space-between" align="center">
+                <Group gap="xs">
+                  <Avatar radius="xl" size={40} color="blue">
+                    {getInitials(selectedLeave.employeeName ?? selectedLeave.employee?.fullName)}
+                  </Avatar>
+                  <Stack gap={1}>
+                    <Text fw={700} size="sm">
+                      {selectedLeave.employeeName ?? selectedLeave.employee?.fullName ?? selectedLeave.employeeId}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      Mã nhân sự: {selectedLeave.employee?.employeeCode ?? selectedLeave.employeeId}
+                    </Text>
+                  </Stack>
+                </Group>
+                <StatusTag status={selectedLeave.status} />
+              </Group>
+            </Paper>
+
+            <Paper withBorder p="sm" radius="md">
+              <Text fw={700} size="xs" mb="xs">
+                Thông tin nghỉ phép
+              </Text>
+              <SimpleGrid cols={2} spacing="xs">
+                <Stack gap={1}>
+                  <Text size="xs" c="dimmed">Loại nghỉ</Text>
+                  <Text size="xs" fw={600}>
+                    {labelFrom(LEAVE_TYPE_LABELS, selectedLeave.leaveType)}
+                  </Text>
+                </Stack>
+
+                <Stack gap={1}>
+                  <Text size="xs" c="dimmed">Tổng số ngày</Text>
+                  <Text size="xs" fw={600}>
+                    {selectedLeave.totalDays != null ? `${selectedLeave.totalDays} ngày` : '-'}
+                  </Text>
+                </Stack>
+
+                <Stack gap={1}>
+                  <Text size="xs" c="dimmed">Thời gian nghỉ</Text>
+                  <Text size="xs" fw={600}>
+                    {formatDate(selectedLeave.startDate)} → {formatDate(selectedLeave.endDate)}
+                  </Text>
+                </Stack>
+
+                <Stack gap={1}>
+                  <Text size="xs" c="dimmed">Buổi nghỉ</Text>
+                  <Text size="xs" fw={600}>
+                    {sessionRangeLabel(selectedLeave)}
+                  </Text>
+                </Stack>
+
+                <Stack gap={1}>
+                  <Text size="xs" c="dimmed">Hạn báo trước</Text>
+                  <Text size="xs" fw={600}>
+                    {noticeLabel(selectedLeave)}
+                  </Text>
+                </Stack>
+              </SimpleGrid>
+            </Paper>
+
+            <Paper withBorder p="sm" radius="md">
+              <Text fw={700} size="xs" mb="xs">
+                Lý do xin nghỉ
+              </Text>
+              <Paper p="xs" radius="sm" bg="gray.0">
+                <Text size="xs" c="gray.8">
+                  {selectedLeave.reason ? selectedLeave.reason : 'Không có ghi chú lý do.'}
+                </Text>
+              </Paper>
+            </Paper>
+
+            <Paper withBorder p="sm" radius="md">
+              <Text fw={700} size="xs" mb="xs">
+                Chứng từ đính kèm
+              </Text>
+              {selectedLeave.attachmentUrl ? (
+                <Paper p="xs" radius="sm" bg="gray.0">
+                  <Group justify="space-between" wrap="nowrap">
+                    <Text size="xs" fw={500} lineClamp={1} style={{ flex: 1 }}>
+                      {selectedLeave.attachmentUrl.split('/').pop() || 'Tệp chứng từ đính kèm'}
+                    </Text>
+                    <Button
+                      size="xs"
+                      variant="filled"
+                      color="blue"
+                      onClick={() =>
+                        setPreviewAttachment({
+                          url: selectedLeave.attachmentUrl!,
+                          title: `Chứng từ: ${labelFrom(LEAVE_TYPE_LABELS, selectedLeave.leaveType)}`,
+                          employeeName:
+                            selectedLeave.employeeName ??
+                            selectedLeave.employee?.fullName ??
+                            selectedLeave.employeeId,
+                        })
+                      }
+                    >
+                      Xem
+                    </Button>
+                  </Group>
+                </Paper>
+              ) : (
+                <Text size="xs" c="dimmed">
+                  Không có tệp chứng từ đính kèm.
+                </Text>
+              )}
+            </Paper>
+
+            <Paper withBorder p="sm" radius="md">
+              <Text fw={700} size="xs" mb="xs">
+                Tiến trình phê duyệt
+              </Text>
+              {selectedLeave.approvalSteps && selectedLeave.approvalSteps.length > 0 ? (
+                <Stack gap="xs">
+                  {selectedLeave.approvalSteps.map((step) => (
+                    <Paper key={step.id || step.stepOrder} p="xs" radius="sm" withBorder bg="gray.0">
+                      <Group justify="space-between" wrap="nowrap" mb={2}>
+                        <Text size="xs" fw={600}>
+                          Cấp {step.stepOrder}: {labelFrom(APPROVAL_STEP_LABELS, step.stepCode) || step.stepName}
+                        </Text>
+                        <StatusTag status={step.status} />
+                      </Group>
+                      {step.note ? (
+                        <Text size="xs" c="dimmed">Ghi chú: {step.note}</Text>
+                      ) : null}
+                      {step.reviewedAt ? (
+                        <Text size="xs" c="dimmed">
+                          Duyệt lúc: {formatDate(step.reviewedAt)}
+                        </Text>
+                      ) : null}
+                    </Paper>
+                  ))}
+                </Stack>
+              ) : (
+                <Text size="xs" c="dimmed">
+                  Chưa có thông tin các cấp phê duyệt.
+                </Text>
+              )}
+            </Paper>
+          </Stack>
+        )}
+      </Drawer>
+
+      <Modal
+        opened={previewAttachment !== null}
+        onClose={() => setPreviewAttachment(null)}
+        title={
+          <Text fw={700} size="sm">
+            {previewAttachment?.title ?? 'Chi tiết chứng từ đính kèm'}
+          </Text>
+        }
+        size="lg"
+        centered
+      >
+        {previewAttachment && (
+          <Stack gap="sm">
+            <Group justify="space-between" wrap="nowrap">
+              <Text size="xs" c="dimmed">
+                Nhân sự: <strong>{previewAttachment.employeeName ?? '-'}</strong>
+              </Text>
+              <a
+                href={previewAttachment.url}
+                target="_blank"
+                rel="noreferrer"
+                style={{ fontSize: '11px', color: 'var(--mantine-color-blue-6)', textDecoration: 'none', fontWeight: 600 }}
+              >
+                Mở file gốc ↗
+              </a>
+            </Group>
+            <Box
+              style={{
+                background: 'var(--mantine-color-gray-0)',
+                borderRadius: '8px',
+                padding: '12px',
+                textAlign: 'center',
+                border: '1px solid var(--mantine-color-gray-3)',
+              }}
+            >
+              <img
+                src={previewAttachment.url}
+                alt="Chứng từ đính kèm"
+                style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain', borderRadius: '4px' }}
+                onError={(e) => {
+                  (e.currentTarget as HTMLElement).style.display = 'none';
+                }}
+              />
+              <Text size="xs" c="dimmed" mt={6} style={{ wordBreak: 'break-all' }}>
+                {previewAttachment.url}
+              </Text>
+            </Box>
+          </Stack>
+        )}
+      </Modal>
 
       <ConfirmActionModal
         opened={deletingRequest !== null}
@@ -643,6 +843,6 @@ export function LeavePage() {
           }
         }}
       />
-    </div>
+    </Stack>
   );
 }
