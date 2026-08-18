@@ -520,17 +520,25 @@ export function MonthlyShiftAssignmentGrid({
         })),
     [shiftsQuery.data],
   );
+  /*
+   * Ca đã tạm ngưng không còn phân được nên bị loại khỏi danh sách thay vì hiện
+   * mờ: danh mục có hàng trăm ca cũ, để lại thì phải lướt qua chúng mới tới được
+   * ca đang hoạt động. Ngoại lệ duy nhất là ca đang gán cho chính ô đang mở —
+   * giữ lại để ô vẫn cho thấy nó đang là ca gì.
+   */
+  const pickerCurrentShiftId = cellShiftPicker?.day.shift?.id ?? null;
   const cellShiftOptions = useMemo(
     () =>
       sortWorkShiftCatalog(shiftsQuery.data).filter(
         (shift) =>
           Boolean(shift.startTime && shift.endTime) &&
+          (shift.status === "ACTIVE" || shift.id === pickerCurrentShiftId) &&
           includesNormalizedSearch(
             [shift.code, shift.name, shift.groupName ?? ""].join(" "),
             cellShiftSearch,
           ),
       ),
-    [cellShiftSearch, shiftsQuery.data],
+    [cellShiftSearch, pickerCurrentShiftId, shiftsQuery.data],
   );
 
   const hasActiveDirectShift = useMemo(
