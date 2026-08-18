@@ -153,3 +153,43 @@ export function summarizeAssignedPerDay(
   }
   return perDay.map((value) => Math.round(value * 2) / 2);
 }
+
+export interface RosterMismatchCounts {
+  /** Đã phân ca nhưng chưa vào BCC — bảng công sẽ thiếu hẳn các CBNV này. */
+  assignedNotInTimesheet: number;
+  /** Đã vào BCC nhưng chưa có ca — bảng công không có căn cứ tính. */
+  inTimesheetWithoutShift: number;
+}
+
+export interface RosterMismatchInput {
+  includedInTimesheet: boolean;
+  canInclude: boolean;
+  assignedDays: number;
+}
+
+/**
+ * Đếm hai nhóm khiến lịch ca và bảng công đọc ra lệch nhau.
+ *
+ * Phân ca và đưa vào BCC là hai việc độc lập, nên một CBNV có thể có ca mà
+ * không nằm trong bảng công, hoặc nằm trong bảng công mà chưa có ca nào. Cả hai
+ * đều làm bảng công hiện sai, và nhìn lưới phân ca thì không thấy ngay.
+ *
+ * Người chưa đủ điều kiện vào BCC (canInclude = false) không bị tính vào nhóm
+ * thứ hai: họ chưa có ca là đúng, không phải việc HR cần xử lý.
+ */
+export function countRosterMismatch(
+  rows: readonly RosterMismatchInput[],
+): RosterMismatchCounts {
+  let assignedNotInTimesheet = 0;
+  let inTimesheetWithoutShift = 0;
+  for (const row of rows) {
+    const hasShift = row.assignedDays > 0;
+    if (hasShift && !row.includedInTimesheet) {
+      assignedNotInTimesheet += 1;
+    }
+    if (!hasShift && row.includedInTimesheet && row.canInclude) {
+      inTimesheetWithoutShift += 1;
+    }
+  }
+  return { assignedNotInTimesheet, inTimesheetWithoutShift };
+}

@@ -1,4 +1,11 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
@@ -42,15 +49,22 @@ import {
   weekdayForShiftAssignmentDate,
 } from "../../features/attendance/shiftAssignmentWeekdays";
 import { useAuth } from "../../features/auth/useAuth";
+import { ShiftPickerTable } from "./ShiftPickerTable";
+import {
+  moveItem,
+  readWorkShiftUserOrder,
+  sortWorkShiftsByUserOrder,
+  writeWorkShiftUserOrder,
+} from "../../features/attendance/workShiftUserOrder";
 import {
   getWorkShiftCatalogOrder,
   sortWorkShiftCatalog,
 } from "../../features/attendance/workShiftCatalogOrder";
 import {
   directCellShiftDisabledReason,
-  formatShiftHoursAndWorkday,
 } from "../../features/attendance/shiftAssignmentEligibility";
 import {
+  countRosterMismatch,
   sumAssignmentTotals,
   summarizeAssignedPerDay,
   summarizeAssignmentRow,
@@ -403,7 +417,7 @@ export function MonthlyShiftAssignmentGrid({
   requestedShiftId = null,
 }: MonthlyShiftAssignmentGridProps) {
   const navigate = useNavigate();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const canEdit = can(HR_PERMISSIONS.ATTENDANCE_UPDATE);
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -421,6 +435,9 @@ export function MonthlyShiftAssignmentGrid({
   const [cellShiftCancellationError, setCellShiftCancellationError] =
     useState<string | null>(null);
   const [cellShiftSearch, setCellShiftSearch] = useState("");
+  const [workShiftOrder, setWorkShiftOrder] = useState<string[]>(() =>
+    readWorkShiftUserOrder(user?.id),
+  );
   const [cellShiftError, setCellShiftError] = useState<string | null>(null);
   const [cellShiftApplyingId, setCellShiftApplyingId] = useState<string | null>(
     null,
@@ -520,18 +537,72 @@ export function MonthlyShiftAssignmentGrid({
         })),
     [shiftsQuery.data],
   );
-  const cellShiftOptions = useMemo(
+  /*
+   * Ca đã tạm ngưng không còn phân được nên bị loại khỏi danh sách thay vì hiện
+   * mờ: danh mục có hàng trăm ca cũ, để lại thì phải lướt qua chúng mới tới được
+   * ca đang hoạt động. Ngoại lệ duy nhất là ca đang gán cho chính ô đang mở —
+   * giữ lại để ô vẫn cho thấy nó đang là ca gì.
+   */
+  const pickerCurrentShiftId = cellShiftPicker?.day.shift?.id ?? null;
+  const selectableShifts = useMemo(
     () =>
-      sortWorkShiftCatalog(shiftsQuery.data).filter(
+      sortWorkShiftsByUserOrder(shiftsQuery.data, workShiftOrder).filter(
         (shift) =>
           Boolean(shift.startTime && shift.endTime) &&
-          includesNormalizedSearch(
-            [shift.code, shift.name, shift.groupName ?? ""].join(" "),
-            cellShiftSearch,
-          ),
+          (shift.status === "ACTIVE" || shift.id === pickerCurrentShiftId),
       ),
-    [cellShiftSearch, shiftsQuery.data],
+    [pickerCurrentShiftId, shiftsQuery.data, workShiftOrder],
   );
+  /*
+   * Số TT bám theo danh sách đầy đủ, không theo kết quả lọc: gõ tìm kiếm rồi
+   * thấy ca số 7 vẫn là số 7 giúp HR đối chiếu nhanh, thay vì bị đánh lại từ 1.
+   */
+  const shiftDisplayNumbers = useMemo(
+    () => new Map(selectableShifts.map((shift, index) => [shift.id, index + 1])),
+    [selectableShifts],
+  );
+  const cellShiftOptions = useMemo(
+    () =>
+      selectableShifts.filter((shift) =>
+        includesNormalizedSearch(
+          [shift.code, shift.name, shift.groupName ?? ""].join(" "),
+          cellShiftSearch,
+        ),
+      ),
+    [cellShiftSearch, selectableShifts],
+  );
+
+  /*
+   * Kéo thả sắp thứ tự ca. Chỉ cho kéo khi danh sách đang không lọc: kéo trên
+   * kết quả tìm kiếm thì vị trí thả không tương ứng vị trí thật trong danh mục,
+   * HR sẽ nhận được một thứ tự khác hẳn thứ họ nhìn thấy.
+   */
+  const shiftReorderEnabled = cellShiftSearch.trim() === "";
+
+  /*
+   * Thả theo vị trí chèn chứ không hoán đổi hai dòng: kéo ca số 20 lên đầu phải
+   * đẩy cả danh sách xuống một bậc, chứ không phải tráo nó với ca số 1.
+   */
+  const handleShiftDrop = useCallback(
+    (fromCode: string, targetCode: string, edge: "top" | "bottom") => {
+      if (fromCode === targetCode) return;
+      const codes = selectableShifts.map((shift) => shift.code);
+      const from = codes.indexOf(fromCode);
+      const target = codes.indexOf(targetCode);
+      if (from === -1 || target === -1) return;
+      const insertAt = edge === "bottom" ? target + 1 : target;
+      const to = from < insertAt ? insertAt - 1 : insertAt;
+      const nextOrder = moveItem(codes, from, to);
+      setWorkShiftOrder(nextOrder);
+      writeWorkShiftUserOrder(user?.id, nextOrder);
+    },
+    [selectableShifts, user?.id],
+  );
+
+  const resetShiftOrder = useCallback(() => {
+    setWorkShiftOrder([]);
+    writeWorkShiftUserOrder(user?.id, []);
+  }, [user?.id]);
 
   const hasActiveDirectShift = useMemo(
     () =>
@@ -586,6 +657,29 @@ export function MonthlyShiftAssignmentGrid({
       })),
     [rows],
   );
+  /*
+   * Hai nhóm lệch khiến bảng công đọc ra sai mà nhìn lưới không thấy ngay:
+   *
+   * - Đã phân ca nhưng chưa vào BCC: lịch ca đúng, nhưng người này không có
+   *   mặt trong bảng công tháng nên công không được tính.
+   * - Đã vào BCC nhưng chưa có ca nào: có mặt trong bảng công nhưng không có
+   *   căn cứ tính, nên hiện toàn dấu thiếu dữ liệu.
+   *
+   * Đếm trên toàn bộ danh sách chứ không theo trang đang xem, vì HR cần biết
+   * tổng số người cần xử lý.
+   */
+  const rosterMismatch = useMemo(
+    () =>
+      countRosterMismatch(
+        preparedRows.map((item) => ({
+          includedInTimesheet: item.row.includedInTimesheet,
+          canInclude: item.row.canInclude,
+          assignedDays: item.totals.assignedDays,
+        })),
+      ),
+    [preparedRows],
+  );
+
   const groupedRows = useMemo<PreparedGroup[]>(() => {
     const groups = new Map<string, { label: string; rows: PreparedRow[] }>();
     for (const item of preparedRows) {
@@ -1295,6 +1389,34 @@ export function MonthlyShiftAssignmentGrid({
         </Group>
       </Paper>
 
+      {rosterMismatch.assignedNotInTimesheet ||
+      rosterMismatch.inTimesheetWithoutShift ? (
+        <Alert
+          color="orange"
+          variant="light"
+          icon={<IconAlertTriangle size={18} />}
+          title="Lịch ca và BCC đang lệch nhau"
+        >
+          <Stack gap={4}>
+            {rosterMismatch.assignedNotInTimesheet ? (
+              <Text size="sm" inherit>
+                <b>{rosterMismatch.assignedNotInTimesheet} CBNV</b> đã phân ca
+                nhưng chưa vào BCC — bảng công tháng sẽ không có các CBNV này.
+                Tick chọn rồi bấm <b>Đưa vào BCC</b>.
+              </Text>
+            ) : null}
+            {rosterMismatch.inTimesheetWithoutShift ? (
+              <Text size="sm" inherit>
+                <b>{rosterMismatch.inTimesheetWithoutShift} CBNV</b> đã vào BCC
+                nhưng chưa có ca nào trong kỳ — bảng công không có căn cứ tính
+                nên sẽ hiện thiếu dữ liệu. Phân ca cho họ trước khi cập nhật
+                bảng công.
+              </Text>
+            ) : null}
+          </Stack>
+        </Alert>
+      ) : null}
+
       {gridQuery.isLoading ? (
         <Paper withBorder p="md" radius="md">
           <Stack gap="xs">
@@ -1834,6 +1956,27 @@ export function MonthlyShiftAssignmentGrid({
                                             value={cellShiftSearch}
                                             onChange={setCellShiftSearch}
                                           />
+                                          <Group
+                                            justify="space-between"
+                                            gap="xs"
+                                            wrap="nowrap"
+                                          >
+                                            <Text size="10px" c="dimmed">
+                                              {shiftReorderEnabled
+                                                ? "Kéo biểu tượng ⠿ để đổi thứ tự ca — thứ tự này chỉ áp dụng cho tài khoản của bạn."
+                                                : "Xoá ô tìm kiếm để kéo đổi thứ tự ca."}
+                                            </Text>
+                                            {workShiftOrder.length ? (
+                                              <Button
+                                                size="compact-xs"
+                                                variant="subtle"
+                                                color="gray"
+                                                onClick={resetShiftOrder}
+                                              >
+                                                Thứ tự mặc định
+                                              </Button>
+                                            ) : null}
+                                          </Group>
                                           {cellShiftError ? (
                                             <Alert
                                               color="red"
@@ -1865,143 +2008,18 @@ export function MonthlyShiftAssignmentGrid({
                                               Đang tải danh mục ca…
                                             </Text>
                                           ) : cellShiftOptions.length ? (
-                                            <ScrollArea.Autosize
-                                              mah={280}
-                                              type="auto"
-                                            >
-                                              <Table
-                                                withTableBorder
-                                                withColumnBorders
-                                                horizontalSpacing="xs"
-                                                verticalSpacing={4}
-                                                style={{ minWidth: 620 }}
-                                              >
-                                                <Table.Thead>
-                                                  <Table.Tr>
-                                                    <Table.Th>TT</Table.Th>
-                                                    <Table.Th>Ký hiệu</Table.Th>
-                                                    <Table.Th>Loại ca</Table.Th>
-                                                    <Table.Th>Nhóm</Table.Th>
-                                                    <Table.Th>
-                                                      Giờ / Công
-                                                    </Table.Th>
-                                                  </Table.Tr>
-                                                </Table.Thead>
-                                                <Table.Tbody>
-                                                  {cellShiftOptions.map(
-                                                    (shift) => {
-                                                      const disabledReason =
-                                                        directCellShiftDisabledReason(
-                                                          shift,
-                                                        );
-                                                      const isCurrentShift =
-                                                        replacesExistingShift &&
-                                                        day.shift?.id === shift.id;
-                                                      const disabled =
-                                                        Boolean(
-                                                          disabledReason,
-                                                        ) ||
-                                                        cellShiftMutationPending ||
-                                                        isCurrentShift;
-                                                      return (
-                                                        <Table.Tr
-                                                          key={shift.id}
-                                                          style={
-                                                            isCurrentShift
-                                                              ? { background: "#eff6ff" }
-                                                              : undefined
-                                                          }
-                                                        >
-                                                          <Table.Td>
-                                                            {getWorkShiftCatalogOrder(
-                                                              shift.code,
-                                                            ) ?? "—"}
-                                                          </Table.Td>
-                                                          <Table.Td>
-                                                            <Button
-                                                              size="compact-xs"
-                                                              variant={
-                                                                isCurrentShift
-                                                                  ? "light"
-                                                                  : "subtle"
-                                                              }
-                                                              color={
-                                                                isCurrentShift
-                                                                  ? "blue"
-                                                                  : undefined
-                                                              }
-                                                              loading={
-                                                                cellShiftApplyingId ===
-                                                                shift.id
-                                                              }
-                                                              disabled={
-                                                                disabled
-                                                              }
-                                                              onClick={() =>
-                                                                void applyShiftToCell(
-                                                                  shift,
-                                                                )
-                                                              }
-                                                            >
-                                                              {shift.code}
-                                                            </Button>
-                                                            {isCurrentShift ? (
-                                                              <Badge
-                                                                size="xs"
-                                                                color="blue"
-                                                                variant="light"
-                                                              >
-                                                                Đang áp dụng
-                                                              </Badge>
-                                                            ) : null}
-                                                            {disabledReason ? (
-                                                              <Text
-                                                                size="10px"
-                                                                c="dimmed"
-                                                                lineClamp={1}
-                                                              >
-                                                                {disabledReason}
-                                                              </Text>
-                                                            ) : null}
-                                                          </Table.Td>
-                                                          <Table.Td>
-                                                            <Text
-                                                              size="xs"
-                                                              lineClamp={1}
-                                                            >
-                                                              {shift.name}
-                                                            </Text>
-                                                          </Table.Td>
-                                                          <Table.Td>
-                                                            <Text
-                                                              size="xs"
-                                                              lineClamp={1}
-                                                            >
-                                                              {shift.groupName ??
-                                                                "—"}
-                                                            </Text>
-                                                          </Table.Td>
-                                                          <Table.Td>
-                                                            <Text size="xs">
-                                                              {shift.startTime}–
-                                                              {shift.endTime}
-                                                            </Text>
-                                                            <Text
-                                                              size="10px"
-                                                              c="dimmed"
-                                                            >
-                                                              {formatShiftHoursAndWorkday(
-                                                                shift,
-                                                              )}
-                                                            </Text>
-                                                          </Table.Td>
-                                                        </Table.Tr>
-                                                      );
-                                                    },
-                                                  )}
-                                                </Table.Tbody>
-                                              </Table>
-                                            </ScrollArea.Autosize>
+                                            <ShiftPickerTable
+                                              shifts={cellShiftOptions}
+                                              displayNumbers={shiftDisplayNumbers}
+                                              currentShiftId={
+                                                replacesExistingShift ? (day.shift?.id ?? null) : null
+                                              }
+                                              applyingShiftId={cellShiftApplyingId}
+                                              mutationPending={cellShiftMutationPending}
+                                              reorderEnabled={shiftReorderEnabled}
+                                              onApply={applyShiftToCell}
+                                              onReorder={handleShiftDrop}
+                                            />
                                           ) : (
                                             <Text size="sm" c="dimmed" py="sm">
                                               Không tìm thấy ca phù hợp.

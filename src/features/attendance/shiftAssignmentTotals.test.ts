@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  countRosterMismatch,
   sumAssignmentTotals,
   summarizeAssignedPerDay,
   summarizeAssignmentRow,
@@ -200,6 +201,66 @@ describe('sumAssignmentTotals', () => {
       workDays: 0,
       totalDays: 0,
       assignedDays: 0,
+    });
+  });
+});
+
+describe('countRosterMismatch', () => {
+  it('không báo lệch khi vừa có ca vừa ở trong BCC', () => {
+    expect(
+      countRosterMismatch([
+        { includedInTimesheet: true, canInclude: true, assignedDays: 20 },
+      ]),
+    ).toEqual({ assignedNotInTimesheet: 0, inTimesheetWithoutShift: 0 });
+  });
+
+  it('đếm người đã phân ca nhưng chưa vào BCC', () => {
+    expect(
+      countRosterMismatch([
+        { includedInTimesheet: false, canInclude: true, assignedDays: 20 },
+      ]),
+    ).toEqual({ assignedNotInTimesheet: 1, inTimesheetWithoutShift: 0 });
+  });
+
+  it('đếm người đã vào BCC nhưng chưa có ca nào', () => {
+    expect(
+      countRosterMismatch([
+        { includedInTimesheet: true, canInclude: true, assignedDays: 0 },
+      ]),
+    ).toEqual({ assignedNotInTimesheet: 0, inTimesheetWithoutShift: 1 });
+  });
+
+  it('bỏ qua người chưa đủ điều kiện vào BCC dù chưa có ca', () => {
+    expect(
+      countRosterMismatch([
+        { includedInTimesheet: true, canInclude: false, assignedDays: 0 },
+      ]),
+    ).toEqual({ assignedNotInTimesheet: 0, inTimesheetWithoutShift: 0 });
+  });
+
+  it('không báo lệch với người vừa không có ca vừa không ở BCC', () => {
+    expect(
+      countRosterMismatch([
+        { includedInTimesheet: false, canInclude: true, assignedDays: 0 },
+      ]),
+    ).toEqual({ assignedNotInTimesheet: 0, inTimesheetWithoutShift: 0 });
+  });
+
+  it('đếm được cả hai nhóm trong cùng một danh sách', () => {
+    expect(
+      countRosterMismatch([
+        { includedInTimesheet: false, canInclude: true, assignedDays: 20 },
+        { includedInTimesheet: false, canInclude: true, assignedDays: 15 },
+        { includedInTimesheet: true, canInclude: true, assignedDays: 0 },
+        { includedInTimesheet: true, canInclude: true, assignedDays: 22 },
+      ]),
+    ).toEqual({ assignedNotInTimesheet: 2, inTimesheetWithoutShift: 1 });
+  });
+
+  it('danh sách rỗng thì không có gì để báo', () => {
+    expect(countRosterMismatch([])).toEqual({
+      assignedNotInTimesheet: 0,
+      inTimesheetWithoutShift: 0,
     });
   });
 });

@@ -35,6 +35,9 @@ export interface TimesheetGridDay {
   hasAdjustment: boolean;
   isLocked: boolean;
   source?: string;
+  /** Ca đã dùng để tính ô này; null khi ngày đó không có ca. */
+  shiftCode?: string | null;
+  shiftName?: string | null;
 }
 
 export interface BccSummary {
