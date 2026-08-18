@@ -19,4 +19,12 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Route config, not a component module: the lazy() route components live
+    // here alongside the exported router, which Fast Refresh cannot pair up.
+    files: ['src/app/router.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])

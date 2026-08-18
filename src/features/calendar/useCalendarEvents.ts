@@ -37,12 +37,6 @@ export function useCalendarEvents(params?: ListCalendarEventsParams) {
   });
 }
 
-export function useCalendarEventsForMonth(year: number, month: number, ownerId?: string) {
-  const from = useMemo(() => dayjs().year(year).month(month).startOf('month').toISOString(), [year, month]);
-  const to = useMemo(() => dayjs().year(year).month(month).endOf('month').toISOString(), [year, month]);
-
-  return useCalendarEvents({ ownerId, from, to });
-}
 
 export function useCalendarEvent(id: string | null) {
   return useQuery({
@@ -94,6 +88,3 @@ export function useCalendarOwnerEvents(
   });
 }
 
-export function useMyCalendarEvents(year: number, month: number) {
-  return useCalendarOwnerEvents(null, year, month);
-}

@@ -11,25 +11,28 @@ import { getCurrentUser } from '../features/auth/authApi';
 import { clearSession, getAccessToken, setSessionUser } from '../features/auth/authClient';
 import { useAuthStore } from '../features/auth/authStore';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { readHttpStatus } from '../shared/api/response';
 
 dayjs.locale('vi');
 
-function readHttpStatus(error: unknown): number | undefined {
-  return (
-    (error as { statusCode?: number })?.statusCode ??
-    (error as { response?: { status?: number } })?.response?.status
-  );
-}
 
 const theme = createTheme({
   primaryColor: 'blue',
   defaultRadius: 'md',
   fontFamily:
-    'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    '"Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   headings: {
     fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      '"Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     fontWeight: '650',
+    // Chữ lớn giãn mặc định trông rời rạc; siết nhẹ theo cỡ để tiêu đề đọc thành
+    // một khối. Dừng ở -0.02em, đủ chặt mà không dính chữ.
+    sizes: {
+      h1: { fontSize: '1.75rem', lineHeight: '1.25', fontWeight: '680' },
+      h2: { fontSize: '1.375rem', lineHeight: '1.3', fontWeight: '660' },
+      h3: { fontSize: '1.125rem', lineHeight: '1.35' },
+      h4: { fontSize: '1rem', lineHeight: '1.4' },
+    },
   },
   components: {
     Paper: {

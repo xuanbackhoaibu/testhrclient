@@ -205,7 +205,7 @@ export function PermissionsPage() {
                       </Stack>
                       {(canUpdate || canDeprecate) && (
                         <Tooltip label="Sửa permission">
-                          <ActionIcon variant="subtle" size="sm" onClick={() => handleEdit(perm)}>
+                          <ActionIcon variant="subtle" size="sm" aria-label="Sửa permission" onClick={() => handleEdit(perm)}>
                             <IconEdit size={14} />
                           </ActionIcon>
                         </Tooltip>

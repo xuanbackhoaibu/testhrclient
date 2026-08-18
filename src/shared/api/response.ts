@@ -4,7 +4,6 @@ import type {
   PaginatedResponse,
   PaginationMeta,
 } from '../types/api';
-import { unwrapApiEnvelope } from './http-client';
 
 type BackendPaginatedResponse<T> =
   | PaginatedData<T>
@@ -79,4 +78,11 @@ export function normalizePaginatedResponse<T>(
   };
 }
 
-export const unwrapApiResponse = unwrapApiEnvelope;
+
+/** Lấy HTTP status từ lỗi API, chấp nhận cả hai hình dạng lỗi đang dùng. */
+export function readHttpStatus(error: unknown): number | undefined {
+  return (
+    (error as { statusCode?: number })?.statusCode ??
+    (error as { response?: { status?: number } })?.response?.status
+  );
+}

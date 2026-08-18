@@ -1,6 +1,6 @@
-import { Result } from 'antd';
 import { Navigate } from 'react-router-dom';
 
+import { StatusResult } from '../../shared/components/StatusResult';
 import { getPostLoginDestination } from './postLoginDestination';
 import { useAuth } from './useAuth';
 
@@ -11,7 +11,7 @@ export function AuthorizationLanding() {
   return destination ? (
     <Navigate to={destination} replace />
   ) : (
-    <Result
+    <StatusResult
       status="403"
       title="Không có màn hình được cấp quyền"
       subTitle="Tài khoản đã xác thực nhưng chưa có permission cho bất kỳ route HRM nào."

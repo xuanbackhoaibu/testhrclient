@@ -33,11 +33,13 @@ import {
   IconUsers,
   IconCalendarStats,
 } from "@tabler/icons-react";
+import { Suspense } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../features/auth/useAuth";
 import { canAccessRoute } from "../features/auth/routePolicies";
 import { NotificationBell } from "../features/notifications/NotificationBell";
+import { LoadingState } from "../shared/components/LoadingState";
 import { BrandLogo } from "../shared/components/BrandLogo";
 import { ROUTES } from "../shared/constants/routes";
 
@@ -428,7 +430,9 @@ export function MainLayout() {
       </AppShell.Navbar>
 
       <AppShell.Main>
-        <Outlet />
+        <Suspense fallback={<LoadingState tip="Đang tải màn hình..." />}>
+          <Outlet />
+        </Suspense>
       </AppShell.Main>
     </AppShell>
   );
