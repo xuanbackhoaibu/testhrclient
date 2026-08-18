@@ -20,6 +20,7 @@ import {
   previewDomainImport,
 } from '../imports/importsApi';
 import type { HrmCoreStagingRow } from '../imports/importTypes';
+import { renderMessages } from './importMessages';
 
 interface DomainExcelImportModalProps {
   open: boolean;
@@ -34,23 +35,6 @@ interface DomainExcelImportModalProps {
   }) => void;
 }
 
-function renderMessages(value: unknown): string {
-  if (!Array.isArray(value)) {
-    return '-';
-  }
-
-  return (
-    value
-      .map((item) => {
-        if (typeof item === 'object' && item !== null && 'message' in item) {
-          return String((item as { message?: unknown }).message ?? '');
-        }
-        return String(item);
-      })
-      .filter(Boolean)
-      .join('; ') || '-'
-  );
-}
 
 function readNormalizedString(row: HrmCoreStagingRow, key: string): string {
   const value = row.normalizedDataJson?.[key];

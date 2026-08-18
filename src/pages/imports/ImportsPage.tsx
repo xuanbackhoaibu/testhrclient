@@ -43,6 +43,7 @@ import { StatusTag } from '../../shared/components/StatusTag';
 import { formatDateTime } from '../../shared/utils/date';
 import { isExcelFile } from '../../shared/utils/excel';
 import { toast } from '../../shared/utils/toast';
+import { renderMessages } from '../../features/import-export/importMessages';
 
 interface DomainConfig {
   key: ExcelDomainKey;
@@ -63,20 +64,6 @@ const steps = ['Chọn loại dữ liệu', 'Tải mẫu', 'Upload', 'Preview', 
 const EXCEL_ACCEPT =
   '.xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-function renderMessages(value: unknown): string {
-  if (!Array.isArray(value)) {
-    return '-';
-  }
-  return value
-    .map((item) => {
-      if (typeof item === 'object' && item !== null && 'message' in item) {
-        return String((item as { message?: unknown }).message ?? '');
-      }
-      return String(item);
-    })
-    .filter(Boolean)
-    .join('; ') || '-';
-}
 
 export function ImportsPage() {
   const queryClient = useQueryClient();

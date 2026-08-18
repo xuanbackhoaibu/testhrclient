@@ -10,13 +10,8 @@ import {
 } from './permissions';
 import type { DemoRole, LoginCredentials } from './types';
 import { toast } from '../../shared/utils/toast';
+import { readHttpStatus } from '../../shared/api/response';
 
-function readHttpStatus(error: unknown): number | undefined {
-  return (
-    (error as { statusCode?: number })?.statusCode ??
-    (error as { response?: { status?: number } })?.response?.status
-  );
-}
 
 export function useAuth() {
   const store = useAuthStore();

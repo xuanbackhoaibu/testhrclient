@@ -11,15 +11,10 @@ import { getCurrentUser } from '../features/auth/authApi';
 import { clearSession, getAccessToken, setSessionUser } from '../features/auth/authClient';
 import { useAuthStore } from '../features/auth/authStore';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { readHttpStatus } from '../shared/api/response';
 
 dayjs.locale('vi');
 
-function readHttpStatus(error: unknown): number | undefined {
-  return (
-    (error as { statusCode?: number })?.statusCode ??
-    (error as { response?: { status?: number } })?.response?.status
-  );
-}
 
 const theme = createTheme({
   primaryColor: 'blue',

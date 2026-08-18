@@ -9,13 +9,13 @@ import { getStatusLabel } from "../shared/constants/statusLabels";
 import { BarChart } from "./dashboard/BarChart";
 import { DonutChart, type ChartTone } from "./dashboard/DonutChart";
 import styles from "./DashboardPage.module.css";
+import { formatNumber as formatCount } from "../shared/utils/format";
 
 type Tone = ChartTone;
 
 // Ngưỡng chuyên cần coi là đạt, dùng chung cho màu thanh và vạch mục tiêu.
 const ATTENDANCE_TARGET = 95;
 
-const formatCount = (value: number) => value.toLocaleString("vi-VN");
 
 /** Status keys the API returns, mapped onto the validated status palette. */
 const STATUS_TONES: Record<string, Tone> = {

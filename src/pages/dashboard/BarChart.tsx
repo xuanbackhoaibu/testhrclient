@@ -1,5 +1,6 @@
 import type { ChartTone } from './DonutChart';
 import styles from './DashboardCharts.module.css';
+import { formatNumber as formatCount } from '../../shared/utils/format';
 
 export interface BarDatum {
   key: string;
@@ -15,7 +16,6 @@ interface BarChartProps {
   unitSuffix?: string;
 }
 
-const formatCount = (value: number) => value.toLocaleString('vi-VN');
 
 /**
  * Horizontal bars: the right form when category names are long (Vietnamese unit

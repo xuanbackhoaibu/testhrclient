@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { AttendanceSummary } from '../../../features/attendance/attendanceTypes';
 import type { SummaryScope } from './AttendanceSummaryCards';
 import styles from './AttendanceSummaryChart.module.css';
+import { formatNumber as formatCount } from '../../../shared/utils/format';
 
 type Tone = 'good' | 'warning' | 'critical' | 'unknown';
 
@@ -98,7 +99,6 @@ function niceCeiling(max: number): number {
   return step * magnitude;
 }
 
-const formatCount = (value: number) => value.toLocaleString('vi-VN');
 
 interface ColumnChartProps {
   title: string;
