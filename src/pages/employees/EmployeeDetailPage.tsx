@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   ActionIcon,
-  Avatar,
   Badge,
   Box,
   Button,
@@ -182,16 +181,6 @@ function SectionCard({
       {children}
     </Card>
   );
-}
-
-function getInitials(name: string) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(-2)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase();
 }
 
 function getWorkStatus(status?: string | null) {
@@ -496,12 +485,6 @@ export function EmployeeDetailPage() {
       <Paper withBorder p="lg" mb="md" className="employee-detail-hero">
         <div className="employee-detail-hero-content">
           <Group align="center" gap="lg" className="employee-detail-hero-main">
-            <Box className="employee-detail-avatar-wrap">
-              <Avatar size={92} radius={999} color="hacomRed" className="employee-detail-avatar">
-                {getInitials(employee.fullName)}
-              </Avatar>
-              <span className={`employee-detail-status-dot ${workStatus.dotClass}`} aria-label={workStatus.label} />
-            </Box>
             <Box>
               <Group gap="xs" mb={6}>
                 <Badge color={workStatus.color} variant="light">{workStatus.label}</Badge>
@@ -531,7 +514,7 @@ export function EmployeeDetailPage() {
         </div>
       </Paper>
 
-      <Tabs defaultValue="personal" className="employee-detail-tabs">
+      <Tabs color="blue" defaultValue="personal" className="employee-detail-tabs">
         <Tabs.List mb="md" className="employee-detail-tabs-list">
           <Tabs.Tab value="personal" leftSection={<IconUser size={15} />}>Thông tin cá nhân</Tabs.Tab>
           <Tabs.Tab value="assignment" leftSection={<IconBriefcase size={15} />}>Phân công</Tabs.Tab>

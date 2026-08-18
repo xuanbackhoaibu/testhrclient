@@ -489,11 +489,7 @@ table th {
   border-color: var(--hacom-primary);
 }
 
-.employee-row-quick-actions {
-  opacity: 0;
-  transform: translateX(6px);
-  transition: opacity 160ms ease, transform 160ms ease;
-}
+
 
 .employee-name-preview-trigger {
   cursor: help;
@@ -504,12 +500,7 @@ table th {
   white-space: nowrap;
 }
 
-.employee-preview-hero,
-.employee-preview-field,
-.employee-export-preview-table {
-  background: var(--hrm-surface);
-  border-color: var(--hrm-border);
-}
+
 
 .notification-center-panel {
   background: var(--hrm-surface);
@@ -704,11 +695,7 @@ table th {
   padding-top: 10px;
 }
 
-.data-table tbody tr:hover .employee-row-quick-actions,
-.employee-row-quick-actions:focus-within {
-  opacity: 1;
-  transform: translateX(0);
-}
+.data-table tbody tr:hover 
 
 .employee-selection-bar-floating {
   position: fixed;
@@ -980,17 +967,9 @@ table th {
   white-space: nowrap;
 }
 
-.employee-sort-header {
-  color: inherit;
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-}
 
-.employee-sort-header[data-active='true'],
-.employee-sort-header:hover {
-  color: var(--hrm-accent);
-}
+
+
 
 .data-table-row-clickable {
   cursor: pointer;
@@ -1147,17 +1126,7 @@ table th {
   justify-content: flex-end;
 }
 
-.employee-quick-filter-scroll {
-  max-width: 100%;
-}
 
-.employee-quick-filter .mantine-SegmentedControl-label {
-  font-size: 12px;
-  font-weight: 600;
-  min-height: 32px;
-  padding-left: 10px;
-  padding-right: 10px;
-}
 
 .employee-selection-bar {
   background: #f6fffc;
@@ -2677,8 +2646,18 @@ table th {
   width: 100%;
 }
 
+.table-actions-menu .mantine-ActionIcon-root {
+  color: #228be6;
+}
+
 .table-actions-menu .mantine-ActionIcon-root:hover {
   background: #eef4ff;
+  color: #1c7ed6;
+}
+
+.table-actions-menu .mantine-ActionIcon-root:active {
+  background: #dbeafe;
+  color: #1971c2;
 }
 
 .organization-employee-count-badge {
@@ -3508,14 +3487,7 @@ table th {
     flex: 1 1 140px;
   }
 
-  .employee-quick-filter-scroll {
-    overflow-x: auto;
-    padding-bottom: 2px;
-  }
 
-  .employee-quick-filter {
-    min-width: 720px;
-  }
 
   .employee-selection-bar {
     align-items: flex-start;

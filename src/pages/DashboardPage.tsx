@@ -5,7 +5,6 @@ import {
   Group,
   Menu,
   SegmentedControl,
-  Select,
   Skeleton,
   Table,
   Text,
@@ -13,10 +12,8 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconAddressBook,
   IconAlertTriangle,
   IconArrowRight,
-  IconCalendar,
   IconCalendarCheck,
   IconChartBar,
   IconCheck,
@@ -124,63 +121,6 @@ function DashboardSkeletonLoader() {
   );
 }
 
-/** 1. Thanh Lọc Đơn vị & Lối tắt điều hướng phân hệ HRM */
-function EnterpriseQuickBar({
-  selectedUnit,
-  unitOptions,
-  onSelectUnit,
-  onNavigate,
-}: {
-  selectedUnit: string;
-  unitOptions: Array<{ value: string; label: string }>;
-  onSelectUnit: (unit: string) => void;
-  onNavigate: (path: string) => void;
-}) {
-  const navLinks = [
-    { label: "Danh bạ nhân sự", icon: IconAddressBook, path: ROUTES.employees },
-    { label: "Bảng chấm công", icon: IconClockHour4, path: ROUTES.attendance },
-    { label: "Đơn từ & Nghỉ phép", icon: IconCalendar, path: ROUTES.leave },
-    { label: "Điều chuyển nội bộ", icon: IconFileText, path: ROUTES.movements },
-    { label: "Import Excel", icon: IconFileSpreadsheet, path: ROUTES.imports },
-  ];
-
-  return (
-    <div className={`${styles.enterpriseSearchBar} ${styles.fadeInItem1}`}>
-      {/* Bộ lọc đơn vị áp dụng */}
-      <div className={styles.unitFilterGroup}>
-        <span className={styles.unitFilterLabel}>Đơn vị áp dụng:</span>
-        <Select
-          value={selectedUnit}
-          onChange={(val) => onSelectUnit(val ?? "ALL")}
-          data={unitOptions}
-          size="xs"
-          radius="md"
-          className={styles.unitSelectorBar}
-          allowDeselect={false}
-        />
-      </div>
-
-      {/* Danh mục lối tắt điều hướng nhanh */}
-      <div className={styles.quickNavLinksRow}>
-        {navLinks.map((link) => {
-          const Icon = link.icon;
-          return (
-            <button
-              key={link.label}
-              type="button"
-              className={styles.quickNavLinkItem}
-              onClick={() => onNavigate(link.path)}
-            >
-              <Icon size={14} />
-              <span>{link.label}</span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 /** 2. Băng 5 chỉ số điều hành HRM */
 function ExecutiveMetricStrip({
   totalEmployees,
@@ -205,124 +145,71 @@ function ExecutiveMetricStrip({
 }) {
   const activePct = percent(activeEmployees, totalEmployees);
 
+  const metrics = [
+    {
+      label: 'Tổng nhân sự',
+      badge: 'Toàn bộ',
+      badgeClass: styles.badgeNeutral,
+      value: totalEmployees,
+      sub: 'Quy mô toàn hệ thống',
+      onClick: () => onNavigate(ROUTES.employees),
+    },
+    {
+      label: 'Đang làm việc',
+      badge: `${activePct}%`,
+      badgeClass: styles.badgeSuccess,
+      value: activeEmployees,
+      sub: 'Chính thức & thử việc',
+      onClick: () => onNavigate(employeeListUrl({ status: 'ACTIVE' })),
+    },
+    {
+      label: 'Tuyển mới kỳ này',
+      badge: `+${newHires} mới`,
+      badgeClass: styles.badgeInfo,
+      value: newHires,
+      sub: 'Hồ sơ gia nhập kỳ này',
+      onClick: () => onNavigate(employeeListUrl({ created: 'current-period' })),
+    },
+    {
+      label: 'Thôi việc kỳ này',
+      badge: `-${terminated}`,
+      badgeClass: styles.badgeDanger,
+      value: terminated,
+      sub: 'Biến động giảm nhân sự',
+      onClick: () => onNavigate(employeeListUrl({ status: 'TERMINATED' })),
+    },
+    {
+      label: 'Yêu cầu chờ duyệt',
+      badge: pendingTotal > 0 ? `${pendingTotal} việc` : 'Hoàn tất',
+      badgeClass: pendingTotal > 0 ? styles.badgeWarning : styles.badgeSuccess,
+      value: pendingTotal,
+      sub: `${pendingLeave} phép, ${pendingAttendance} công, ${pendingMovements} chuyển`,
+      onClick: () => onNavigate(ROUTES.leave),
+    },
+  ];
+
   return (
     <div className={`${styles.executiveMetricStrip} ${styles.fadeInItem2}`}>
-      {/* 1. Tổng nhân sự */}
-      <div
-        className={styles.metricStripCell}
-        onClick={() => onNavigate(ROUTES.employees)}
-        role="button"
-        tabIndex={0}
-      >
-        <div className={styles.metricCellHeader}>
-          <span className={styles.metricCellLabel}>Tổng nhân sự</span>
-          <span className={`${styles.metricCellBadge} ${styles.badgeNeutral}`}>
-            Toàn bộ
-          </span>
+      {metrics.map((m) => (
+        <div
+          key={m.label}
+          className={styles.metricStripCell}
+          onClick={m.onClick}
+          role="button"
+          tabIndex={0}
+        >
+          <div className={styles.metricCellHeader}>
+            <span className={styles.metricCellLabel}>{m.label}</span>
+            <span className={`${styles.metricCellBadge} ${m.badgeClass}`}>{m.badge}</span>
+          </div>
+          <div className={styles.metricCellValueRow}>
+            <span className={styles.metricCellValue}>{formatNumber(m.value)}</span>
+          </div>
+          <div className={styles.metricCellFooterRow}>
+            <span className={styles.metricCellSub}>{m.sub}</span>
+          </div>
         </div>
-        <div className={styles.metricCellValueRow}>
-          <span className={styles.metricCellValue}>
-            {formatNumber(totalEmployees)}
-          </span>
-        </div>
-        <div className={styles.metricCellFooterRow}>
-          <span className={styles.metricCellSub}>Quy mô toàn hệ thống</span>
-        </div>
-      </div>
-
-      {/* 2. Đang làm việc */}
-      <div
-        className={styles.metricStripCell}
-        onClick={() => onNavigate(employeeListUrl({ status: "ACTIVE" }))}
-        role="button"
-        tabIndex={0}
-      >
-        <div className={styles.metricCellHeader}>
-          <span className={styles.metricCellLabel}>Đang làm việc</span>
-          <span className={`${styles.metricCellBadge} ${styles.badgeSuccess}`}>
-            {activePct}%
-          </span>
-        </div>
-        <div className={styles.metricCellValueRow}>
-          <span className={styles.metricCellValue}>
-            {formatNumber(activeEmployees)}
-          </span>
-        </div>
-        <div className={styles.metricCellFooterRow}>
-          <span className={styles.metricCellSub}>Chính thức & thử việc</span>
-        </div>
-      </div>
-
-      {/* 3. Tuyển mới kỳ này */}
-      <div
-        className={styles.metricStripCell}
-        onClick={() => onNavigate(employeeListUrl({ created: "current-period" }))}
-        role="button"
-        tabIndex={0}
-      >
-        <div className={styles.metricCellHeader}>
-          <span className={styles.metricCellLabel}>Tuyển mới kỳ này</span>
-          <span className={`${styles.metricCellBadge} ${styles.badgeInfo}`}>
-            +{newHires} mới
-          </span>
-        </div>
-        <div className={styles.metricCellValueRow}>
-          <span className={styles.metricCellValue}>{formatNumber(newHires)}</span>
-        </div>
-        <div className={styles.metricCellFooterRow}>
-          <span className={styles.metricCellSub}>Hồ sơ gia nhập kỳ này</span>
-        </div>
-      </div>
-
-      {/* 4. Thôi việc kỳ này */}
-      <div
-        className={styles.metricStripCell}
-        onClick={() => onNavigate(employeeListUrl({ status: "TERMINATED" }))}
-        role="button"
-        tabIndex={0}
-      >
-        <div className={styles.metricCellHeader}>
-          <span className={styles.metricCellLabel}>Thôi việc kỳ này</span>
-          <span className={`${styles.metricCellBadge} ${styles.badgeDanger}`}>
-            -{terminated}
-          </span>
-        </div>
-        <div className={styles.metricCellValueRow}>
-          <span className={styles.metricCellValue}>{formatNumber(terminated)}</span>
-        </div>
-        <div className={styles.metricCellFooterRow}>
-          <span className={styles.metricCellSub}>Biến động giảm nhân sự</span>
-        </div>
-      </div>
-
-      {/* 5. Yêu cầu chờ duyệt */}
-      <div
-        className={styles.metricStripCell}
-        onClick={() => onNavigate(ROUTES.leave)}
-        role="button"
-        tabIndex={0}
-      >
-        <div className={styles.metricCellHeader}>
-          <span className={styles.metricCellLabel}>Yêu cầu chờ duyệt</span>
-          <span
-            className={`${styles.metricCellBadge} ${
-              pendingTotal > 0 ? styles.badgeWarning : styles.badgeSuccess
-            }`}
-          >
-            {pendingTotal > 0 ? `${pendingTotal} việc` : "Hoàn tất"}
-          </span>
-        </div>
-        <div className={styles.metricCellValueRow}>
-          <span className={styles.metricCellValue}>
-            {formatNumber(pendingTotal)}
-          </span>
-        </div>
-        <div className={styles.metricCellFooterRow}>
-          <span className={styles.metricCellSub}>
-            {pendingLeave} phép, {pendingAttendance} công, {pendingMovements} chuyển
-          </span>
-        </div>
-      </div>
+      ))}
     </div>
   );
 }
@@ -1261,8 +1148,6 @@ function LiveSystemSyncFooter({
 
 export function DashboardPage() {
   const navigate = useNavigate();
-
-  const [selectedUnit, setSelectedUnit] = useState<string>("ALL");
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   const [lastSyncTime, setLastSyncTime] = useState<string>(() => {
@@ -1270,17 +1155,12 @@ export function DashboardPage() {
     return `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
   });
 
-  const dashboardParams = useMemo(() => ({}), []);
-  const { data, isLoading, error, refetch, isFetching } =
-    useDashboardSummary(dashboardParams);
+  const { data, isLoading, error, refetch, isFetching } = useDashboardSummary();
 
   const handleManualRefetch = useCallback(async () => {
     setIsManualRefreshing(true);
     try {
-      await Promise.all([
-        refetch(),
-        new Promise((resolve) => setTimeout(resolve, 450)),
-      ]);
+      await refetch();
       const now = new Date();
       const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
       setLastSyncTime(timeStr);
@@ -1352,39 +1232,6 @@ export function DashboardPage() {
     window.print();
   };
 
-  // Extract unit options for filtering
-  const unitSelectOptions = useMemo(() => {
-    if (!data) return [{ value: "ALL", label: "Tất cả đơn vị" }];
-    const list = data.employeesByUnit.map((u) => ({
-      value: u.label,
-      label: u.label,
-    }));
-    return [{ value: "ALL", label: "Tất cả đơn vị" }, ...list];
-  }, [data]);
-
-  // Compute filtered units if a specific unit is selected
-  const displayedUnitData = useMemo(() => {
-    if (!data) return [];
-    if (selectedUnit === "ALL") return data.employeesByUnit;
-    return data.employeesByUnit.filter((u) => u.label === selectedUnit);
-  }, [data, selectedUnit]);
-
-  const displayedAttendanceData = useMemo(() => {
-    if (!data) return [];
-    if (selectedUnit === "ALL") return data.attendanceThisMonth.byDepartment;
-    return data.attendanceThisMonth.byDepartment.filter(
-      (dept) => (dept.unitName ?? dept.departmentName) === selectedUnit,
-    );
-  }, [data, selectedUnit]);
-
-  const displayedLateData = useMemo(() => {
-    if (!data) return [];
-    if (selectedUnit === "ALL") return data.attendanceThisMonth.topLateEmployees;
-    return data.attendanceThisMonth.topLateEmployees.filter(
-      (emp) => emp.unitName === selectedUnit,
-    );
-  }, [data, selectedUnit]);
-
   if (isLoading) return <DashboardSkeletonLoader />;
   if (error) return <ErrorState onRetry={() => void refetch()} />;
   if (!data) return <DashboardSkeletonLoader />;
@@ -1427,8 +1274,6 @@ export function DashboardPage() {
         </Menu.Dropdown>
       </Menu>
 
-
-
       {/* Nút Làm mới */}
       <Tooltip label="Làm mới dữ liệu (Alt + R)" withArrow>
         <ActionIcon
@@ -1454,15 +1299,7 @@ export function DashboardPage() {
       />
 
       <div className={styles.zaloDashboardContainer}>
-        {/* 1. Thanh Lọc Đơn vị & Lối tắt điều hướng phân hệ HRM */}
-        <EnterpriseQuickBar
-          selectedUnit={selectedUnit}
-          unitOptions={unitSelectOptions}
-          onSelectUnit={setSelectedUnit}
-          onNavigate={(path) => navigate(path)}
-        />
-
-        {/* 2. Băng chỉ số điều hành HRM */}
+        {/* 1. Băng chỉ số điều hành HRM */}
         <ExecutiveMetricStrip
           totalEmployees={data.totalEmployees}
           activeEmployees={data.activeEmployees}
@@ -1479,7 +1316,7 @@ export function DashboardPage() {
         <div className={`${styles.twoColumnGrid} ${styles.fadeInItem3}`}>
           <DonutStructureChart
             title="Cơ cấu nhân sự theo Đơn vị"
-            items={displayedUnitData}
+            items={data.employeesByUnit}
             onItemClick={(item) =>
               navigate(
                 employeeListUrl({
@@ -1526,9 +1363,9 @@ export function DashboardPage() {
 
         {/* Khu vực 3: Giám sát Chấm công và Kỷ luật lao động */}
         <div className={`${styles.twoColumnGrid} ${styles.fadeInItem5}`}>
-          <ModernAttendanceRatesCard items={displayedAttendanceData} />
+          <ModernAttendanceRatesCard items={data.attendanceThisMonth.byDepartment} />
           <ModernTopLateTableCard
-            items={displayedLateData}
+            items={data.attendanceThisMonth.topLateEmployees}
             onViewEmployee={(id) => navigate(`${ROUTES.employees}/${id}`)}
           />
         </div>

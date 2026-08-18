@@ -44,7 +44,7 @@ export function TableActionsMenu({
         <SafeTooltip key={action.label} label={action.label} disabled={action.disabled}>
           <ActionIcon
             variant="subtle"
-            color={action.color ?? 'gray'}
+            color={action.color ?? 'blue'}
             size="sm"
             aria-label={action.label}
             disabled={action.disabled}

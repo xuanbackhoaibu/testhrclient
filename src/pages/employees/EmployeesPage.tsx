@@ -1,53 +1,31 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useDebouncedValue, useLocalStorage } from "@mantine/hooks";
+import { useCallback, useMemo, useState } from "react";
+import { useLocalStorage } from "@mantine/hooks";
 import {
-  ActionIcon,
   Badge,
-  Box,
   Button,
   Checkbox,
   Drawer,
   Group,
   Menu,
-  Paper,
   Select,
-  SegmentedControl,
   SimpleGrid,
   Stack,
   Text,
   TextInput,
-  ThemeIcon,
   Tooltip,
-  UnstyledButton,
-  Alert,
-  Divider,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import {
-  IconArrowsSort,
-  IconAlertCircle,
-  IconCalendarTime,
-  IconChevronDown,
-  IconChevronUp,
   IconColumns3,
-  IconFileExport,
   IconEdit,
   IconEye,
-  IconFilterOff,
-  IconIdBadge2,
-  IconInfoCircle,
-  IconMail,
-  IconPinned,
-  IconPinnedOff,
   IconPlus,
-  IconSearch,
-  IconSignature,
   IconUserCheck,
+  IconUsers,
 } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { z } from "zod";
+import { useNavigate } from "react-router-dom";
 
 import { AUTH_ADMIN_PERMISSIONS, HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
@@ -77,7 +55,6 @@ import {
   type DataTableColumn,
 } from "../../shared/components/DataTable";
 import { PageHeader } from "../../shared/components/PageHeader";
-import { ROUTES } from "../../shared/constants/routes";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 import { EllipsisText } from "../../shared/components/EllipsisText";
@@ -86,10 +63,9 @@ import { usePositionsSelect } from "../../features/organization/usePositions";
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { ApiError } from "../../shared/api/api.types";
 import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
-import { focusFirstFormError, zodMantineValidate } from "../../shared/forms/zodMantine";
-import { exportRowsToExcel } from "../../shared/utils/excel";
-import { compareCode } from "../../shared/utils/sort";
-import { HrmDateInput } from "../../shared/components/HrmDateInput";
+import { sortByCode } from "../../shared/utils/sort";
+import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
+import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
 
 const employmentStatusOptions = [
   { value: "ACTIVE", label: "Đang làm việc" },
@@ -100,8 +76,47 @@ const employmentStatusOptions = [
 ];
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const citizenIdPattern = /^(\d{9}|\d{12})$/;
-const bioTimeCodePattern = /^[0-9A-Za-z_-]+$/;
+type EmployeeColumnKey =
+  | "employeeCode"
+  | "biotimeEmployeeCode"
+  | "fullName"
+  | "companyEmail"
+  | "phone"
+  | "employmentStatus"
+  | "accountStatus"
+  | "department"
+  | "jobTitle"
+  | "account_actions"
+  | "actions";
+
+const fixedEmployeeColumnKeys = new Set<EmployeeColumnKey>([
+  "employeeCode",
+  "fullName",
+  "actions",
+]);
+
+const defaultVisibleEmployeeColumns: EmployeeColumnKey[] = [
+  "biotimeEmployeeCode",
+  "companyEmail",
+  "phone",
+  "employmentStatus",
+  "accountStatus",
+  "department",
+  "jobTitle",
+  "account_actions",
+];
+
+const employeeColumnOptions: Array<{ key: EmployeeColumnKey; label: string }> = [
+  { key: "biotimeEmployeeCode", label: "Mã chấm công" },
+  { key: "companyEmail", label: "Email" },
+  { key: "phone", label: "SĐT" },
+  { key: "employmentStatus", label: "TT nhân sự" },
+  { key: "accountStatus", label: "TT tài khoản" },
+  { key: "department", label: "Phòng ban" },
+  { key: "jobTitle", label: "Chức danh" },
+  { key: "account_actions", label: "Tài khoản" },
+];
+
 
 // Canonical account-status vocabulary returned by the HR API. Kept separate
 // from the shared StatusTag (whose ACTIVE label means "Đang làm việc") so the
@@ -128,134 +143,8 @@ const ACCOUNT_STATUS_FALLBACK_LABELS: Record<string, string> = {
   UNKNOWN: "Không rõ trạng thái",
 };
 
-type EmployeeQuickFilter =
-  | "all"
-  | "missingAccount"
-  | "missingBioTime"
-  | "probation"
-  | "incompleteProfile";
-type EmployeeSortKey =
-  | "employeeCode"
-  | "biotimeEmployeeCode"
-  | "fullName";
-type SortDirection = "asc" | "desc";
-type EmployeeExportFormat = "excel" | "csv" | "pdf";
-type EmployeeExportScope = "filtered" | "all" | "selected";
-type EmployeeColumnKey =
-  | "employeeCode"
-  | "biotimeEmployeeCode"
-  | "fullName"
-  | "companyEmail"
-  | "phone"
-  | "employmentStatus"
-  | "accountStatus"
-  | "department"
-  | "jobTitle"
-  | "account_actions"
-  | "actions";
-
-const DEFAULT_PAGE_SIZE = 10;
-const DEFAULT_SORT_KEY: EmployeeSortKey = "biotimeEmployeeCode";
-const DEFAULT_SORT_DIRECTION: SortDirection = "asc";
-const fixedEmployeeColumnKeys = new Set<EmployeeColumnKey>([
-  "employeeCode",
-  "fullName",
-  "actions",
-]);
-const defaultVisibleEmployeeColumns: EmployeeColumnKey[] = [
-  "biotimeEmployeeCode",
-  "companyEmail",
-  "phone",
-  "employmentStatus",
-  "accountStatus",
-  "department",
-  "jobTitle",
-  "account_actions",
-];
-const employeeColumnOptions: Array<{ key: EmployeeColumnKey; label: string }> = [
-  { key: "biotimeEmployeeCode", label: "Mã chấm công" },
-  { key: "companyEmail", label: "Email" },
-  { key: "phone", label: "SĐT" },
-  { key: "employmentStatus", label: "TT nhân sự" },
-  { key: "accountStatus", label: "TT tài khoản" },
-  { key: "department", label: "Phòng ban" },
-  { key: "jobTitle", label: "Chức danh" },
-  { key: "account_actions", label: "Tài khoản" },
-];
-const employeeQuickFilters = new Set<EmployeeQuickFilter>([
-  "all",
-  "missingAccount",
-  "missingBioTime",
-  "probation",
-  "incompleteProfile",
-]);
-const employeeSortKeys = new Set<EmployeeSortKey>([
-  "employeeCode",
-  "biotimeEmployeeCode",
-  "fullName",
-]);
-
-function parsePositiveInteger(value: string | null, fallback: number) {
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function parseQuickFilter(value: string | null): EmployeeQuickFilter {
-  return employeeQuickFilters.has(value as EmployeeQuickFilter)
-    ? (value as EmployeeQuickFilter)
-    : "all";
-}
-
-function parseSortKey(value: string | null): EmployeeSortKey {
-  return employeeSortKeys.has(value as EmployeeSortKey)
-    ? (value as EmployeeSortKey)
-    : DEFAULT_SORT_KEY;
-}
-
-function parseSortDirection(value: string | null): SortDirection {
-  return value === "desc" ? "desc" : DEFAULT_SORT_DIRECTION;
-}
-
 function employeeHasAccount(record: Employee): boolean {
   return record.hasAccount ?? Boolean(record.authUserId);
-}
-
-function isEmployeeProfileIncomplete(record: Employee): boolean {
-  return (
-    !record.companyEmail ||
-    !record.phone ||
-    !record.currentEmployeeAssignment?.departmentId ||
-    !record.currentEmployeeAssignment?.positionId
-  );
-}
-
-function getEmployeeSortValue(employee: Employee, key: EmployeeSortKey) {
-  switch (key) {
-    case "employeeCode":
-      return employee.employeeCode;
-    case "biotimeEmployeeCode":
-      return employee.biotimeEmployeeCode;
-    case "fullName":
-      return employee.fullName;
-    default:
-      return "";
-  }
-}
-
-function compareEmployeeBySort(
-  left: Employee,
-  right: Employee,
-  key: EmployeeSortKey,
-) {
-  if (key === "employeeCode" || key === "biotimeEmployeeCode") {
-    return compareCode(getEmployeeSortValue(left, key), getEmployeeSortValue(right, key));
-  }
-
-  return String(getEmployeeSortValue(left, key) ?? "").localeCompare(
-    String(getEmployeeSortValue(right, key) ?? ""),
-    "vi",
-    { sensitivity: "base" },
-  );
 }
 
 function AccountStatusBadge({ record }: { record: Employee }) {
@@ -342,16 +231,6 @@ function getApiErrorMessage(error: unknown) {
   return "Vui lòng kiểm tra dữ liệu và thử lại.";
 }
 
-function getBiotimeEmployeeCodeError(value: string): string | null {
-  const code = trimOptional(value);
-  if (!code) {
-    return null;
-  }
-  return bioTimeCodePattern.test(code)
-    ? null
-    : "Mã chấm công chỉ gồm chữ, số, dấu gạch ngang hoặc gạch dưới.";
-}
-
 const emptyEmployeeFormValues: EmployeePayload = {
   employeeCode: "",
   fullName: "",
@@ -368,43 +247,9 @@ const emptyEmployeeFormValues: EmployeePayload = {
   positionId: "",
 };
 
-const employeeFormSchema = z.object({
-  employeeCode: z
-    .string()
-    .trim()
-    .regex(/^[A-Za-z0-9_-]*$/, "Mã nhân sự chỉ gồm chữ, số, dấu gạch ngang hoặc gạch dưới.")
-    .optional()
-    .or(z.literal("")),
-  fullName: z.string().trim().min(1, "Nhập họ tên."),
-  companyEmail: z
-    .string()
-    .trim()
-    .refine((value) => !value || emailPattern.test(value), "Email không đúng định dạng."),
-  personalEmail: z
-    .string()
-    .trim()
-    .refine((value) => !value || emailPattern.test(value), "Email không đúng định dạng."),
-  phone: z
-    .string()
-    .trim()
-    .min(1, "Nhập số điện thoại.")
-    .regex(/^0[0-9]{9}$/, "Số điện thoại không đúng định dạng (VD: 0901234567)."),
-  gender: z.string(),
-  dateOfBirth: z.string(),
-  hireDate: z.string().min(1, "Chọn ngày vào làm."),
-  employmentStatus: z.string().min(1, "Chọn trạng thái nhân sự."),
-  citizenId: z
-    .string()
-    .trim()
-    .refine((value) => !value || citizenIdPattern.test(value), "CCCD/CMND phải gồm 9 hoặc 12 số."),
-  unitId: z.string().min(1, "Vui lòng chọn đơn vị."),
-  departmentId: z.string().min(1, "Vui lòng chọn phòng ban."),
-  positionId: z.string().min(1, "Vui lòng chọn chức danh."),
-}) satisfies z.ZodType<EmployeePayload>;
-
 export function EmployeesPage() {
+  const selectSearch = useImeSafeSelectFilter();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const { can, permissions, roles } = useAuth();
   const mayCreateEmployee = can(HR_PERMISSIONS.EMPLOYEE_CREATE);
   const mayEditEmployee = can(HR_PERMISSIONS.EMPLOYEE_UPDATE);
@@ -428,45 +273,44 @@ export function EmployeesPage() {
   const [nextCodeError, setNextCodeError] = useState<string | null>(null);
   const [suggestedCode, setSuggestedCode] = useState("");
   const [biotimeEmployeeCode, setBiotimeEmployeeCode] = useState("");
-  const [searchInput, setSearchInput] = useState(
-    () => searchParams.get("search") ?? "",
-  );
-  const [debouncedSearch] = useDebouncedValue(searchInput, 300);
-  const [quickFilter, setQuickFilter] = useState<EmployeeQuickFilter>(() =>
-    parseQuickFilter(searchParams.get("quick")),
-  );
-  const [sortKey, setSortKey] = useState<EmployeeSortKey>(() =>
-    parseSortKey(searchParams.get("sort")),
-  );
-  const [sortDirection, setSortDirection] = useState<SortDirection>(() =>
-    parseSortDirection(searchParams.get("dir")),
-  );
+  const [searchInput, setSearchInput] = useState("");
   const [visibleColumnKeys, setVisibleColumnKeys] = useLocalStorage<EmployeeColumnKey[]>({
     key: "hr-web-client.employee.visible-columns",
     defaultValue: defaultVisibleEmployeeColumns,
   });
-  const [pinnedEmployeeIds, setPinnedEmployeeIds] = useLocalStorage<string[]>({
-    key: "hr-web-client.employee.pinned-rows",
-    defaultValue: [],
+  const [params, setParams] = useState({
+    page: 1,
+    pageSize: 10,
+    employmentStatus: undefined as string | undefined,
+    unitId: undefined as string | undefined,
+    departmentId: undefined as string | undefined,
   });
-  const [quickPreviewTarget, setQuickPreviewTarget] = useState<Employee | null>(null);
-  const [exportPreview, setExportPreview] = useState<{
-    format: EmployeeExportFormat;
-    scope: EmployeeExportScope;
-  } | null>(null);
-  const [isAdvancedExporting, setIsAdvancedExporting] = useState(false);
-  const [params, setParams] = useState(() => ({
-    page: parsePositiveInteger(searchParams.get("page"), 1),
-    pageSize: parsePositiveInteger(searchParams.get("pageSize"), DEFAULT_PAGE_SIZE),
-    employmentStatus: searchParams.get("status") ?? undefined,
-    unitId: searchParams.get("unitId") ?? undefined,
-    departmentId: searchParams.get("departmentId") ?? searchParams.get("dept") ?? undefined,
-  }));
 
   const form = useForm<EmployeePayload>({
     initialValues: emptyEmployeeFormValues,
-    validate: zodMantineValidate(employeeFormSchema),
-    validateInputOnChange: true,
+    validate: {
+      fullName: (value) => (value.trim() ? null : "Nhập họ tên."),
+      hireDate: (value) => (value ? null : "Chọn ngày vào làm."),
+      unitId: (value) => (value ? null : "Vui lòng chọn đơn vị."),
+      departmentId: (value) => (value ? null : "Vui lòng chọn phòng ban."),
+      positionId: (value) => (value ? null : "Vui lòng chọn chức danh."),
+      phone: (value) =>
+        trimOptional(value) && !/^0[0-9]{9}$/.test(trimOptional(value))
+          ? "Số điện thoại không đúng định dạng (VD: 0901234567)."
+          : null,
+      companyEmail: (value) => {
+        const companyEmail = trimOptional(value);
+        return companyEmail && !emailPattern.test(companyEmail)
+          ? "Email không đúng định dạng."
+          : null;
+      },
+      personalEmail: (value) => {
+        const personalEmail = trimOptional(value);
+        return personalEmail && !emailPattern.test(personalEmail)
+          ? "Email không đúng định dạng."
+          : null;
+      },
+    },
   });
 
   // Lấy toàn bộ nhân sự theo bộ lọc (gộp mọi trang từ server) để có thể
@@ -476,7 +320,7 @@ export function EmployeesPage() {
     employmentStatus: params.employmentStatus,
     unitId: params.unitId,
     departmentId: params.departmentId,
-    search: debouncedSearch,
+    search: searchInput,
   });
   const unitsSelect = useUnitsSelect();
   const filterDepartmentsSelect = useDepartmentsSelect(params.unitId);
@@ -508,7 +352,7 @@ export function EmployeesPage() {
   }));
 
   const exportMutation = useMutation({
-    mutationFn: () => downloadEmployeesExport({ ...params, search: debouncedSearch }),
+    mutationFn: () => downloadEmployeesExport({ ...params, search: searchInput }),
     onError: () => {
       notifications.show({
         color: "red",
@@ -700,16 +544,6 @@ export function EmployeesPage() {
   }
 
   function submitEmployee(values: EmployeePayload) {
-    const biotimeError = getBiotimeEmployeeCodeError(biotimeEmployeeCode);
-    if (biotimeError) {
-      notifications.show({
-        color: "red",
-        title: "Cần kiểm tra lại thông tin",
-        message: biotimeError,
-      });
-      return;
-    }
-
     const requiredPermission = editing
       ? HR_PERMISSIONS.EMPLOYEE_UPDATE
       : HR_PERMISSIONS.EMPLOYEE_CREATE;
@@ -797,100 +631,22 @@ export function EmployeesPage() {
     });
   }
 
-  function handleEmployeeFormValidationFailure(errors: typeof form.errors) {
-    focusFirstFormError(errors);
-    notifications.show({
-      color: "red",
-      title: "Cần kiểm tra lại thông tin",
-      message: "Một số trường bắt buộc hoặc định dạng dữ liệu chưa hợp lệ.",
-    });
-  }
-
-  // Mặc định sắp theo Mã chấm công; người dùng có thể đổi sort trên header.
+  // Sắp xếp nhân sự theo Mã chấm công (BioTime) tăng dần từ 1 tới lớn nhất.
+  // Nhân sự chưa có mã chấm công sẽ dồn xuống cuối danh sách.
   const sortedEmployees = useMemo(
-    () =>
-      [...(allEmployees ?? [])].sort((left, right) => {
-        const result = compareEmployeeBySort(left, right, sortKey);
-        return sortDirection === "asc" ? result : -result;
-      }),
-    [allEmployees, sortDirection, sortKey],
+    () => sortByCode(allEmployees, (emp) => emp.biotimeEmployeeCode),
+    [allEmployees],
   );
 
-  const employeeSummary = useMemo(() => {
-    const employees = sortedEmployees;
-    return {
-      probation: employees.filter((employee) => employee.employmentStatus === "PROBATION").length,
-      missingAccount: employees.filter((employee) => !employeeHasAccount(employee)).length,
-      missingBioTime: employees.filter((employee) => !employee.biotimeEmployeeCode).length,
-      incompleteProfile: employees.filter(isEmployeeProfileIncomplete).length,
-    };
-  }, [sortedEmployees]);
-
-  const visibleEmployees = useMemo(() => {
-    switch (quickFilter) {
-      case "missingAccount":
-        return sortedEmployees.filter((employee) => !employeeHasAccount(employee));
-      case "missingBioTime":
-        return sortedEmployees.filter((employee) => !employee.biotimeEmployeeCode);
-      case "probation":
-        return sortedEmployees.filter((employee) => employee.employmentStatus === "PROBATION");
-      case "incompleteProfile":
-        return sortedEmployees.filter(isEmployeeProfileIncomplete);
-      case "all":
-      default:
-        return sortedEmployees;
-    }
-  }, [quickFilter, sortedEmployees]);
-
-  const orderedVisibleEmployees = useMemo(() => {
-    if (!pinnedEmployeeIds.length) return visibleEmployees;
-    const pinnedSet = new Set(pinnedEmployeeIds);
-    return [
-      ...visibleEmployees.filter((employee) => pinnedSet.has(employee.id)),
-      ...visibleEmployees.filter((employee) => !pinnedSet.has(employee.id)),
-    ];
-  }, [pinnedEmployeeIds, visibleEmployees]);
-
   // Phân trang ở client trên danh sách đã sắp xếp.
-  const totalCount = orderedVisibleEmployees.length;
+  const totalCount = sortedEmployees.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / params.pageSize));
   const currentPage = Math.min(params.page, totalPages);
 
-  useEffect(() => {
-    const next = new URLSearchParams();
-    const search = debouncedSearch.trim();
-    if (search) next.set("search", search);
-    if (params.employmentStatus) next.set("status", params.employmentStatus);
-    if (params.unitId) next.set("unitId", params.unitId);
-    if (params.departmentId) {
-      next.set("departmentId", params.departmentId);
-      next.set("dept", params.departmentId);
-    }
-    if (quickFilter !== "all") next.set("quick", quickFilter);
-    if (sortKey !== DEFAULT_SORT_KEY) next.set("sort", sortKey);
-    if (sortDirection !== DEFAULT_SORT_DIRECTION) next.set("dir", sortDirection);
-    if (currentPage > 1) next.set("page", String(currentPage));
-    if (params.pageSize !== DEFAULT_PAGE_SIZE) {
-      next.set("pageSize", String(params.pageSize));
-    }
-    setSearchParams(next, { replace: true });
-  }, [
-    currentPage,
-    debouncedSearch,
-    params.departmentId,
-    params.employmentStatus,
-    params.pageSize,
-    params.unitId,
-    quickFilter,
-    setSearchParams,
-    sortDirection,
-    sortKey,
-  ]);
-
   const pagedEmployees = useMemo(() => {
     const start = (currentPage - 1) * params.pageSize;
-    return orderedVisibleEmployees.slice(start, start + params.pageSize);
-  }, [orderedVisibleEmployees, currentPage, params.pageSize]);
+    return sortedEmployees.slice(start, start + params.pageSize);
+  }, [sortedEmployees, currentPage, params.pageSize]);
 
   const pagedMeta = useMemo<PaginationMeta>(
     () => ({
@@ -905,227 +661,14 @@ export function EmployeesPage() {
   );
 
   const selectedEmployees = useMemo(
-    () => orderedVisibleEmployees.filter((emp) => selectedIds.has(emp.id)),
-    [orderedVisibleEmployees, selectedIds],
+    () => sortedEmployees.filter((emp) => selectedIds.has(emp.id)),
+    [sortedEmployees, selectedIds],
   );
 
-  const selectedEmails = selectedEmployees
-    .map((employee) => employee.companyEmail)
-    .filter((email): email is string => Boolean(email));
-
-  function exportSelectedEmployees() {
-    if (!selectedEmployees.length) return;
-    const headers = ["Mã NS", "Họ tên", "Email", "SĐT", "Trạng thái", "Phòng ban"];
-    const rows = selectedEmployees.map((employee) => [
-      employee.employeeCode,
-      employee.fullName,
-      employee.companyEmail ?? "",
-      employee.phone ?? "",
-      employee.employmentStatus,
-      employee.currentEmployeeAssignment?.departmentName ?? "",
-    ]);
-    const csv = [headers, ...rows]
-      .map((row) =>
-        row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","),
-      )
-      .join("\n");
-    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `nhan-su-da-chon-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function exportEmployeesAsCsv(records: Employee[], filenamePrefix: string) {
-    const headers = ["Mã NS", "Họ tên", "Email", "SĐT", "Trạng thái", "Phòng ban", "Chức danh"];
-    const rows = records.map((employee) => [
-      employee.employeeCode,
-      employee.fullName,
-      employee.companyEmail ?? "",
-      employee.phone ?? "",
-      employee.employmentStatus,
-      employee.currentEmployeeAssignment?.departmentName ?? "",
-      employee.currentEmployeeAssignment?.jobTitle ?? "",
-    ]);
-    const csv = [headers, ...rows]
-      .map((row) =>
-        row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","),
-      )
-      .join("\n");
-    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${filenamePrefix}-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function escapeHtml(value: string | number | null | undefined) {
-    return String(value ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
-  async function exportEmployeesAsExcel(records: Employee[], filenamePrefix: string) {
-    await exportRowsToExcel({
-      fileName: `${filenamePrefix}-${new Date().toISOString().slice(0, 10)}.xlsx`,
-      sheetName: "Nhan su",
-      rows: records,
-      columns: [
-        { header: "Mã NS", key: "employeeCode", width: 16, value: (employee) => employee.employeeCode },
-        { header: "Họ tên", key: "fullName", width: 24, value: (employee) => employee.fullName },
-        { header: "Email", key: "companyEmail", width: 28, value: (employee) => employee.companyEmail },
-        { header: "SĐT", key: "phone", width: 16, value: (employee) => employee.phone },
-        { header: "Trạng thái", key: "employmentStatus", width: 18, value: (employee) => employee.employmentStatus },
-        { header: "Phòng ban", key: "department", width: 24, value: (employee) => employee.currentEmployeeAssignment?.departmentName },
-        { header: "Chức danh", key: "jobTitle", width: 24, value: (employee) => employee.currentEmployeeAssignment?.jobTitle },
-      ],
-    });
-  }
-
-  function getExportRecords(scope: EmployeeExportScope) {
-    if (scope === "selected") return selectedEmployees;
-    if (scope === "all") return sortedEmployees;
-    return orderedVisibleEmployees;
-  }
-
-  function openExportPreview(format: EmployeeExportFormat, scope: EmployeeExportScope) {
-    const records = getExportRecords(scope);
-    if (!records.length) {
-      notifications.show({
-        color: "yellow",
-        title: "Chưa có dữ liệu để xuất",
-        message: "Không có nhân sự nào trong phạm vi xuất hiện tại.",
-      });
-      return;
-    }
-    setExportPreview({ format, scope });
-  }
-
-  async function confirmAdvancedExport() {
-    if (!exportPreview) return;
-    const records = getExportRecords(exportPreview.scope);
-    const filenamePrefix = exportPreview.scope === "selected" ? "nhan-su-da-chon" : "nhan-su";
-    setIsAdvancedExporting(true);
-    try {
-      if (exportPreview.format === "excel") {
-        await exportEmployeesAsExcel(records, filenamePrefix);
-      } else if (exportPreview.format === "csv") {
-        exportEmployeesAsCsv(records, filenamePrefix);
-      } else {
-        const htmlRows = records.slice(0, 200).map((employee) => `
-          <tr>
-            <td>${escapeHtml(employee.employeeCode)}</td>
-            <td>${escapeHtml(employee.fullName)}</td>
-            <td>${escapeHtml(employee.companyEmail)}</td>
-            <td>${escapeHtml(employee.phone)}</td>
-            <td>${escapeHtml(employee.currentEmployeeAssignment?.departmentName)}</td>
-          </tr>
-        `).join("");
-        const popup = window.open("", "_blank", "width=960,height=720");
-        popup?.document.write(`
-          <html>
-            <head><title>Danh sách nhân sự</title></head>
-            <body>
-              <h2>Danh sách nhân sự</h2>
-              <p>Tổng số: ${records.length}</p>
-              <table border="1" cellspacing="0" cellpadding="6">
-                <thead><tr><th>Mã NS</th><th>Họ tên</th><th>Email</th><th>SĐT</th><th>Phòng ban</th></tr></thead>
-                <tbody>${htmlRows}</tbody>
-              </table>
-              <script>window.print();</script>
-            </body>
-          </html>
-        `);
-        popup?.document.close();
-      }
-      setExportPreview(null);
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Không xuất được dữ liệu",
-        message: "Vui lòng thử lại sau.",
-      });
-    } finally {
-      setIsAdvancedExporting(false);
-    }
-  }
-
-  function mailSelectedEmployees() {
-    if (!selectedEmails.length) {
-      notifications.show({
-        color: "yellow",
-        title: "Chưa có email",
-        message: "Các nhân sự đang chọn chưa có email công ty để gửi thông báo.",
-      });
-      return;
-    }
-    window.location.href = `mailto:${selectedEmails.join(",")}?subject=${encodeURIComponent("Thông báo từ HR")}`;
-  }
-
-  const activeFilterCount = [
-    debouncedSearch,
-    params.employmentStatus,
-    params.unitId,
-    params.departmentId,
-    quickFilter !== "all" ? quickFilter : undefined,
-    sortKey !== DEFAULT_SORT_KEY ? sortKey : undefined,
-    sortDirection !== DEFAULT_SORT_DIRECTION ? sortDirection : undefined,
-  ].filter(Boolean).length;
-
-  function clearListFilters() {
-    setSearchInput("");
-    setQuickFilter("all");
-    setSortKey(DEFAULT_SORT_KEY);
-    setSortDirection(DEFAULT_SORT_DIRECTION);
-    setSelectedIds(new Set());
-    setParams((current) => ({
-      ...current,
-      page: 1,
-      employmentStatus: undefined,
-      unitId: undefined,
-      departmentId: undefined,
-    }));
-  }
-
-  const updateSort = useCallback((nextKey: EmployeeSortKey) => {
-    setSelectedIds(new Set());
-    setParams((current) => ({ ...current, page: 1 }));
-    if (sortKey === nextKey) {
-      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
-      return;
-    }
-    setSortKey(nextKey);
-    setSortDirection("asc");
-  }, [setParams, setSelectedIds, setSortDirection, setSortKey, sortKey]);
-
-  const renderSortableHeader = useCallback((label: string, key: EmployeeSortKey) => {
-    const active = sortKey === key;
-    const Icon = active
-      ? sortDirection === "asc"
-        ? IconChevronUp
-        : IconChevronDown
-      : IconArrowsSort;
-
-    return (
-      <UnstyledButton
-        className="employee-sort-header"
-        data-active={active}
-        onClick={() => updateSort(key)}
-      >
-        <Group gap={4} wrap="nowrap">
-          <span>{label}</span>
-          <Icon size={14} />
-        </Group>
-      </UnstyledButton>
-    );
-  }, [sortDirection, sortKey, updateSort]);
+  const visibleColumnSet = useMemo(
+    () => new Set<EmployeeColumnKey>(visibleColumnKeys),
+    [visibleColumnKeys],
+  );
 
   function toggleColumn(key: EmployeeColumnKey) {
     setVisibleColumnKeys((current) => {
@@ -1140,67 +683,30 @@ export function EmployeesPage() {
     setVisibleColumnKeys(defaultVisibleEmployeeColumns);
   }
 
-  const togglePinnedEmployee = useCallback((record: Employee) => {
-    setPinnedEmployeeIds((current) => {
-      if (current.includes(record.id)) {
-        return current.filter((id) => id !== record.id);
-      }
-      if (current.length >= 5) {
-        notifications.show({
-          color: "yellow",
-          title: "Đã đạt giới hạn ghim",
-          message: "Chỉ nên ghim tối đa 5 nhân sự quan trọng lên đầu bảng.",
-        });
-        return current;
-      }
-      return [...current, record.id];
-    });
-  }, [setPinnedEmployeeIds]);
-
-  const visibleColumnSet = useMemo(
-    () => new Set<EmployeeColumnKey>(visibleColumnKeys),
-    [visibleColumnKeys],
-  );
-
   const allColumns = useMemo<DataTableColumn<Employee>[]>(
+
     () => [
       {
         key: "employeeCode",
-        header: renderSortableHeader("Mã NS", "employeeCode"),
+        header: "Mã NS",
         width: 110,
         render: (record) => record.employeeCode,
       },
       {
         key: "biotimeEmployeeCode",
-        header: renderSortableHeader("Mã chấm công", "biotimeEmployeeCode"),
+        header: "Mã chấm công",
         width: 100,
         align: "center",
         render: (record) => (
-          <Text size="sm" c={record.biotimeEmployeeCode ? "hacomRed" : "dimmed"}>
+          <Text size="sm" c={record.biotimeEmployeeCode ? "blue" : "dimmed"}>
             {record.biotimeEmployeeCode ?? "—"}
           </Text>
         ),
       },
       {
         key: "fullName",
-        header: renderSortableHeader("Họ tên", "fullName"),
-        render: (record) => (
-          <Tooltip
-            multiline
-            label={
-              <Stack gap={2}>
-                <Text size="xs" fw={800}>{record.fullName}</Text>
-                <Text size="xs">{record.currentEmployeeAssignment?.jobTitle ?? "Chưa có chức danh"}</Text>
-                <Text size="xs">{record.currentEmployeeAssignment?.departmentName ?? "Chưa có phòng ban"}</Text>
-                <Text size="xs">{record.companyEmail ?? record.phone ?? "Chưa có liên hệ"}</Text>
-              </Stack>
-            }
-          >
-            <Text size="sm" fw={700} className="employee-name-preview-trigger">
-              {record.fullName}
-            </Text>
-          </Tooltip>
-        ),
+        header: "Họ tên",
+        render: (record) => <TruncatedCell value={record.fullName} />,
       },
       {
         key: "companyEmail",
@@ -1289,96 +795,27 @@ export function EmployeesPage() {
       {
         key: "actions",
         header: "",
-        width: 168,
+        width: 60,
         align: "right",
         render: (record) => (
-          <Group justify="flex-end" gap={4} wrap="nowrap">
-            <Group gap={2} wrap="nowrap" className="employee-row-quick-actions">
-              <Tooltip label={pinnedEmployeeIds.includes(record.id) ? "Bỏ ghim" : "Ghim lên đầu bảng"}>
-                <ActionIcon
-                  aria-label={pinnedEmployeeIds.includes(record.id) ? "Bỏ ghim" : "Ghim nhân sự"}
-                  variant={pinnedEmployeeIds.includes(record.id) ? "light" : "subtle"}
-                  color={pinnedEmployeeIds.includes(record.id) ? "yellow" : "gray"}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    togglePinnedEmployee(record);
-                  }}
-                >
-                  {pinnedEmployeeIds.includes(record.id) ? <IconPinnedOff size={16} /> : <IconPinned size={16} />}
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Xem nhanh">
-                <ActionIcon
-                  aria-label="Xem nhanh nhân sự"
-                  variant="subtle"
-                  color="gray"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setQuickPreviewTarget(record);
-                  }}
-                >
-                  <IconEye size={16} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Gửi Email">
-                <ActionIcon
-                  component="a"
-                  href={record.companyEmail ? `mailto:${record.companyEmail}` : undefined}
-                  aria-label="Gửi Email"
-                  variant="subtle"
-                  color="gray"
-                  disabled={!record.companyEmail}
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <IconMail size={16} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Gia hạn hợp đồng">
-                <ActionIcon
-                  aria-label="Gia hạn hợp đồng"
-                  variant="subtle"
-                  color="gray"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    navigate(`${ROUTES.contracts}?employeeId=${encodeURIComponent(record.id)}`);
-                  }}
-                >
-                  <IconSignature size={16} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Xem bảng công">
-                <ActionIcon
-                  aria-label="Xem bảng công"
-                  variant="subtle"
-                  color="gray"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    navigate(`${ROUTES.timesheetGrid}?employeeId=${encodeURIComponent(record.id)}`);
-                  }}
-                >
-                  <IconCalendarTime size={16} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
-            <TableActionsMenu
-              actions={[
-                {
-                  label: "Xem chi tiết",
-                  icon: <IconEye size={16} />,
-                  onClick: () => navigate(`/employees/${record.id}`),
-                },
-                ...(mayEditEmployee
-                  ? [
-                      {
-                        label: "Sửa nhân sự",
-                        icon: <IconEdit size={16} />,
-                        onClick: () => void openEditDrawer(record.id),
-                      },
-                    ]
-                  : []),
-              ]}
-            />
-          </Group>
+          <TableActionsMenu
+            actions={[
+              {
+                label: "Xem chi tiết",
+                icon: <IconEye size={16} />,
+                onClick: () => navigate(`/employees/${record.id}`),
+              },
+              ...(mayEditEmployee
+                ? [
+                    {
+                      label: "Sửa nhân sự",
+                      icon: <IconEdit size={16} />,
+                      onClick: () => void openEditDrawer(record.id),
+                    },
+                  ]
+                : []),
+            ]}
+          />
         ),
       },
     ],
@@ -1388,12 +825,8 @@ export function EmployeesPage() {
       mayProvisionAccounts,
       navigate,
       openEditDrawer,
-      pinnedEmployeeIds,
-      renderSortableHeader,
       setAccountDetailTarget,
       setProvisionTarget,
-      setQuickPreviewTarget,
-      togglePinnedEmployee,
     ],
   );
 
@@ -1405,11 +838,6 @@ export function EmployeesPage() {
       }),
     [allColumns, visibleColumnSet],
   );
-  const formErrorMessages = Object.values(form.errors)
-    .map((error) => String(error))
-    .filter(Boolean);
-  const biotimeEmployeeCodeError = getBiotimeEmployeeCodeError(biotimeEmployeeCode);
-  const exportPreviewRecords = exportPreview ? getExportRecords(exportPreview.scope) : [];
 
   return (
     <>
@@ -1417,7 +845,7 @@ export function EmployeesPage() {
         title="Nhân sự"
         subtitle="Quản lý hồ sơ nhân sự, trạng thái làm việc và phân công hiện tại."
         actions={
-          <Group gap="xs" wrap="wrap" className="employee-page-actions">
+          <>
             <ImportExportToolbar
               onDownloadTemplate={templateDownload.downloadTemplate}
               onImport={
@@ -1429,100 +857,65 @@ export function EmployeesPage() {
               canImport={mayImportEmployees}
               canExport={mayExportEmployees}
             />
-            {mayExportEmployees ? (
-              <Menu position="bottom-end" width={260}>
-                <Menu.Target>
-                  <Button variant="default" leftSection={<IconFileExport size={16} />}>
-                    Xuất nâng cao
-                  </Button>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Label>Đang lọc ({orderedVisibleEmployees.length})</Menu.Label>
-                  <Menu.Item onClick={() => openExportPreview("excel", "filtered")}>Excel</Menu.Item>
-                  <Menu.Item onClick={() => openExportPreview("csv", "filtered")}>CSV</Menu.Item>
-                  <Menu.Item onClick={() => openExportPreview("pdf", "filtered")}>PDF</Menu.Item>
-                  <Menu.Divider />
-                  <Menu.Label>Tất cả ({sortedEmployees.length})</Menu.Label>
-                  <Menu.Item onClick={() => openExportPreview("excel", "all")}>Excel tất cả</Menu.Item>
-                  <Menu.Item onClick={() => openExportPreview("csv", "all")}>CSV tất cả</Menu.Item>
-                  <Menu.Item onClick={() => openExportPreview("pdf", "all")}>PDF tất cả</Menu.Item>
-                  <Menu.Divider />
-                  <Menu.Label>Dòng đang chọn ({selectedEmployees.length})</Menu.Label>
-                  <Menu.Item disabled={!selectedEmployees.length} onClick={() => openExportPreview("excel", "selected")}>Excel dòng chọn</Menu.Item>
-                  <Menu.Item disabled={!selectedEmployees.length} onClick={() => openExportPreview("csv", "selected")}>CSV dòng chọn</Menu.Item>
-                  <Menu.Item disabled={!selectedEmployees.length} onClick={() => openExportPreview("pdf", "selected")}>PDF dòng chọn</Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
-            ) : null}
+            <Menu shadow="md" width={200} closeOnItemClick={false}>
+              <Menu.Target>
+                <Button
+                  variant="default"
+                  leftSection={<IconColumns3 size={16} />}
+                >
+                  Cột hiển thị
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Label>Hiển thị</Menu.Label>
+                {employeeColumnOptions.map((item) => (
+                  <Menu.Item
+                    key={item.key}
+                    onClick={() => toggleColumn(item.key)}
+                  >
+                    <Checkbox
+                      color="blue"
+                      checked={visibleColumnSet.has(item.key)}
+                      label={item.label}
+                      readOnly
+                      size="xs"
+                    />
+                  </Menu.Item>
+                ))}
+                <Menu.Divider />
+                <Menu.Item onClick={resetColumns}>Mặc định</Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+            {mayProvisionAccounts && selectedIds.size > 0 && (
+              <Button
+                leftSection={<IconUsers size={18} />}
+                variant="light"
+                color="teal"
+                onClick={() => setBulkProvisionOpen(true)}
+              >
+                Cấp TK hàng loạt ({selectedIds.size})
+              </Button>
+            )}
             {mayCreateEmployee ? (
               <Button
+                color="blue"
                 leftSection={<IconPlus size={18} />}
                 onClick={() => void openCreateDrawer()}
               >
                 Tạo nhân sự
               </Button>
             ) : null}
-          </Group>
+          </>
         }
       />
 
       <Stack gap="md">
-        <Paper p="md" withBorder className="employee-filter-panel">
-          <Stack gap="sm">
-            <Group justify="space-between" align="center" className="employee-filter-header">
-              <Stack gap={2}>
-                <Text fw={700}>Bộ lọc danh sách</Text>
-                <Text size="sm" c="dimmed">
-                  Đang hiển thị {totalCount} nhân sự theo điều kiện hiện tại
-                </Text>
-              </Stack>
-              <Group gap="xs" className="employee-filter-actions">
-                <Menu position="bottom-end" width={220} closeOnItemClick={false}>
-                  <Menu.Target>
-                    <Button
-                      variant="default"
-                      leftSection={<IconColumns3 size={16} />}
-                    >
-                      Cột
-                    </Button>
-                  </Menu.Target>
-                  <Menu.Dropdown>
-                    <Menu.Label>Hiển thị</Menu.Label>
-                    {employeeColumnOptions.map((item) => (
-                      <Menu.Item key={item.key} onClick={() => toggleColumn(item.key)}>
-                        <Checkbox
-                          color="blue"
-                          checked={visibleColumnSet.has(item.key)}
-                          label={item.label}
-                          readOnly
-                          size="xs"
-                        />
-                      </Menu.Item>
-                    ))}
-                    <Menu.Divider />
-                    <Menu.Item onClick={resetColumns}>Mặc định</Menu.Item>
-                  </Menu.Dropdown>
-                </Menu>
-                <Button
-                  variant="subtle"
-                  color="gray"
-                  leftSection={<IconFilterOff size={16} />}
-                  disabled={activeFilterCount === 0}
-                  onClick={clearListFilters}
-                >
-                  Xóa lọc
-                </Button>
-              </Group>
-            </Group>
-
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm">
-          <TextInput
+          <NormalizedSearchInput
             placeholder="Tìm tên, email, SĐT"
-            leftSection={<IconSearch size={17} />}
             value={searchInput}
-            onChange={(event) => {
-              setSearchInput(event.currentTarget.value);
-              setSelectedIds(new Set());
+            onChange={(value) => {
+              setSearchInput(value);
               setParams((current) => ({ ...current, page: 1 }));
             }}
           />
@@ -1531,14 +924,13 @@ export function EmployeesPage() {
             clearable
             data={employmentStatusOptions}
             value={params.employmentStatus ?? null}
-            onChange={(value) => {
-              setSelectedIds(new Set());
+            onChange={(value) =>
               setParams((current) => ({
                 ...current,
                 employmentStatus: value ?? undefined,
                 page: 1,
-              }));
-            }}
+              }))
+            }
           />
           <Select
             placeholder="Đơn vị"
@@ -1547,15 +939,14 @@ export function EmployeesPage() {
             disabled={unitsSelect.isLoading || unitsSelect.isError}
             nothingFoundMessage="Không có đơn vị active"
             value={params.unitId ?? null}
-            onChange={(value) => {
-              setSelectedIds(new Set());
+            onChange={(value) =>
               setParams((current) => ({
                 ...current,
                 unitId: value ?? undefined,
                 departmentId: undefined,
                 page: 1,
-              }));
-            }}
+              }))
+            }
           />
           <Select
             placeholder="Phòng ban"
@@ -1567,51 +958,15 @@ export function EmployeesPage() {
             }
             nothingFoundMessage="Không có phòng ban active"
             value={params.departmentId ?? null}
-            onChange={(value) => {
-              setSelectedIds(new Set());
+            onChange={(value) =>
               setParams((current) => ({
                 ...current,
                 departmentId: value ?? undefined,
                 page: 1,
-              }));
-            }}
+              }))
+            }
           />
         </SimpleGrid>
-
-            <Box className="employee-quick-filter-scroll">
-              <SegmentedControl
-                value={quickFilter}
-                onChange={(value) => {
-                  setQuickFilter(value as EmployeeQuickFilter);
-                  setSelectedIds(new Set());
-                  setParams((current) => ({ ...current, page: 1 }));
-                }}
-                data={[
-                  { value: "all", label: "Tất cả" },
-                  {
-                    value: "missingAccount",
-                    label: `Chưa có TK (${employeeSummary.missingAccount})`,
-                  },
-                  {
-                    value: "missingBioTime",
-                    label: `Thiếu mã CC (${employeeSummary.missingBioTime})`,
-                  },
-                  {
-                    value: "probation",
-                    label: `Thử việc (${employeeSummary.probation})`,
-                  },
-                  {
-                    value: "incompleteProfile",
-                    label: `Thiếu hồ sơ (${employeeSummary.incompleteProfile})`,
-                  },
-                ]}
-                className="employee-quick-filter"
-                fullWidth
-              />
-            </Box>
-
-          </Stack>
-        </Paper>
 
         <DataTable
           data={pagedEmployees}
@@ -1627,162 +982,10 @@ export function EmployeesPage() {
           }
           selectedIds={mayProvisionAccounts ? selectedIds : undefined}
           onSelectionChange={mayProvisionAccounts ? setSelectedIds : undefined}
-          emptyTitle={activeFilterCount > 0 ? "Không có nhân sự phù hợp" : "Chưa có nhân sự"}
+          emptyTitle="Chưa có nhân sự"
           emptyDescription="Không tìm thấy nhân sự phù hợp với bộ lọc hiện tại."
         />
       </Stack>
-
-      {selectedIds.size > 0 ? (
-        <Group justify="space-between" className="employee-selection-bar employee-selection-bar-floating">
-          <Group gap="xs">
-            <ThemeIcon color="teal" variant="light" size="sm">
-              <IconIdBadge2 size={15} />
-            </ThemeIcon>
-            <Text size="sm" fw={700}>
-              Đã chọn {selectedIds.size} nhân sự
-            </Text>
-            <Text size="xs" c="dimmed">
-              {selectedEmails.length} có email công ty
-            </Text>
-          </Group>
-          <Group gap="xs">
-            <Button
-              size="xs"
-              variant="light"
-              leftSection={<IconFileExport size={14} />}
-              onClick={exportSelectedEmployees}
-            >
-              Xuất Excel danh sách này
-            </Button>
-            <Button
-              size="xs"
-              variant="light"
-              leftSection={<IconMail size={14} />}
-              onClick={mailSelectedEmployees}
-            >
-              Gửi Email thông báo chung
-            </Button>
-            {mayProvisionAccounts ? (
-              <Button
-                size="xs"
-                color="teal"
-                variant="light"
-                leftSection={<IconUserCheck size={14} />}
-                onClick={() => setBulkProvisionOpen(true)}
-              >
-                Cấp tài khoản
-              </Button>
-            ) : null}
-            <Button
-              size="xs"
-              color="red"
-              variant="light"
-              onClick={() => {
-                notifications.show({
-                  color: "hacomRed",
-                  title: "Đổi trạng thái hàng loạt",
-                  message: "Đã sẵn sàng UI chọn nhiều dòng; API đổi trạng thái hàng loạt cần backend cung cấp endpoint.",
-                });
-              }}
-            >
-              Chuyển sang đã nghỉ việc
-            </Button>
-            <Button size="xs" variant="subtle" color="gray" onClick={() => setSelectedIds(new Set())}>
-              Bỏ chọn
-            </Button>
-          </Group>
-        </Group>
-      ) : null}
-
-      <Drawer
-        opened={quickPreviewTarget !== null}
-        onClose={() => setQuickPreviewTarget(null)}
-        title="Xem nhanh nhân sự"
-        position="right"
-        size="md"
-        className="entity-drawer employee-quick-preview-drawer"
-      >
-        {quickPreviewTarget ? (
-          <Stack gap="md">
-            <Paper withBorder p="md" className="employee-preview-hero">
-              <Group align="flex-start" wrap="nowrap">
-                <ThemeIcon size={56} radius="xl" color="hacomRed" variant="light">
-                  <IconIdBadge2 size={28} />
-                </ThemeIcon>
-                <Stack gap={2}>
-                  <Text fw={850} size="lg">{quickPreviewTarget.fullName}</Text>
-                  <Text size="sm" c="dimmed">{quickPreviewTarget.employeeCode}</Text>
-                  <StatusTag status={quickPreviewTarget.employmentStatus} />
-                </Stack>
-              </Group>
-            </Paper>
-            <SimpleGrid cols={1} spacing="xs">
-              {[
-                ["Chức danh", quickPreviewTarget.currentEmployeeAssignment?.jobTitle],
-                ["Phòng ban", quickPreviewTarget.currentEmployeeAssignment?.departmentName],
-                ["Email", quickPreviewTarget.companyEmail],
-                ["Số điện thoại", quickPreviewTarget.phone],
-                ["Mã chấm công", quickPreviewTarget.biotimeEmployeeCode],
-              ].map(([label, value]) => (
-                <Paper key={label} withBorder p="sm" className="employee-preview-field">
-                  <Text size="xs" c="dimmed" fw={800}>{label}</Text>
-                  <Text size="sm" fw={700}>{value || "-"}</Text>
-                </Paper>
-              ))}
-            </SimpleGrid>
-            <Group justify="flex-end">
-              <Button variant="default" onClick={() => setQuickPreviewTarget(null)}>
-                Đóng
-              </Button>
-              <Button onClick={() => navigate(`/employees/${quickPreviewTarget.id}`)}>
-                Xem hồ sơ đầy đủ
-              </Button>
-            </Group>
-          </Stack>
-        ) : null}
-      </Drawer>
-
-      <Drawer
-        opened={exportPreview !== null}
-        onClose={() => setExportPreview(null)}
-        title="Preview trước khi xuất"
-        position="right"
-        size="lg"
-        className="entity-drawer employee-export-preview-drawer"
-      >
-        {exportPreview ? (
-          <Stack gap="md">
-            <Alert color="hacomRed" variant="light" icon={<IconInfoCircle size={18} />}>
-              Xuất định dạng <b>{exportPreview.format.toUpperCase()}</b> với phạm vi <b>{exportPreview.scope}</b>. Preview chỉ hiển thị 5 dòng đầu.
-            </Alert>
-            <Group>
-              <Badge variant="light">Tổng {exportPreviewRecords.length} nhân sự</Badge>
-              <Badge variant="light" color="gray">Cột đang hiển thị {columns.length}</Badge>
-            </Group>
-            <Paper withBorder p="sm" className="employee-export-preview-table">
-              <Stack gap="xs">
-                {exportPreviewRecords.slice(0, 5).map((employee) => (
-                  <Group key={employee.id} justify="space-between" wrap="nowrap">
-                    <Stack gap={0}>
-                      <Text size="sm" fw={800}>{employee.fullName}</Text>
-                      <Text size="xs" c="dimmed">{employee.employeeCode} · {employee.currentEmployeeAssignment?.departmentName ?? "Chưa có phòng ban"}</Text>
-                    </Stack>
-                    <Text size="xs" c="dimmed">{employee.companyEmail ?? "-"}</Text>
-                  </Group>
-                ))}
-              </Stack>
-            </Paper>
-            <Group justify="flex-end">
-              <Button variant="default" onClick={() => setExportPreview(null)}>
-                Hủy
-              </Button>
-              <Button loading={isAdvancedExporting} leftSection={<IconFileExport size={16} />} onClick={() => void confirmAdvancedExport()}>
-                Xác nhận xuất
-              </Button>
-            </Group>
-          </Stack>
-        ) : null}
-      </Drawer>
 
       <Drawer
         opened={open}
@@ -1790,31 +993,9 @@ export function EmployeesPage() {
         title={editing ? "Sửa nhân sự" : "Tạo nhân sự"}
         position="right"
         size="lg"
-        className="entity-drawer"
       >
-        <form onSubmit={form.onSubmit(submitEmployee, handleEmployeeFormValidationFailure)}>
+        <form onSubmit={form.onSubmit(submitEmployee)}>
           <Stack gap="sm">
-            {formErrorMessages.length > 0 || biotimeEmployeeCodeError ? (
-              <Alert
-                color="red"
-                variant="light"
-                icon={<IconAlertCircle size={18} />}
-                title="Cần kiểm tra lại thông tin"
-              >
-                <Stack gap={4}>
-                  {[...formErrorMessages, biotimeEmployeeCodeError]
-                    .filter(Boolean)
-                    .slice(0, 4)
-                    .map((message) => (
-                      <Text key={message} size="sm">
-                        {message}
-                      </Text>
-                    ))}
-                </Stack>
-              </Alert>
-            ) : null}
-
-            <Divider label="Thông tin định danh" labelPosition="left" />
             {editing ? (
               <TextInput
                 label="Mã nhân sự"
@@ -1825,6 +1006,7 @@ export function EmployeesPage() {
             ) : (
               <TextInput
                 label="Mã nhân sự"
+                description="Hệ thống tự sinh nếu để trống. Nhập để đặt mã thủ công (VD: HN000001)."
                 placeholder={isLoadingNextCode ? "Đang lấy mã gợi ý..." : "HN000001"}
                 disabled={isLoadingNextCode}
                 error={form.errors.employeeCode ?? nextCodeError}
@@ -1833,12 +1015,11 @@ export function EmployeesPage() {
             )}
             <TextInput
               label="Mã chấm công BioTime/ZKTeco"
+              description="Dùng để map dữ liệu chấm công từ BioTime. Ví dụ: 108, 1500. Không bắt buộc."
               placeholder="108"
               value={biotimeEmployeeCode}
-              error={biotimeEmployeeCodeError}
               onChange={(e) => setBiotimeEmployeeCode(e.currentTarget.value)}
             />
-            <Divider label="Thông tin cá nhân" labelPosition="left" />
             <TextInput
               label="Họ tên"
               withAsterisk
@@ -1846,17 +1027,14 @@ export function EmployeesPage() {
             />
             <TextInput
               label="Email công ty"
-              placeholder="ten@hacom.vn"
               {...form.getInputProps("companyEmail")}
             />
             <TextInput
               label="Email cá nhân"
-              placeholder="ten@example.com"
               {...form.getInputProps("personalEmail")}
             />
             <TextInput
               label="Số điện thoại"
-              placeholder="0901234567"
               withAsterisk
               {...form.getInputProps("phone")}
             />
@@ -1870,25 +1048,17 @@ export function EmployeesPage() {
               ]}
               {...form.getInputProps("gender")}
             />
-            <HrmDateInput
+            <TextInput
               label="Ngày sinh"
-              value={form.values.dateOfBirth || null}
-              onChange={(value) => form.setFieldValue("dateOfBirth", value ?? "")}
-              error={form.errors.dateOfBirth}
-            />
-            <HrmDateInput
-              label="Ngày vào làm"
-              withAsterisk
-              value={form.values.hireDate || null}
-              onChange={(value) => form.setFieldValue("hireDate", value ?? "")}
-              error={form.errors.hireDate}
+              type="date"
+              {...form.getInputProps("dateOfBirth")}
             />
             <TextInput
-              label="CCCD/CMND"
-              placeholder="001234567890"
-              {...form.getInputProps("citizenId")}
+              label="Ngày vào làm"
+              type="date"
+              withAsterisk
+              {...form.getInputProps("hireDate")}
             />
-            <Divider label="Phân công hiện tại" labelPosition="left" />
             <Select
               label="Đơn vị"
               placeholder={
@@ -1896,6 +1066,7 @@ export function EmployeesPage() {
               }
               withAsterisk
               searchable
+              {...selectSearch}
               data={unitOptions}
               disabled={unitsSelect.isLoading || unitsSelect.isError}
               nothingFoundMessage="Không có đơn vị active"
@@ -1939,6 +1110,7 @@ export function EmployeesPage() {
               }
               withAsterisk
               searchable
+              {...selectSearch}
               data={formDepartmentOptions}
               disabled={
                 !form.values.unitId ||
@@ -1961,6 +1133,7 @@ export function EmployeesPage() {
               }
               withAsterisk
               searchable
+              {...selectSearch}
               data={positionOptions}
               disabled={positionsSelect.isLoading || positionsSelect.isError}
               nothingFoundMessage="Không có chức danh active"
@@ -1976,12 +1149,14 @@ export function EmployeesPage() {
               data={employmentStatusOptions}
               {...form.getInputProps("employmentStatus")}
             />
+            <TextInput label="CCCD" {...form.getInputProps("citizenId")} />
             <Group justify="flex-end" mt="md">
               <Button variant="default" onClick={closeEmployeeDrawer}>
                 Hủy
               </Button>
               <Button
                 type="submit"
+                color="blue"
                 loading={
                   createMutation.isPending ||
                   updateMutation.isPending ||

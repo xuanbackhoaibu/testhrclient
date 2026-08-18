@@ -47,7 +47,7 @@ interface DashboardSummaryApiResponse {
 export type DashboardSummaryPeriod = "month" | "quarter" | "year";
 
 export interface DashboardSummaryParams {
-  period: DashboardSummaryPeriod;
+  period?: DashboardSummaryPeriod;
 }
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === "true";
@@ -66,7 +66,7 @@ function toDashboardMetric(
   };
 }
 
-export async function getDashboardSummary(params: DashboardSummaryParams): Promise<DashboardSummary> {
+export async function getDashboardSummary(params: DashboardSummaryParams = {}): Promise<DashboardSummary> {
   if (isMockMode) {
     await mockDelay();
     return getMockDashboardSummary();
