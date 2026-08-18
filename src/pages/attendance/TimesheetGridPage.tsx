@@ -21,6 +21,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
+  IconAlertTriangle,
   IconCalendarStats,
   IconDownload,
   IconFilter,
@@ -47,12 +48,15 @@ import {
   listTimesheetMonths,
   type TimesheetMonth,
 } from "../../features/attendance/timesheetRecomputeRange";
+import { clearTimesheetMonthStale } from "../../features/attendance/timesheetStaleMonths";
+import { useTimesheetMonthStale } from "../../features/attendance/useTimesheetStaleMonth";
 import {
   SYMBOL_OPTIONS,
   type TimesheetGridDay,
   type TimesheetGridRow,
 } from "../../features/attendance/timesheetTypes";
 import {
+  countTimesheetDataGaps,
   hasTimesheetAttendanceEvent,
   isWeeklyTemplateOffDay,
   timesheetDayDisplayValue,
@@ -398,9 +402,20 @@ function cellDescription(
     !day.isLocked
       ? "Đủ công mặc định"
       : null,
+    // Mã ca đứng trước mọi thông tin khác: HR mở tooltip chủ yếu để đối chiếu
+    // ô này đang tính theo ca nào so với lịch ở màn Phân ca.
+    day.shiftCode ? `Ca ${day.shiftCode}` : null,
     day.holidayName,
     day.source === "HOLIDAY_UNPAID" ? "Ngày lễ không lương" : null,
     day.source === "UNASSIGNED" ? "Chưa phân ca — chưa tính công" : null,
+    /*
+     * Ô nguồn MISSING trước đây không có dòng nào trong tooltip: ô trống, hover
+     * cũng trống, nên HR dễ đọc nhầm thành lỗi phân ca. Ca vẫn được phân đúng,
+     * chỉ là chưa có dữ liệu từ máy chấm công cho ngày đó.
+     */
+    day.source === "MISSING" && !hasTimesheetAttendanceEvent(day)
+      ? "Chưa có dữ liệu chấm công cho ngày này — ca vẫn đã được phân"
+      : null,
     weeklyTemplateOff ? "Nghỉ theo ca tuần" : null,
     weeklyTemplateWork ? "Theo ca tuần" : null,
     day.firstPunch && day.lastPunch
@@ -409,7 +424,7 @@ function cellDescription(
     day.lateMinutes > 0 ? `Muộn ${day.lateMinutes}'` : null,
     day.earlyLeaveMinutes > 0 ? `Về sớm ${day.earlyLeaveMinutes}'` : null,
     day.needsExplanation && hasTimesheetAttendanceEvent(day)
-      ? "Chờ giải trình"
+      ? "Chờ giải trình — có chấm công nhưng chưa đủ căn cứ tính đủ công"
       : null,
     day.hasAdjustment ? "HR đã sửa tay" : null,
     day.isLocked ? "Đã chốt kỳ" : null,
@@ -671,11 +686,31 @@ export function TimesheetGridPage() {
   const isGridScopeLoading = gridQuery.isLoading || isGridPlaceholderData;
   const adjustDay = useAdjustTimesheetDay();
   const recomputeJob = useTimesheetRecomputeJob();
+  const timesheetIsStale = useTimesheetMonthStale(year, month);
   const autoFullAttendance = useSetAutoFullAttendance();
   const rows = useMemo(
     () => (isGridPlaceholderData ? [] : (gridQuery.data?.rows ?? [])),
     [gridQuery.data?.rows, isGridPlaceholderData],
   );
+  /*
+   * Bảng công có rất nhiều ô trống, và HR hay đọc nhầm thành "phân ca sai".
+   * Thực tế phần lớn là thiếu dữ liệu chấm công hoặc chờ giải trình — hai việc
+   * không sửa được ở màn Phân ca. Tách rõ ba nhóm để chỉ nhóm thật sự chưa
+   * phân ca mới dẫn HR về đó.
+   */
+  const dataGaps = useMemo(() => {
+    const now = new Date();
+    return countTimesheetDataGaps(
+      rows,
+      {
+        year: now.getFullYear(),
+        month: now.getMonth() + 1,
+        day: now.getDate(),
+      },
+      { year, month },
+    );
+  }, [month, rows, year]);
+
   const rememberTimesheetScroll = useCallback(() => {
     const viewport = tableViewportRef.current;
     if (!viewport) return;
@@ -1098,6 +1133,8 @@ export function TimesheetGridPage() {
         job.skippedLocked + job.skippedAdjusted + job.skippedClosed;
 
       if (job.status === "SUCCEEDED") {
+        // Bảng công của các kỳ vừa tính lại đã khớp lịch ca, gỡ cảnh báo cũ.
+        listTimesheetMonths(start, end).forEach(clearTimesheetMonthStale);
         notifications.show({
           color: "green",
           title: `Đã cập nhật bảng công: ${rangeLabel}`,
@@ -1296,6 +1333,65 @@ export function TimesheetGridPage() {
             tháng đó, kể cả nhân sự đã nghỉ hoặc chuyển đơn vị sau này.
           </Text>
         </InfoBanner>
+
+        {timesheetIsStale && !recomputeJob.isRunning ? (
+          <Alert
+            color="orange"
+            variant="light"
+            icon={<IconAlertTriangle size={18} />}
+            title="Bảng công chưa khớp lịch ca vừa đổi"
+          >
+            <Group justify="space-between" gap="sm" wrap="wrap" align="center">
+              <Text size="sm" inherit>
+                Lịch ca của kỳ này vừa thay đổi ở màn Phân ca. Bảng công dưới
+                đây vẫn là kết quả tính trước đó — bấm Cập nhật bảng công để áp
+                lại. Ngày đã chốt hoặc HR sửa tay vẫn được giữ nguyên.
+              </Text>
+              {canEdit ? (
+                <Button
+                  size="xs"
+                  color="orange"
+                  leftSection={<IconRefresh size={15} />}
+                  disabled={isGridScopeLoading || autoFullAttendance.isPending}
+                  onClick={openRecomputeRangeModal}
+                >
+                  Cập nhật bảng công
+                </Button>
+              ) : null}
+            </Group>
+          </Alert>
+        ) : null}
+
+        {dataGaps.missingAttendance ||
+        dataGaps.awaitingExplanation ||
+        dataGaps.unassigned ? (
+          <Alert color="blue" variant="light" title="Vì sao còn ô chưa có công">
+            <Stack gap={4}>
+              {dataGaps.unassigned ? (
+                <Text size="sm" inherit>
+                  <b>{dataGaps.unassigned} ô</b> chưa phân ca — đây là nhóm duy
+                  nhất cần xử lý ở màn <b>Phân ca</b>.
+                </Text>
+              ) : null}
+              {dataGaps.missingAttendance ? (
+                <Text size="sm" inherit>
+                  <b>{dataGaps.missingAttendance} ô</b> chưa có dữ liệu từ máy
+                  chấm công. Ca đã phân đúng; cần đồng bộ lại dữ liệu chấm công,
+                  không sửa được ở màn Phân ca.
+                </Text>
+              ) : null}
+              {dataGaps.awaitingExplanation ? (
+                <Text size="sm" inherit>
+                  <b>{dataGaps.awaitingExplanation} ô</b> có chấm công nhưng
+                  chờ giải trình (vào muộn, về sớm hoặc thiếu lượt chấm).
+                </Text>
+              ) : null}
+              <Text size="xs" c="dimmed">
+                Ngày chưa tới trong tháng này không được tính vào các số trên.
+              </Text>
+            </Stack>
+          </Alert>
+        ) : null}
 
         {recomputeJob.status !== "IDLE" ? (
           <Paper withBorder radius="sm" p="sm">

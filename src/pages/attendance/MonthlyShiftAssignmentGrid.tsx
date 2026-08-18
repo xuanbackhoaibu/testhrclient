@@ -64,6 +64,7 @@ import {
   directCellShiftDisabledReason,
 } from "../../features/attendance/shiftAssignmentEligibility";
 import {
+  countRosterMismatch,
   sumAssignmentTotals,
   summarizeAssignedPerDay,
   summarizeAssignmentRow,
@@ -656,6 +657,29 @@ export function MonthlyShiftAssignmentGrid({
       })),
     [rows],
   );
+  /*
+   * Hai nhóm lệch khiến bảng công đọc ra sai mà nhìn lưới không thấy ngay:
+   *
+   * - Đã phân ca nhưng chưa vào BCC: lịch ca đúng, nhưng người này không có
+   *   mặt trong bảng công tháng nên công không được tính.
+   * - Đã vào BCC nhưng chưa có ca nào: có mặt trong bảng công nhưng không có
+   *   căn cứ tính, nên hiện toàn dấu thiếu dữ liệu.
+   *
+   * Đếm trên toàn bộ danh sách chứ không theo trang đang xem, vì HR cần biết
+   * tổng số người cần xử lý.
+   */
+  const rosterMismatch = useMemo(
+    () =>
+      countRosterMismatch(
+        preparedRows.map((item) => ({
+          includedInTimesheet: item.row.includedInTimesheet,
+          canInclude: item.row.canInclude,
+          assignedDays: item.totals.assignedDays,
+        })),
+      ),
+    [preparedRows],
+  );
+
   const groupedRows = useMemo<PreparedGroup[]>(() => {
     const groups = new Map<string, { label: string; rows: PreparedRow[] }>();
     for (const item of preparedRows) {
@@ -1364,6 +1388,34 @@ export function MonthlyShiftAssignmentGrid({
           </Text>
         </Group>
       </Paper>
+
+      {rosterMismatch.assignedNotInTimesheet ||
+      rosterMismatch.inTimesheetWithoutShift ? (
+        <Alert
+          color="orange"
+          variant="light"
+          icon={<IconAlertTriangle size={18} />}
+          title="Lịch ca và BCC đang lệch nhau"
+        >
+          <Stack gap={4}>
+            {rosterMismatch.assignedNotInTimesheet ? (
+              <Text size="sm" inherit>
+                <b>{rosterMismatch.assignedNotInTimesheet} CBNV</b> đã phân ca
+                nhưng chưa vào BCC — bảng công tháng sẽ không có các CBNV này.
+                Tick chọn rồi bấm <b>Đưa vào BCC</b>.
+              </Text>
+            ) : null}
+            {rosterMismatch.inTimesheetWithoutShift ? (
+              <Text size="sm" inherit>
+                <b>{rosterMismatch.inTimesheetWithoutShift} CBNV</b> đã vào BCC
+                nhưng chưa có ca nào trong kỳ — bảng công không có căn cứ tính
+                nên sẽ hiện thiếu dữ liệu. Phân ca cho họ trước khi cập nhật
+                bảng công.
+              </Text>
+            ) : null}
+          </Stack>
+        </Alert>
+      ) : null}
 
       {gridQuery.isLoading ? (
         <Paper withBorder p="md" radius="md">
