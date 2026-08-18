@@ -37,6 +37,7 @@ import {
   DataTable,
   type DataTableColumn,
 } from "../../shared/components/DataTable";
+import type { PaginationMeta } from "../../shared/types/api";
 import { HrmDateInput } from "../../shared/components/HrmDateInput";
 import { PageHeader } from "../../shared/components/PageHeader";
 import { InfoBanner } from "../../shared/components/InfoBanner";
@@ -130,6 +131,7 @@ export function MonthlyTimesheetRosterPage() {
   );
   const [departmentId, setDepartmentId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [pagination, setPagination] = useState({ page: 1, pageSize: 10 });
   const [draftState, setDraftState] = useState<{
     key: string;
     values: Record<string, RosterDraft>;
@@ -163,7 +165,10 @@ export function MonthlyTimesheetRosterPage() {
   );
 
   const searchInput = useImeSafeSearch({
-    onSearch: (value) => setSearch(value.trim()),
+    onSearch: (value) => {
+      setSearch(value.trim());
+      setPagination((current) => ({ ...current, page: 1 }));
+    },
   });
   const query = useMemo<MonthlyTimesheetRosterQuery | null>(
     () =>
@@ -220,6 +225,26 @@ export function MonthlyTimesheetRosterPage() {
     0,
   );
   const hasChanges = Object.keys(draftOverrides).length > 0;
+
+  // Phân trang ở client: giữ bộ lọc và thanh thao tác luôn nằm trong tầm nhìn
+  // thay vì phải cuộn qua toàn bộ danh sách CBNV của đơn vị.
+  const totalPages = Math.max(1, Math.ceil(rows.length / pagination.pageSize));
+  const currentPage = Math.min(pagination.page, totalPages);
+  const pagedRows = useMemo(() => {
+    const start = (currentPage - 1) * pagination.pageSize;
+    return rows.slice(start, start + pagination.pageSize);
+  }, [currentPage, pagination.pageSize, rows]);
+  const pagedMeta = useMemo<PaginationMeta>(
+    () => ({
+      page: currentPage,
+      pageSize: pagination.pageSize,
+      total: rows.length,
+      totalPages,
+      hasNextPage: currentPage < totalPages,
+      hasPreviousPage: currentPage > 1,
+    }),
+    [currentPage, pagination.pageSize, rows.length, totalPages],
+  );
 
   const updateDraft = useCallback(
     (employeeId: string, patch: Partial<RosterDraft>) => {
@@ -533,7 +558,10 @@ export function MonthlyTimesheetRosterPage() {
             data={monthOptions}
             value={String(month)}
             allowDeselect={false}
-            onChange={(value) => setMonth(Number(value ?? month))}
+            onChange={(value) => {
+              setMonth(Number(value ?? month));
+              setPagination((current) => ({ ...current, page: 1 }));
+            }}
             size="sm"
             className={filterStyles.field}
           />
@@ -542,7 +570,10 @@ export function MonthlyTimesheetRosterPage() {
             data={yearOptions}
             value={String(year)}
             allowDeselect={false}
-            onChange={(value) => setYear(Number(value ?? year))}
+            onChange={(value) => {
+              setYear(Number(value ?? year));
+              setPagination((current) => ({ ...current, page: 1 }));
+            }}
             size="sm"
             className={filterStyles.field}
           />
@@ -556,6 +587,7 @@ export function MonthlyTimesheetRosterPage() {
             onChange={(value) => {
               setRequestedUnitId(value);
               setDepartmentId(null);
+              setPagination((current) => ({ ...current, page: 1 }));
             }}
             size="sm"
             className={filterStyles.fieldWide}
@@ -568,7 +600,10 @@ export function MonthlyTimesheetRosterPage() {
             clearable
             searchable
             disabled={!selectedUnitId || departmentsQuery.isLoading}
-            onChange={setDepartmentId}
+            onChange={(value) => {
+              setDepartmentId(value);
+              setPagination((current) => ({ ...current, page: 1 }));
+            }}
             size="sm"
             className={filterStyles.fieldWide}
           />
@@ -654,9 +689,11 @@ export function MonthlyTimesheetRosterPage() {
 
         {selectedUnitId ? (
           <DataTable
-            data={rows}
+            data={pagedRows}
             columns={columns}
             rowKey={(row) => row.employeeId}
+            meta={pagedMeta}
+            onPageChange={(page, pageSize) => setPagination({ page, pageSize })}
             loading={rosterQuery.isLoading}
             error={rosterQuery.error}
             onRetry={() => void rosterQuery.refetch()}
