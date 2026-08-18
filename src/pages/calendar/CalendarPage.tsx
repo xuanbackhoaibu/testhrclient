@@ -1,34 +1,61 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { LoadingOverlay, Alert, Button, Group, Text } from '@mantine/core';
-import { IconAlertCircle, IconCalendarEvent, IconPlus } from '@tabler/icons-react';
+import { LoadingOverlay, Alert, Button, Group } from '@mantine/core';
+import { IconAlertCircle, IconPlus } from '@tabler/icons-react';
 
 import { CalendarHeader } from './components/CalendarHeader';
 import { CalendarSidebar } from './components/CalendarSidebar';
 import { CalendarView } from './components/CalendarView';
 import { EventDetailModal } from './components/EventDetailModal';
-import { CreateEventModal } from './components/CreateEventModal';
-import { useCalendarOwnerEvents, type CalendarEvent } from '../../features/calendar/useCalendarEvents';
+import { AddCalendarChoiceModal, type CalendarChoiceKind } from './components/AddCalendarChoiceModal';
+import { MeetingFormModal } from './components/MeetingFormModal';
+import { PersonalEventFormModal } from './components/PersonalEventFormModal';
+import { CalendarEventType } from '../../features/calendar/calendarApi';
+import { useCalendarOwnerEvents, useCalendarUnitEvents, type CalendarEvent } from '../../features/calendar/useCalendarEvents';
 import { useCalendarView } from '../../features/calendar/useCalendarView';
 import { CalendarOwnerProvider, useCalendarOwner } from '../../features/calendar/CalendarContext';
 import { ApiError } from '../../shared/api/api.types';
 import styles from './CalendarPage.module.css';
 
 function CalendarPageInner() {
-  const { year, month } = useCalendarView();
-  const { selectedOwner, isViewingOthers } = useCalendarOwner();
+  // Sở hữu DUY NHẤT 1 instance của useCalendarView() ở đây, truyền year/month
+  // và các hàm điều hướng xuống CalendarView + CalendarSidebar bằng props —
+  // xem giải thích trong CalendarView.tsx vì sao không gọi lại hook ở component con.
+  const { year, month, currentDate, goToPrev, goToNext, goToToday, goToDate } = useCalendarView();
+  const { selectedOwner, isViewingOthers, viewMode } = useCalendarOwner();
 
-  const {
-    data: eventsData,
-    isLoading,
-    error,
-    refetch,
-  } = useCalendarOwnerEvents(selectedOwner?.id ?? null, year, month, selectedOwner?.employeeCode);
+  // 'unit' dùng query riêng (scope='unit', không có ownerId) — 'mine'/'person'
+  // vẫn dùng useCalendarOwnerEvents như cũ để không đổi hành vi đang chạy tốt.
+  const ownerEventsQuery = useCalendarOwnerEvents(
+    selectedOwner?.id ?? null,
+    year,
+    month,
+    selectedOwner?.employeeCode,
+  );
+  const unitEventsQuery = useCalendarUnitEvents(year, month);
+  const { data: eventsData, isLoading, error, refetch } =
+    viewMode === 'unit' ? unitEventsQuery : ownerEventsQuery;
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [localEventId, setLocalEventId] = useState<string | null>(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  // Luồng "Thêm lịch" 2 bước (tham khảo chat-web-client): bấm nút → modal
+  // chọn loại ('choice') → chọn "Lịch họp"/"Lịch cá nhân" → mở form tương
+  // ứng ('meeting'/'personal'). Khi sửa 1 sự kiện có sẵn, bỏ qua bước chọn —
+  // mở thẳng form theo eventType của sự kiện đó.
+  const [activeModal, setActiveModal] = useState<'choice' | 'meeting' | 'personal' | null>(null);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  // Loại sự kiện đang bị ẩn khỏi lưới — điều khiển bằng checklist "Lịch của
+  // tôi" trong sidebar (tham khảo bố cục chat-web-client), lọc phía client
+  // vì list tháng đã tải hết về rồi, không cần gọi lại API.
+  const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(() => new Set());
+  const toggleType = useCallback((type: string) => {
+    setHiddenTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return next;
+    });
+  }, []);
 
   // Chọn chi tiết bằng click trực tiếp hoặc deep-link từ thông báo (?eventId=...).
   // Derived (no effect) so the URL param opens the modal without cascading renders.
@@ -53,16 +80,24 @@ function CalendarPageInner() {
 
   const handleCreateEvent = useCallback(() => {
     setEditingEvent(null);
-    setIsCreateModalOpen(true);
+    setActiveModal('choice');
+  }, []);
+
+  const handleChoiceSelect = useCallback((kind: CalendarChoiceKind) => {
+    setActiveModal(kind);
+  }, []);
+
+  const handleBackToChoice = useCallback(() => {
+    setActiveModal('choice');
   }, []);
 
   const handleEditEvent = useCallback((event: CalendarEvent) => {
     setEditingEvent(event);
-    setIsCreateModalOpen(true);
+    setActiveModal(event.eventType === CalendarEventType.MEETING ? 'meeting' : 'personal');
   }, []);
 
   const handleCloseCreate = useCallback(() => {
-    setIsCreateModalOpen(false);
+    setActiveModal(null);
     setEditingEvent(null);
   }, []);
 
@@ -70,7 +105,10 @@ function CalendarPageInner() {
     void refetch();
   }, [refetch]);
 
-  const events = useMemo(() => eventsData?.data ?? [], [eventsData?.data]);
+  const events = useMemo(
+    () => (eventsData?.data ?? []).filter((e) => !hiddenTypes.has(e.eventType)),
+    [eventsData?.data, hiddenTypes],
+  );
 
   // Backend returns mode:'NO_HR_PROFILE' (200) when the auth user has no linked HR employee.
   // Legacy path: if the old 422 is still received for some reason, catch via errorCode too.
@@ -81,23 +119,27 @@ function CalendarPageInner() {
   const hasError = !!error && !isNoHrProfile;
 
   return (
-    <div className={styles.shell}>
-      <div className={styles.header}>
-        <CalendarHeader />
-      </div>
+    <div className={styles.page}>
+      <CalendarHeader />
 
       <div className={styles.layout}>
-        <CalendarSidebar />
+        <CalendarSidebar
+          currentDate={currentDate}
+          onSelectDate={goToDate}
+          hiddenTypes={hiddenTypes}
+          onToggleType={toggleType}
+        />
 
         <div className={styles.mainContent}>
-          {/* Action bar — hide create button when HR not linked (would fail) */}
-          {!isViewingOthers && !isNoHrProfile && (
+          {/* Action bar — hide create button when HR not linked (would fail), or when
+              viewing someone else's / the unit's aggregate calendar (read-only there) */}
+          {!isViewingOthers && viewMode !== 'unit' && !isNoHrProfile && (
             <div className={styles.actionBar}>
               <Button
                 leftSection={<IconPlus size={16} />}
                 onClick={handleCreateEvent}
               >
-                Tạo sự kiện
+                Thêm lịch
               </Button>
             </div>
           )}
@@ -135,21 +177,34 @@ function CalendarPageInner() {
             </Alert>
           )}
 
-          {/* Calendar view is always rendered — empty state when no events */}
-          {!hasError && (events.length === 0 && !isLoading ? (
-            <div className={styles.emptyState}>
-              <IconCalendarEvent size={48} className={styles.emptyStateIcon} />
-              <Text size="sm" className={styles.emptyStateText}>
-                {selectedOwner
-                  ? `${selectedOwner.fullName} chưa có sự kiện nào trong tháng này.`
-                  : isNoHrProfile
-                    ? 'Chưa có sự kiện nào. Liên kết hồ sơ nhân sự để xem lịch phòng ban.'
-                    : 'Bạn chưa có sự kiện nào trong tháng này. Nhấn "Tạo sự kiện" để thêm mới.'}
-              </Text>
-            </div>
-          ) : (
-            <CalendarView events={events} onEventClick={handleEventClick} />
-          ))}
+          {/* CalendarView (header + lưới) luôn được render, kể cả khi tháng
+              không có sự kiện — trước đây phần này bị thay hẳn bằng 1 khối
+              "trống" riêng, khiến header (tên tháng, mũi tên, nút "Hôm nay")
+              biến mất mỗi khi đổi sang tháng không có sự kiện qua mini
+              calendar. Giờ thông báo "chưa có sự kiện" chỉ đè lên phần lưới
+              qua prop emptyMessage, header vẫn luôn ở đó. */}
+          {!hasError && (
+            <CalendarView
+              events={events}
+              year={year}
+              month={month}
+              goToPrev={goToPrev}
+              goToNext={goToNext}
+              goToToday={goToToday}
+              onEventClick={handleEventClick}
+              emptyMessage={
+                events.length === 0 && !isLoading
+                  ? selectedOwner
+                    ? `${selectedOwner.fullName} chưa có sự kiện nào trong tháng này.`
+                    : viewMode === 'unit'
+                      ? 'Đơn vị của bạn chưa có sự kiện nào trong tháng này.'
+                      : isNoHrProfile
+                        ? 'Chưa có sự kiện nào. Liên kết hồ sơ nhân sự để xem lịch phòng ban.'
+                        : 'Bạn chưa có sự kiện nào trong tháng này. Nhấn "Thêm lịch" để thêm mới.'
+                  : undefined
+              }
+            />
+          )}
         </div>
       </div>
 
@@ -159,10 +214,25 @@ function CalendarPageInner() {
         onEdit={handleEditEvent}
       />
 
-      <CreateEventModal
-        key={`${isCreateModalOpen ? 'open' : 'closed'}-${editingEvent?.id ?? 'new'}`}
-        opened={isCreateModalOpen}
+      <AddCalendarChoiceModal
+        opened={activeModal === 'choice'}
         onClose={handleCloseCreate}
+        onSelect={handleChoiceSelect}
+      />
+
+      <MeetingFormModal
+        key={`meeting-${activeModal === 'meeting' ? 'open' : 'closed'}-${editingEvent?.id ?? 'new'}`}
+        opened={activeModal === 'meeting'}
+        onClose={handleCloseCreate}
+        onBack={editingEvent ? undefined : handleBackToChoice}
+        editEvent={editingEvent}
+      />
+
+      <PersonalEventFormModal
+        key={`personal-${activeModal === 'personal' ? 'open' : 'closed'}-${editingEvent?.id ?? 'new'}`}
+        opened={activeModal === 'personal'}
+        onClose={handleCloseCreate}
+        onBack={editingEvent ? undefined : handleBackToChoice}
         editEvent={editingEvent}
       />
     </div>

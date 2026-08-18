@@ -28,12 +28,29 @@ interface ParticipantPickerProps {
   onChange: (next: SelectedParticipant[]) => void;
   /** Employee id to hide from results (usually the organizer/owner). */
   excludeEmployeeId?: string | null;
+  /** Ids to hide from results in addition to excludeEmployeeId (e.g. the chủ trì đã chọn riêng). */
+  excludeEmployeeIds?: string[];
+  /**
+   * Giới hạn số người chọn được. Dùng max=1 để tái dùng component này cho ô
+   * "Chủ trì" (chọn đúng 1 người) — chọn người mới sẽ THAY THẾ người cũ thay
+   * vì thêm vào danh sách. Không set = không giới hạn (hành vi cũ, dùng cho
+   * "Người tham gia").
+   */
+  max?: number;
+  /** Nhãn phía trên — mặc định "Thành phần tham gia". */
+  label?: string;
+  /** Placeholder ô tìm kiếm — mặc định dùng cho tìm nhiều người. */
+  placeholder?: string;
 }
 
 export function ParticipantPicker({
   value,
   onChange,
   excludeEmployeeId,
+  excludeEmployeeIds,
+  max,
+  label = 'Thành phần tham gia',
+  placeholder = 'Tìm theo tên, mã NV, email, phòng ban...',
 }: ParticipantPickerProps) {
   const [search, setSearch] = useState('');
   const searchInput = useImeSafeSearch({ value: search, onSearch: setSearch });
@@ -51,14 +68,16 @@ export function ParticipantPicker({
 
   const results = useMemo(() => {
     const list = data?.data ?? [];
+    const excluded = new Set(excludeEmployeeIds ?? []);
     return list.filter(
-      (emp) => emp.id !== excludeEmployeeId && !selectedIds.has(emp.id),
+      (emp) => emp.id !== excludeEmployeeId && !excluded.has(emp.id) && !selectedIds.has(emp.id),
     );
-  }, [data?.data, excludeEmployeeId, selectedIds]);
+  }, [data?.data, excludeEmployeeId, excludeEmployeeIds, selectedIds]);
 
   const add = (emp: SelectedParticipant) => {
     if (selectedIds.has(emp.id)) return;
-    onChange([...value, emp]);
+    // max=1 (ô "Chủ trì"): người chọn mới thay thế người cũ, không cộng dồn.
+    onChange(max && max <= value.length ? [emp] : [...value, emp]);
     searchInput.clear();
   };
 
@@ -66,18 +85,20 @@ export function ParticipantPicker({
     onChange(value.filter((p) => p.id !== id));
   };
 
-  const showDropdown = searchInput.inputValue.length > 0;
+  const showDropdown = searchInput.inputValue.length > 0 && !(max && value.length >= max);
 
   return (
     <Stack gap="xs">
-      <Text size="sm" fw={500}>
-        Thành phần tham gia
-        {value.length > 0 && (
-          <Badge ml="xs" variant="light" size="sm">
-            {value.length}
-          </Badge>
-        )}
-      </Text>
+      {label && (
+        <Text size="sm" fw={500}>
+          {label}
+          {value.length > 0 && !max && (
+            <Badge ml="xs" variant="light" size="sm">
+              {value.length}
+            </Badge>
+          )}
+        </Text>
+      )}
 
       {/* Selected chips */}
       {value.length > 0 && (
@@ -95,8 +116,9 @@ export function ParticipantPicker({
         </Group>
       )}
 
+      {!(max && value.length >= max) && (
       <TextInput
-        placeholder="Tìm theo tên, mã NV, email, phòng ban..."
+        placeholder={placeholder}
         leftSection={<IconSearch size={14} />}
         rightSection={
           isFetching ? (
@@ -111,6 +133,7 @@ export function ParticipantPicker({
         }
         {...searchInput.inputProps}
       />
+      )}
 
       {showDropdown && (
         <ScrollArea.Autosize
@@ -145,7 +168,7 @@ export function ParticipantPicker({
                   style={{ padding: '8px 12px' }}
                 >
                   <Group gap="sm" wrap="nowrap">
-                    <Avatar size="sm" radius="xl" color="hacomRed">
+                    <Avatar size="sm" radius="xl" color="blue">
                       {emp.fullName?.charAt(0).toUpperCase()}
                     </Avatar>
                     <Stack gap={0} style={{ minWidth: 0 }}>

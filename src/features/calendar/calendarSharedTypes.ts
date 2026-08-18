@@ -58,6 +58,32 @@ export interface CalendarParticipant {
   createdAt: string;
 }
 
+/**
+ * File đính kèm đã lưu THẬT trên server (chat-api-service), gắn với sự kiện
+ * lịch qua `attachmentFileIds` lúc tạo/sửa. Khớp `CalendarAttachmentDto` của
+ * hr-api-service (`src/modules/calendar/dto/calendar.dto.ts`).
+ */
+export interface CalendarAttachmentDto {
+  fileId: string;
+  filename: string | null;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  relationshipStatus: 'ACTIVE' | 'REMOVED';
+  metadataStatus: 'PENDING' | 'READY' | 'RESOLVE_FAILED' | 'DELETED';
+  downloadStatus: 'READY' | 'NOT_READY' | 'TEMPORARILY_UNAVAILABLE' | 'FORBIDDEN' | 'DELETED';
+  /** URL tải/xem (presigned, có TTL ngắn) — gọi lại endpoint download-url nếu hết hạn. */
+  url: string | null;
+  thumbnailUrl?: string | null;
+}
+
+export type CalendarAttachmentResolveStatus =
+  | 'OK'
+  | 'PENDING'
+  | 'PARTIAL_FAILED'
+  | 'FAILED'
+  | 'NONE'
+  | null;
+
 export interface CalendarEvent {
   id: string;
   title: string;
@@ -76,6 +102,9 @@ export interface CalendarEvent {
   visibility: CalendarVisibility;
   eventType: CalendarEventType;
   location: string | null;
+  /** null khi bị mask (sự kiện BUSY_ONLY của người khác) hoặc khi backend cũ chưa trả field này. */
+  attachments?: CalendarAttachmentDto[] | null;
+  attachmentResolveStatus?: CalendarAttachmentResolveStatus;
   participants: CalendarParticipant[];
   canEdit: boolean;
   canDelete: boolean;

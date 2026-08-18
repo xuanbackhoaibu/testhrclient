@@ -1,0 +1,17 @@
+.resultItem {
+  padding: 8px 10px;
+  border-radius: var(--mantine-radius-sm);
+  transition: background-color 0.1s ease;
+}
+
+.resultItem:hover {
+  background-color: var(--mantine-color-gray-1);
+}
+
+.resultItem[data-selected] {
+  background-color: var(--mantine-color-blue-6);
+}
+
+.resultItem[data-selected] * {
+  color: var(--mantine-color-white);
+}

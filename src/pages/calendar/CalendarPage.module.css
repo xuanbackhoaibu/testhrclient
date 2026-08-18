@@ -1,24 +1,19 @@
-.shell {
-  background: var(--hrm-surface);
-  border: 1px solid var(--hrm-border);
-  border-radius: 8px;
-  box-shadow: var(--hrm-shadow);
+/* Trước đây trang này dùng <AppShell> riêng với header cao 60px, nên chỉ
+   cần trừ 60px cho phần layout còn lại. Giờ trang nằm trong AppShell.Main
+   của MainLayout (header chung cao 64px, xem src/layouts/MainLayout.tsx),
+   nên .page phải tự lấp đầy phần không gian còn lại của viewport, còn
+   CalendarHeader (thanh "Lịch của tôi") chỉ là một thanh công cụ trong
+   luồng bình thường (không phải AppShell.Header) nằm phía trên .layout. */
+.page {
   display: flex;
   flex-direction: column;
-  height: calc(100dvh - 104px);
-  min-height: 640px;
+  height: calc(100vh - 64px);
   overflow: hidden;
-}
-
-.header {
-  border-bottom: 1px solid var(--hrm-border);
-  flex: 0 0 auto;
 }
 
 .layout {
   display: flex;
   flex: 1;
-  min-height: 0;
   overflow: hidden;
 }
 
@@ -38,43 +33,7 @@
   border-bottom: 1px solid var(--mantine-color-gray-2);
 }
 
-:global([data-mantine-color-scheme='dark']) .actionBar {
-  background-color: var(--hrm-surface);
-  border-bottom-color: var(--hrm-border);
-}
-
-.emptyState {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  padding: var(--mantine-spacing-xl);
-  text-align: center;
-  gap: var(--mantine-spacing-sm);
-}
-
-.emptyStateIcon {
-  color: var(--mantine-color-gray-5);
-}
-
-.emptyStateText {
-  color: var(--mantine-color-dimmed);
-  max-width: 300px;
-}
-
-@media (max-width: 900px) {
-  .shell {
-    height: auto;
-    min-height: 720px;
-  }
-
-  .layout {
-    flex-direction: column;
-    overflow: visible;
-  }
-
-  .mainContent {
-    min-height: 620px;
-  }
-}
+/* Thông báo "chưa có sự kiện" giờ hiển thị đè lên lưới ngay trong
+   CalendarView (xem .emptyOverlay trong CalendarView.module.css) thay vì
+   thay thế toàn bộ CalendarView như trước — nên các class emptyState* ở
+   đây không còn được dùng nữa. */

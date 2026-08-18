@@ -11,6 +11,7 @@ import {
   Loader,
   Divider,
 } from '@mantine/core';
+import { DateTimePicker } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { IconCalendar } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -19,7 +20,6 @@ import dayjs from 'dayjs';
 import { calendarApi, CalendarVisibility, CalendarEventType, type CalendarEvent } from '../../../features/calendar/calendarApi';
 import { useAuth } from '../../../features/auth/useAuth';
 import { ParticipantPicker, type SelectedParticipant } from './ParticipantPicker';
-import { HrmDateTimeInput } from '../../../shared/components/HrmDateInput';
 
 const PERSONAL_VISIBILITY_OPTIONS = [
   { value: CalendarVisibility.PRIVATE, label: 'Riêng tư' },
@@ -46,13 +46,16 @@ const EVENT_TYPE_OPTIONS = [
   { value: CalendarEventType.OTHER, label: 'Khác' },
 ];
 
-const LOCAL_FORMAT = 'YYYY-MM-DD HH:mm:ss';
-
-/** ISO string → local wall-clock value used by the date-time picker. */
-function toLocalInput(iso: string | null | undefined): string {
-  if (!iso) return '';
+// Trước đây "Bắt đầu"/"Kết thúc" dùng <TextInput type="datetime-local">, tức
+// là input NGÀY GIỜ GỐC CỦA TRÌNH DUYỆT — popup lịch/giờ đó do hệ điều hành/
+// trình duyệt tự vẽ, không thể chỉnh CSS, nên nhìn lệch hẳn tông với phần còn
+// lại của app (đây là ảnh chụp màn hình người dùng gửi). Đổi sang
+// DateTimePicker của @mantine/dates (đã có sẵn trong package.json, chỉ chưa
+// dùng) để popup lịch/giờ dùng chung style với toàn bộ ứng dụng.
+function toLocalDate(iso: string | null | undefined): Date | null {
+  if (!iso) return null;
   const d = dayjs(iso);
-  return d.isValid() ? d.format(LOCAL_FORMAT) : '';
+  return d.isValid() ? d.toDate() : null;
 }
 
 function participantsFromEvent(event: CalendarEvent | null | undefined): SelectedParticipant[] {
@@ -92,8 +95,8 @@ export function CreateEventModal({ opened, onClose, editEvent }: CreateEventModa
   // (this is what makes "Edit" correctly preload — no state-sync effect needed).
   const [title, setTitle] = useState(() => editEvent?.title ?? '');
   const [description, setDescription] = useState(() => editEvent?.description ?? '');
-  const [startAt, setStartAt] = useState(() => toLocalInput(editEvent?.startAt));
-  const [endAt, setEndAt] = useState(() => toLocalInput(editEvent?.endAt));
+  const [startAt, setStartAt] = useState<Date | null>(() => toLocalDate(editEvent?.startAt));
+  const [endAt, setEndAt] = useState<Date | null>(() => toLocalDate(editEvent?.endAt));
   const [visibility, setVisibility] = useState<CalendarVisibility>(
     () => normalizeVisibility(editEvent?.visibility),
   );
@@ -249,16 +252,24 @@ export function CreateEventModal({ opened, onClose, editEvent }: CreateEventModa
         />
 
         <Group grow>
-          <HrmDateTimeInput
+          <DateTimePicker
             label="Bắt đầu"
-            value={startAt || null}
-            onChange={(value) => setStartAt(value ?? '')}
+            placeholder="Chọn ngày giờ bắt đầu"
+            value={startAt ? dayjs(startAt).format('YYYY-MM-DDTHH:mm:ss') : null}
+            onChange={(value) => setStartAt(value ? dayjs(value).toDate() : null)}
+            valueFormat="DD/MM/YYYY HH:mm"
+            leftSection={<IconCalendar size={16} />}
+            clearable
             required
           />
-          <HrmDateTimeInput
+          <DateTimePicker
             label="Kết thúc"
-            value={endAt || null}
-            onChange={(value) => setEndAt(value ?? '')}
+            placeholder="Chọn ngày giờ kết thúc"
+            value={endAt ? dayjs(endAt).format('YYYY-MM-DDTHH:mm:ss') : null}
+            onChange={(value) => setEndAt(value ? dayjs(value).toDate() : null)}
+            valueFormat="DD/MM/YYYY HH:mm"
+            leftSection={<IconCalendar size={16} />}
+            clearable
             required
           />
         </Group>
