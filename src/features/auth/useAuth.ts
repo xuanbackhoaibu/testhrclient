@@ -1,5 +1,3 @@
-import { message } from 'antd';
-
 import { queryClient } from '../../app/queryClient';
 import { getCurrentUser } from './authApi';
 import { clearSession, login as loginClient, logout as logoutClient, setSessionUser } from './authClient';
@@ -11,6 +9,7 @@ import {
   hasPermission,
 } from './permissions';
 import type { DemoRole, LoginCredentials } from './types';
+import { toast } from '../../shared/utils/toast';
 
 function readHttpStatus(error: unknown): number | undefined {
   return (
@@ -41,7 +40,7 @@ export function useAuth() {
       if (status === 403) {
         setSessionUser(null);
         useAuthStore.getState().setError('Tài khoản đã xác thực nhưng không được phép thực hiện thao tác này.');
-        message.error('Bạn không có quyền thực hiện thao tác này.');
+        toast.error('Bạn không có quyền thực hiện thao tác này.');
         return;
       }
 

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { Alert, Card, Space, Typography } from 'antd';
+import { Alert, Paper, Stack, Title } from '@mantine/core';
+import { IconAlertTriangle } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 
 import { handleCallback } from '../features/auth/authClient';
@@ -40,13 +41,13 @@ export function AuthCallbackPage() {
   }
 
   return (
-    <Card>
-      <Space orientation="vertical" style={{ width: '100%' }}>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          Auth callback failed
-        </Typography.Title>
-        <Alert type="error" showIcon message={error} />
-      </Space>
-    </Card>
+    <Paper p="lg" radius="md">
+      <Stack gap="sm">
+        <Title order={4}>Không hoàn tất được đăng nhập</Title>
+        <Alert color="red" icon={<IconAlertTriangle size={18} />}>
+          {error}
+        </Alert>
+      </Stack>
+    </Paper>
   );
 }
