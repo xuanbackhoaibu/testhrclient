@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Alert,
   Badge,
+  Box,
   Button,
   Checkbox,
   Group,
@@ -29,6 +30,7 @@ import {
   IconAlertTriangle,
   IconCalendarTime,
   IconExternalLink,
+  IconGripVertical,
   IconRefresh,
   IconSearch,
   IconUserCheck,
@@ -437,9 +439,19 @@ export function MonthlyShiftAssignmentGrid({
   const [workShiftOrder, setWorkShiftOrder] = useState<string[]>(() =>
     readWorkShiftUserOrder(user?.id),
   );
+  /*
+   * Mã ca đang kéo nằm ở ref chứ không ở state: handler dragover chạy liên tục
+   * theo chuột, nếu mỗi lần đều setState thì cả bảng render lại và thao tác kéo
+   * giật. State chỉ giữ đúng hai thứ cần vẽ lại — dòng nguồn và vạch đích.
+   */
+  const draggingShiftCodeRef = useRef<string | null>(null);
   const [draggingShiftCode, setDraggingShiftCode] = useState<string | null>(
     null,
   );
+  const [dropTarget, setDropTarget] = useState<{
+    code: string;
+    edge: "top" | "bottom";
+  } | null>(null);
   const [cellShiftError, setCellShiftError] = useState<string | null>(null);
   const [cellShiftApplyingId, setCellShiftApplyingId] = useState<string | null>(
     null,
@@ -580,19 +592,35 @@ export function MonthlyShiftAssignmentGrid({
    * HR sẽ nhận được một thứ tự khác hẳn thứ họ nhìn thấy.
    */
   const shiftReorderEnabled = cellShiftSearch.trim() === "";
-  const handleShiftReorder = useCallback(
-    (fromCode: string, toCode: string) => {
-      if (fromCode === toCode) return;
+
+  const endShiftDrag = useCallback(() => {
+    draggingShiftCodeRef.current = null;
+    setDraggingShiftCode(null);
+    setDropTarget(null);
+  }, []);
+
+  /*
+   * Thả theo vị trí chèn chứ không hoán đổi hai dòng: kéo ca số 20 lên đầu phải
+   * đẩy cả danh sách xuống một bậc, chứ không phải tráo nó với ca số 1.
+   */
+  const handleShiftDrop = useCallback(
+    (targetCode: string, edge: "top" | "bottom") => {
+      const fromCode = draggingShiftCodeRef.current;
+      endShiftDrag();
+      if (!fromCode || fromCode === targetCode) return;
       const codes = selectableShifts.map((shift) => shift.code);
       const from = codes.indexOf(fromCode);
-      const to = codes.indexOf(toCode);
-      if (from === -1 || to === -1) return;
+      const target = codes.indexOf(targetCode);
+      if (from === -1 || target === -1) return;
+      const insertAt = edge === "bottom" ? target + 1 : target;
+      const to = from < insertAt ? insertAt - 1 : insertAt;
       const nextOrder = moveItem(codes, from, to);
       setWorkShiftOrder(nextOrder);
       writeWorkShiftUserOrder(user?.id, nextOrder);
     },
-    [selectableShifts, user?.id],
+    [endShiftDrag, selectableShifts, user?.id],
   );
+
   const resetShiftOrder = useCallback(() => {
     setWorkShiftOrder([]);
     writeWorkShiftUserOrder(user?.id, []);
@@ -1906,7 +1934,7 @@ export function MonthlyShiftAssignmentGrid({
                                           >
                                             <Text size="10px" c="dimmed">
                                               {shiftReorderEnabled
-                                                ? "Kéo dòng để đổi thứ tự ca — thứ tự này chỉ áp dụng cho tài khoản của bạn."
+                                                ? "Kéo biểu tượng ⠿ để đổi thứ tự ca — thứ tự này chỉ áp dụng cho tài khoản của bạn."
                                                 : "Xoá ô tìm kiếm để kéo đổi thứ tự ca."}
                                             </Text>
                                             {workShiftOrder.length ? (
@@ -1961,9 +1989,21 @@ export function MonthlyShiftAssignmentGrid({
                                                 horizontalSpacing="xs"
                                                 verticalSpacing={4}
                                                 style={{ minWidth: 620 }}
+                                                onDragLeave={(event) => {
+                                                  // Chỉ xoá vạch khi chuột rời hẳn bảng, không phải khi
+                                                  // đi qua ranh giới giữa hai dòng bên trong.
+                                                  if (
+                                                    event.currentTarget.contains(
+                                                      event.relatedTarget as Node | null,
+                                                    )
+                                                  )
+                                                    return;
+                                                  setDropTarget(null);
+                                                }}
                                               >
                                                 <Table.Thead>
                                                   <Table.Tr>
+                                                    <Table.Th p={0} w={24} />
                                                     <Table.Th>TT</Table.Th>
                                                     <Table.Th>Ký hiệu</Table.Th>
                                                     <Table.Th>Loại ca</Table.Th>
@@ -1992,43 +2032,65 @@ export function MonthlyShiftAssignmentGrid({
                                                       const isDragging =
                                                         draggingShiftCode ===
                                                         shift.code;
+                                                      const dropEdge =
+                                                        dropTarget?.code ===
+                                                        shift.code
+                                                          ? dropTarget.edge
+                                                          : null;
+                                                      const dropLine =
+                                                        "inset 0 2px 0 0 var(--mantine-color-blue-6)";
                                                       return (
                                                         <Table.Tr
                                                           key={shift.id}
-                                                          draggable={
-                                                            shiftReorderEnabled
-                                                          }
-                                                          onDragStart={() =>
-                                                            setDraggingShiftCode(
-                                                              shift.code,
-                                                            )
-                                                          }
-                                                          onDragEnd={() =>
-                                                            setDraggingShiftCode(
-                                                              null,
-                                                            )
-                                                          }
                                                           onDragOver={(event) => {
                                                             if (
                                                               !shiftReorderEnabled ||
-                                                              !draggingShiftCode
+                                                              !draggingShiftCodeRef.current
                                                             )
                                                               return;
                                                             event.preventDefault();
+                                                            event.dataTransfer.dropEffect =
+                                                              "move";
+                                                            if (
+                                                              draggingShiftCodeRef.current ===
+                                                              shift.code
+                                                            ) {
+                                                              setDropTarget(
+                                                                null,
+                                                              );
+                                                              return;
+                                                            }
+                                                            const bounds =
+                                                              event.currentTarget.getBoundingClientRect();
+                                                            const edge =
+                                                              event.clientY -
+                                                                bounds.top >
+                                                              bounds.height / 2
+                                                                ? "bottom"
+                                                                : "top";
+                                                            setDropTarget(
+                                                              (current) =>
+                                                                current?.code ===
+                                                                  shift.code &&
+                                                                current.edge ===
+                                                                  edge
+                                                                  ? current
+                                                                  : {
+                                                                      code: shift.code,
+                                                                      edge,
+                                                                    },
+                                                            );
                                                           }}
                                                           onDrop={(event) => {
                                                             if (
                                                               !shiftReorderEnabled ||
-                                                              !draggingShiftCode
+                                                              !draggingShiftCodeRef.current
                                                             )
                                                               return;
                                                             event.preventDefault();
-                                                            handleShiftReorder(
-                                                              draggingShiftCode,
+                                                            handleShiftDrop(
                                                               shift.code,
-                                                            );
-                                                            setDraggingShiftCode(
-                                                              null,
+                                                              dropEdge ?? "top",
                                                             );
                                                           }}
                                                           style={{
@@ -2036,15 +2098,68 @@ export function MonthlyShiftAssignmentGrid({
                                                               isCurrentShift
                                                                 ? "#eff6ff"
                                                                 : undefined,
-                                                            cursor:
-                                                              shiftReorderEnabled
-                                                                ? "grab"
-                                                                : undefined,
                                                             opacity: isDragging
-                                                              ? 0.5
+                                                              ? 0.4
                                                               : undefined,
+                                                            boxShadow:
+                                                              dropEdge === "top"
+                                                                ? dropLine
+                                                                : dropEdge ===
+                                                                    "bottom"
+                                                                  ? "inset 0 -2px 0 0 var(--mantine-color-blue-6)"
+                                                                  : undefined,
                                                           }}
                                                         >
+                                                          <Table.Td
+                                                            p={0}
+                                                            style={{
+                                                              width: 24,
+                                                              textAlign:
+                                                                "center",
+                                                              verticalAlign:
+                                                                "middle",
+                                                            }}
+                                                          >
+                                                            {shiftReorderEnabled ? (
+                                                              <Box
+                                                                component="span"
+                                                                draggable
+                                                                onDragStart={(
+                                                                  event,
+                                                                ) => {
+                                                                  draggingShiftCodeRef.current =
+                                                                    shift.code;
+                                                                  setDraggingShiftCode(
+                                                                    shift.code,
+                                                                  );
+                                                                  event.dataTransfer.effectAllowed =
+                                                                    "move";
+                                                                  // Firefox không khởi động kéo nếu dataTransfer rỗng.
+                                                                  event.dataTransfer.setData(
+                                                                    "text/plain",
+                                                                    shift.code,
+                                                                  );
+                                                                }}
+                                                                onDragEnd={
+                                                                  endShiftDrag
+                                                                }
+                                                                aria-label={`Kéo để đổi thứ tự ca ${shift.code}`}
+                                                                style={{
+                                                                  display:
+                                                                    "inline-flex",
+                                                                  cursor: isDragging
+                                                                    ? "grabbing"
+                                                                    : "grab",
+                                                                  color:
+                                                                    "var(--mantine-color-gray-5)",
+                                                                }}
+                                                              >
+                                                                <IconGripVertical
+                                                                  size={14}
+                                                                />
+                                                              </Box>
+                                                            ) : null}
+                                                          </Table.Td>
                                                           <Table.Td>
                                                             {shiftDisplayNumbers.get(
                                                               shift.id,

@@ -57,6 +57,48 @@ describe("sortWorkShiftsByUserOrder", () => {
   });
 });
 
+/**
+ * Ngữ nghĩa chèn của thao tác thả: người dùng thả vào mép trên/dưới của một
+ * dòng đích. Khi kéo từ trên xuống, phần tử nguồn rời mảng trước nên chỉ số
+ * chèn phải lùi một bậc — chỗ này sai là ca rơi lệch một dòng.
+ */
+function dropAt(
+  codes: readonly string[],
+  fromCode: string,
+  targetCode: string,
+  edge: "top" | "bottom",
+): string[] {
+  const from = codes.indexOf(fromCode);
+  const target = codes.indexOf(targetCode);
+  const insertAt = edge === "bottom" ? target + 1 : target;
+  const to = from < insertAt ? insertAt - 1 : insertAt;
+  return moveItem(codes, from, to);
+}
+
+describe("thả theo mép trên/dưới của dòng đích", () => {
+  const codes = ["A", "B", "C", "D"];
+
+  it("kéo dòng cuối lên mép trên dòng đầu thì đẩy cả danh sách xuống", () => {
+    expect(dropAt(codes, "D", "A", "top")).toEqual(["D", "A", "B", "C"]);
+  });
+
+  it("kéo dòng đầu xuống mép dưới dòng cuối thì xuống cuối", () => {
+    expect(dropAt(codes, "A", "D", "bottom")).toEqual(["B", "C", "D", "A"]);
+  });
+
+  it("kéo xuống, thả mép trên dòng kế tiếp thì giữ nguyên vị trí", () => {
+    expect(dropAt(codes, "A", "B", "top")).toEqual(["A", "B", "C", "D"]);
+  });
+
+  it("kéo xuống, thả mép dưới dòng kế tiếp thì đổi chỗ với dòng đó", () => {
+    expect(dropAt(codes, "A", "B", "bottom")).toEqual(["B", "A", "C", "D"]);
+  });
+
+  it("kéo lên, thả mép trên dòng phía trên thì chen vào trước dòng đó", () => {
+    expect(dropAt(codes, "C", "B", "top")).toEqual(["A", "C", "B", "D"]);
+  });
+});
+
 describe("moveItem", () => {
   it("kéo một phần tử lên trên", () => {
     expect(moveItem(["a", "b", "c"], 2, 0)).toEqual(["c", "a", "b"]);
