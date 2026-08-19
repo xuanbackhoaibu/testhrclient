@@ -63,6 +63,13 @@ const AUTHORIZATION_MESSAGES: Record<string, string> = {
   LAST_ADMIN_PROTECTED: 'Không thể thu hồi quản trị viên cuối cùng.',
   STALE_AUTHORITY_VERSION: 'Phân quyền đã thay đổi. Dữ liệu quyền sẽ được tải lại trước khi lưu tiếp.',
   AUTHORITY_SERVICE_UNAVAILABLE: 'Không xác minh được quyền lúc này. Hệ thống không dùng quyền cũ; vui lòng thử lại thủ công.',
+  PROVISION_UNIQUE_CONFLICT_RETRY_REQUIRED: 'Tài khoản đang được một yêu cầu khác xử lý, vui lòng thử lại.',
+  HR_PROJECTION_STALE_EMPLOYEE_CODE: 'Mã nhân viên không khớp với dữ liệu nhân sự hiện tại. Vui lòng tải lại và thử lại.',
+  HR_PROJECTION_EMPLOYEE_CODE_INVALID: 'Mã nhân viên trong dữ liệu HR không hợp lệ.',
+  EMPLOYEE_CODE_ALREADY_BOUND_TO_ANOTHER_HRM_IDENTITY: 'Mã nhân viên này đã được liên kết với một tài khoản khác.',
+  AUTH_USER_IDENTITY_CONFLICT: 'Tài khoản đã được liên kết với một định danh nhân sự khác.',
+  AUTH_USER_PROJECTION_CONFLICT: 'Tài khoản đã được liên kết với một hồ sơ nhân sự khác.',
+  EMAIL_ALREADY_EXISTS: 'Email đã được sử dụng bởi tài khoản khác.',
 };
 
 function appendRequestId(messageText: string, requestId?: string): string {
