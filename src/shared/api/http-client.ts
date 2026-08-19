@@ -37,7 +37,7 @@ export function unwrapApiEnvelope<T>(body: unknown): T {
     throw new ApiError({
       message: body.message || 'Yêu cầu thất bại',
       statusCode: body.statusCode,
-      errorCode: body.errorCode,
+      errorCode: body.errorCode ?? body.error?.code,
       requestId: body.requestId,
       errors: body.errors,
     });
