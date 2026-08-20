@@ -1512,14 +1512,6 @@ export function MonthlyShiftAssignmentGrid({
           </Group>
           <Group gap="xs">
             <Button
-              variant="default"
-              size="sm"
-              leftSection={<IconCalendarTime size={16} />}
-              onClick={() => navigate(ROUTES.weeklyShifts)}
-            >
-              Ca tuần
-            </Button>
-            <Button
               variant="light"
               size="sm"
               leftSection={<IconExternalLink size={16} />}
