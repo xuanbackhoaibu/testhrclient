@@ -62,6 +62,7 @@ import {
   timesheetDayDisplayValue,
   timesheetDayShiftDisplayValue,
 } from "../../features/attendance/timesheetDayPresentation";
+import { overnightTailShiftCode } from "../../features/attendance/shiftTime";
 import { formatDate } from "../../shared/utils/date";
 import { useEmployees } from "../../features/employees/useEmployees";
 import { useDepartmentsSelect } from "../../features/organization/useDepartments";
@@ -417,8 +418,12 @@ function cellDescription(
     day.shiftCode ? `Ca ${day.shiftCode}` : null,
     day.holidayName,
     day.source === "HOLIDAY_UNPAID" ? "Ngày lễ không lương" : null,
-    day.source === "OVERNIGHT_TAIL"
-      ? `Ca qua ngày${previousDay?.shiftCode ? ` ${previousDay.shiftCode}` : ""} từ hôm trước — đây là giờ ra, công đã tính trọn vào ngày bắt đầu ca`
+    overnightTailShiftCode({
+      code: previousDay?.shiftCode,
+      startTime: previousDay?.shiftStartTime,
+      endTime: previousDay?.shiftEndTime,
+    }) && !day.shiftCode?.trim() && !day.holidayName
+      ? `Ca qua ngày ${previousDay?.shiftCode} từ hôm trước — công đã tính trọn vào ngày bắt đầu ca`
       : null,
     day.source === "UNASSIGNED" ? "Chưa phân ca — chưa tính công" : null,
     /*
@@ -560,6 +565,16 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
         // là phần HR nhìn thấy, đã quy ô đi làm về mã ca như màn Phân ca.
         const label = timesheetDayDisplayValue(day);
         const cellText = timesheetDayShiftDisplayValue(day, previousDay);
+        // Ô bị ca đêm hôm trước chiếm — cùng điều kiện với phần chữ hiển thị.
+        const isOvernightTailCell = Boolean(
+          overnightTailShiftCode({
+            code: previousDay?.shiftCode,
+            startTime: previousDay?.shiftStartTime,
+            endTime: previousDay?.shiftEndTime,
+          }) &&
+            !day?.shiftCode?.trim() &&
+            !day?.holidayName,
+        );
         const weeklyTemplateOff = isWeeklyTemplateOffDay(day);
         const hasExplanationEvent = Boolean(
           day?.needsExplanation && hasTimesheetAttendanceEvent(day),
@@ -569,7 +584,7 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
             ? "#f1f5f9"
             // Đuôi ca đêm: nền xanh nhạt hơn ô ngày bắt đầu ca, để thấy ngay
             // ô nào là ngày ca bắt đầu — nơi công được tính trọn.
-            : day?.source === "OVERNIGHT_TAIL"
+            : isOvernightTailCell
             ? "#eff6ff"
             : day?.source === "UNASSIGNED"
             ? "#e5e7eb"

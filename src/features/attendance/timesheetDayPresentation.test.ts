@@ -277,6 +277,12 @@ describe("timesheet cell shown with the shift-assignment notation", () => {
 describe("ngày liền sau ca đêm", () => {
   const base = { firstPunch: "07:48", lastPunch: "07:48", needsExplanation: false };
 
+  const nightShift = {
+    shiftCode: "VH2",
+    shiftStartTime: "18:41",
+    shiftEndTime: "07:48",
+  };
+
   it("lặp lại mã ca của ngày hôm trước", () => {
     // Để trống thì HR đọc thành "chưa phân ca", còn mũi tên `→` thì không nói
     // được ca nào. Hiện chính mã ca hôm trước để VH2 nằm ở cả hai ô, đọc thẳng
@@ -289,21 +295,68 @@ describe("ngày liền sau ca đêm", () => {
           shiftCode: null,
           source: "OVERNIGHT_TAIL",
         },
-        { shiftCode: "VH2" },
+        nightShift,
       ),
     ).toBe("VH2");
   });
 
-  it("để trống khi không tra được mã ca hôm trước", () => {
-    // Dữ liệu cũ có thể thiếu mã ca; để trống còn hơn hiện ký hiệu không nói
-    // được ca nào.
+  it("ca đêm chưa có dữ liệu chấm công vẫn chiếm ô hôm sau", () => {
+    // Nguồn `OVERNIGHT_TAIL` chỉ được gắn khi máy chấm công có lượt chấm sót
+    // sang hôm sau. Ca đã phân là đã chiếm ô, kể cả khi chưa ai chấm.
     expect(
-      timesheetDayShiftDisplayValue({
-        ...base,
-        displaySymbol: "",
-        shiftCode: null,
-        source: "OVERNIGHT_TAIL",
-      }),
+      timesheetDayShiftDisplayValue(
+        {
+          firstPunch: null,
+          lastPunch: null,
+          needsExplanation: false,
+          displaySymbol: "",
+          shiftCode: null,
+          source: "MISSING",
+        },
+        nightShift,
+      ),
+    ).toBe("VH2");
+  });
+
+  it("ngày hôm sau đã có ca riêng thì không bị đè", () => {
+    expect(
+      timesheetDayShiftDisplayValue(
+        {
+          ...base,
+          displaySymbol: "+",
+          shiftCode: "HC1",
+          source: "ATTENDANCE",
+        },
+        nightShift,
+      ),
+    ).toBe("HC1");
+  });
+
+  it("ca trong ngày không chiếm ô hôm sau", () => {
+    expect(
+      timesheetDayShiftDisplayValue(
+        {
+          ...base,
+          displaySymbol: "",
+          shiftCode: null,
+          source: "MISSING",
+        },
+        { shiftCode: "HC1", shiftStartTime: "08:00", shiftEndTime: "17:00" },
+      ),
+    ).toBe("");
+  });
+
+  it("thiếu giờ ca (API cũ) thì không đoán bừa", () => {
+    expect(
+      timesheetDayShiftDisplayValue(
+        {
+          ...base,
+          displaySymbol: "",
+          shiftCode: null,
+          source: "OVERNIGHT_TAIL",
+        },
+        { shiftCode: "VH2" },
+      ),
     ).toBe("");
   });
 

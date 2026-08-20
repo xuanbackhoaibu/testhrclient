@@ -3,6 +3,7 @@ import type { TimesheetGridDay } from "./timesheetTypes";
 /** Ký hiệu nghỉ theo ca tuần do backend ghi xuống; chỉ ẩn khi HIỂN THỊ. */
 const WEEKLY_OFF_SYMBOL = "OFF";
 import { isWeeklyTemplateAssignmentSource } from "./shiftAssignmentWeekdays";
+import { overnightTailShiftCode } from "./shiftTime";
 
 type AttendanceEventDay = Pick<
   TimesheetGridDay,
@@ -131,23 +132,29 @@ type TimesheetDayGapInput = TimesheetDataGapDay & AttendanceEventDay;
  */
 export function timesheetDayShiftDisplayValue(
   day:
-    | (AttendanceEventDay & Pick<TimesheetGridDay, "shiftCode">)
+    | (AttendanceEventDay & Pick<TimesheetGridDay, "shiftCode" | "holidayName">)
     | undefined,
-  previousDay?: Pick<TimesheetGridDay, "shiftCode"> | undefined,
+  previousDay?:
+    | Pick<TimesheetGridDay, "shiftCode" | "shiftStartTime" | "shiftEndTime">
+    | undefined,
 ): string {
   /*
-   * Ngày liền sau ca đêm chỉ còn giờ RA của ca hôm trước. Công đã tính trọn
-   * vào ngày bắt đầu ca nên ô này 0 công — nhưng để trống thì HR đọc thành
-   * "chưa phân ca". Trước đây hiện `→`, nhưng mũi tên không nói được ca nào
-   * nên HR vẫn phải dò ngược cột ngày. Nay lặp lại chính mã ca hôm trước
-   * (VH2 nằm ở cả hai ô) để đọc thẳng thành "ca này kéo qua hai ngày";
-   * nền nhạt hơn vẫn cho biết đâu là ngày ca bắt đầu, nơi tính công.
+   * Ô bị ca đêm hôm trước chiếm: hiện lại chính mã ca đó (VH2 nằm ở cả hai ô)
+   * để đọc thẳng thành "ca này kéo qua hai ngày".
+   *
+   * Căn cứ là CẤU HÌNH CA của ngày liền trước, không phải nguồn
+   * `OVERNIGHT_TAIL` — nguồn đó chỉ được backend gắn khi máy chấm công có
+   * thật một lượt chấm sót sang hôm sau, nên ca đêm chưa ai chấm (phần lớn
+   * lưới) sẽ không bao giờ khớp. Ca đã phân là đã chiếm ô, bất kể có dữ liệu
+   * chấm công hay chưa.
    */
-  if (day?.source === "OVERNIGHT_TAIL") {
-    // Backend đã xác định đây là đuôi ca đêm, nên mã ca của ngày liền trước
-    // chính là ca đang kéo sang. Thiếu mã (dữ liệu cũ) thì để trống còn hơn
-    // hiện ký hiệu không nói được ca nào.
-    return previousDay?.shiftCode?.trim() ?? "";
+  const tailCode = overnightTailShiftCode({
+    code: previousDay?.shiftCode,
+    startTime: previousDay?.shiftStartTime,
+    endTime: previousDay?.shiftEndTime,
+  });
+  if (tailCode && !day?.shiftCode?.trim() && !day?.holidayName) {
+    return tailCode;
   }
   const label = timesheetDayDisplayValue(day);
   // Ngày nghỉ theo ca tuần lặp lại hàng tuần: in chữ `OFF` kín cột chủ nhật
