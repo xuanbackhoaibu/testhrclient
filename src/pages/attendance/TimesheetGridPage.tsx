@@ -158,8 +158,8 @@ const colorLegendItems = [
   },
   {
     color: "#f8bbd0",
-    label: "Lđ",
-    description: "Lao động nghĩa vụ",
+    label: "TR",
+    description: "Làm việc vào ngày nghỉ — tính riêng thành giờ làm thêm",
   },
   {
     color: "#ff7875",
@@ -168,8 +168,8 @@ const colorLegendItems = [
   },
   {
     color: "#ffd8a8",
-    label: "Ốm/TS/online",
-    description: "Ốm, con ốm, thai sản, tai nạn lao động hoặc làm việc online",
+    label: "Ốm/TS",
+    description: "Nghỉ ốm, con ốm hoặc thai sản — chế độ BHXH",
   },
   {
     color: "#ffffff",
@@ -348,12 +348,11 @@ function organizationNameKey(
 function surfaceForSymbol(symbol: string): string | undefined {
   const symbols = symbol.split(";");
   if (symbols.includes("KL")) return "#ff7875";
-  if (symbols.some((item) => item === "P" || item === "L")) return "#fff59d";
-  if (symbols.some((item) => item === "Lđ" || item === "LĐ")) {
-    return "#f8bbd0";
-  }
+  if (symbols.some((item) => ["P", "L1", "L2"].includes(item))) return "#fff59d";
+  // Làm việc ngày nghỉ tính riêng thành giờ làm thêm, không phải công thường.
+  if (symbols.includes("TR")) return "#f8bbd0";
   if (symbols.some((item) => item === "CT" || item === "BP")) return "#c7e9b4";
-  if (symbols.some((item) => ["Ô", "Cô", "TS", "TN", "O"].includes(item))) {
+  if (symbols.some((item) => ["OM", "CO", "TS"].includes(item))) {
     return "#ffd8a8";
   }
   return undefined;

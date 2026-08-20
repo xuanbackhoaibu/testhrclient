@@ -3,7 +3,7 @@ import type { BccSummary, TimesheetGridDay } from "./timesheetTypes";
 type SymbolDay = Pick<TimesheetGridDay, "displaySymbol">;
 
 function normalizeBccSymbol(symbol: string): string {
-  return symbol.trim().replace("Lđ", "LĐ");
+  return symbol.trim();
 }
 
 function sumSymbols(
@@ -22,12 +22,6 @@ function sumSymbols(
   return Math.round(total * 2) / 2;
 }
 
-function countSymbolPart(days: readonly SymbolDay[], code: string): number {
-  const normalizedCode = normalizeBccSymbol(code);
-  return days.filter((day) =>
-    normalizeBccSymbol(day.displaySymbol).split(";").includes(normalizedCode),
-  ).length;
-}
 
 /**
  * Compatibility calculation for an API version which has not yet returned
@@ -37,32 +31,36 @@ function countSymbolPart(days: readonly SymbolDay[], code: string): number {
 export function summarizeBccFromDays(days: readonly SymbolDay[]): BccSummary {
   const actualWorkDays = sumSymbols(
     days,
-    ["+", "H", "O", "CT", "BP"],
-    ["-", "P;-", "KL;-", "CL;-", "Ô;-", "Cô;-", "NB;-"],
+    ["+", "CT", "BP"],
+    ["-", "P;-", "KL;-", "VR;-", "OM;-", "CO;-", "NB;-"],
   );
-  const publicHolidayDays = sumSymbols(days, ["L"]);
+  // L1 nghỉ lễ cả ngày = 1 công; L2 nghỉ lễ nửa ngày = 0.5 công.
+  const publicHolidayDays =
+    sumSymbols(days, ["L1"]) + sumSymbols(days, [], ["L2"]);
   const annualLeaveDays = sumSymbols(
     days,
     ["P"],
-    ["P;-", "P;KL", "Ô;P", "Cô;P", "NB;P"],
+    ["P;-", "P;KL", "OM;P", "CO;P", "NB;P"],
   );
   const compensatoryLeaveDays = sumSymbols(
     days,
     ["NB"],
     ["NB;-", "NB;P", "NB;KL"],
   );
-  const paidPersonalLeaveDays = sumSymbols(days, ["CL"]);
-  const companyTripDays = sumSymbols(days, ["DL"]);
-  const dutyDays = countSymbolPart(days, "Tr");
+  const paidPersonalLeaveDays = sumSymbols(days, ["VR"]);
+  // HR bỏ mã du lịch (DL) và trực VP (Tr) ở bảng 20/08/2026. Giữ cột để BCC
+  // và file Excel không đổi hình dạng, giá trị luôn 0 tới khi HR chốt lại.
+  const companyTripDays = 0;
+  const dutyDays = 0;
   const unpaidLeaveDays = sumSymbols(
     days,
     ["KL"],
-    ["KL;-", "P;KL", "Ô;KL", "Cô;KL", "NB;KL"],
+    ["KL;-", "P;KL", "OM;KL", "CO;KL", "NB;KL"],
   );
   const socialInsuranceDays = sumSymbols(
     days,
-    ["LĐ", "TS", "Ô", "Cô", "TN"],
-    ["Ô;-", "Ô;P", "Ô;KL", "Cô;-", "Cô;P", "Cô;KL"],
+    ["TS", "OM", "CO"],
+    ["OM;-", "OM;P", "OM;KL", "CO;-", "CO;P", "CO;KL"],
   );
 
   return {
