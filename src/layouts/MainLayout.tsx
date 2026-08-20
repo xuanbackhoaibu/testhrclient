@@ -58,16 +58,20 @@ const preAttendanceItems: NavItem[] = [
   { label: "Điều chuyển", path: ROUTES.movements, icon: IconTransfer },
 ];
 
+/*
+ * Xếp theo đúng thứ tự HR làm việc: khai báo ca → phân ca → chốt bảng công →
+ * nghỉ phép. Ba mục cấu hình ít đụng tới (Kỳ công, Ngày lễ, Cấu hình duyệt
+ * phép) dồn xuống cuối để phần dùng hằng ngày nằm gọn phía trên.
+ */
 const attendanceItems: NavItem[] = [
   { label: "Dữ liệu chấm công", path: ROUTES.attendance, icon: IconClipboardList },
   { label: "Ca làm việc", path: ROUTES.workShifts, icon: IconClock },
   { label: "Ca tuần", path: ROUTES.weeklyShifts, icon: IconCalendarTime },
-  { label: "Sắp ca tháng", path: ROUTES.monthlyTimesheetRoster, icon: IconCalendarTime },
   { label: "Phân ca", path: ROUTES.shiftAssignments, icon: IconCalendarTime },
   { label: "Bảng công tháng", path: ROUTES.timesheetGrid, icon: IconTable },
+  { label: "Nghỉ phép", path: ROUTES.leave, icon: IconCalendarCheck },
   { label: "Kỳ công", path: ROUTES.timesheetPeriods, icon: IconCalendarStats },
   { label: "Ngày lễ", path: ROUTES.holidays, icon: IconCalendarCheck },
-  { label: "Nghỉ phép", path: ROUTES.leave, icon: IconCalendarCheck },
   {
     label: "Cấu hình duyệt phép",
     path: ROUTES.leaveApprovalAssignments,

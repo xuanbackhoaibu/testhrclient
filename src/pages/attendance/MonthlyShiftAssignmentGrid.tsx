@@ -1220,16 +1220,6 @@ export function MonthlyShiftAssignmentGrid({
     navigate(`${ROUTES.timesheetGrid}?${params.toString()}`);
   }
 
-  function openMonthlyRoster() {
-    if (!selectedUnitId) return;
-    const params = new URLSearchParams({
-      month: String(month),
-      year: String(year),
-      unitId: selectedUnitId,
-    });
-    navigate(ROUTES.monthlyTimesheetRoster + "?" + params.toString());
-  }
-
   return (
     <Stack gap="md">
       <InfoBanner title="Cách phân ca và quan hệ với BCC" collapsible>
@@ -1446,15 +1436,6 @@ export function MonthlyShiftAssignmentGrid({
             </Button>
           </Group>
           <Group gap="xs">
-            <Button
-              variant="default"
-              size="sm"
-              leftSection={<IconCalendarTime size={16} />}
-              disabled={!selectedUnitId}
-              onClick={openMonthlyRoster}
-            >
-              Sắp ca tháng
-            </Button>
             <Button
               variant="default"
               size="sm"
