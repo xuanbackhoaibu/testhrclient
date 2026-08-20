@@ -124,8 +124,22 @@ table th {
 
 .timesheet-bcc-table th,
 .timesheet-bcc-table td {
-  height: 34px;
-  padding: 4px 6px;
+  height: 28px;
+  padding: 2px 4px;
+}
+
+/* Kẻ ô như Excel: mỗi ngày là một ô rõ ranh giới. Không có đường kẻ dọc thì
+   các ô trống liền nhau (nghỉ, chưa phân ca) dính thành một mảng xám lớn,
+   HR không đếm được ngày nào là ngày nào. */
+.timesheet-bcc-table th,
+.timesheet-bcc-table td {
+  border-right: 1px solid
+    light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+}
+
+.timesheet-bcc-table th:last-child,
+.timesheet-bcc-table td:last-child {
+  border-right: none;
 }
 
 .timesheet-bcc-table th {

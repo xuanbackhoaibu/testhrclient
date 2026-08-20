@@ -1,5 +1,12 @@
 import { useState, type ReactNode } from "react";
-import { Checkbox, Group, SegmentedControl, Stack, Text } from "@mantine/core";
+import {
+  Checkbox,
+  Group,
+  SegmentedControl,
+  Stack,
+  Text,
+  Tooltip,
+} from "@mantine/core";
 
 import {
   ALL_ASSIGNMENT_WEEKDAYS,
@@ -8,11 +15,16 @@ import {
   weekdaysForAssignmentPreset,
 } from "../../../features/attendance/shiftAssignmentWeekdays";
 
+/*
+ * Chỉ giữ hai preset thật sự tiết kiệm thao tác: T2–T7 và T2–T6 là lịch của
+ * gần hết công ty. "Thứ 7" và "Chủ nhật" chỉ chọn đúng MỘT ngày — bấm
+ * "Tùy chọn" rồi tích một ô cũng nhanh y hệt, giữ lại chỉ làm dài dải nút.
+ * `getAssignmentWeekdayPreset` vẫn hiểu hai giá trị cũ nên phân ca đã lưu
+ * theo Thứ 7/Chủ nhật mở lên vẫn hiện đúng ở chế độ Tùy chọn.
+ */
 const presetOptions = [
   { value: "all", label: "T2–T7" },
   { value: "weekdays", label: "T2–T6" },
-  { value: "saturday", label: "Thứ 7" },
-  { value: "sunday", label: "Chủ nhật" },
   { value: "custom", label: "Tùy chọn" },
 ];
 
@@ -27,6 +39,8 @@ interface WeekdayScopeFieldProps {
   disabled?: boolean;
   error?: ReactNode;
   width?: number | string;
+  /** Giải thích ngắn, hiện khi rê chuột vào dấu (?) thay vì chiếm chỗ. */
+  hint?: string;
 }
 
 export function WeekdayScopeField({
@@ -35,15 +49,31 @@ export function WeekdayScopeField({
   disabled = false,
   error,
   width,
+  hint,
 }: WeekdayScopeFieldProps) {
   const [customMode, setCustomMode] = useState(false);
-  const preset = customMode ? "custom" : getAssignmentWeekdayPreset(value);
+  const detected = getAssignmentWeekdayPreset(value);
+  // Thứ 7 / Chủ nhật không còn là nút riêng: quy về "Tùy chọn" để dải nút
+  // vẫn sáng đúng ô và các checkbox hiện ra với ngày đã lưu.
+  const preset =
+    customMode || detected === "saturday" || detected === "sunday"
+      ? "custom"
+      : detected;
 
   return (
     <Stack gap={4} style={width ? { width } : undefined}>
-      <Text size="sm" fw={500}>
-        Ngày áp dụng
-      </Text>
+      <Group gap={4} wrap="nowrap">
+        <Text size="sm" fw={500}>
+          Ngày áp dụng
+        </Text>
+        {hint ? (
+          <Tooltip label={hint} multiline w={280} withArrow>
+            <Text size="xs" c="dimmed" style={{ cursor: "help" }}>
+              (?)
+            </Text>
+          </Tooltip>
+        ) : null}
+      </Group>
       <SegmentedControl
         aria-label="Ngày áp dụng"
         data={presetOptions}
