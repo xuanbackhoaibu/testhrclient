@@ -200,7 +200,6 @@ interface CellShiftPicker {
 }
 
 export interface MonthlyShiftAssignmentGridProps {
-  onOpenRules: () => void;
   requestedShiftId?: string | null;
 }
 
@@ -456,7 +455,6 @@ function Legend() {
 }
 
 export function MonthlyShiftAssignmentGrid({
-  onOpenRules,
   requestedShiftId = null,
 }: MonthlyShiftAssignmentGridProps) {
   const navigate = useNavigate();
@@ -1443,9 +1441,6 @@ export function MonthlyShiftAssignmentGrid({
               onClick={() => navigate(ROUTES.weeklyShifts)}
             >
               Ca tuần
-            </Button>
-            <Button variant="default" size="sm" onClick={onOpenRules}>
-              Quy tắc PB/đơn vị
             </Button>
             <Button
               variant="light"

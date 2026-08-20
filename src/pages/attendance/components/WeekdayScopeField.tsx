@@ -8,11 +8,16 @@ import {
   weekdaysForAssignmentPreset,
 } from "../../../features/attendance/shiftAssignmentWeekdays";
 
+/*
+ * Chỉ giữ hai preset thật sự tiết kiệm thao tác: T2–T7 và T2–T6 là lịch của
+ * gần hết công ty. "Thứ 7" và "Chủ nhật" chỉ chọn đúng MỘT ngày — bấm
+ * "Tùy chọn" rồi tích một ô cũng nhanh y hệt, giữ lại chỉ làm dài dải nút.
+ * `getAssignmentWeekdayPreset` vẫn hiểu hai giá trị cũ nên phân ca đã lưu
+ * theo Thứ 7/Chủ nhật mở lên vẫn hiện đúng ở chế độ Tùy chọn.
+ */
 const presetOptions = [
   { value: "all", label: "T2–T7" },
   { value: "weekdays", label: "T2–T6" },
-  { value: "saturday", label: "Thứ 7" },
-  { value: "sunday", label: "Chủ nhật" },
   { value: "custom", label: "Tùy chọn" },
 ];
 
@@ -37,7 +42,13 @@ export function WeekdayScopeField({
   width,
 }: WeekdayScopeFieldProps) {
   const [customMode, setCustomMode] = useState(false);
-  const preset = customMode ? "custom" : getAssignmentWeekdayPreset(value);
+  const detected = getAssignmentWeekdayPreset(value);
+  // Thứ 7 / Chủ nhật không còn là nút riêng: quy về "Tùy chọn" để dải nút
+  // vẫn sáng đúng ô và các checkbox hiện ra với ngày đã lưu.
+  const preset =
+    customMode || detected === "saturday" || detected === "sunday"
+      ? "custom"
+      : detected;
 
   return (
     <Stack gap={4} style={width ? { width } : undefined}>

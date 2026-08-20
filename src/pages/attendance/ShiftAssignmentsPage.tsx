@@ -511,10 +511,7 @@ export function ShiftAssignmentsPage() {
       />
 
       <Stack gap="md">
-        <MonthlyShiftAssignmentGrid
-          onOpenRules={openCreate}
-          requestedShiftId={requestedShiftId}
-        />
+        <MonthlyShiftAssignmentGrid requestedShiftId={requestedShiftId} />
 
         <Accordion variant="contained" radius="md">
           <Accordion.Item value="assignment-rules">
@@ -537,9 +534,10 @@ export function ShiftAssignmentsPage() {
                   — hệ thống đánh dấu “chưa phân ca” thay vì tự áp ca hành chính
                   rồi chấm sai âm thầm.
                   <br />
-                  Một quy tắc có thể giới hạn ngày áp dụng (T2–T6, Thứ 7 hoặc
-                  tùy chọn). Khi T2–T6 và Thứ 7 dùng giờ khác nhau, tạo hai quy
-                  tắc cùng khoảng hiệu lực với phạm vi ngày tương ứng.
+                  Một quy tắc có thể giới hạn ngày áp dụng (T2–T7, T2–T6 hoặc
+                  tùy chọn từng thứ). Khi ngày thường và Thứ 7 dùng giờ khác
+                  nhau, tạo hai quy tắc cùng khoảng hiệu lực với phạm vi ngày
+                  tương ứng.
                 </Alert>
 
                 <DataTable
