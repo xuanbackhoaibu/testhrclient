@@ -5,6 +5,7 @@ import { markTimesheetMonthStale } from "./timesheetStaleMonths";
 import {
   applyWeeklyShiftTemplate,
   bulkAssignShifts,
+  bulkCancelShiftAssignmentDays,
   cancelShiftAssignmentDay,
   cancelWeeklyShiftAssignments,
   cloneHolidays,
@@ -32,6 +33,7 @@ import {
 } from "./workScheduleApi";
 import type {
   ApplyWeeklyShiftTemplatePayload,
+  BulkCancelShiftAssignmentDaysPayload,
   BulkShiftAssignmentPayload,
   CancelShiftAssignmentDayPayload,
   CancelWeeklyShiftAssignmentsPayload,
@@ -223,6 +225,20 @@ export function useBulkAssignShifts() {
       if (payload.includeInTimesheet) {
         void queryClient.invalidateQueries({ queryKey: ["timesheet"] });
       }
+    },
+  });
+}
+
+/** Hủy ca cá nhân của nhiều CBNV trong một khoảng ngày; BCC giữ nguyên. */
+export function useBulkCancelShiftAssignmentDays() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: BulkCancelShiftAssignmentDaysPayload) =>
+      bulkCancelShiftAssignmentDays(payload),
+    onSuccess: (_result, payload) => {
+      void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["timesheet"] });
+      markTimesheetMonthStale(payload);
     },
   });
 }
