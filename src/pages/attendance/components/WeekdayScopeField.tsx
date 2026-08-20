@@ -1,5 +1,12 @@
 import { useState, type ReactNode } from "react";
-import { Checkbox, Group, SegmentedControl, Stack, Text } from "@mantine/core";
+import {
+  Checkbox,
+  Group,
+  SegmentedControl,
+  Stack,
+  Text,
+  Tooltip,
+} from "@mantine/core";
 
 import {
   ALL_ASSIGNMENT_WEEKDAYS,
@@ -32,6 +39,8 @@ interface WeekdayScopeFieldProps {
   disabled?: boolean;
   error?: ReactNode;
   width?: number | string;
+  /** Giải thích ngắn, hiện khi rê chuột vào dấu (?) thay vì chiếm chỗ. */
+  hint?: string;
 }
 
 export function WeekdayScopeField({
@@ -40,6 +49,7 @@ export function WeekdayScopeField({
   disabled = false,
   error,
   width,
+  hint,
 }: WeekdayScopeFieldProps) {
   const [customMode, setCustomMode] = useState(false);
   const detected = getAssignmentWeekdayPreset(value);
@@ -52,9 +62,18 @@ export function WeekdayScopeField({
 
   return (
     <Stack gap={4} style={width ? { width } : undefined}>
-      <Text size="sm" fw={500}>
-        Ngày áp dụng
-      </Text>
+      <Group gap={4} wrap="nowrap">
+        <Text size="sm" fw={500}>
+          Ngày áp dụng
+        </Text>
+        {hint ? (
+          <Tooltip label={hint} multiline w={280} withArrow>
+            <Text size="xs" c="dimmed" style={{ cursor: "help" }}>
+              (?)
+            </Text>
+          </Tooltip>
+        ) : null}
+      </Group>
       <SegmentedControl
         aria-label="Ngày áp dụng"
         data={presetOptions}

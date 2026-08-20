@@ -8,6 +8,7 @@ import {
   getAssignmentWeekdayPreset,
   isFullDayAdministrativeOfficeShift,
   isWeeklyTemplateAssignmentSource,
+  MONDAY_TO_FRIDAY,
   optionalAssignmentWeekdays,
   singleDayShiftAssignmentScope,
   requiresOneDayShiftOverride,
@@ -302,5 +303,29 @@ describe("shift-assignment weekdays", () => {
     expect(optionalAssignmentWeekdays([1, 2, 3, 4, 5])).toEqual([
       1, 2, 3, 4, 5,
     ]);
+  });
+});
+
+describe("phạm vi ngày khi ô 'Ngày áp dụng' bị ẩn", () => {
+  /*
+   * Ô chỉ hiện với ca hành chính cả ngày. Với ca khác, lưới dẫn xuất phạm vi
+   * thành cả tuần thay vì giữ state cũ — nếu không, chọn HC1 (T2–T6) rồi đổi
+   * sang VH1 sẽ lặng lẽ bỏ qua Thứ 7 mà HR không thấy ô nào để sửa.
+   */
+  const deriveWeekdays = (usesSplit: boolean, current: number[]) =>
+    usesSplit ? current : [...ALL_ASSIGNMENT_WEEKDAYS];
+
+  it("ca hành chính cả ngày giữ nguyên lựa chọn của HR", () => {
+    expect(deriveWeekdays(true, [...MONDAY_TO_FRIDAY])).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("ca khác luôn áp cả tuần dù state còn T2–T6 của ca trước", () => {
+    expect(deriveWeekdays(false, [...MONDAY_TO_FRIDAY])).toEqual([
+      0, 1, 2, 3, 4, 5, 6,
+    ]);
+    // Cả tuần thì không gửi weekdays xuống API — backend hiểu là không giới hạn.
+    expect(
+      optionalAssignmentWeekdays(deriveWeekdays(false, [...MONDAY_TO_FRIDAY])),
+    ).toBeUndefined();
   });
 });

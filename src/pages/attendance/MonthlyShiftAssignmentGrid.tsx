@@ -682,6 +682,16 @@ export function MonthlyShiftAssignmentGrid({
     );
   }, [requestedShiftId, selectedShiftUsesWeekdaySplit, shiftId]);
 
+
+  /*
+   * Ô "Ngày áp dụng" chỉ hiện với ca hành chính cả ngày. Với ca khác, phạm vi
+   * LUÔN là cả tuần — dẫn xuất tại chỗ thay vì giữ trong state, để giá trị
+   * T2–T6 của ca trước không lặng lẽ bỏ qua Thứ 7 khi ô đã bị ẩn.
+   */
+  const effectiveWeekdays = selectedShiftUsesWeekdaySplit
+    ? weekdays
+    : [...ALL_ASSIGNMENT_WEEKDAYS];
+
   const selectionScope = `${year}|${month}|${selectedUnitId ?? ""}`;
   const selectedEmployeeIds =
     selectionState.scope === selectionScope
@@ -1119,7 +1129,7 @@ export function MonthlyShiftAssignmentGrid({
       });
       return;
     }
-    if (!weekdays.length) {
+    if (!effectiveWeekdays.length) {
       notifications.show({
         color: "yellow",
         title: "Chưa chọn ngày áp dụng",
@@ -1129,7 +1139,7 @@ export function MonthlyShiftAssignmentGrid({
     }
 
     try {
-      const assignmentWeekdays = optionalAssignmentWeekdays(weekdays);
+      const assignmentWeekdays = optionalAssignmentWeekdays(effectiveWeekdays);
       const result = await bulkAssign.mutateAsync({
         month,
         year,
@@ -1422,21 +1432,22 @@ export function MonthlyShiftAssignmentGrid({
               disabled={tableIsDisabled}
               onChange={updateEffectiveTo}
             />
-            <Stack gap={2} w={294}>
-              <WeekdayScopeField
-                disabled={tableIsDisabled}
-                value={weekdays}
-                width="100%"
-                onChange={setWeekdays}
-              />
-              {selectedShiftUsesWeekdaySplit ? (
-                <Text size="xs" c="dimmed">
-                  Ca hành chính cả ngày mặc định T2–T6. Nếu làm sáng Thứ 7, áp
-                  ca Thứ 7 tương ứng (ví dụ HC3/HC4) riêng cho Thứ 7 cùng khoảng
-                  ngày, rồi Cập nhật bảng công.
-                </Text>
-              ) : null}
-            </Stack>
+            {/*
+              Chỉ ca hành chính CẢ NGÀY mới phải quyết T2–T6 hay T2–T7 (thứ 7
+              làm nửa buổi bằng ca riêng HC3/HC4). Các ca khác mặc định áp cả
+              tuần, bày ô này ra chỉ làm rối màn hình.
+            */}
+            {selectedShiftUsesWeekdaySplit ? (
+              <Stack gap={2} w={230}>
+                <WeekdayScopeField
+                  disabled={tableIsDisabled}
+                  value={weekdays}
+                  width="100%"
+                  onChange={setWeekdays}
+                  hint="Ca hành chính cả ngày mặc định T2–T6. Muốn làm sáng Thứ 7 thì áp riêng ca HC3/HC4 cho Thứ 7 cùng khoảng ngày."
+                />
+              </Stack>
+            ) : null}
             <Checkbox
               label="Đưa vào BCC cùng ca"
               checked={includeInTimesheetWithShift}
