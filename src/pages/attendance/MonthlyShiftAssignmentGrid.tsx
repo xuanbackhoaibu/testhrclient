@@ -30,6 +30,7 @@ import {
   IconCalendarTime,
   IconExternalLink,
   IconRefresh,
+  IconTrash,
   IconSearch,
   IconUserCheck,
   IconUsers,
@@ -50,6 +51,7 @@ import {
 } from "../../features/attendance/shiftAssignmentWeekdays";
 import { useAuth } from "../../features/auth/useAuth";
 import { ShiftPickerTable } from "./ShiftPickerTable";
+import { ConfirmActionModal } from "../../shared/components/ConfirmActionModal";
 import {
   moveItem,
   readWorkShiftUserOrder,
@@ -72,6 +74,7 @@ import {
 } from "../../features/attendance/shiftAssignmentTotals";
 import {
   useBulkAssignShifts,
+  useBulkCancelShiftAssignmentDays,
   useCancelShiftAssignmentDay,
   useIncludeShiftAssignmentRowsInTimesheet,
   useReplaceShiftAssignmentDay,
@@ -96,6 +99,10 @@ import { formatDate } from "../../shared/utils/date";
 import { includesNormalizedSearch } from "../../shared/utils/normalizeSearchText";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 import { WeekdayScopeField } from "./components/WeekdayScopeField";
+import {
+  isOvernightShiftTime,
+  shiftSpanDays,
+} from "../../features/attendance/shiftTime";
 
 const now = new Date();
 const weekdayLabels = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
@@ -285,6 +292,20 @@ function sourceLabel(source: string): string {
   }
 }
 
+/**
+ * Mã ca kèm dấu hiệu ca kéo sang ngày hôm sau.
+ *
+ * Ca đêm (BV5 18:30–06:30) và ca 24 giờ (VH3 07:30–07:30) trước đây nhìn y
+ * hệt ca ngày trên lưới, HR không biết ô hôm sau đã bị ca này chiếm hay
+ * chưa. Thêm `→` sau mã ca để thấy ngay ca còn kéo dài.
+ */
+function shiftCellLabel(shift: ShiftAssignmentGridDay["shift"]): string {
+  if (!shift) return "—";
+  return isOvernightShiftTime(shift.startTime, shift.endTime)
+    ? `${shift.code}→`
+    : shift.code;
+}
+
 function cellVisual(day: ShiftAssignmentGridDay, meta: DayMeta) {
   if (!day.inAttendanceWindow) {
     return { background: "#f8fafc", color: "#94a3b8", label: "" };
@@ -302,7 +323,7 @@ function cellVisual(day: ShiftAssignmentGridDay, meta: DayMeta) {
     return {
       background: "#ede9fe",
       color: "#6d28d9",
-      label: day.shift.code,
+      label: shiftCellLabel(day.shift),
     };
   }
   if (!day.isWorkingDay) {
@@ -316,28 +337,39 @@ function cellVisual(day: ShiftAssignmentGridDay, meta: DayMeta) {
     return {
       background: "#dbeafe",
       color: "#1d4ed8",
-      label: day.shift?.code ?? "—",
+      label: shiftCellLabel(day.shift),
     };
   }
   if (day.source === "ASSIGNMENT_DEPARTMENT") {
     return {
       background: "#eef6ff",
       color: "#2563eb",
-      label: day.shift?.code ?? "—",
+      label: shiftCellLabel(day.shift),
     };
   }
   if (day.source === "ASSIGNMENT_UNIT") {
     return {
       background: "#ecfdf5",
       color: "#047857",
-      label: day.shift?.code ?? "—",
+      label: shiftCellLabel(day.shift),
     };
   }
   return {
     background: undefined,
     color: "inherit",
-    label: day.shift?.code ?? "—",
+    label: shiftCellLabel(day.shift),
   };
+}
+
+/** Câu mô tả ca kéo sang hôm sau, dùng chung cho tooltip các nhánh có ca. */
+function overnightNote(shift: ShiftAssignmentGridDay["shift"]): string {
+  if (!shift || !isOvernightShiftTime(shift.startTime, shift.endTime)) {
+    return "";
+  }
+  const span = shiftSpanDays(shift.standardMinutes);
+  return ` · Ca qua ngày ${shift.startTime}–${shift.endTime} hôm sau${
+    span > 1 ? ` (${span} ngày)` : ""
+  }, công tính vào ngày bắt đầu ca`;
 }
 
 function cellDescription(
@@ -366,13 +398,13 @@ function cellDescription(
     if (!day.shift) {
       return `Nghỉ theo ca tuần${templateName} — không kế thừa ca phòng ban, đơn vị hoặc lịch chung. Nhấn để phân ca ngoại lệ cho đúng ngày.`;
     }
-    return `${day.shift.code} — ${day.shift.name} · Theo ca tuần${templateName} · Nhấn để đổi ca cho đúng ngày.`;
+    return `${day.shift.code} — ${day.shift.name} · Theo ca tuần${templateName}${overnightNote(day.shift)} · Nhấn để đổi ca cho đúng ngày.`;
   }
   if (!day.isWorkingDay) {
     return "Ngày không làm việc theo lịch công";
   }
   return day.shift
-    ? `${day.shift.code} — ${day.shift.name} · ${sourceLabel(day.source)}`
+    ? `${day.shift.code} — ${day.shift.name} · ${sourceLabel(day.source)}${overnightNote(day.shift)}`
     : sourceLabel(day.source);
 }
 
@@ -408,6 +440,15 @@ function Legend() {
           </Text>
         </Group>
       ))}
+      {/* Ký hiệu chữ, không phải màu nền — để riêng cuối dải chú giải. */}
+      <Group gap={4} wrap="nowrap">
+        <Text fz={10} lh={1.2} fw={700} c="dimmed" aria-hidden>
+          →
+        </Text>
+        <Text fz={10} lh={1.2} c="dimmed">
+          Ca qua ngày (kết thúc hôm sau)
+        </Text>
+      </Group>
     </Group>
   );
 }
@@ -472,6 +513,8 @@ export function MonthlyShiftAssignmentGrid({
   const unitsQuery = useUnitsSelect();
   const shiftsQuery = useWorkShifts();
   const bulkAssign = useBulkAssignShifts();
+  const bulkCancelDays = useBulkCancelShiftAssignmentDays();
+  const [bulkCancelConfirmOpen, setBulkCancelConfirmOpen] = useState(false);
   const cancelShiftAssignmentDay = useCancelShiftAssignmentDay();
   const replaceShiftAssignmentDay = useReplaceShiftAssignmentDay();
   const includeInTimesheet = useIncludeShiftAssignmentRowsInTimesheet();
@@ -955,6 +998,7 @@ export function MonthlyShiftAssignmentGrid({
           shiftId: shift.id,
           ...singleDayShiftAssignmentScope(picker.day.date),
           includeInTimesheet: true,
+          overwriteExisting: true,
         });
         notifications.show({
           color: "green",
@@ -1061,6 +1105,12 @@ export function MonthlyShiftAssignmentGrid({
         effectiveFrom,
         effectiveTo,
         includeInTimesheet: includeInTimesheetWithShift,
+        /*
+         * Ca vừa chọn luôn thắng ca cũ trong khoảng áp: HR chốt ca mới là ý
+         * định rõ ràng, bắt họ đi hủy từng ca cũ trước chỉ tạo thêm thao tác.
+         * Backend vẫn giữ nguyên phần ca cũ nằm ngoài khoảng áp.
+         */
+        overwriteExisting: true,
         ...(assignmentWeekdays ? { weekdays: assignmentWeekdays } : {}),
       });
       setSelectionState({ scope: selectionScope, employeeIds: new Set() });
@@ -1079,6 +1129,35 @@ export function MonthlyShiftAssignmentGrid({
           error instanceof Error && error.message
             ? error.message
             : "Kiểm tra khoảng ngày hoặc ca cá nhân đang chồng lấn rồi thử lại.",
+      });
+    }
+  }
+
+  async function bulkCancelSelectedDays() {
+    if (!selectedUnitId || !selectedEmployeeIds.size) return;
+    setBulkCancelConfirmOpen(false);
+    try {
+      const result = await bulkCancelDays.mutateAsync({
+        month,
+        year,
+        unitId: selectedUnitId,
+        employeeIds: [...selectedEmployeeIds],
+        effectiveFrom,
+        effectiveTo,
+      });
+      setSelectionState({ scope: selectionScope, employeeIds: new Set() });
+      notifications.show({
+        color: result.cancelled ? "green" : "orange",
+        title: result.cancelled ? "Đã hủy ca" : "Không có ca nào để hủy",
+        message: result.cancelled
+          ? `Đã hủy ${result.cancelled} ngày ca cá nhân. CBNV vẫn ở trong BCC; mở Bảng công rồi bấm Cập nhật bảng công để áp lại.`
+          : "Các ngày đã chọn không có ca cá nhân nào. Ca theo phòng ban, đơn vị hoặc ca tuần phải sửa ở đúng quy tắc nguồn.",
+      });
+    } catch {
+      notifications.show({
+        color: "red",
+        title: "Không hủy được ca",
+        message: "Kiểm tra lại khoảng ngày và trạng thái kỳ công.",
       });
     }
   }
@@ -1344,6 +1423,24 @@ export function MonthlyShiftAssignmentGrid({
               onClick={() => void includeSelectedInTimesheet()}
             >
               Đưa vào BCC
+            </Button>
+            <Button
+              variant="light"
+              color="red"
+              leftSection={<IconTrash size={17} />}
+              loading={bulkCancelDays.isPending}
+              disabled={
+                tableIsDisabled ||
+                bulkAssign.isPending ||
+                includeInTimesheet.isPending ||
+                bulkCancelDays.isPending ||
+                !selectedEmployeeIds.size ||
+                !effectiveFrom ||
+                !effectiveTo
+              }
+              onClick={() => setBulkCancelConfirmOpen(true)}
+            >
+              Hủy ca
             </Button>
           </Group>
           <Group gap="xs">
@@ -2233,6 +2330,15 @@ export function MonthlyShiftAssignmentGrid({
         </Stack>
       ) : null}
 
+      <ConfirmActionModal
+        opened={bulkCancelConfirmOpen}
+        title="Hủy ca hàng loạt"
+        message={`Hủy ca cá nhân của ${selectedEmployeeIds.size} CBNV từ ${formatDate(effectiveFrom)} đến ${formatDate(effectiveTo)}? Ca theo phòng ban, đơn vị và ca tuần vẫn giữ nguyên. CBNV vẫn ở trong BCC.`}
+        confirmLabel="Hủy ca"
+        loading={bulkCancelDays.isPending}
+        onClose={() => setBulkCancelConfirmOpen(false)}
+        onConfirm={() => void bulkCancelSelectedDays()}
+      />
     </Stack>
   );
 }

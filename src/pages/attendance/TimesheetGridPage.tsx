@@ -60,6 +60,7 @@ import {
   hasTimesheetAttendanceEvent,
   isWeeklyTemplateOffDay,
   timesheetDayDisplayValue,
+  timesheetDayShiftDisplayValue,
 } from "../../features/attendance/timesheetDayPresentation";
 import { formatDate } from "../../shared/utils/date";
 import { useEmployees } from "../../features/employees/useEmployees";
@@ -170,8 +171,9 @@ const colorLegendItems = [
   },
   {
     color: "#ffffff",
-    label: "+/- công",
-    description: "+ là đủ công (máy hoặc cờ mặc định), - là nửa công",
+    label: "Mã ca / nửa công",
+    description:
+      "Ô đi làm hiện mã ca như màn Phân ca (VD: HC2). Hậu tố - là nửa công. Số liệu BCC và file Excel vẫn giữ ký hiệu +/-.",
   },
 ] as const;
 const bccTailColumns = [
@@ -541,7 +543,10 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
       </Table.Td>
       {dayMetas.map((meta) => {
         const day = daysByNumber.get(meta.day);
+        // `label` giữ ký hiệu gốc để tô màu và tra cứu (KL, P, CT...); `cellText`
+        // là phần HR nhìn thấy, đã quy ô đi làm về mã ca như màn Phân ca.
         const label = timesheetDayDisplayValue(day);
+        const cellText = timesheetDayShiftDisplayValue(day);
         const weeklyTemplateOff = isWeeklyTemplateOffDay(day);
         const hasExplanationEvent = Boolean(
           day?.needsExplanation && hasTimesheetAttendanceEvent(day),
@@ -588,7 +593,7 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
               size="xs"
               c={label.includes("KL") ? "red.9" : undefined}
             >
-              {label}
+              {cellText}
             </Text>
           </Table.Td>
         );

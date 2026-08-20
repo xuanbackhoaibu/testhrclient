@@ -1,5 +1,7 @@
 import { api } from "../../shared/api/httpClient";
 import type {
+  BulkCancelShiftAssignmentDaysPayload,
+  BulkCancelShiftAssignmentDaysResult,
   ApplyWeeklyShiftTemplatePayload,
   ApplyWeeklyShiftTemplateResult,
   CancelWeeklyShiftAssignmentsPayload,
@@ -135,6 +137,15 @@ export async function cancelShiftAssignmentDay(
 ): Promise<CancelShiftAssignmentDayResult> {
   return api.post<CancelShiftAssignmentDayResult>(
     `${BASE}/assignments/cancel-day`,
+    payload,
+  );
+}
+
+export async function bulkCancelShiftAssignmentDays(
+  payload: BulkCancelShiftAssignmentDaysPayload,
+): Promise<BulkCancelShiftAssignmentDaysResult> {
+  return api.post<BulkCancelShiftAssignmentDaysResult>(
+    `${BASE}/assignments/bulk-cancel-days`,
     payload,
   );
 }
