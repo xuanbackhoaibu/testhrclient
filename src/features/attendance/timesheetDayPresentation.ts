@@ -114,3 +114,27 @@ export function countTimesheetDataGaps(
 }
 
 type TimesheetDayGapInput = TimesheetDataGapDay & AttendanceEventDay;
+
+/**
+ * Ký hiệu ô bảng công theo cách đọc của màn Phân ca.
+ *
+ * HR đối chiếu hai màn liên tục: Phân ca hiện mã ca (HC2, HC4, Nghỉ), còn bảng
+ * công lại hiện `+`/`-`, nên phải nhớ ngày nào ca nào mới biết ô đủ công đó
+ * thuộc ca gì. Ô làm việc bình thường vì thế hiện thẳng mã ca đã tính; nửa
+ * công giữ hậu tố `-` để không mất thông tin `+`/`-` vốn có.
+ *
+ * Chỉ thay phần hiển thị: `displaySymbol` lưu trong DB, số liệu BCC và file
+ * Excel vẫn dùng nguyên `+`/`-` qua `timesheetDayDisplayValue`.
+ */
+export function timesheetDayShiftDisplayValue(
+  day: (AttendanceEventDay & Pick<TimesheetGridDay, "shiftCode">) | undefined,
+): string {
+  const label = timesheetDayDisplayValue(day);
+  const shiftCode = day?.shiftCode?.trim();
+  if (!shiftCode) return label;
+  // Chỉ ô công đi làm mới quy về mã ca. Nghỉ phép, ốm, lễ... giữ nguyên ký
+  // hiệu nghiệp vụ vì mã ca không nói được lý do vắng.
+  if (label === "+") return shiftCode;
+  if (label === "-") return `${shiftCode}-`;
+  return label;
+}

@@ -5,6 +5,7 @@ import {
   hasTimesheetAttendanceEvent,
   isWeeklyTemplateOffDay,
   timesheetDayDisplayValue,
+  timesheetDayShiftDisplayValue,
 } from "./timesheetDayPresentation";
 
 describe("timesheet day presentation", () => {
@@ -180,5 +181,81 @@ describe("countTimesheetDataGaps", () => {
       awaitingExplanation: 0,
       unassigned: 0,
     });
+  });
+});
+
+describe("timesheet cell shown with the shift-assignment notation", () => {
+  const base = {
+    firstPunch: null,
+    lastPunch: null,
+    needsExplanation: false,
+  };
+
+  it("shows the shift code instead of + for a full working day", () => {
+    expect(
+      timesheetDayShiftDisplayValue({
+        ...base,
+        displaySymbol: "+",
+        shiftCode: "HC2",
+      }),
+    ).toBe("HC2");
+  });
+
+  it("marks a half day with the shift code plus the - suffix", () => {
+    expect(
+      timesheetDayShiftDisplayValue({
+        ...base,
+        displaySymbol: "-",
+        shiftCode: "HC4",
+      }),
+    ).toBe("HC4-");
+  });
+
+  it("keeps leave and absence symbols, which a shift code cannot explain", () => {
+    for (const displaySymbol of ["P", "KL", "OFF", "CT"]) {
+      expect(
+        timesheetDayShiftDisplayValue({
+          ...base,
+          displaySymbol,
+          shiftCode: "HC2",
+        }),
+      ).toBe(displaySymbol);
+    }
+  });
+
+  it("falls back to the plain symbol when the day carries no shift code", () => {
+    expect(
+      timesheetDayShiftDisplayValue({ ...base, displaySymbol: "+" }),
+    ).toBe("+");
+    expect(
+      timesheetDayShiftDisplayValue({
+        ...base,
+        displaySymbol: "+",
+        shiftCode: "   ",
+      }),
+    ).toBe("+");
+  });
+
+  it("still flags a day awaiting explanation rather than showing its shift", () => {
+    expect(
+      timesheetDayShiftDisplayValue({
+        displaySymbol: "",
+        firstPunch: "08:00",
+        lastPunch: null,
+        needsExplanation: true,
+        shiftCode: "HC2",
+      }),
+    ).toBe("?");
+  });
+
+  it("shows the shift code for an implicit default-full day", () => {
+    expect(
+      timesheetDayShiftDisplayValue({
+        ...base,
+        displaySymbol: "",
+        source: "DEFAULT_FULL_ATTENDANCE",
+        shiftCode: "HC4",
+      }),
+    ).toBe("HC4");
   });
 });
