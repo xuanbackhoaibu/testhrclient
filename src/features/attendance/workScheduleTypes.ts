@@ -152,6 +152,9 @@ export interface ShiftAssignmentGridDay {
     /** Số công của ca: ca 12 giờ 1.5, ca 24 giờ 3. Có thể thiếu nếu API cũ. */
     dayValue?: number;
     standardMinutes?: number;
+    /** Giờ vào/ra của ca — để biết ca có kéo sang hôm sau không. API cũ có thể thiếu. */
+    startTime?: string;
+    endTime?: string;
   } | null;
   /** Có khi nguồn là mẫu Ca tuần áp cho cá nhân. */
   weeklyTemplate?: { id: string; name: string } | null;
