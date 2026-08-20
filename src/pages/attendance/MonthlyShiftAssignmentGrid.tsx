@@ -106,7 +106,8 @@ import {
 
 const now = new Date();
 const weekdayLabels = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-const dayColumnWidth = 48;
+// Ô phân ca chứa mã ca (HC2, BV5→) nên rộng hơn ô bảng công một chút.
+const dayColumnWidth = 40;
 const rowsPerPageOptions = [20, 50, 100].map((value) => ({
   value: String(value),
   label: `${value}/trang`,
@@ -119,11 +120,12 @@ const yearOptions = Array.from({ length: 7 }, (_, index) => {
   const year = now.getFullYear() - 2 + index;
   return { value: String(year), label: String(year) };
 });
+// `left` là tổng bề rộng các cột đứng trước — sửa width phải sửa cả left.
 const fixedColumns = [
-  { key: "select", label: "", left: 0, width: 48 },
-  { key: "number", label: "TT", left: 48, width: 42 },
-  { key: "name", label: "Họ và tên", left: 90, width: 210 },
-  { key: "code", label: "MCB", left: 300, width: 104 },
+  { key: "select", label: "", left: 0, width: 34 },
+  { key: "number", label: "TT", left: 34, width: 32 },
+  { key: "name", label: "Họ và tên", left: 66, width: 160 },
+  { key: "code", label: "MCB", left: 226, width: 62 },
 ] as const;
 const fixedColumnsWidth =
   fixedColumns[fixedColumns.length - 1].left +

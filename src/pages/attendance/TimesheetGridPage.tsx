@@ -87,13 +87,15 @@ const yearOptions = Array.from(
     return { value: String(year), label: String(year) };
   },
 );
+// `left` là tổng bề rộng các cột đứng trước — sửa width phải sửa cả left.
+// Giữ cột trái gọn để dành chỗ cho 31 cột ngày, giống bố cục BCC trên Excel.
 const fixedColumns = [
-  { key: "autoFull", label: "V", left: 0, width: 34 },
-  { key: "number", label: "TT", left: 34, width: 42 },
-  { key: "name", label: "Họ và tên", left: 76, width: 210 },
-  { key: "code", label: "MCB", left: 286, width: 104 },
+  { key: "autoFull", label: "V", left: 0, width: 26 },
+  { key: "number", label: "TT", left: 26, width: 32 },
+  { key: "name", label: "Họ và tên", left: 58, width: 160 },
+  { key: "code", label: "MCB", left: 218, width: 62 },
 ] as const;
-const dayColumnWidth = 44;
+const dayColumnWidth = 32;
 const rowsPerPageOptions = [20, 50, 100].map((value) => ({
   value: String(value),
   label: `${value}/trang`,
@@ -592,6 +594,9 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
               fw={label ? 700 : undefined}
               size="xs"
               c={label.includes("KL") ? "red.9" : undefined}
+              // Mã ca dài (HC-VPTCT-082026) không được xuống dòng làm cao
+              // vống cả hàng; tooltip của ô đã có mã ca đầy đủ.
+              truncate="end"
             >
               {cellText}
             </Text>
