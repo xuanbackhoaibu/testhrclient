@@ -273,3 +273,42 @@ describe("timesheet cell shown with the shift-assignment notation", () => {
     ).toBe("HC4");
   });
 });
+
+describe("ngày liền sau ca đêm", () => {
+  const base = { firstPunch: "07:48", lastPunch: "07:48", needsExplanation: false };
+
+  it("hiện mũi tên thay vì để trống", () => {
+    // Để trống thì HR đọc thành "chưa phân ca", trong khi công đã tính trọn
+    // vào ngày bắt đầu ca.
+    expect(
+      timesheetDayShiftDisplayValue({
+        ...base,
+        displaySymbol: "",
+        shiftCode: null,
+        source: "OVERNIGHT_TAIL",
+      }),
+    ).toBe("→");
+  });
+
+  it("ngày chưa phân ca thật vẫn để trống", () => {
+    expect(
+      timesheetDayShiftDisplayValue({
+        ...base,
+        displaySymbol: "",
+        shiftCode: null,
+        source: "UNASSIGNED",
+      }),
+    ).toBe("");
+  });
+
+  it("ngày bắt đầu ca đêm vẫn hiện mã ca", () => {
+    expect(
+      timesheetDayShiftDisplayValue({
+        ...base,
+        displaySymbol: "+",
+        shiftCode: "VH2",
+        source: "DEVICE",
+      }),
+    ).toBe("VH2");
+  });
+});
