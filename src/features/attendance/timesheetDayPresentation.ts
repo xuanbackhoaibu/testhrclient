@@ -1,4 +1,7 @@
 import type { TimesheetGridDay } from "./timesheetTypes";
+
+/** Ký hiệu nghỉ theo ca tuần do backend ghi xuống; chỉ ẩn khi HIỂN THỊ. */
+const WEEKLY_OFF_SYMBOL = "OFF";
 import { isWeeklyTemplateAssignmentSource } from "./shiftAssignmentWeekdays";
 
 type AttendanceEventDay = Pick<
@@ -130,6 +133,10 @@ export function timesheetDayShiftDisplayValue(
   day: (AttendanceEventDay & Pick<TimesheetGridDay, "shiftCode">) | undefined,
 ): string {
   const label = timesheetDayDisplayValue(day);
+  // Ngày nghỉ theo ca tuần lặp lại hàng tuần: in chữ `OFF` kín cột chủ nhật
+  // làm rối mắt, che mất các ô cần chú ý. Để trống — nền xám của ô đã đủ
+  // cho biết là ngày nghỉ, tooltip vẫn ghi "Nghỉ theo ca tuần".
+  if (label === WEEKLY_OFF_SYMBOL) return "";
   const shiftCode = day?.shiftCode?.trim();
   if (!shiftCode) return label;
   // Chỉ ô công đi làm mới quy về mã ca. Nghỉ phép, ốm, lễ... giữ nguyên ký

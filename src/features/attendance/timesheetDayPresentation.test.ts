@@ -211,8 +211,22 @@ describe("timesheet cell shown with the shift-assignment notation", () => {
     ).toBe("HC4-");
   });
 
+  it("leaves the weekly OFF cell blank so Sundays stay quiet", () => {
+    expect(
+      timesheetDayShiftDisplayValue({
+        ...base,
+        displaySymbol: "OFF",
+        shiftCode: null,
+      }),
+    ).toBe("");
+    // Ô vẫn là ngày nghỉ theo ca tuần — chỉ ẩn chữ, không đổi dữ liệu.
+    expect(
+      timesheetDayDisplayValue({ ...base, displaySymbol: "OFF" }),
+    ).toBe("OFF");
+  });
+
   it("keeps leave and absence symbols, which a shift code cannot explain", () => {
-    for (const displaySymbol of ["P", "KL", "OFF", "CT"]) {
+    for (const displaySymbol of ["P", "KL", "CT"]) {
       expect(
         timesheetDayShiftDisplayValue({
           ...base,
