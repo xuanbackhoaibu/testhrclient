@@ -33,7 +33,7 @@ import {
   IconUsers,
   IconCalendarStats,
 } from "@tabler/icons-react";
-import { Suspense } from "react";
+import { Fragment, Suspense } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../features/auth/useAuth";
@@ -47,6 +47,11 @@ interface NavItem {
   label: string;
   path: string;
   icon: typeof IconDashboard;
+  /**
+   * Tiêu đề nhóm hiện NGAY TRÊN mục này. Chỉ để phân tách thị giác — vẫn là
+   * danh sách phẳng, một cú nhấn là tới, không phải menu lồng nhau.
+   */
+  sectionLabel?: string;
 }
 
 const primaryItems: NavItem[] = [
@@ -58,25 +63,54 @@ const preAttendanceItems: NavItem[] = [
   { label: "Điều chuyển", path: ROUTES.movements, icon: IconTransfer },
 ];
 
+/*
+ * Ba nhóm theo đúng việc HR làm, không trộn lẫn:
+ *
+ *   1. Khai báo ca   — dựng mẫu ca, dùng lại nhiều tháng
+ *   2. Làm hằng tháng — gán ca cho người, chốt công, xử lý phép
+ *   3. Cấu hình      — dựng một lần rồi hiếm khi đụng
+ *
+ * Vẫn là danh sách phẳng: `sectionLabel` chỉ thêm tiêu đề phân tách, không
+ * biến thành menu lồng nhau bắt HR bấm hai lần mới tới nơi.
+ */
 const attendanceItems: NavItem[] = [
-  { label: "Dữ liệu chấm công", path: ROUTES.attendance, icon: IconClipboardList },
-  { label: "Ca làm việc", path: ROUTES.workShifts, icon: IconClock },
+  {
+    label: "Dữ liệu chấm công",
+    path: ROUTES.attendance,
+    icon: IconClipboardList,
+    sectionLabel: "Dữ liệu máy chấm công",
+  },
+  // Xử lý mapping là việc sửa lỗi của chính dữ liệu máy chấm công. Trước đây
+  // nó nằm NGOÀI nhóm Chấm công, hiện ngang hàng Dashboard — tách rời khỏi
+  // đúng màn nó phục vụ.
+  { label: "Xử lý mapping", path: ROUTES.attendanceMapping, icon: IconLink },
+  {
+    label: "Ca làm việc",
+    path: ROUTES.workShifts,
+    icon: IconClock,
+    sectionLabel: "Khai báo ca",
+  },
   { label: "Ca tuần", path: ROUTES.weeklyShifts, icon: IconCalendarTime },
-  { label: "Sắp ca tháng", path: ROUTES.monthlyTimesheetRoster, icon: IconCalendarTime },
-  { label: "Phân ca", path: ROUTES.shiftAssignments, icon: IconCalendarTime },
+  {
+    label: "Phân ca",
+    path: ROUTES.shiftAssignments,
+    icon: IconCalendarTime,
+    sectionLabel: "Làm hằng tháng",
+  },
   { label: "Bảng công tháng", path: ROUTES.timesheetGrid, icon: IconTable },
-  { label: "Kỳ công", path: ROUTES.timesheetPeriods, icon: IconCalendarStats },
-  { label: "Ngày lễ", path: ROUTES.holidays, icon: IconCalendarCheck },
   { label: "Nghỉ phép", path: ROUTES.leave, icon: IconCalendarCheck },
+  {
+    label: "Kỳ công",
+    path: ROUTES.timesheetPeriods,
+    icon: IconCalendarStats,
+    sectionLabel: "Cấu hình",
+  },
+  { label: "Ngày lễ", path: ROUTES.holidays, icon: IconCalendarCheck },
   {
     label: "Cấu hình duyệt phép",
     path: ROUTES.leaveApprovalAssignments,
     icon: IconUserCheck,
   },
-];
-
-const postAttendanceItems: NavItem[] = [
-  { label: "Xử lý mapping", path: ROUTES.attendanceMapping, icon: IconLink },
 ];
 
 const finalItems: NavItem[] = [
@@ -161,9 +195,6 @@ export function MainLayout() {
     canAccessRoute(user, item.path),
   );
   const visibleAttendanceItems = attendanceItems.filter((item) =>
-    canAccessRoute(user, item.path),
-  );
-  const visiblePostAttendanceItems = postAttendanceItems.filter((item) =>
     canAccessRoute(user, item.path),
   );
   const visibleFinalItems = finalItems.filter((item) =>
@@ -384,32 +415,33 @@ export function MainLayout() {
                   {visibleAttendanceItems.map((item) => {
                     const Icon = item.icon;
                     return (
-                      <NavLink
-                        key={item.path}
-                        label={item.label}
-                        leftSection={<Icon size={17} />}
-                        active={isActive(location.pathname, item.path)}
-                        onClick={() => goTo(item.path)}
-                        className="app-nav-link"
-                      />
+                      <Fragment key={item.path}>
+                        {item.sectionLabel ? (
+                          <Text
+                            fz={10}
+                            fw={700}
+                            c="dimmed"
+                            tt="uppercase"
+                            pl="md"
+                            pt={8}
+                            pb={2}
+                          >
+                            {item.sectionLabel}
+                          </Text>
+                        ) : null}
+                        <NavLink
+                          label={item.label}
+                          leftSection={<Icon size={17} />}
+                          active={isActive(location.pathname, item.path)}
+                          onClick={() => goTo(item.path)}
+                          className="app-nav-link"
+                        />
+                      </Fragment>
                     );
                   })}
                 </NavLink>
               ) : null}
 
-              {visiblePostAttendanceItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <NavLink
-                    key={item.path}
-                    label={item.label}
-                    leftSection={<Icon size={18} />}
-                    active={isActive(location.pathname, item.path)}
-                    onClick={() => goTo(item.path)}
-                    className="app-nav-link"
-                  />
-                );
-              })}
 
               {visibleFinalItems.map((item) => {
                 const Icon = item.icon;

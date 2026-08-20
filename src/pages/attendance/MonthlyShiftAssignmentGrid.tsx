@@ -103,10 +103,16 @@ import {
   isOvernightShiftTime,
   shiftSpanDays,
 } from "../../features/attendance/shiftTime";
+import {
+  allSelectableEmployeeIds,
+  hasSelectedAllFiltered,
+  selectableEmployeeRows,
+} from "../../features/attendance/shiftAssignmentSelection";
 
 const now = new Date();
 const weekdayLabels = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-const dayColumnWidth = 48;
+// Ô phân ca chứa mã ca (HC2, BV5→) nên rộng hơn ô bảng công một chút.
+const dayColumnWidth = 40;
 const rowsPerPageOptions = [20, 50, 100].map((value) => ({
   value: String(value),
   label: `${value}/trang`,
@@ -119,11 +125,12 @@ const yearOptions = Array.from({ length: 7 }, (_, index) => {
   const year = now.getFullYear() - 2 + index;
   return { value: String(year), label: String(year) };
 });
+// `left` là tổng bề rộng các cột đứng trước — sửa width phải sửa cả left.
 const fixedColumns = [
-  { key: "select", label: "", left: 0, width: 48 },
-  { key: "number", label: "TT", left: 48, width: 42 },
-  { key: "name", label: "Họ và tên", left: 90, width: 210 },
-  { key: "code", label: "MCB", left: 300, width: 104 },
+  { key: "select", label: "", left: 0, width: 34 },
+  { key: "number", label: "TT", left: 34, width: 32 },
+  { key: "name", label: "Họ và tên", left: 66, width: 160 },
+  { key: "code", label: "MCB", left: 226, width: 62 },
 ] as const;
 const fixedColumnsWidth =
   fixedColumns[fixedColumns.length - 1].left +
@@ -198,7 +205,6 @@ interface CellShiftPicker {
 }
 
 export interface MonthlyShiftAssignmentGridProps {
-  onOpenRules: () => void;
   requestedShiftId?: string | null;
 }
 
@@ -454,7 +460,6 @@ function Legend() {
 }
 
 export function MonthlyShiftAssignmentGrid({
-  onOpenRules,
   requestedShiftId = null,
 }: MonthlyShiftAssignmentGridProps) {
   const navigate = useNavigate();
@@ -677,6 +682,16 @@ export function MonthlyShiftAssignmentGrid({
     );
   }, [requestedShiftId, selectedShiftUsesWeekdaySplit, shiftId]);
 
+
+  /*
+   * Ô "Ngày áp dụng" chỉ hiện với ca hành chính cả ngày. Với ca khác, phạm vi
+   * LUÔN là cả tuần — dẫn xuất tại chỗ thay vì giữ trong state, để giá trị
+   * T2–T6 của ca trước không lặng lẽ bỏ qua Thứ 7 khi ô đã bị ẩn.
+   */
+  const effectiveWeekdays = selectedShiftUsesWeekdaySplit
+    ? weekdays
+    : [...ALL_ASSIGNMENT_WEEKDAYS];
+
   const selectionScope = `${year}|${month}|${selectedUnitId ?? ""}`;
   const selectedEmployeeIds =
     selectionState.scope === selectionScope
@@ -812,7 +827,15 @@ export function MonthlyShiftAssignmentGrid({
     () => sumAssignmentTotals(pageRows.map((item) => item.totals)),
     [pageRows],
   );
+  // Toàn bộ CBNV đang lọc (mọi trang) mà được phép đưa vào BCC.
+  const selectableRows = selectableEmployeeRows(
+    preparedRows.map((item) => item.row),
+  );
   const selectablePageRows = pageRows.filter((item) => item.row.canInclude);
+  const allFilteredSelected = hasSelectedAllFiltered(
+    preparedRows.map((item) => item.row),
+    selectedEmployeeIds,
+  );
   const selectedOnPage = selectablePageRows.filter((item) =>
     selectedEmployeeIds.has(item.row.employeeId),
   ).length;
@@ -848,6 +871,27 @@ export function MonthlyShiftAssignmentGrid({
       });
       return { scope: selectionScope, employeeIds: next };
     });
+  }
+
+  /*
+   * Chọn hết CBNV đang lọc, không chỉ trang đang xem. Phân ca cho cả công ty
+   * hay cả phòng ban là việc thường xuyên; bắt HR lật từng trang 20 người
+   * rồi tick lại là thao tác thừa và rất dễ sót người.
+   *
+   * Phạm vi bám đúng bộ lọc phía trên (đơn vị + phòng ban + tìm kiếm) nên
+   * "chọn tất cả" luôn khớp với những gì HR đang nhìn thấy.
+   */
+  function selectAllFiltered() {
+    setSelectionState({
+      scope: selectionScope,
+      employeeIds: allSelectableEmployeeIds(
+        preparedRows.map((item) => item.row),
+      ),
+    });
+  }
+
+  function clearSelection() {
+    setSelectionState({ scope: selectionScope, employeeIds: new Set() });
   }
 
   function closeCellShiftPicker() {
@@ -1085,7 +1129,7 @@ export function MonthlyShiftAssignmentGrid({
       });
       return;
     }
-    if (!weekdays.length) {
+    if (!effectiveWeekdays.length) {
       notifications.show({
         color: "yellow",
         title: "Chưa chọn ngày áp dụng",
@@ -1095,7 +1139,7 @@ export function MonthlyShiftAssignmentGrid({
     }
 
     try {
-      const assignmentWeekdays = optionalAssignmentWeekdays(weekdays);
+      const assignmentWeekdays = optionalAssignmentWeekdays(effectiveWeekdays);
       const result = await bulkAssign.mutateAsync({
         month,
         year,
@@ -1218,16 +1262,6 @@ export function MonthlyShiftAssignmentGrid({
     navigate(`${ROUTES.timesheetGrid}?${params.toString()}`);
   }
 
-  function openMonthlyRoster() {
-    if (!selectedUnitId) return;
-    const params = new URLSearchParams({
-      month: String(month),
-      year: String(year),
-      unitId: selectedUnitId,
-    });
-    navigate(ROUTES.monthlyTimesheetRoster + "?" + params.toString());
-  }
-
   return (
     <Stack gap="md">
       <InfoBanner title="Cách phân ca và quan hệ với BCC" collapsible>
@@ -1332,9 +1366,41 @@ export function MonthlyShiftAssignmentGrid({
       <Paper withBorder p="md" radius="md">
         <Group justify="space-between" align="flex-end" gap="md" wrap="wrap">
           <Group align="flex-end" gap="sm" wrap="wrap">
-            <Text size="sm" fw={600} mb={7}>
-              Đã chọn {selectedEmployeeIds.size} CBNV
-            </Text>
+            <Stack gap={4} mb={2}>
+              <Text size="sm" fw={600}>
+                Đã chọn {selectedEmployeeIds.size} CBNV
+              </Text>
+              {/* Phân ca cả công ty / cả phòng ban trong một lần, không phải
+                  lật từng trang 20 người. Phạm vi bám đúng bộ lọc phía trên. */}
+              <Group gap={6} wrap="nowrap">
+                <Button
+                  size="compact-xs"
+                  variant="light"
+                  disabled={
+                    tableIsDisabled ||
+                    !selectableRows.length ||
+                    allFilteredSelected
+                  }
+                  onClick={selectAllFiltered}
+                  title={
+                    departmentId
+                      ? "Chọn toàn bộ CBNV của phòng ban đang lọc"
+                      : "Chọn toàn bộ CBNV của đơn vị đang lọc"
+                  }
+                >
+                  Chọn tất cả {selectableRows.length} CBNV
+                </Button>
+                <Button
+                  size="compact-xs"
+                  variant="subtle"
+                  color="gray"
+                  disabled={tableIsDisabled || !selectedEmployeeIds.size}
+                  onClick={clearSelection}
+                >
+                  Bỏ chọn
+                </Button>
+              </Group>
+            </Stack>
             <Select
               label="Ca làm việc"
               placeholder="Chọn ca đã tạo"
@@ -1366,21 +1432,22 @@ export function MonthlyShiftAssignmentGrid({
               disabled={tableIsDisabled}
               onChange={updateEffectiveTo}
             />
-            <Stack gap={2} w={294}>
-              <WeekdayScopeField
-                disabled={tableIsDisabled}
-                value={weekdays}
-                width="100%"
-                onChange={setWeekdays}
-              />
-              {selectedShiftUsesWeekdaySplit ? (
-                <Text size="xs" c="dimmed">
-                  Ca hành chính cả ngày mặc định T2–T6. Nếu làm sáng Thứ 7, áp
-                  ca Thứ 7 tương ứng (ví dụ HC3/HC4) riêng cho Thứ 7 cùng khoảng
-                  ngày, rồi Cập nhật bảng công.
-                </Text>
-              ) : null}
-            </Stack>
+            {/*
+              Chỉ ca hành chính CẢ NGÀY mới phải quyết T2–T6 hay T2–T7 (thứ 7
+              làm nửa buổi bằng ca riêng HC3/HC4). Các ca khác mặc định áp cả
+              tuần, bày ô này ra chỉ làm rối màn hình.
+            */}
+            {selectedShiftUsesWeekdaySplit ? (
+              <Stack gap={2} w={230}>
+                <WeekdayScopeField
+                  disabled={tableIsDisabled}
+                  value={weekdays}
+                  width="100%"
+                  onChange={setWeekdays}
+                  hint="Ca hành chính cả ngày mặc định T2–T6. Muốn làm sáng Thứ 7 thì áp riêng ca HC3/HC4 cho Thứ 7 cùng khoảng ngày."
+                />
+              </Stack>
+            ) : null}
             <Checkbox
               label="Đưa vào BCC cùng ca"
               checked={includeInTimesheetWithShift}
@@ -1444,26 +1511,6 @@ export function MonthlyShiftAssignmentGrid({
             </Button>
           </Group>
           <Group gap="xs">
-            <Button
-              variant="default"
-              size="sm"
-              leftSection={<IconCalendarTime size={16} />}
-              disabled={!selectedUnitId}
-              onClick={openMonthlyRoster}
-            >
-              Sắp ca tháng
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              leftSection={<IconCalendarTime size={16} />}
-              onClick={() => navigate(ROUTES.weeklyShifts)}
-            >
-              Ca tuần
-            </Button>
-            <Button variant="default" size="sm" onClick={onOpenRules}>
-              Quy tắc PB/đơn vị
-            </Button>
             <Button
               variant="light"
               size="sm"
