@@ -410,6 +410,9 @@ function cellDescription(
     day.shiftCode ? `Ca ${day.shiftCode}` : null,
     day.holidayName,
     day.source === "HOLIDAY_UNPAID" ? "Ngày lễ không lương" : null,
+    day.source === "OVERNIGHT_TAIL"
+      ? "Giờ ra của ca đêm hôm trước — công đã tính trọn vào ngày bắt đầu ca"
+      : null,
     day.source === "UNASSIGNED" ? "Chưa phân ca — chưa tính công" : null,
     /*
      * Ô nguồn MISSING trước đây không có dòng nào trong tooltip: ô trống, hover
