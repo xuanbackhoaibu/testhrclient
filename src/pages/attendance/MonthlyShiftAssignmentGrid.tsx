@@ -103,6 +103,11 @@ import {
   isOvernightShiftTime,
   shiftSpanDays,
 } from "../../features/attendance/shiftTime";
+import {
+  allSelectableEmployeeIds,
+  hasSelectedAllFiltered,
+  selectableEmployeeRows,
+} from "../../features/attendance/shiftAssignmentSelection";
 
 const now = new Date();
 const weekdayLabels = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
@@ -812,7 +817,15 @@ export function MonthlyShiftAssignmentGrid({
     () => sumAssignmentTotals(pageRows.map((item) => item.totals)),
     [pageRows],
   );
+  // Toàn bộ CBNV đang lọc (mọi trang) mà được phép đưa vào BCC.
+  const selectableRows = selectableEmployeeRows(
+    preparedRows.map((item) => item.row),
+  );
   const selectablePageRows = pageRows.filter((item) => item.row.canInclude);
+  const allFilteredSelected = hasSelectedAllFiltered(
+    preparedRows.map((item) => item.row),
+    selectedEmployeeIds,
+  );
   const selectedOnPage = selectablePageRows.filter((item) =>
     selectedEmployeeIds.has(item.row.employeeId),
   ).length;
@@ -848,6 +861,27 @@ export function MonthlyShiftAssignmentGrid({
       });
       return { scope: selectionScope, employeeIds: next };
     });
+  }
+
+  /*
+   * Chọn hết CBNV đang lọc, không chỉ trang đang xem. Phân ca cho cả công ty
+   * hay cả phòng ban là việc thường xuyên; bắt HR lật từng trang 20 người
+   * rồi tick lại là thao tác thừa và rất dễ sót người.
+   *
+   * Phạm vi bám đúng bộ lọc phía trên (đơn vị + phòng ban + tìm kiếm) nên
+   * "chọn tất cả" luôn khớp với những gì HR đang nhìn thấy.
+   */
+  function selectAllFiltered() {
+    setSelectionState({
+      scope: selectionScope,
+      employeeIds: allSelectableEmployeeIds(
+        preparedRows.map((item) => item.row),
+      ),
+    });
+  }
+
+  function clearSelection() {
+    setSelectionState({ scope: selectionScope, employeeIds: new Set() });
   }
 
   function closeCellShiftPicker() {
@@ -1322,9 +1356,41 @@ export function MonthlyShiftAssignmentGrid({
       <Paper withBorder p="md" radius="md">
         <Group justify="space-between" align="flex-end" gap="md" wrap="wrap">
           <Group align="flex-end" gap="sm" wrap="wrap">
-            <Text size="sm" fw={600} mb={7}>
-              Đã chọn {selectedEmployeeIds.size} CBNV
-            </Text>
+            <Stack gap={4} mb={2}>
+              <Text size="sm" fw={600}>
+                Đã chọn {selectedEmployeeIds.size} CBNV
+              </Text>
+              {/* Phân ca cả công ty / cả phòng ban trong một lần, không phải
+                  lật từng trang 20 người. Phạm vi bám đúng bộ lọc phía trên. */}
+              <Group gap={6} wrap="nowrap">
+                <Button
+                  size="compact-xs"
+                  variant="light"
+                  disabled={
+                    tableIsDisabled ||
+                    !selectableRows.length ||
+                    allFilteredSelected
+                  }
+                  onClick={selectAllFiltered}
+                  title={
+                    departmentId
+                      ? "Chọn toàn bộ CBNV của phòng ban đang lọc"
+                      : "Chọn toàn bộ CBNV của đơn vị đang lọc"
+                  }
+                >
+                  Chọn tất cả {selectableRows.length} CBNV
+                </Button>
+                <Button
+                  size="compact-xs"
+                  variant="subtle"
+                  color="gray"
+                  disabled={tableIsDisabled || !selectedEmployeeIds.size}
+                  onClick={clearSelection}
+                >
+                  Bỏ chọn
+                </Button>
+              </Group>
+            </Stack>
             <Select
               label="Ca làm việc"
               placeholder="Chọn ca đã tạo"
