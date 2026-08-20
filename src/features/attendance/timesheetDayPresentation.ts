@@ -133,13 +133,22 @@ export function timesheetDayShiftDisplayValue(
   day:
     | (AttendanceEventDay & Pick<TimesheetGridDay, "shiftCode">)
     | undefined,
+  previousDay?: Pick<TimesheetGridDay, "shiftCode"> | undefined,
 ): string {
   /*
    * Ngày liền sau ca đêm chỉ còn giờ RA của ca hôm trước. Công đã tính trọn
    * vào ngày bắt đầu ca nên ô này 0 công — nhưng để trống thì HR đọc thành
-   * "chưa phân ca". Hiện `→` cho thấy ca hôm trước kéo sang tới đây.
+   * "chưa phân ca". Trước đây hiện `→`, nhưng mũi tên không nói được ca nào
+   * nên HR vẫn phải dò ngược cột ngày. Nay lặp lại chính mã ca hôm trước
+   * (VH2 nằm ở cả hai ô) để đọc thẳng thành "ca này kéo qua hai ngày";
+   * nền nhạt hơn vẫn cho biết đâu là ngày ca bắt đầu, nơi tính công.
    */
-  if (day?.source === "OVERNIGHT_TAIL") return "→";
+  if (day?.source === "OVERNIGHT_TAIL") {
+    // Backend đã xác định đây là đuôi ca đêm, nên mã ca của ngày liền trước
+    // chính là ca đang kéo sang. Thiếu mã (dữ liệu cũ) thì để trống còn hơn
+    // hiện ký hiệu không nói được ca nào.
+    return previousDay?.shiftCode?.trim() ?? "";
+  }
   const label = timesheetDayDisplayValue(day);
   // Ngày nghỉ theo ca tuần lặp lại hàng tuần: in chữ `OFF` kín cột chủ nhật
   // làm rối mắt, che mất các ô cần chú ý. Để trống — nền xám của ô đã đủ

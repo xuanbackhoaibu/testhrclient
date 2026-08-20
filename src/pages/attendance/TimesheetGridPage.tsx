@@ -172,6 +172,12 @@ const colorLegendItems = [
     description: "Nghỉ ốm, con ốm hoặc thai sản — chế độ BHXH",
   },
   {
+    color: "#eff6ff",
+    label: "Ca qua ngày",
+    description:
+      "Ngày kết thúc của ca đêm — lặp lại mã ca của ngày hôm trước (VD: VH2 nằm ở cả hai ô). Công đã tính trọn vào ngày bắt đầu ca.",
+  },
+  {
     color: "#ffffff",
     label: "Mã ca / nửa công",
     description:
@@ -392,6 +398,7 @@ function TimesheetColorLegend() {
 function cellDescription(
   day: TimesheetGridDay | undefined,
   attendanceAutoFullDay = false,
+  previousDay?: TimesheetGridDay | undefined,
 ): string {
   if (!day) return "Chưa tạo dữ liệu ngày công";
   const weeklyTemplateOff = isWeeklyTemplateOffDay(day);
@@ -411,7 +418,7 @@ function cellDescription(
     day.holidayName,
     day.source === "HOLIDAY_UNPAID" ? "Ngày lễ không lương" : null,
     day.source === "OVERNIGHT_TAIL"
-      ? "Giờ ra của ca đêm hôm trước — công đã tính trọn vào ngày bắt đầu ca"
+      ? `Ca qua ngày${previousDay?.shiftCode ? ` ${previousDay.shiftCode}` : ""} từ hôm trước — đây là giờ ra, công đã tính trọn vào ngày bắt đầu ca`
       : null,
     day.source === "UNASSIGNED" ? "Chưa phân ca — chưa tính công" : null,
     /*
@@ -547,10 +554,12 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
       </Table.Td>
       {dayMetas.map((meta) => {
         const day = daysByNumber.get(meta.day);
+        // Ca qua đêm chiếm cả ô hôm sau: ô đuôi lấy mã ca từ ngày liền trước.
+        const previousDay = daysByNumber.get(meta.day - 1);
         // `label` giữ ký hiệu gốc để tô màu và tra cứu (KL, P, CT...); `cellText`
         // là phần HR nhìn thấy, đã quy ô đi làm về mã ca như màn Phân ca.
         const label = timesheetDayDisplayValue(day);
-        const cellText = timesheetDayShiftDisplayValue(day);
+        const cellText = timesheetDayShiftDisplayValue(day, previousDay);
         const weeklyTemplateOff = isWeeklyTemplateOffDay(day);
         const hasExplanationEvent = Boolean(
           day?.needsExplanation && hasTimesheetAttendanceEvent(day),
@@ -558,6 +567,10 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
         const background =
           weeklyTemplateOff
             ? "#f1f5f9"
+            // Đuôi ca đêm: nền xanh nhạt hơn ô ngày bắt đầu ca, để thấy ngay
+            // ô nào là ngày ca bắt đầu — nơi công được tính trọn.
+            : day?.source === "OVERNIGHT_TAIL"
+            ? "#eff6ff"
             : day?.source === "UNASSIGNED"
             ? "#e5e7eb"
             : !day?.isWorkingDay
@@ -582,7 +595,11 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
         return (
           <Table.Td
             key={meta.day}
-            title={cellDescription(day, Boolean(row.attendanceAutoFullDay))}
+            title={cellDescription(
+              day,
+              Boolean(row.attendanceAutoFullDay),
+              previousDay,
+            )}
             style={{
               minWidth: dayColumnWidth,
               width: dayColumnWidth,

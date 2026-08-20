@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addMinutesToTime,
   isOvernightShiftTime,
+  overnightTailShiftCode,
   shiftSpanDays,
 } from './shiftTime';
 
@@ -85,5 +86,48 @@ describe('shiftSpanDays', () => {
   it('thiếu số phút chuẩn thì mặc định 1 ngày', () => {
     expect(shiftSpanDays(undefined)).toBe(1);
     expect(shiftSpanDays(0)).toBe(1);
+  });
+});
+
+describe('overnightTailShiftCode', () => {
+  it('trả mã ca khi hôm trước là ca qua đêm', () => {
+    expect(
+      overnightTailShiftCode({
+        code: 'VH2',
+        startTime: '18:41',
+        endTime: '07:48',
+      }),
+    ).toBe('VH2');
+  });
+
+  it('ca 24 giờ cũng chiếm ô hôm sau', () => {
+    expect(
+      overnightTailShiftCode({
+        code: 'VH3',
+        startTime: '07:30',
+        endTime: '07:30',
+      }),
+    ).toBe('VH3');
+  });
+
+  it('ca trong ngày không chiếm ô hôm sau', () => {
+    expect(
+      overnightTailShiftCode({
+        code: 'HC1',
+        startTime: '08:00',
+        endTime: '17:00',
+      }),
+    ).toBeNull();
+  });
+
+  it('không có ca hôm trước thì không suy diễn', () => {
+    expect(overnightTailShiftCode(null)).toBeNull();
+    expect(overnightTailShiftCode(undefined)).toBeNull();
+  });
+
+  it('thiếu giờ ca thì không đoán bừa', () => {
+    expect(
+      overnightTailShiftCode({ code: 'VH2', startTime: null, endTime: null }),
+    ).toBeNull();
   });
 });

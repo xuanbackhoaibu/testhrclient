@@ -277,9 +277,26 @@ describe("timesheet cell shown with the shift-assignment notation", () => {
 describe("ngày liền sau ca đêm", () => {
   const base = { firstPunch: "07:48", lastPunch: "07:48", needsExplanation: false };
 
-  it("hiện mũi tên thay vì để trống", () => {
-    // Để trống thì HR đọc thành "chưa phân ca", trong khi công đã tính trọn
-    // vào ngày bắt đầu ca.
+  it("lặp lại mã ca của ngày hôm trước", () => {
+    // Để trống thì HR đọc thành "chưa phân ca", còn mũi tên `→` thì không nói
+    // được ca nào. Hiện chính mã ca hôm trước để VH2 nằm ở cả hai ô, đọc thẳng
+    // thành "ca này kéo qua hai ngày" — công vẫn tính trọn ở ngày bắt đầu ca.
+    expect(
+      timesheetDayShiftDisplayValue(
+        {
+          ...base,
+          displaySymbol: "",
+          shiftCode: null,
+          source: "OVERNIGHT_TAIL",
+        },
+        { shiftCode: "VH2" },
+      ),
+    ).toBe("VH2");
+  });
+
+  it("để trống khi không tra được mã ca hôm trước", () => {
+    // Dữ liệu cũ có thể thiếu mã ca; để trống còn hơn hiện ký hiệu không nói
+    // được ca nào.
     expect(
       timesheetDayShiftDisplayValue({
         ...base,
@@ -287,7 +304,7 @@ describe("ngày liền sau ca đêm", () => {
         shiftCode: null,
         source: "OVERNIGHT_TAIL",
       }),
-    ).toBe("→");
+    ).toBe("");
   });
 
   it("ngày chưa phân ca thật vẫn để trống", () => {

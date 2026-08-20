@@ -101,6 +101,7 @@ import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchI
 import { WeekdayScopeField } from "./components/WeekdayScopeField";
 import {
   isOvernightShiftTime,
+  overnightTailShiftCode,
   shiftSpanDays,
 } from "../../features/attendance/shiftTime";
 import {
@@ -111,7 +112,7 @@ import {
 
 const now = new Date();
 const weekdayLabels = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-// Ô phân ca chứa mã ca (HC2, BV5→) nên rộng hơn ô bảng công một chút.
+// Ô phân ca chứa mã ca (HC2, BV5) nên rộng hơn ô bảng công một chút.
 const dayColumnWidth = 40;
 const rowsPerPageOptions = [20, 50, 100].map((value) => ({
   value: String(value),
@@ -299,26 +300,55 @@ function sourceLabel(source: string): string {
 }
 
 /**
- * Mã ca kèm dấu hiệu ca kéo sang ngày hôm sau.
+ * Mã ca của ô, không kèm ký hiệu phụ.
  *
- * Ca đêm (BV5 18:30–06:30) và ca 24 giờ (VH3 07:30–07:30) trước đây nhìn y
- * hệt ca ngày trên lưới, HR không biết ô hôm sau đã bị ca này chiếm hay
- * chưa. Thêm `→` sau mã ca để thấy ngay ca còn kéo dài.
+ * Ca đêm (BV5 18:30–06:30) và ca 24 giờ (VH3 07:30–07:30) trước đây hiện
+ * `BV5→`: mũi tên nói ca còn kéo dài nhưng ô hôm sau vẫn trống, HR đọc theo
+ * cột ngày phải tự suy ra ô nào đã bị ca chiếm. Nay ngày đuôi hiện chính mã
+ * ca đó (xem `tailCellVisual`) nên mũi tên không còn cần thiết.
  */
 function shiftCellLabel(shift: ShiftAssignmentGridDay["shift"]): string {
   if (!shift) return "—";
-  return isOvernightShiftTime(shift.startTime, shift.endTime)
-    ? `${shift.code}→`
-    : shift.code;
+  return shift.code;
 }
 
-function cellVisual(day: ShiftAssignmentGridDay, meta: DayMeta) {
+/**
+ * Ô ngày ĐUÔI của ca qua đêm: hiện lại mã ca của ngày hôm trước.
+ *
+ * Chỉ chiếm những ô mà bản thân ngày đó chưa có ca (`UNASSIGNED`, hoặc ngày
+ * nghỉ theo lịch) — nếu HR đã phân ca riêng cho ngày hôm sau thì ca đó mới là
+ * thứ cần hiện, không được đè.
+ *
+ * Nền và chữ nhạt hơn ô ngày bắt đầu để vẫn phân biệt được đâu là ngày ca bắt
+ * đầu — nơi công được tính trọn.
+ */
+function tailCellVisual(
+  day: ShiftAssignmentGridDay,
+  previousDay: ShiftAssignmentGridDay | undefined,
+): { background: string; color: string; label: string } | null {
+  if (day.shift) return null;
+  if (day.holidayName) return null;
+  if (!day.inAttendanceWindow) return null;
+  const code = overnightTailShiftCode(previousDay?.shift);
+  if (!code) return null;
+  return { background: "#eff6ff", color: "#60a5fa", label: code };
+}
+
+function cellVisual(
+  day: ShiftAssignmentGridDay,
+  meta: DayMeta,
+  previousDay?: ShiftAssignmentGridDay,
+) {
   if (!day.inAttendanceWindow) {
     return { background: "#f8fafc", color: "#94a3b8", label: "" };
   }
   if (day.holidayName) {
     return { background: "#fff3bf", color: "#7c5c00", label: "Lễ" };
   }
+  // Ô bị ca đêm hôm trước chiếm phải hiện mã ca đó, đứng trước cả nhánh
+  // "Chưa phân ca" — ô này không trống, chỉ là công đã tính vào ngày trước.
+  const tail = tailCellVisual(day, previousDay);
+  if (tail) return tail;
   if (day.source === "UNASSIGNED") {
     return { background: "#e5e7eb", color: "#64748b", label: "—" };
   }
@@ -381,12 +411,17 @@ function overnightNote(shift: ShiftAssignmentGridDay["shift"]): string {
 function cellDescription(
   day: ShiftAssignmentGridDay,
   hasActiveDirectShift: boolean,
+  previousDay?: ShiftAssignmentGridDay,
 ): string {
   if (!day.inAttendanceWindow) {
     return "Ngoài khoảng tính công của nhân sự trong kỳ này";
   }
   if (day.holidayName) {
     return `${day.holidayName} — không tính công theo ca`;
+  }
+  if (tailCellVisual(day, previousDay)) {
+    const shift = previousDay?.shift;
+    return `${shift?.code} — ${shift?.name} · Ca qua ngày từ hôm trước (${shift?.startTime}–${shift?.endTime}), công đã tính trọn vào ngày bắt đầu ca`;
   }
   if (day.source === "UNASSIGNED") {
     return weekdayForShiftAssignmentDate(day.date) === 0
@@ -446,13 +481,21 @@ function Legend() {
           </Text>
         </Group>
       ))}
-      {/* Ký hiệu chữ, không phải màu nền — để riêng cuối dải chú giải. */}
+      {/* Ô đuôi ca đêm dùng nền riêng, nhạt hơn ô ngày bắt đầu ca. */}
       <Group gap={4} wrap="nowrap">
-        <Text fz={10} lh={1.2} fw={700} c="dimmed" aria-hidden>
-          →
-        </Text>
+        <span
+          aria-hidden
+          style={{
+            background: "#eff6ff",
+            border: "1px solid var(--mantine-color-gray-4)",
+            borderRadius: 3,
+            display: "block",
+            height: 11,
+            width: 11,
+          }}
+        />
         <Text fz={10} lh={1.2} c="dimmed">
-          Ca qua ngày (kết thúc hôm sau)
+          Ca qua ngày (lặp lại mã ca ở ngày kết thúc)
         </Text>
       </Group>
     </Group>
@@ -1872,6 +1915,11 @@ export function MonthlyShiftAssignmentGrid({
                           </Table.Td>
                           {dayMetas.map((meta) => {
                             const day = item.daysByNumber.get(meta.day);
+                            // Ca qua đêm chiếm luôn ô hôm sau, nên ô nào cũng
+                            // phải biết ngày liền trước để hiện đúng mã ca.
+                            const previousDay = item.daysByNumber.get(
+                              meta.day - 1,
+                            );
                             if (!day) {
                               return (
                                 <Table.Td
@@ -1885,7 +1933,7 @@ export function MonthlyShiftAssignmentGrid({
                                 />
                               );
                             }
-                            const visual = cellVisual(day, meta);
+                            const visual = cellVisual(day, meta, previousDay);
                             const canOpenPicker =
                               canOpenShiftAssignmentGridPicker(
                                 day,
@@ -1915,7 +1963,7 @@ export function MonthlyShiftAssignmentGrid({
                             const unavailableCellTitle =
                               tableIsDisabled && grid?.isClosed
                                 ? "Kỳ công đã chốt — mở khóa kỳ công trước khi phân ca."
-                                : cellDescription(day, hasActiveDirectShift);
+                                : cellDescription(day, hasActiveDirectShift, previousDay);
                             return (
                               <Table.Td
                                 key={meta.day}
