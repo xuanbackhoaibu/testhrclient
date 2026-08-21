@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { markTimesheetMonthStale } from "./timesheetStaleMonths";
+import {
+  markCurrentTimesheetMonthStale,
+  markTimesheetMonthStale,
+} from "./timesheetStaleMonths";
 
 import {
   applyWeeklyShiftTemplate,
@@ -95,6 +98,13 @@ export function useUpdateWorkShift() {
     }) => updateWorkShift(id, payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: workScheduleKeys.all });
+      /*
+       * Sửa giờ ca hay số công của ca làm đổi kết quả của MỌI ngày đã phân ca
+       * đó. Bảng công đọc `TimesheetDay` đã tính sẵn nên vẫn giữ số cũ — không
+       * đánh dấu thì HR không có dấu hiệu nào để biết cần bấm cập nhật.
+       */
+      void queryClient.invalidateQueries({ queryKey: ["timesheet"] });
+      markCurrentTimesheetMonthStale();
     },
   });
 }

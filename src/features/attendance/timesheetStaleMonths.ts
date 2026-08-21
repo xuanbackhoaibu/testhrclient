@@ -56,6 +56,22 @@ export function markTimesheetMonthStale(period: TimesheetPeriodKey): void {
   notifySubscribers();
 }
 
+/**
+ * Đánh dấu kỳ công đang xem sau khi sửa DANH MỤC CA.
+ *
+ * Sửa `dayValue` hay giờ của một ca làm đổi số công của MỌI ngày đã phân ca đó,
+ * ở mọi kỳ — không như phân ca vốn gắn với một kỳ cụ thể. Không thể đánh dấu
+ * hết mọi kỳ, nên đánh dấu kỳ HR đang làm việc: đó là nơi họ sẽ nhìn thấy số
+ * lệch đầu tiên. Các kỳ cũ khác vẫn phải bấm cập nhật thủ công.
+ */
+export function markCurrentTimesheetMonthStale(): void {
+  const now = new Date();
+  markTimesheetMonthStale({
+    year: now.getFullYear(),
+    month: now.getMonth() + 1,
+  });
+}
+
 /** Xoá dấu sau khi bảng công của kỳ đó đã được tính lại. */
 export function clearTimesheetMonthStale(period: TimesheetPeriodKey): void {
   const key = entryKey(period.year, period.month);
