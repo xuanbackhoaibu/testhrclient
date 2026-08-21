@@ -63,6 +63,14 @@ import {
   timesheetDayShiftDisplayValue,
 } from "../../features/attendance/timesheetDayPresentation";
 import { overnightTailShiftCode } from "../../features/attendance/shiftTime";
+import {
+  useReplaceShiftAssignmentDay,
+  useWorkShifts,
+} from "../../features/attendance/useWorkSchedule";
+import {
+  isReplacingShift,
+  resolveTimesheetCellEditAction,
+} from "../../features/attendance/timesheetCellEdit";
 import { formatDate } from "../../shared/utils/date";
 import { useEmployees } from "../../features/employees/useEmployees";
 import { useDepartmentsSelect } from "../../features/organization/useDepartments";
@@ -713,6 +721,12 @@ export function TimesheetGridPage() {
   const [editSymbol, setEditSymbol] = useState<string | null>(null);
   const [editPortion, setEditPortion] = useState(1);
   const [editReason, setEditReason] = useState("");
+  /*
+   * Ca đã phân của ô đang sửa. HR chốt: lệch thực tế thì SỬA CA chứ không sửa
+   * cách tính (VD phân S1 mà làm cả ngày ⇒ đổi sang HC1). Trước đây phải sang
+   * màn Phân ca mới đổi được, nên đặt luôn ở đây cho liền tay.
+   */
+  const [editShiftId, setEditShiftId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const tableViewportRef = useRef<HTMLDivElement>(null);
   const tableScrollPositionRef = useRef({ left: 0, top: 0 });
@@ -738,6 +752,9 @@ export function TimesheetGridPage() {
   const isGridPlaceholderData = gridQuery.isPlaceholderData;
   const isGridScopeLoading = gridQuery.isLoading || isGridPlaceholderData;
   const adjustDay = useAdjustTimesheetDay();
+  const replaceShiftDay = useReplaceShiftAssignmentDay();
+  // Danh mục ca cho ô chọn "Ca làm việc" trong hộp thoại sửa ô.
+  const workShiftsQuery = useWorkShifts();
   const recomputeJob = useTimesheetRecomputeJob();
   const timesheetIsStale = useTimesheetMonthStale(year, month);
   const autoFullAttendance = useSetAutoFullAttendance();
@@ -796,6 +813,29 @@ export function TimesheetGridPage() {
     [gridQuery.data?.daysInMonth, isGridPlaceholderData, month, year],
   );
 
+  /*
+   * Ca đang áp dụng cho ô đang mở, tra từ mã ca sang id. Dùng để biết HR có
+   * thực sự đổi ca hay chỉ mở ra rồi đóng lại — chọn trùng ca cũ thì không gọi
+   * API, tránh tạo ca cá nhân thừa cho đúng một ngày.
+   */
+  const currentShiftId = useMemo(
+    () =>
+      workShiftsQuery.data?.find(
+        (shift) => shift.code === editing?.day.shiftCode?.trim(),
+      )?.id ?? null,
+    [workShiftsQuery.data, editing],
+  );
+  /** Danh mục ca cho ô chọn, kèm giờ ca để HR nhận ra ca đêm ngay khi chọn. */
+  const shiftOptions = useMemo(
+    () =>
+      (workShiftsQuery.data ?? [])
+        .filter((shift) => shift.status === "ACTIVE" || shift.id === currentShiftId)
+        .map((shift) => ({
+          value: shift.id,
+          label: `${shift.code} — ${shift.name} (${shift.startTime}–${shift.endTime})`,
+        })),
+    [workShiftsQuery.data, currentShiftId],
+  );
   const unitNameById = useMemo(
     () => new Map((unitsQuery.data ?? []).map((unit) => [unit.id, unit.name])),
     [unitsQuery.data],
@@ -1057,8 +1097,19 @@ export function TimesheetGridPage() {
       setEditSymbol(day.displaySymbol.split(";")[0] || null);
       setEditPortion(day.paidDays || 1);
       setEditReason("");
+      // Lưới chỉ trả mã ca; tra ngược sang id để gọi được API đổi ca.
+      setEditShiftId(
+        workShiftsQuery.data?.find(
+          (shift) => shift.code === day.shiftCode?.trim(),
+        )?.id ?? null,
+      );
     },
-    [canEdit, isGridScopeLoading, recomputeJob.isRunning],
+    [
+      canEdit,
+      isGridScopeLoading,
+      recomputeJob.isRunning,
+      workShiftsQuery.data,
+    ],
   );
 
   const openAutoFullAttendanceSettings = useCallback(
@@ -1117,15 +1168,47 @@ export function TimesheetGridPage() {
 
   async function handleSaveCell() {
     if (!editing || isGridScopeLoading || recomputeJob.isRunning) return;
-    if (editReason.trim().length < 3) {
+    const action = resolveTimesheetCellEditAction({
+      currentShiftId,
+      selectedShiftId: editShiftId,
+      reason: editReason,
+      unitId: editing.row.unitId,
+    });
+    if (action.kind === "BLOCKED") {
       notifications.show({
         color: "red",
-        title: "Thiếu lý do",
-        message: "Sửa tay ô chấm công bắt buộc phải nêu lý do.",
+        title:
+          action.reason === "MISSING_REASON"
+            ? "Thiếu lý do"
+            : "Không đổi được ca",
+        message:
+          action.reason === "MISSING_REASON"
+            ? "Sửa tay ô chấm công bắt buộc phải nêu lý do."
+            : "Dòng này chưa có đơn vị nên không xác định được kỳ phân ca. Đổi ca ở màn Phân ca.",
       });
       return;
     }
+    const shiftChanged = action.kind === "REPLACE_SHIFT";
     try {
+      if (action.kind === "REPLACE_SHIFT") {
+        await replaceShiftDay.mutateAsync({
+          year,
+          month,
+          unitId: editing.row.unitId as string,
+          employeeId: editing.row.employeeId,
+          shiftId: action.shiftId,
+          date: editing.day.date,
+        });
+        notifications.show({
+          color: "green",
+          title: "Đã đổi ca cho ngày này",
+          message:
+            "Bấm “Cập nhật bảng công” để tính lại số công theo ca vừa đổi.",
+        });
+        setEditing(null);
+        return;
+      }
+
       await adjustDay.mutateAsync({
         id: editing.day.id,
         payload: {
@@ -1145,8 +1228,12 @@ export function TimesheetGridPage() {
     } catch {
       notifications.show({
         color: "red",
-        title: "Không lưu được ô chấm công",
-        message: "Kiểm tra lại ký hiệu, số công và trạng thái chốt kỳ.",
+        title: shiftChanged
+          ? "Không đổi được ca"
+          : "Không lưu được ô chấm công",
+        message: shiftChanged
+          ? "Ô này có thể chưa có ca để đổi, hoặc kỳ công đã chốt."
+          : "Kiểm tra lại ký hiệu, số công và trạng thái chốt kỳ.",
       });
     }
   }
@@ -2142,13 +2229,42 @@ export function TimesheetGridPage() {
               label: `${option.code} — ${option.name}`,
             }))}
             value={editSymbol}
-            disabled={isGridScopeLoading || recomputeJob.isRunning}
+            disabled={
+              isGridScopeLoading ||
+              recomputeJob.isRunning ||
+              // Đang đổi ca thì ký hiệu do hệ thống tính lại, không sửa tay.
+              isReplacingShift(currentShiftId, editShiftId)
+            }
             onChange={(value) => {
               setEditSymbol(value);
               const option = SYMBOL_OPTIONS.find((item) => item.code === value);
               if (option) setEditPortion(option.defaultPortion);
             }}
           />
+          <Select
+            label="Ca làm việc"
+            description={
+              currentShiftId
+                ? "Đổi ca khi thực tế đi làm khác ca đã phân (VD phân S1 mà làm cả ngày → chọn HC1). Hệ thống tự tính lại số công theo ca mới."
+                : "Ô này chưa có ca. Phân ca ở màn Phân ca trước khi đổi."
+            }
+            placeholder={
+              currentShiftId ? "Giữ nguyên ca hiện tại" : "Chưa có ca để đổi"
+            }
+            searchable
+            data={shiftOptions}
+            value={editShiftId}
+            disabled={
+              !currentShiftId || isGridScopeLoading || recomputeJob.isRunning
+            }
+            onChange={(value) => setEditShiftId(value)}
+          />
+          {editShiftId && editShiftId !== currentShiftId ? (
+            <Alert color="blue" variant="light">
+              Đổi ca xong hệ thống sẽ tính lại ô này theo ca mới, nên ký hiệu và
+              số công bên dưới không được áp dụng trong lần lưu này.
+            </Alert>
+          ) : null}
           <NumberInput
             label="Số công"
             description="Ca Thứ Bảy 08:00–12:00 tính 1 công theo cấu hình ca"
@@ -2159,28 +2275,43 @@ export function TimesheetGridPage() {
             value={editPortion}
             onChange={(value) => setEditPortion(Number(value))}
             disabled={
-              !editSymbol || isGridScopeLoading || recomputeJob.isRunning
+              !editSymbol ||
+              isGridScopeLoading ||
+              recomputeJob.isRunning ||
+              isReplacingShift(currentShiftId, editShiftId)
             }
           />
           <Textarea
             label="Lý do sửa"
-            description="Bắt buộc — được lưu để đối chiếu khi có khiếu nại"
-            withAsterisk
+            description={
+              isReplacingShift(currentShiftId, editShiftId)
+                ? "Không bắt buộc khi đổi ca — thao tác đã được ghi lịch sử riêng"
+                : "Bắt buộc — được lưu để đối chiếu khi có khiếu nại"
+            }
+            withAsterisk={
+              !isReplacingShift(currentShiftId, editShiftId)
+            }
             minRows={2}
             value={editReason}
-            disabled={isGridScopeLoading || recomputeJob.isRunning}
+            disabled={
+              isGridScopeLoading ||
+              recomputeJob.isRunning ||
+              isReplacingShift(currentShiftId, editShiftId)
+            }
             onChange={(event) => setEditReason(event.currentTarget.value)}
           />
-          <Alert color="orange" variant="light" icon={<IconTrash size={16} />}>
-            Sau khi lưu, ô này sẽ không bị job cập nhật bảng công ghi đè.
-          </Alert>
+          {isReplacingShift(currentShiftId, editShiftId) ? null : (
+            <Alert color="orange" variant="light" icon={<IconTrash size={16} />}>
+              Sau khi lưu, ô này sẽ không bị job cập nhật bảng công ghi đè.
+            </Alert>
+          )}
           <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={() => setEditing(null)}>
               Hủy
             </Button>
             <Button
               disabled={isGridScopeLoading || recomputeJob.isRunning}
-              loading={adjustDay.isPending}
+              loading={adjustDay.isPending || replaceShiftDay.isPending}
               onClick={() => void handleSaveCell()}
             >
               Lưu thay đổi
