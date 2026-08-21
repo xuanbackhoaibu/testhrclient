@@ -1,3 +1,4 @@
+import { compareRowOrder } from "./rowOrderCompare";
 import type { TimesheetGridRow } from "./timesheetTypes";
 
 type AttendanceIdentity = Pick<
@@ -21,42 +22,12 @@ export function formatAttendanceCode(value: string | null | undefined): string {
 }
 
 /**
- * Keeps grid order deterministic and identical to the workbook contract:
- * mapped raw MCB/BioTime codes first, numeric-natural order, missing codes last.
- * employeeCode is deliberately a hidden tie-breaker only.
+ * Giữ thứ tự lưới BCC khớp đúng file Excel. Quy tắc thật nằm ở compareRowOrder
+ * — dùng chung với màn Phân ca để ba nơi không bao giờ xếp khác nhau.
  */
 export function compareAttendanceIdentity(
   left: AttendanceIdentity,
   right: AttendanceIdentity,
 ): number {
-  // Thứ tự HR sắp tay ở màn Thứ tự nhân sự thắng mọi quy tắc khác — lưới phải
-  // giống hệt file Excel in ra. Người chưa được sắp xuống sau, rồi mới so
-  // theo mã chấm công như hợp đồng cũ.
-  const leftOrder = left.rowOrder ?? null;
-  const rightOrder = right.rowOrder ?? null;
-  if (leftOrder !== null && rightOrder !== null && leftOrder !== rightOrder) {
-    return leftOrder - rightOrder;
-  }
-  if (leftOrder !== null && rightOrder === null) return -1;
-  if (leftOrder === null && rightOrder !== null) return 1;
-
-  const leftCode = normalizedAttendanceCode(left.attendanceCode);
-  const rightCode = normalizedAttendanceCode(right.attendanceCode);
-
-  if (leftCode && rightCode) {
-    const byAttendanceCode = leftCode.localeCompare(rightCode, "vi", {
-      numeric: true,
-      sensitivity: "base",
-    });
-    if (byAttendanceCode !== 0) return byAttendanceCode;
-  } else if (leftCode) {
-    return -1;
-  } else if (rightCode) {
-    return 1;
-  }
-
-  return left.employeeCode.localeCompare(right.employeeCode, "vi", {
-    numeric: true,
-    sensitivity: "base",
-  });
+  return compareRowOrder(left, right);
 }

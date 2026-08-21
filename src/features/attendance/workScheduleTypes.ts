@@ -162,6 +162,11 @@ export interface ShiftAssignmentGridDay {
 
 export interface ShiftAssignmentGridRow {
   employeeId: string;
+  /**
+   * Thứ tự HR sắp tay trong phòng ban (màn Thứ tự nhân sự). null = chưa sắp,
+   * dòng đó xuống sau và so theo mã chấm công như mặc định.
+   */
+  rowOrder?: number | null;
   includedInTimesheet: boolean;
   canInclude: boolean;
   eligibilityReason: string | null;
