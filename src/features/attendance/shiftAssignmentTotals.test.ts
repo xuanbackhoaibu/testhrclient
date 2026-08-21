@@ -318,3 +318,44 @@ describe('countRosterMismatch', () => {
     });
   });
 });
+
+/*
+ * Tư duy ngược: ép hàm tổng vào các tình huống dữ liệu dễ sai nhất thay vì chỉ
+ * chạy dữ liệu đẹp.
+ */
+describe('summarizeAssignmentRow — dữ liệu bất thường', () => {
+  const overnight = {
+    ...someShift,
+    code: 'VH2',
+    startTime: '19:30',
+    endTime: '07:30',
+    dayValue: 1.5,
+  };
+
+  it('không phụ thuộc thứ tự ngày trong mảng', () => {
+    // API hiện trả mảng đã sắp xếp, nhưng logic đuôi ca đêm không được gãy chỉ
+    // vì tầng trên lọc hay sắp xếp lại.
+    const totals = summarizeAssignmentRow([
+      day({ day: 3, shift: null, isWorkingDay: true }),
+      day({ day: 2, shift: overnight }),
+    ]);
+    expect(totals.unassignedWorkingDays).toBe(0);
+    expect(totals.offDays).toBe(1);
+  });
+
+  it('ca thiếu giờ vào/ra thì không đoán là ca qua đêm', () => {
+    const totals = summarizeAssignmentRow([
+      day({ day: 1, shift: { ...someShift, startTime: null, endTime: null } }),
+      day({ day: 2, shift: null, isWorkingDay: true }),
+    ]);
+    // Không suy được thì giữ nguyên cảnh báo, thà báo thừa còn hơn giấu việc.
+    expect(totals.unassignedWorkingDays).toBe(1);
+  });
+
+  it('ca thiếu dayValue vẫn được tính 1 công, không bị bỏ khỏi tổng', () => {
+    const totals = summarizeAssignmentRow([
+      day({ day: 1, shift: { ...someShift, code: 'LA', dayValue: null } }),
+    ]);
+    expect(totals.workDays).toBe(1);
+  });
+});

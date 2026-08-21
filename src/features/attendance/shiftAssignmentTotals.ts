@@ -76,8 +76,14 @@ export function summarizeAssignmentRow(
   let holidayDays = 0;
   let outOfWindowDays = 0;
   const assigned: { code: string; dayValue?: number }[] = [];
+  /*
+   * Tra ngày liền trước theo SỐ NGÀY, không theo vị trí trong mảng. API hiện
+   * trả mảng đã sắp xếp 1→31, nhưng dựa vào thứ tự đó thì chỉ cần thêm một
+   * bộ lọc hay sắp xếp ở tầng trên là ca đêm nhận nhầm ngày mà không ai biết.
+   */
+  const dayByNumber = new Map(days.map((day) => [day.day, day]));
 
-  for (const [index, day] of days.entries()) {
+  for (const day of days) {
     // Ngoài khoảng tính công thì không quy được về ca hay nghỉ.
     if (!day.inAttendanceWindow) {
       outOfWindowDays += 1;
@@ -105,7 +111,7 @@ export function summarizeAssignmentRow(
     if (day.isWorkingDay || day.calendarIsWorkingDay) {
       // Ngày đã bị ca đêm hôm trước chiếm thì không còn là việc HR phải phân —
       // xếp vào nhóm nghỉ theo lịch để tổng phân loại vẫn khớp số ngày.
-      if (isCoveredByPreviousOvernightShift(days[index - 1])) {
+      if (isCoveredByPreviousOvernightShift(dayByNumber.get(day.day - 1))) {
         offDays += 1;
         continue;
       }
