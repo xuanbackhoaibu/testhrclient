@@ -1,10 +1,7 @@
 import type { AuthUser, ScopeClaim } from './types';
+import { isPlainRecord } from '../../shared/utils/isPlainRecord';
 
 export const CURRENT_USER_QUERY_KEY = ['me'] as const;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function readString(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
@@ -33,7 +30,7 @@ function toStringArray(value: unknown): string[] {
 }
 
 function normalizeScope(scope: unknown): ScopeClaim | null {
-  if (!isRecord(scope)) {
+  if (!isPlainRecord(scope)) {
     return null;
   }
 
@@ -72,7 +69,7 @@ function normalizeDataScopes(
   if (Array.isArray(value)) {
     return value
       .map((item) => {
-        if (!isRecord(item)) {
+        if (!isPlainRecord(item)) {
           return null;
         }
 
@@ -117,7 +114,7 @@ function normalizeNestedRef(
   value: unknown,
   extraKeys?: string[],
 ): { id: string; code: string; name: string; [k: string]: string | null } | null {
-  if (!isRecord(value)) return null;
+  if (!isPlainRecord(value)) return null;
   const id = readString(value.id);
   const code = readString(value.code);
   const name = readString(value.name);
@@ -140,7 +137,7 @@ function normalizeStringArray(value: unknown): string[] {
 }
 
 function normalizeEmployee(value: unknown): AuthUser['employee'] {
-  if (!isRecord(value)) {
+  if (!isPlainRecord(value)) {
     return null;
   }
 
@@ -188,12 +185,12 @@ function normalizeEmployee(value: unknown): AuthUser['employee'] {
 }
 
 function extractCurrentUserPayload(response: unknown): unknown {
-  if (!isRecord(response)) {
+  if (!isPlainRecord(response)) {
     return response;
   }
 
   const levelOne = response.data;
-  if (isRecord(levelOne) && isRecord(levelOne.data)) {
+  if (isPlainRecord(levelOne) && isPlainRecord(levelOne.data)) {
     return levelOne.data;
   }
 
@@ -206,8 +203,8 @@ function extractCurrentUserPayload(response: unknown): unknown {
 
 export function normalizeCurrentUser(response: unknown): AuthUser {
   const payload = extractCurrentUserPayload(response);
-  const data = isRecord(payload) ? payload : {};
-  const identity = isRecord(data.identity) ? data.identity : null;
+  const data = isPlainRecord(payload) ? payload : {};
+  const identity = isPlainRecord(data.identity) ? data.identity : null;
   if (!identity) {
     throw Object.assign(
       new Error('Canonical identity is missing from /auth/me response.'),

@@ -3,14 +3,11 @@ import type { AxiosError } from 'axios';
 
 import { getLeaveDurationErrorMessage } from '../../features/leave/leaveDurationErrorMessage';
 import { ApiError, type ApiErrorResponse } from './api.types';
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+import { isPlainRecord } from '../utils/isPlainRecord';
 
 function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return (
-    isObject(value) &&
+    isPlainRecord(value) &&
     value.success === false &&
     typeof value.statusCode === 'number' &&
     typeof value.message === 'string'

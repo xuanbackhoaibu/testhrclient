@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import { useState } from 'react';
 import {
   Alert,
@@ -37,6 +38,13 @@ import { AUTH_ADMIN_PERMISSIONS } from '../auth/permissions';
 import { useAuth } from '../auth/useAuth';
 import { formatDateTime } from '../../shared/utils/date';
 import type { Employee } from './employeeTypes';
+import { InfoRow as InfoRowBase } from '../../shared/components/InfoRow';
+
+/** InfoRow của màn này: cố định bề rộng nhãn để các dòng thẳng cột. */
+function InfoRow(props: Omit<ComponentProps<typeof InfoRowBase>, 'labelWidth'>) {
+  return <InfoRowBase labelWidth={180} breakAll {...props} />;
+}
+
 
 interface Props {
   employee: Employee;
@@ -60,25 +68,6 @@ function statusColor(status: string): string {
     default:
       return 'gray';
   }
-}
-
-function InfoRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Group gap="xs" wrap="nowrap" align="flex-start">
-      <Text size="sm" c="dimmed" w={180} style={{ flexShrink: 0 }}>
-        {label}
-      </Text>
-      <Text size="sm" style={{ wordBreak: 'break-all' }}>
-        {children}
-      </Text>
-    </Group>
-  );
 }
 
 export function AccountDetailDrawer({ employee, opened, onClose }: Props) {

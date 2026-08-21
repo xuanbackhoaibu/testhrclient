@@ -4,6 +4,7 @@ import {
   Button,
   Drawer,
   Group,
+  Paper,
   Select,
   SimpleGrid,
   Stack,
@@ -18,6 +19,7 @@ import {
   IconEye,
   IconPlus,
   IconUserCheck,
+  IconUnlink,
   IconUsers,
 } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -36,10 +38,10 @@ import type {
   Employee,
   EmployeePayload,
 } from "../../features/employees/employeeTypes";
-import type { PaginationMeta } from "../../shared/types/api";
 import { useAllEmployees } from "../../features/employees/useEmployees";
 import { AccountDetailDrawer } from "../../features/employees/AccountDetailDrawer";
 import { BulkProvisionModal } from "../../features/employees/BulkProvisionModal";
+import { BulkClearBioTimeCodeModal } from "../../features/employees/BulkClearBioTimeCodeModal";
 import { ProvisionAccountModal } from "../../features/employees/ProvisionAccountModal";
 import { DomainExcelImportModal } from "../../features/import-export/DomainExcelImportModal";
 import { PostImportAccountModal } from "../../features/import-export/PostImportAccountModal";
@@ -63,6 +65,7 @@ import { sortByCode } from "../../shared/utils/sort";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
 import { HrmDateInput } from "../../shared/components/HrmDateInput";
+import { useClientPagination } from "../../shared/hooks/useClientPagination";
 
 const employmentStatusOptions = [
   { value: "ACTIVE", label: "Đang làm việc" },
@@ -225,6 +228,11 @@ export function EmployeesPage() {
   const [accountDetailTarget, setAccountDetailTarget] = useState<Employee | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkProvisionOpen, setBulkProvisionOpen] = useState(false);
+  const [bulkClearBioTimeOpen, setBulkClearBioTimeOpen] = useState(false);
+
+  // Tick chọn dòng chỉ có nghĩa khi có ít nhất một thao tác hàng loạt dùng được.
+  const mayBulkSelect = mayProvisionAccounts || mayEditEmployee;
+  const hasSelection = selectedIds.size > 0;
   const [isLoadingNextCode, setIsLoadingNextCode] = useState(false);
   const [nextCodeError, setNextCodeError] = useState<string | null>(null);
   const [suggestedCode, setSuggestedCode] = useState("");
@@ -591,25 +599,10 @@ export function EmployeesPage() {
   );
 
   // Phân trang ở client trên danh sách đã sắp xếp.
-  const totalCount = sortedEmployees.length;
-  const totalPages = Math.max(1, Math.ceil(totalCount / params.pageSize));
-  const currentPage = Math.min(params.page, totalPages);
-
-  const pagedEmployees = useMemo(() => {
-    const start = (currentPage - 1) * params.pageSize;
-    return sortedEmployees.slice(start, start + params.pageSize);
-  }, [sortedEmployees, currentPage, params.pageSize]);
-
-  const pagedMeta = useMemo<PaginationMeta>(
-    () => ({
-      page: currentPage,
-      pageSize: params.pageSize,
-      total: totalCount,
-      totalPages,
-      hasNextPage: currentPage < totalPages,
-      hasPreviousPage: currentPage > 1,
-    }),
-    [currentPage, params.pageSize, totalCount, totalPages],
+  const { pagedItems: pagedEmployees, pagedMeta } = useClientPagination(
+    sortedEmployees,
+    params.page,
+    params.pageSize,
   );
 
   const selectedEmployees = useMemo(
@@ -781,16 +774,6 @@ export function EmployeesPage() {
               canImport={mayImportEmployees}
               canExport={mayExportEmployees}
             />
-            {mayProvisionAccounts && selectedIds.size > 0 && (
-              <Button
-                leftSection={<IconUsers size={18} />}
-                variant="light"
-                color="teal"
-                onClick={() => setBulkProvisionOpen(true)}
-              >
-                Cấp TK hàng loạt ({selectedIds.size})
-              </Button>
-            )}
             {mayCreateEmployee ? (
               <Button
                 leftSection={<IconPlus size={18} />}
@@ -862,6 +845,62 @@ export function EmployeesPage() {
           />
         </SimpleGrid>
 
+        {/* Thanh thao tác hàng loạt: đặt sát trên bảng chứ không nhét vào
+            PageHeader. Nhét lên header thì mỗi lần tick/bỏ tick lại chèn thêm
+            nút, đẩy cả hàng nút xuống dòng và làm bảng nhảy vị trí.
+            Giữ chiều cao cố định để lúc ẩn/hiện nội dung phía dưới đứng yên. */}
+        {mayBulkSelect ? (
+          <Paper
+            withBorder
+            radius="md"
+            px="md"
+            py={8}
+            style={{ minHeight: 52, visibility: hasSelection ? undefined : "hidden" }}
+            aria-hidden={!hasSelection}
+            inert={!hasSelection}
+          >
+            <Group justify="space-between" gap="sm" wrap="wrap">
+              <Group gap="sm" wrap="nowrap">
+                <Text size="sm" fw={600}>
+                  Đã chọn {selectedIds.size} nhân sự
+                </Text>
+                <Button
+                  size="compact-xs"
+                  variant="subtle"
+                  color="gray"
+                  onClick={() => setSelectedIds(new Set())}
+                >
+                  Bỏ chọn
+                </Button>
+              </Group>
+              <Group gap="xs" wrap="wrap">
+                {mayEditEmployee ? (
+                  <Button
+                    size="xs"
+                    leftSection={<IconUnlink size={16} />}
+                    variant="light"
+                    color="red"
+                    onClick={() => setBulkClearBioTimeOpen(true)}
+                  >
+                    Hủy mã chấm công
+                  </Button>
+                ) : null}
+                {mayProvisionAccounts ? (
+                  <Button
+                    size="xs"
+                    leftSection={<IconUsers size={16} />}
+                    variant="light"
+                    color="teal"
+                    onClick={() => setBulkProvisionOpen(true)}
+                  >
+                    Cấp TK hàng loạt
+                  </Button>
+                ) : null}
+              </Group>
+            </Group>
+          </Paper>
+        ) : null}
+
         <DataTable
           data={pagedEmployees}
           columns={columns}
@@ -874,8 +913,8 @@ export function EmployeesPage() {
           onPageChange={(page, pageSize) =>
             setParams((current) => ({ ...current, page, pageSize }))
           }
-          selectedIds={mayProvisionAccounts ? selectedIds : undefined}
-          onSelectionChange={mayProvisionAccounts ? setSelectedIds : undefined}
+          selectedIds={mayBulkSelect ? selectedIds : undefined}
+          onSelectionChange={mayBulkSelect ? setSelectedIds : undefined}
           emptyTitle="Chưa có nhân sự"
           emptyDescription="Không tìm thấy nhân sự phù hợp với bộ lọc hiện tại."
         />
@@ -1114,6 +1153,19 @@ export function EmployeesPage() {
           onSuccess={() => {
             setSelectedIds(new Set());
             void queryClient.invalidateQueries({ queryKey: ["employees"] });
+          }}
+        />
+      )}
+
+      {bulkClearBioTimeOpen && (
+        <BulkClearBioTimeCodeModal
+          employees={selectedEmployees}
+          opened={bulkClearBioTimeOpen}
+          onClose={() => setBulkClearBioTimeOpen(false)}
+          onSuccess={() => {
+            setSelectedIds(new Set());
+            void queryClient.invalidateQueries({ queryKey: ["employees"] });
+            void queryClient.invalidateQueries({ queryKey: ["employee-detail"] });
           }}
         />
       )}

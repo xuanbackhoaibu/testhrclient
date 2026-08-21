@@ -155,9 +155,12 @@ export async function updateAttendanceRecord(id: string, payload: Partial<Attend
 
 // ─── Attendance Mapping ────────────────────────────────────────────────────────
 
+// `api.get` đã bóc sẵn envelope { success, data, ... } rồi, nên chỗ này nhận
+// thẳng MappingStats. Trước đây khai báo <{ data: MappingStats }> rồi trả
+// `response.data` là bóc lớp thứ hai không tồn tại -> stats undefined -> 4 thẻ
+// tổng ở đầu trang "Xử lý mapping" đứng im ở dấu "—" dù bảng bên dưới có dữ liệu.
 export async function getAttendanceMappingStats(): Promise<MappingStats> {
-  const response = await api.get<{ data: MappingStats }>('/attendance/mapping/stats');
-  return response.data;
+  return api.get<MappingStats>('/attendance/mapping/stats');
 }
 
 export async function getUnmappedAttendance(params: {

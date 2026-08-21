@@ -58,6 +58,7 @@ import { HrmDateInput } from "../../shared/components/HrmDateInput";
 import { PageHeader } from "../../shared/components/PageHeader";
 import { SectionCard } from "../../shared/components/SectionCard";
 import { formatDate } from "../../shared/utils/date";
+import { isoMonthEnd, isoMonthStart } from "../../shared/utils/date";
 
 const WEEKDAY_EDITOR_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
 const WEEKDAY_API_ORDER = [0, 1, 2, 3, 4, 5, 6] as const;
@@ -73,14 +74,6 @@ const yearOptions = Array.from({ length: 7 }, (_, index) => {
   const year = now.getFullYear() - 2 + index;
   return { value: String(year), label: String(year) };
 });
-
-function isoMonthStart(year: number, month: number): string {
-  return `${year}-${String(month).padStart(2, "0")}-01`;
-}
-
-function isoMonthEnd(year: number, month: number): string {
-  return new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
-}
 
 function emptyWeekdays(): Record<number, string | null> {
   return Object.fromEntries(

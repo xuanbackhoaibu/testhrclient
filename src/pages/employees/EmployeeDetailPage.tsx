@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import { useState } from 'react';
 import {
   Badge,
@@ -31,15 +32,13 @@ import { StatusTag } from '../../shared/components/StatusTag';
 import { formatDate, formatDateTime } from '../../shared/utils/date';
 import { AccountTab } from './tabs/AccountTab';
 import { AccessTab } from './tabs/AccessTab';
+import { InfoRow as InfoRowBase } from '../../shared/components/InfoRow';
 
-function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <Group gap="xs" wrap="nowrap" align="flex-start">
-      <Text size="sm" c="dimmed" w={140} style={{ flexShrink: 0 }}>{label}</Text>
-      <Text size="sm">{children}</Text>
-    </Group>
-  );
+/** InfoRow của màn này: cố định bề rộng nhãn để các dòng thẳng cột. */
+function InfoRow(props: Omit<ComponentProps<typeof InfoRowBase>, 'labelWidth'>) {
+  return <InfoRowBase labelWidth={140} {...props} />;
 }
+
 
 export function EmployeeDetailPage() {
   const { id: employeeId } = useParams();

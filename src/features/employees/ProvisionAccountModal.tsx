@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import {
   Alert,
   Button,
@@ -20,20 +21,18 @@ import { provisionFromEmployee } from '../auth-admin/authAdminApi';
 import type { ProvisionFromEmployeeResult } from '../auth-admin/authAdminTypes';
 import type { Employee } from './employeeTypes';
 import { api } from '../../shared/api/httpClient';
+import { InfoRow as InfoRowBase } from '../../shared/components/InfoRow';
+
+/** InfoRow của màn này: cố định bề rộng nhãn để các dòng thẳng cột. */
+function InfoRow(props: Omit<ComponentProps<typeof InfoRowBase>, 'labelWidth'>) {
+  return <InfoRowBase labelWidth={120} dashWhenEmpty {...props} />;
+}
+
 
 interface Props {
   employee: Employee;
   opened: boolean;
   onClose: () => void;
-}
-
-function InfoRow({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <Group gap="xs" wrap="nowrap" align="flex-start">
-      <Text size="sm" c="dimmed" w={120} style={{ flexShrink: 0 }}>{label}</Text>
-      <Text size="sm">{value ?? <Text span c="dimmed">—</Text>}</Text>
-    </Group>
-  );
 }
 
 export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
@@ -82,18 +81,18 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
       {!result ? (
         <Stack gap="sm">
           <Stack gap={4}>
-            <InfoRow label="Họ tên" value={employee.fullName} />
-            <InfoRow label="Mã nhân sự" value={employee.employeeCode} />
-            <InfoRow label="Email" value={email || 'Chưa có email'} />
-            <InfoRow label="Đơn vị" value={employee.unitName} />
-            <InfoRow label="Phòng ban" value={employee.departmentName} />
-            <InfoRow label="Chức danh" value={employee.positionName} />
+            <InfoRow label="Họ tên">{employee.fullName}</InfoRow>
+            <InfoRow label="Mã nhân sự">{employee.employeeCode}</InfoRow>
+            <InfoRow label="Email">{email || 'Chưa có email'}</InfoRow>
+            <InfoRow label="Đơn vị">{employee.unitName}</InfoRow>
+            <InfoRow label="Phòng ban">{employee.departmentName}</InfoRow>
+            <InfoRow label="Chức danh">{employee.positionName}</InfoRow>
           </Stack>
 
           <Divider />
 
           <Stack gap={4}>
-            <InfoRow label="Tài khoản đăng nhập" value={expectedUsername} />
+            <InfoRow label="Tài khoản đăng nhập">{expectedUsername}</InfoRow>
             <Text size="xs" c="dimmed">
               Tài khoản sẽ ở trạng thái Hoạt động ngay sau khi tạo, sử dụng mật khẩu mặc định Hacomholdings@88 và bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.
             </Text>
@@ -154,8 +153,8 @@ export function ProvisionAccountModal({ employee, opened, onClose }: Props) {
           )}
 
           <Stack gap={4}>
-            <InfoRow label="Tài khoản đăng nhập" value={result.loginAccount ?? expectedUsername} />
-            <InfoRow label="Email" value={result.email ?? 'Chưa có'} />
+            <InfoRow label="Tài khoản đăng nhập">{result.loginAccount ?? expectedUsername}</InfoRow>
+            <InfoRow label="Email">{result.email ?? 'Chưa có'}</InfoRow>
           </Stack>
 
           {result.status === 'created' && result.initialCredential && (
