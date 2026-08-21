@@ -18,6 +18,7 @@ import {
   IconEye,
   IconPlus,
   IconUserCheck,
+  IconUnlink,
   IconUsers,
 } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -39,6 +40,7 @@ import type {
 import { useAllEmployees } from "../../features/employees/useEmployees";
 import { AccountDetailDrawer } from "../../features/employees/AccountDetailDrawer";
 import { BulkProvisionModal } from "../../features/employees/BulkProvisionModal";
+import { BulkClearBioTimeCodeModal } from "../../features/employees/BulkClearBioTimeCodeModal";
 import { ProvisionAccountModal } from "../../features/employees/ProvisionAccountModal";
 import { DomainExcelImportModal } from "../../features/import-export/DomainExcelImportModal";
 import { PostImportAccountModal } from "../../features/import-export/PostImportAccountModal";
@@ -225,6 +227,7 @@ export function EmployeesPage() {
   const [accountDetailTarget, setAccountDetailTarget] = useState<Employee | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkProvisionOpen, setBulkProvisionOpen] = useState(false);
+  const [bulkClearBioTimeOpen, setBulkClearBioTimeOpen] = useState(false);
   const [isLoadingNextCode, setIsLoadingNextCode] = useState(false);
   const [nextCodeError, setNextCodeError] = useState<string | null>(null);
   const [suggestedCode, setSuggestedCode] = useState("");
@@ -766,6 +769,16 @@ export function EmployeesPage() {
               canImport={mayImportEmployees}
               canExport={mayExportEmployees}
             />
+            {mayEditEmployee && selectedIds.size > 0 && (
+              <Button
+                leftSection={<IconUnlink size={18} />}
+                variant="light"
+                color="red"
+                onClick={() => setBulkClearBioTimeOpen(true)}
+              >
+                Hủy mã chấm công ({selectedIds.size})
+              </Button>
+            )}
             {mayProvisionAccounts && selectedIds.size > 0 && (
               <Button
                 leftSection={<IconUsers size={18} />}
@@ -1099,6 +1112,19 @@ export function EmployeesPage() {
           onSuccess={() => {
             setSelectedIds(new Set());
             void queryClient.invalidateQueries({ queryKey: ["employees"] });
+          }}
+        />
+      )}
+
+      {bulkClearBioTimeOpen && (
+        <BulkClearBioTimeCodeModal
+          employees={selectedEmployees}
+          opened={bulkClearBioTimeOpen}
+          onClose={() => setBulkClearBioTimeOpen(false)}
+          onSuccess={() => {
+            setSelectedIds(new Set());
+            void queryClient.invalidateQueries({ queryKey: ["employees"] });
+            void queryClient.invalidateQueries({ queryKey: ["employee-detail"] });
           }}
         />
       )}
