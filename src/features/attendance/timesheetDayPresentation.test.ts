@@ -211,6 +211,35 @@ describe("timesheet cell shown with the shift-assignment notation", () => {
     ).toBe("HC4-");
   });
 
+  /*
+   * Ca đã phân nhưng máy chấm công chưa có dữ liệu: bảng công phải đọc giống
+   * màn Phân ca. Để trống thì lưới thủng lỗ chỗ trong khi Phân ca hiện đủ
+   * VH1/VH2, và HR kết luận nhầm là mất ca đêm.
+   */
+  it("hiện mã ca cho ngày đã phân ca nhưng chưa có dữ liệu chấm công", () => {
+    expect(
+      timesheetDayShiftDisplayValue({
+        ...base,
+        displaySymbol: "",
+        shiftCode: "VH2",
+        source: "MISSING",
+      }),
+    ).toBe("VH2");
+  });
+
+  it("giữ dấu ? khi có chấm công nhưng chờ giải trình", () => {
+    expect(
+      timesheetDayShiftDisplayValue({
+        ...base,
+        displaySymbol: "",
+        shiftCode: "VH1",
+        source: "DEVICE",
+        firstPunch: "07:58",
+        needsExplanation: true,
+      }),
+    ).toBe("?");
+  });
+
   it("leaves the weekly OFF cell blank so Sundays stay quiet", () => {
     expect(
       timesheetDayShiftDisplayValue({

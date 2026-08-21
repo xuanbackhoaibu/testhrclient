@@ -167,5 +167,17 @@ export function timesheetDayShiftDisplayValue(
   // hiệu nghiệp vụ vì mã ca không nói được lý do vắng.
   if (label === "+") return shiftCode;
   if (label === "-") return `${shiftCode}-`;
+  /*
+   * Ca ĐÃ PHÂN nhưng chưa có dữ liệu chấm công vẫn phải hiện mã ca.
+   *
+   * Trước đây ô này để trống, nên bảng công tháng nhìn thủng lỗ chỗ trong khi
+   * màn Phân ca hiện đủ VH1/VH2 mọi ngày. HR đối chiếu hai màn liền nhau rồi
+   * kết luận "phân ca sai" hoặc "mất ca đêm", trong khi ca vẫn đúng — chỉ là
+   * máy chấm công chưa có dữ liệu cho ngày đó.
+   *
+   * Giữ nguyên `label` cho ô đã có sự kiện chấm công (`?` chờ giải trình):
+   * đó là việc HR phải xử lý, không được mã ca che mất.
+   */
+  if (!label) return shiftCode;
   return label;
 }

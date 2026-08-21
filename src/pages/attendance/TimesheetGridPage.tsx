@@ -627,7 +627,16 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
             <Text
               fw={label ? 700 : undefined}
               size="xs"
-              c={label.includes("KL") ? "red.9" : undefined}
+              c={
+                label.includes("KL")
+                  ? "red.9"
+                  : // Mã ca của ngày chưa có dữ liệu chấm công: hiện mờ để đọc
+                    // được là "đã phân ca này" mà không bị nhầm thành đã tính
+                    // đủ công như ô in đậm bên cạnh.
+                    !label && cellText
+                    ? "dimmed"
+                    : undefined
+              }
               // Mã ca dài (HC-VPTCT-082026) không được xuống dòng làm cao
               // vống cả hàng; tooltip của ô đã có mã ca đầy đủ.
               truncate="end"
