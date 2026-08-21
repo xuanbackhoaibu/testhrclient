@@ -109,6 +109,7 @@ import {
   hasSelectedAllFiltered,
   selectableEmployeeRows,
 } from "../../features/attendance/shiftAssignmentSelection";
+import { compareRowOrder } from "../../features/attendance/rowOrderCompare";
 import { makeDayMeta, type DayMeta } from "../../features/attendance/dayMeta";
 import { isoMonthEnd, isoMonthStart } from "../../shared/utils/date";
 import toolbarStyles from "./ShiftAssignmentToolbar.module.css";
@@ -242,13 +243,13 @@ function groupLabel(row: ShiftAssignmentGridRow): string {
   );
 }
 
+/*
+ * Dùng chung quy tắc với Bảng công tháng và file Excel: thứ tự HR sắp tay
+ * trước, rồi mới tới mã chấm công. Trước đây màn này so sánh riêng nên khi
+ * thêm thứ tự sắp tay đã bị bỏ sót, hai màn xếp khác nhau cho cùng phòng ban.
+ */
 function compareRows(left: PreparedRow, right: PreparedRow): number {
-  const leftCode = left.row.attendanceCode ?? left.row.employeeCode;
-  const rightCode = right.row.attendanceCode ?? right.row.employeeCode;
-  return leftCode.localeCompare(rightCode, "vi", {
-    numeric: true,
-    sensitivity: "base",
-  });
+  return compareRowOrder(left.row, right.row);
 }
 
 function lifecycleText(row: ShiftAssignmentGridRow): string | null {
