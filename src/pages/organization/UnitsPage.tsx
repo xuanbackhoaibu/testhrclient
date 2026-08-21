@@ -33,7 +33,6 @@ import {
 import type { Unit } from "../../features/organization/organizationTypes";
 import { useAllUnits } from "../../features/organization/useUnits";
 import { ApiError } from "../../shared/api/api.types";
-import type { PaginationMeta } from "../../shared/types/api";
 import { sortByCode } from "../../shared/utils/sort";
 import { ConfirmActionModal } from "../../shared/components/ConfirmActionModal";
 import {
@@ -46,6 +45,7 @@ import { StatusTag } from "../../shared/components/StatusTag";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
+import { useClientPagination } from "../../shared/hooks/useClientPagination";
 
 type UnitFormValues = {
   code: string;
@@ -322,23 +322,10 @@ export function UnitsPage() {
 
   // Sắp xếp toàn bộ đơn vị theo mã tăng dần rồi phân trang ở client.
   const sortedUnits = useMemo(() => sortByCode(allUnits), [allUnits]);
-  const totalCount = sortedUnits.length;
-  const totalPages = Math.max(1, Math.ceil(totalCount / params.pageSize));
-  const currentPage = Math.min(params.page, totalPages);
-  const pagedUnits = useMemo(() => {
-    const start = (currentPage - 1) * params.pageSize;
-    return sortedUnits.slice(start, start + params.pageSize);
-  }, [sortedUnits, currentPage, params.pageSize]);
-  const pagedMeta = useMemo<PaginationMeta>(
-    () => ({
-      page: currentPage,
-      pageSize: params.pageSize,
-      total: totalCount,
-      totalPages,
-      hasNextPage: currentPage < totalPages,
-      hasPreviousPage: currentPage > 1,
-    }),
-    [currentPage, params.pageSize, totalCount, totalPages],
+  const { pagedItems: pagedUnits, pagedMeta } = useClientPagination(
+    sortedUnits,
+    params.page,
+    params.pageSize,
   );
 
   const columns = useMemo<DataTableColumn<Unit>[]>(

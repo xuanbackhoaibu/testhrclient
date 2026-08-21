@@ -18,6 +18,7 @@ import {
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockContracts, mockLeaveRequests, mockAttendanceRecords, mockAuditLogs } from '../../shared/mocks/mockWorkflows';
 import { maskSensitiveValue } from '../../shared/utils/format';
+import type { BulkClearBioTimeItemResult } from './bulkClearBioTimeCode';
 import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../shared/types/api';
 import type { AttendanceRecord } from '../attendance/attendanceTypes';
 import type { AuditLog } from '../audit/auditTypes';
@@ -495,6 +496,45 @@ export async function updateEmployeeBioTimeCode(
 ): Promise<Employee> {
   return api.patch<Employee>(`/employees/${employeeId}/biotime-code`, {
     biotimeEmployeeCode,
+  });
+}
+
+/**
+ * Hủy mã chấm công của nhiều nhân sự.
+ *
+ * Backend chỉ có endpoint cho từng nhân sự nên bắn song song, dùng
+ * `allSettled` để một dòng lỗi (mất mạng, hết quyền) không chặn các dòng còn
+ * lại — HR tick 30 dòng mà hỏng 1 thì 29 dòng kia vẫn phải xong.
+ *
+ * Trả về kết quả từng dòng kèm mã cũ để màn hình báo rõ dòng nào hỏng vì sao,
+ * thay vì chỉ một thông báo "thất bại" chung chung.
+ */
+export async function bulkClearEmployeeBioTimeCode(
+  employees: Array<{ id: string; employeeCode: string; fullName: string; biotimeEmployeeCode?: string | null }>,
+): Promise<BulkClearBioTimeItemResult[]> {
+  const settled = await Promise.allSettled(
+    employees.map((employee) => updateEmployeeBioTimeCode(employee.id, null)),
+  );
+
+  return settled.map((outcome, index) => {
+    const employee = employees[index];
+    const base = {
+      employeeId: employee.id,
+      employeeCode: employee.employeeCode,
+      fullName: employee.fullName,
+      previousCode: employee.biotimeEmployeeCode?.trim() ?? '',
+    };
+
+    if (outcome.status === 'fulfilled') {
+      return { ...base, status: 'CLEARED' as const };
+    }
+
+    return {
+      ...base,
+      status: 'FAILED' as const,
+      error:
+        (outcome.reason as { message?: string })?.message ?? 'Không hủy được mã chấm công.',
+    };
   });
 }
 
