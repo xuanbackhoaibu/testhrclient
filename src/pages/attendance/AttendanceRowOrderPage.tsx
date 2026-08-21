@@ -241,13 +241,23 @@ export function AttendanceRowOrderPage() {
       {departmentId && orderQuery.data ? (
         <Paper withBorder p="md" radius="md">
           <Stack gap="sm">
-            <Group justify="space-between" align="baseline">
-              <Text size="sm" fw={600}>
-                {orderQuery.data.department.name}
-              </Text>
-              <Text size="xs" c="dimmed">
-                {members.length} nhân sự · {sortedCount} đã sắp
-              </Text>
+            <Group justify="space-between" align="flex-start" wrap="nowrap">
+              <div>
+                <Text size="sm" fw={700}>
+                  {orderQuery.data.department.name}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {orderQuery.data.department.code} · {members.length} nhân sự
+                  {sortedCount > 0 ? ` · ${sortedCount} đã sắp tay` : ""}
+                </Text>
+              </div>
+              {canEdit && members.length > 1 ? (
+                <Text size="xs" c="dimmed" ta="right">
+                  Kéo tay cầm bên trái để đổi chỗ.
+                  <br />
+                  Thứ tự lưu ngay khi thả.
+                </Text>
+              ) : null}
             </Group>
 
             {members.length === 0 ? (
@@ -283,12 +293,33 @@ export function AttendanceRowOrderPage() {
                         <IconGripVertical size={16} />
                       </button>
                       <span className={styles.position}>{index + 1}</span>
-                      <span className={styles.name} title={member.fullName}>
-                        {member.fullName}
+                      <span className={styles.identity}>
+                        <span className={styles.name} title={member.fullName}>
+                          {member.fullName}
+                        </span>
+                        <span className={styles.meta}>
+                          <span
+                            className={styles.code}
+                            title="Mã chấm công (MCB)"
+                          >
+                            {member.attendanceCode ?? member.employeeCode}
+                          </span>
+                          {member.jobTitle ? (
+                            <>
+                              <span className={styles.metaDivider}>·</span>
+                              <span
+                                className={styles.jobTitle}
+                                title={member.jobTitle}
+                              >
+                                {member.jobTitle}
+                              </span>
+                            </>
+                          ) : null}
+                        </span>
                       </span>
-                      <span className={styles.code}>
-                        {member.attendanceCode ?? member.employeeCode}
-                      </span>
+                      {member.sortOrder === null ? (
+                        <span className={styles.badge}>Chưa sắp</span>
+                      ) : null}
                     </div>
                   );
                 })}
@@ -297,8 +328,8 @@ export function AttendanceRowOrderPage() {
 
             {sortedCount < members.length ? (
               <Text size="xs" c="dimmed">
-                {members.length - sortedCount} nhân sự chưa được sắp đang xếp
-                cuối theo mã chấm công. Kéo họ lên vị trí mong muốn khi cần.
+                Người gắn nhãn <b>Chưa sắp</b> đang xếp theo mã chấm công như
+                mặc định. Kéo họ tới vị trí mong muốn khi cần.
               </Text>
             ) : null}
           </Stack>

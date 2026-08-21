@@ -252,6 +252,8 @@ export interface AttendanceRowOrderMember {
   fullName: string;
   employeeCode: string;
   attendanceCode: string | null;
+  /** Chức danh trong danh mục; dự phòng bằng tên công việc tự nhập. */
+  jobTitle: string | null;
   /** null = chưa được sắp tay, dòng này xếp sau theo mã chấm công. */
   sortOrder: number | null;
 }
