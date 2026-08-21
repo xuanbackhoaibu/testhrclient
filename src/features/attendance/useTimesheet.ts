@@ -3,6 +3,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import {
   adjustTimesheetDay,
   closeTimesheetPeriod,
+  deleteTimesheetPeriod,
   getTimesheetGrid,
   getMonthlyTimesheetRoster,
   initializeMonthlyTimesheetRoster,
@@ -12,6 +13,7 @@ import {
   reopenTimesheetPeriod,
   setAutoFullAttendance,
   updateMonthlyTimesheetRosterMembers,
+  updateTimesheetPeriod,
 } from './timesheetApi';
 import type {
   AdjustTimesheetDayPayload,
@@ -22,6 +24,7 @@ import type {
   SetAutoFullAttendancePayload,
   TimesheetGridQuery,
   UpdateMonthlyTimesheetRosterMembersPayload,
+  UpdateTimesheetPeriodPayload,
 } from './timesheetTypes';
 
 export const timesheetKeys = {
@@ -140,6 +143,32 @@ export function useCloseTimesheetPeriod() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => closeTimesheetPeriod(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: timesheetKeys.all });
+    },
+  });
+}
+
+export function useUpdateTimesheetPeriod() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: UpdateTimesheetPeriodPayload;
+    }) => updateTimesheetPeriod(id, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: timesheetKeys.all });
+    },
+  });
+}
+
+export function useDeleteTimesheetPeriod() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteTimesheetPeriod(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: timesheetKeys.all });
     },

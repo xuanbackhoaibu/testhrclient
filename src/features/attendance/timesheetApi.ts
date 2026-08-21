@@ -19,6 +19,7 @@ import type {
   TimesheetConfirmation,
   TimesheetPeriod,
   UpdateMonthlyTimesheetRosterMembersPayload,
+  UpdateTimesheetPeriodPayload,
 } from './timesheetTypes';
 import { longRunningAttendanceMutationConfig } from './longRunningMutation';
 
@@ -165,6 +166,19 @@ export async function openTimesheetPeriod(
 
 export async function closeTimesheetPeriod(id: string): Promise<TimesheetPeriod> {
   return api.post<TimesheetPeriod>(`${PERIOD_BASE}/${id}/close`);
+}
+
+export async function updateTimesheetPeriod(
+  id: string,
+  payload: UpdateTimesheetPeriodPayload,
+): Promise<TimesheetPeriod> {
+  return api.patch<TimesheetPeriod>(`${PERIOD_BASE}/${id}`, payload);
+}
+
+export async function deleteTimesheetPeriod(
+  id: string,
+): Promise<{ deleted: boolean }> {
+  return api.delete<{ deleted: boolean }>(`${PERIOD_BASE}/${id}`);
 }
 
 export async function reopenTimesheetPeriod(

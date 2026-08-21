@@ -237,6 +237,15 @@ export interface ReopenTimesheetPeriodPayload {
 }
 
 /**
+ * Chỉ hạn xác nhận sửa được. Tháng/năm và phạm vi là khóa định danh của kỳ:
+ * đổi chúng sẽ kéo các xác nhận đã có sang một kỳ khác, nên phải xóa rồi mở
+ * lại thay vì sửa tại chỗ.
+ */
+export interface UpdateTimesheetPeriodPayload {
+  confirmDeadline: string;
+}
+
+/**
  * Bảng sắp ca tháng là snapshot lựa chọn nhân sự trước khi mở BCC.
  * Ca thực tế vẫn được cấu hình ở WorkShift/ShiftAssignment.
  */

@@ -111,6 +111,7 @@ import {
 } from "../../features/attendance/shiftAssignmentSelection";
 import { makeDayMeta, type DayMeta } from "../../features/attendance/dayMeta";
 import { isoMonthEnd, isoMonthStart } from "../../shared/utils/date";
+import toolbarStyles from "./ShiftAssignmentToolbar.module.css";
 
 const now = new Date();
 // Ô phân ca chứa mã ca (HC2, BV5) nên rộng hơn ô bảng công một chút.
@@ -1389,15 +1390,20 @@ export function MonthlyShiftAssignmentGrid({
       ) : null}
 
       <Paper withBorder p="md" radius="md">
-        <Group justify="space-between" align="flex-end" gap="md" wrap="wrap">
-          <Group align="flex-end" gap="sm" wrap="wrap">
-            <Stack gap={4} mb={2}>
+        <div className={toolbarStyles.root}>
+          <div className={toolbarStyles.steps}>
+            {/* Bước 1 — chọn ai. */}
+            <div className={toolbarStyles.step}>
+              <div className={toolbarStyles.stepLabel}>
+                <span className={toolbarStyles.stepNumber}>1</span>
+                Chọn CBNV
+              </div>
               <Text size="sm" fw={600}>
                 Đã chọn {selectedEmployeeIds.size} CBNV
               </Text>
               {/* Phân ca cả công ty / cả phòng ban trong một lần, không phải
                   lật từng trang 20 người. Phạm vi bám đúng bộ lọc phía trên. */}
-              <Group gap={6} wrap="nowrap">
+              <Group gap={6} wrap="wrap">
                 <Button
                   size="compact-xs"
                   variant="light"
@@ -1425,137 +1431,157 @@ export function MonthlyShiftAssignmentGrid({
                   Bỏ chọn
                 </Button>
               </Group>
-            </Stack>
-            <Select
-              label="Ca làm việc"
-              placeholder="Chọn ca đã tạo"
-              data={shiftOptions}
-              value={shiftId}
-              searchable
-              w={290}
-              disabled={tableIsDisabled || shiftsQuery.isLoading}
-              nothingFoundMessage="Chưa có ca đang áp dụng"
-              onChange={handleShiftChange}
-            />
-            <HrmDateInput
-              label="Từ ngày"
-              clearable={false}
-              minDate={periodStart}
-              maxDate={periodEnd}
-              value={effectiveFrom}
-              w={150}
-              disabled={tableIsDisabled}
-              onChange={updateEffectiveFrom}
-            />
-            <HrmDateInput
-              label="Đến ngày"
-              clearable={false}
-              minDate={effectiveFrom || periodStart}
-              maxDate={periodEnd}
-              value={effectiveTo}
-              w={150}
-              disabled={tableIsDisabled}
-              onChange={updateEffectiveTo}
-            />
-            {/*
-              Chỉ ca hành chính CẢ NGÀY mới phải quyết T2–T6 hay T2–T7 (thứ 7
-              làm nửa buổi bằng ca riêng HC3/HC4). Các ca khác mặc định áp cả
-              tuần, bày ô này ra chỉ làm rối màn hình.
-            */}
-            {selectedShiftUsesWeekdaySplit ? (
-              <Stack gap={2} w={230}>
-                <WeekdayScopeField
-                  disabled={tableIsDisabled}
-                  value={weekdays}
-                  width="100%"
-                  onChange={setWeekdays}
-                  hint="Ca hành chính cả ngày mặc định T2–T6. Muốn làm sáng Thứ 7 thì áp riêng ca HC3/HC4 cho Thứ 7 cùng khoảng ngày."
+            </div>
+
+            {/* Bước 2 — đặt ca gì, áp từ ngày nào. */}
+            <div className={toolbarStyles.step}>
+              <div className={toolbarStyles.stepLabel}>
+                <span className={toolbarStyles.stepNumber}>2</span>
+                Chọn ca và khoảng ngày
+              </div>
+              <div className={toolbarStyles.fields}>
+                <Select
+                  label="Ca làm việc"
+                  placeholder="Chọn ca đã tạo"
+                  data={shiftOptions}
+                  value={shiftId}
+                  searchable
+                  w={250}
+                  disabled={tableIsDisabled || shiftsQuery.isLoading}
+                  nothingFoundMessage="Chưa có ca đang áp dụng"
+                  onChange={handleShiftChange}
                 />
-              </Stack>
-            ) : null}
-            <Checkbox
-              label="Đưa vào BCC cùng ca"
-              checked={includeInTimesheetWithShift}
-              disabled={
-                tableIsDisabled ||
-                bulkAssign.isPending ||
-                includeInTimesheet.isPending
-              }
-              onChange={(event) =>
-                setIncludeInTimesheetWithShift(event.currentTarget.checked)
-              }
-            />
-            <Button
-              leftSection={<IconUsers size={17} />}
-              loading={bulkAssign.isPending}
-              disabled={
-                tableIsDisabled ||
-                bulkAssign.isPending ||
-                includeInTimesheet.isPending ||
-                !selectedEmployeeIds.size ||
-                !shiftId ||
-                !effectiveFrom ||
-                !effectiveTo
-              }
-              onClick={() => void applyShift()}
-            >
-              Áp dụng ca
-            </Button>
-            <Button
-              variant="light"
-              color="green"
-              leftSection={<IconUserCheck size={17} />}
-              loading={includeInTimesheet.isPending}
-              disabled={
-                tableIsDisabled ||
-                bulkAssign.isPending ||
-                includeInTimesheet.isPending ||
-                !selectedEmployeeIds.size
-              }
-              onClick={() => void includeSelectedInTimesheet()}
-            >
-              Đưa vào BCC
-            </Button>
-            <Button
-              variant="light"
-              color="red"
-              leftSection={<IconTrash size={17} />}
-              loading={bulkCancelDays.isPending}
-              disabled={
-                tableIsDisabled ||
-                bulkAssign.isPending ||
-                includeInTimesheet.isPending ||
-                bulkCancelDays.isPending ||
-                !selectedEmployeeIds.size ||
-                !effectiveFrom ||
-                !effectiveTo
-              }
-              onClick={() => setBulkCancelConfirmOpen(true)}
-            >
-              Hủy ca
-            </Button>
-          </Group>
-          <Group gap="xs">
-            <Button
-              variant="light"
-              size="sm"
-              leftSection={<IconExternalLink size={16} />}
-              disabled={!selectedUnitId}
-              onClick={openTimesheet}
-            >
-              Mở BCC
-            </Button>
-          </Group>
-        </Group>
-        <Group mt="sm" gap="xs" wrap="wrap">
-          <Legend />
-          <Text size="xs" c="dimmed">
-            Ca cá nhân đang chồng ngày sẽ được báo lỗi; hệ thống không tự ghi đè
-            lịch sử. Cột (1)–(6) quy số công theo danh mục ca (ca 12 giờ 1.5
-            công, ca 24 giờ 3 công) và tính trên lịch đã phân — công chốt cuối kỳ
-            vẫn lấy ở Bảng công tháng sau khi có dữ liệu chấm công.
-          </Text>
-        </Group>
+                <HrmDateInput
+                  label="Từ ngày"
+                  clearable={false}
+                  minDate={periodStart}
+                  maxDate={periodEnd}
+                  value={effectiveFrom}
+                  w={145}
+                  disabled={tableIsDisabled}
+                  onChange={updateEffectiveFrom}
+                />
+                <HrmDateInput
+                  label="Đến ngày"
+                  clearable={false}
+                  minDate={effectiveFrom || periodStart}
+                  maxDate={periodEnd}
+                  value={effectiveTo}
+                  w={145}
+                  disabled={tableIsDisabled}
+                  onChange={updateEffectiveTo}
+                />
+                {/*
+                  Chỉ ca hành chính CẢ NGÀY mới phải quyết T2–T6 hay T2–T7 (thứ 7
+                  làm nửa buổi bằng ca riêng HC3/HC4). Các ca khác mặc định áp cả
+                  tuần, bày ô này ra chỉ làm rối màn hình.
+                */}
+                {selectedShiftUsesWeekdaySplit ? (
+                  <WeekdayScopeField
+                    disabled={tableIsDisabled}
+                    value={weekdays}
+                    width={230}
+                    onChange={setWeekdays}
+                    hint="Ca hành chính cả ngày mặc định T2–T6. Muốn làm sáng Thứ 7 thì áp riêng ca HC3/HC4 cho Thứ 7 cùng khoảng ngày."
+                  />
+                ) : null}
+              </div>
+              <Checkbox
+                label="Đưa vào BCC cùng ca"
+                checked={includeInTimesheetWithShift}
+                disabled={
+                  tableIsDisabled ||
+                  bulkAssign.isPending ||
+                  includeInTimesheet.isPending
+                }
+                onChange={(event) =>
+                  setIncludeInTimesheetWithShift(event.currentTarget.checked)
+                }
+              />
+            </div>
+
+            {/* Bước 3 — hành động. Hủy ca tách riêng vì không hoàn tác được. */}
+            <div className={toolbarStyles.step}>
+              <div className={toolbarStyles.stepLabel}>
+                <span className={toolbarStyles.stepNumber}>3</span>
+                Thực hiện
+              </div>
+              <div className={toolbarStyles.actions}>
+                <Button
+                  leftSection={<IconUsers size={17} />}
+                  loading={bulkAssign.isPending}
+                  disabled={
+                    tableIsDisabled ||
+                    bulkAssign.isPending ||
+                    includeInTimesheet.isPending ||
+                    !selectedEmployeeIds.size ||
+                    !shiftId ||
+                    !effectiveFrom ||
+                    !effectiveTo
+                  }
+                  onClick={() => void applyShift()}
+                >
+                  Áp dụng ca
+                </Button>
+                <Button
+                  variant="light"
+                  color="green"
+                  leftSection={<IconUserCheck size={17} />}
+                  loading={includeInTimesheet.isPending}
+                  disabled={
+                    tableIsDisabled ||
+                    bulkAssign.isPending ||
+                    includeInTimesheet.isPending ||
+                    !selectedEmployeeIds.size
+                  }
+                  onClick={() => void includeSelectedInTimesheet()}
+                >
+                  Đưa vào BCC
+                </Button>
+                <Button
+                  variant="default"
+                  leftSection={<IconExternalLink size={16} />}
+                  disabled={!selectedUnitId}
+                  onClick={openTimesheet}
+                >
+                  Mở BCC
+                </Button>
+              </div>
+              <div
+                className={`${toolbarStyles.actions} ${toolbarStyles.destructive}`}
+              >
+                <Button
+                  variant="light"
+                  color="red"
+                  leftSection={<IconTrash size={17} />}
+                  loading={bulkCancelDays.isPending}
+                  disabled={
+                    tableIsDisabled ||
+                    bulkAssign.isPending ||
+                    includeInTimesheet.isPending ||
+                    bulkCancelDays.isPending ||
+                    !selectedEmployeeIds.size ||
+                    !effectiveFrom ||
+                    !effectiveTo
+                  }
+                  onClick={() => setBulkCancelConfirmOpen(true)}
+                >
+                  Hủy ca
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className={toolbarStyles.footer}>
+            <Legend />
+            <Text size="xs" c="dimmed">
+              Ca cá nhân đang chồng ngày sẽ được báo lỗi; hệ thống không tự ghi
+              đè lịch sử. Cột (1)–(6) quy số công theo danh mục ca (ca 12 giờ
+              1.5 công, ca 24 giờ 3 công) và tính trên lịch đã phân — công chốt
+              cuối kỳ vẫn lấy ở Bảng công tháng sau khi có dữ liệu chấm công.
+            </Text>
+          </div>
+        </div>
       </Paper>
 
       {rosterMismatch.assignedNotInTimesheet ||
