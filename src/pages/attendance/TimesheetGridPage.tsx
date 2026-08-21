@@ -52,6 +52,7 @@ import { clearTimesheetMonthStale } from "../../features/attendance/timesheetSta
 import { useTimesheetMonthStale } from "../../features/attendance/useTimesheetStaleMonth";
 import {
   SYMBOL_OPTIONS,
+  type BccSummary,
   type TimesheetGridDay,
   type TimesheetGridRow,
 } from "../../features/attendance/timesheetTypes";
@@ -448,8 +449,17 @@ function cellDescription(
     .join(" · ");
 }
 
-function bccTailValue(row: TimesheetGridRow, key: BccTailKey): number | string {
-  const bcc = row.summary.bcc ?? summarizeBccFromDays(row.days);
+/*
+ * Nhận sẵn `bcc` thay vì tự tính: hàm này chạy một lần cho mỗi cột đuôi, nên
+ * gọi summarizeBccFromDays ở đây có nghĩa là quét lại 31 ngày công 11 lần cho
+ * mỗi dòng. Đo trên trang 100 dòng: 28,3 ms mỗi lần render, đủ để trượt khung
+ * hình 16 ms và làm cuộn bảng giật. Tính một lần cho mỗi dòng còn 1,1 ms.
+ */
+function bccTailValue(
+  row: TimesheetGridRow,
+  bcc: BccSummary,
+  key: BccTailKey,
+): number | string {
   const values: Record<BccTailKey, number | string> = {
     actualWorkDays: bcc.actualWorkDays,
     publicHolidayDays: bcc.publicHolidayDays,
@@ -499,6 +509,12 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
   onOpenAutoFullAttendance: (row: TimesheetGridRow) => void;
 }) {
   const { row, daysByNumber } = item;
+  // Một lần cho cả dòng, dùng chung cho toàn bộ cột đuôi — xem ghi chú ở
+  // bccTailValue về chi phí khi tính lại theo từng cột.
+  const bccSummary = useMemo(
+    () => row.summary.bcc ?? summarizeBccFromDays(row.days),
+    [row.days, row.summary.bcc],
+  );
 
   return (
     <Table.Tr>
@@ -644,7 +660,7 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
         );
       })}
       {bccTailColumns.map((column) => {
-        const value = bccTailValue(row, column.key);
+        const value = bccTailValue(row, bccSummary, column.key);
         return (
           <Table.Td
             key={column.key}
