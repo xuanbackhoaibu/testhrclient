@@ -20,14 +20,15 @@ import {
   useResetAttendanceRowOrder,
 } from "../../features/attendance/useTimesheet";
 import type { AttendanceRowOrderMember } from "../../features/attendance/timesheetTypes";
+import {
+  resolveDropIndex,
+  type DropSide,
+} from "../../features/attendance/rowOrderDrop";
 import { useDepartmentsSelect } from "../../features/organization/useDepartments";
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { PageHeader } from "../../shared/components/PageHeader";
 import { InfoBanner } from "../../shared/components/InfoBanner";
 import styles from "./AttendanceRowOrderPage.module.css";
-
-/** Chỗ sắp thả so với dòng đang rê qua. */
-type DropSide = "above" | "below";
 
 export function AttendanceRowOrderPage() {
   const { can } = useAuth();
@@ -111,17 +112,13 @@ export function AttendanceRowOrderPage() {
       clearDragState();
       if (!moved || !target || moved === target.employeeId) return;
 
-      const fromIndex = members.findIndex((m) => m.employeeId === moved);
-      const overIndex = members.findIndex(
-        (m) => m.employeeId === target.employeeId,
+      const toIndex = resolveDropIndex(
+        members.map((m) => m.employeeId),
+        moved,
+        target.employeeId,
+        target.side,
       );
-      if (fromIndex === -1 || overIndex === -1) return;
-
-      // Chỉ số đích tính trên danh sách ĐÃ bỏ người được kéo ra, nên khi kéo
-      // xuống phải lùi một bậc — không thì dòng luôn rơi lệch một vị trí.
-      let toIndex = target.side === "above" ? overIndex : overIndex + 1;
-      if (fromIndex < toIndex) toIndex -= 1;
-      if (toIndex === fromIndex) return;
+      if (toIndex === null) return;
 
       moveRow.mutate(
         { employeeId: moved, toIndex },
