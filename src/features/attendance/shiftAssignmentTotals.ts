@@ -1,4 +1,5 @@
 import { summarizeAssignedShifts } from './shiftPayrollCatalog';
+import { isOvernightShiftTime } from './shiftTime';
 import type {
   ShiftAssignmentGridDay,
   ShiftAssignmentGridRow,
@@ -46,6 +47,23 @@ function isHoliday(day: ShiftAssignmentGridDay): boolean {
 }
 
 /**
+ * Ngày này có bị ca qua đêm của hôm trước chiếm không.
+ *
+ * Ca VH2 19:30–07:30 bắt đầu ngày N và kết thúc sáng ngày N+1, nên ngày N+1 đã
+ * có người trực suốt buổi sáng. Đếm nó vào "Ngày làm việc chưa phân ca" là bảo
+ * HR đi phân ca cho một ngày đã kín lịch — với ca 24 giờ (VH3) thì càng vô lý.
+ *
+ * Căn cứ là CẤU HÌNH CA của ngày liền trước, cùng quy tắc với lưới bảng công.
+ */
+function isCoveredByPreviousOvernightShift(
+  previousDay: ShiftAssignmentGridDay | undefined,
+): boolean {
+  const shift = previousDay?.shift;
+  if (!shift) return false;
+  return isOvernightShiftTime(shift.startTime, shift.endTime);
+}
+
+/**
  * Sáu cột công tính từ mã ca đã phân; các cột đếm ngày phân loại mỗi ngày vào
  * đúng một nhóm nên chúng cộng lại bằng số ngày trong tháng.
  */
@@ -59,7 +77,7 @@ export function summarizeAssignmentRow(
   let outOfWindowDays = 0;
   const assigned: { code: string; dayValue?: number }[] = [];
 
-  for (const day of days) {
+  for (const [index, day] of days.entries()) {
     // Ngoài khoảng tính công thì không quy được về ca hay nghỉ.
     if (!day.inAttendanceWindow) {
       outOfWindowDays += 1;
@@ -67,19 +85,30 @@ export function summarizeAssignmentRow(
     }
     // Ca đã phân vẫn tính công kể cả trên ngày lễ: mã ca là căn cứ tính, còn
     // cột "Ngày lễ" bên dưới chỉ để HR đối chiếu lịch.
+    //
+    // Ngày lễ CÓ ca chỉ được đếm vào `assignedDays`, không cộng thêm vào
+    // `holidayDays`: đếm cả hai thì một ngày vào hai nhóm, tổng phân loại vượt
+    // số ngày trong tháng (31 ngày ra 32) và HR không đối chiếu nổi lịch còn
+    // hở chỗ nào. Ca là căn cứ tính công nên nó thắng.
     if (day.shift) {
       assigned.push({
         code: day.shift.code,
         dayValue: day.shift.dayValue,
       });
       assignedDays += 1;
+      continue;
     }
     if (isHoliday(day)) {
       holidayDays += 1;
       continue;
     }
-    if (day.shift) continue;
     if (day.isWorkingDay || day.calendarIsWorkingDay) {
+      // Ngày đã bị ca đêm hôm trước chiếm thì không còn là việc HR phải phân —
+      // xếp vào nhóm nghỉ theo lịch để tổng phân loại vẫn khớp số ngày.
+      if (isCoveredByPreviousOvernightShift(days[index - 1])) {
+        offDays += 1;
+        continue;
+      }
       unassignedWorkingDays += 1;
       continue;
     }
