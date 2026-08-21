@@ -110,6 +110,7 @@ import {
   selectableEmployeeRows,
 } from "../../features/attendance/shiftAssignmentSelection";
 import { makeDayMeta, type DayMeta } from "../../features/attendance/dayMeta";
+import { isoMonthEnd, isoMonthStart } from "../../shared/utils/date";
 
 const now = new Date();
 // Ô phân ca chứa mã ca (HC2, BV5) nên rộng hơn ô bảng công một chút.
@@ -201,14 +202,6 @@ interface CellShiftPicker {
 
 export interface MonthlyShiftAssignmentGridProps {
   requestedShiftId?: string | null;
-}
-
-function isoMonthStart(year: number, month: number): string {
-  return `${year}-${String(month).padStart(2, "0")}-01`;
-}
-
-function isoMonthEnd(year: number, month: number): string {
-  return new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
 }
 
 function fixedStyle(left: number, width: number, header = false) {

@@ -3,10 +3,17 @@ import { useMemo } from 'react';
 import type { PaginationMeta } from '../types/api';
 
 /**
- * Phân trang phía client cho các endpoint trả về toàn bộ bản ghi khớp bộ lọc.
+ * Phân trang phía client cho các danh mục trả về TOÀN BỘ bản ghi khớp bộ lọc
+ * trong một lần gọi (đơn vị, phòng ban, chức danh, ngành nghề, nhân sự).
  *
- * Kẹp `page` vào khoảng hợp lệ nên khi danh sách co lại (lọc, xoá) trang hiện
- * tại không rơi ra ngoài và bảng không bị rỗng oan.
+ * Cắt ở client để sắp xếp theo mã được đúng trên toàn danh sách — nếu để backend
+ * cắt trang trước thì mỗi trang chỉ sắp được trong phạm vi trang đó.
+ *
+ * Kẹp `page` về `totalPages` để khi danh sách co lại (lọc, xoá bản ghi cuối)
+ * trang đang xem không rơi ra ngoài và bảng không rỗng oan.
+ *
+ * Giới hạn: giữ cả danh sách trong bộ nhớ. Danh mục nào vượt vài nghìn dòng thì
+ * chuyển sang phân trang + sắp xếp phía server thay vì dùng hook này.
  */
 export function useClientPagination<T>(
   items: T[],
