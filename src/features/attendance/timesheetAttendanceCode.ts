@@ -2,7 +2,7 @@ import type { TimesheetGridRow } from "./timesheetTypes";
 
 type AttendanceIdentity = Pick<
   TimesheetGridRow,
-  "attendanceCode" | "employeeCode"
+  "attendanceCode" | "employeeCode" | "rowOrder"
 >;
 
 function normalizedAttendanceCode(
@@ -29,6 +29,17 @@ export function compareAttendanceIdentity(
   left: AttendanceIdentity,
   right: AttendanceIdentity,
 ): number {
+  // Thứ tự HR sắp tay ở màn Thứ tự nhân sự thắng mọi quy tắc khác — lưới phải
+  // giống hệt file Excel in ra. Người chưa được sắp xuống sau, rồi mới so
+  // theo mã chấm công như hợp đồng cũ.
+  const leftOrder = left.rowOrder ?? null;
+  const rightOrder = right.rowOrder ?? null;
+  if (leftOrder !== null && rightOrder !== null && leftOrder !== rightOrder) {
+    return leftOrder - rightOrder;
+  }
+  if (leftOrder !== null && rightOrder === null) return -1;
+  if (leftOrder === null && rightOrder !== null) return 1;
+
   const leftCode = normalizedAttendanceCode(left.attendanceCode);
   const rightCode = normalizedAttendanceCode(right.attendanceCode);
 

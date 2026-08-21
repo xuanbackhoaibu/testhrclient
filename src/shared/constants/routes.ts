@@ -17,6 +17,7 @@ export const ROUTES = {
   monthlyTimesheetRoster: '/attendance/monthly-roster',
   timesheetGrid: '/attendance/timesheet',
   timesheetPeriods: '/attendance/periods',
+  attendanceRowOrder: '/attendance/row-order',
   workShifts: '/attendance/shifts',
   weeklyShifts: '/attendance/weekly-shifts',
   holidays: '/attendance/holidays',

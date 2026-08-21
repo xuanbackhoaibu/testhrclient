@@ -1,0 +1,180 @@
+/*
+ * Danh sách kéo thả cố ý giữ gọn: mỗi dòng chỉ có tay cầm, số thứ tự, danh
+ * tính và mã chấm công. Không cột dính, không cuộn ngang, không ô sửa được —
+ * đó là lý do kéo ở đây mượt hẳn so với lưới bảng công 46 ô/dòng.
+ *
+ * Hai quyết định về hình thức:
+ * - Số thứ tự là thông tin chính của màn này nên được đặt trong một huy hiệu
+ *   tròn, đọc được ngay cả khi lướt nhanh cả danh sách.
+ * - Mã chấm công đi liền dưới tên chứ không dạt sang mép phải: hai thứ đó là
+ *   một danh tính, tách xa nhau thì mắt phải nhảy qua khoảng trống để ghép lại.
+ */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 26px 34px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  border-radius: var(--mantine-radius-md);
+  background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-6));
+  transition: border-color 120ms, background-color 120ms;
+}
+
+.row:hover {
+  border-color: light-dark(var(--mantine-color-blue-3), var(--mantine-color-dark-3));
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-5));
+}
+
+/* Dòng đang được nhấc lên: mờ đi để thấy rõ nó đang rời chỗ. */
+.row[data-dragging='true'] {
+  opacity: 0.4;
+}
+
+/*
+ * Vạch chỉ chỗ sắp thả. Dùng box-shadow trên đúng một dòng thay vì đẩy cả
+ * danh sách chạy theo con trỏ — đây là điểm giữ cho thao tác không giật.
+ */
+.row[data-drop='above'] {
+  box-shadow: inset 0 3px 0 0 var(--mantine-color-blue-6);
+}
+
+.row[data-drop='below'] {
+  box-shadow: inset 0 -3px 0 0 var(--mantine-color-blue-6);
+}
+
+.handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: 0;
+  border-radius: var(--mantine-radius-sm);
+  background: none;
+  cursor: grab;
+  color: light-dark(var(--mantine-color-gray-4), var(--mantine-color-dark-3));
+  transition: color 120ms;
+}
+
+.row:hover .handle {
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-1));
+}
+
+.handle:active {
+  cursor: grabbing;
+}
+
+.handle:disabled {
+  cursor: default;
+}
+
+.handle:focus-visible {
+  outline: 2px solid var(--mantine-color-blue-6);
+  outline-offset: 1px;
+}
+
+/* Huy hiệu số thứ tự — thông tin chính của màn này. */
+.position {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: light-dark(var(--mantine-color-blue-0), var(--mantine-color-dark-5));
+  color: light-dark(var(--mantine-color-blue-8), var(--mantine-color-blue-2));
+}
+
+/* Chưa sắp tay: huy hiệu chuyển sang trung tính, nhưng CHỮ vẫn đọc rõ. */
+.row[data-unsorted='true'] .position {
+  background: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-5));
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
+}
+
+.identity {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.name {
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: light-dark(var(--mantine-color-gray-9), var(--mantine-color-dark-0));
+}
+
+/* Mã chấm công và chức danh trên cùng một dòng phụ, ngăn bằng dấu chấm giữa. */
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--mantine-font-size-xs);
+  line-height: 1.35;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
+}
+
+.code {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
+}
+
+.metaDivider {
+  flex: none;
+  color: light-dark(var(--mantine-color-gray-4), var(--mantine-color-dark-3));
+}
+
+.jobTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Nhãn "Chưa sắp" nằm cuối dòng, chỉ hiện với người còn ở thứ tự mặc định. */
+.badge {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-5));
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
+}
+
+@media (max-width: 640px) {
+  .row {
+    grid-template-columns: 26px 34px 1fr;
+    row-gap: 6px;
+  }
+
+  /* Nhãn xuống hàng dưới thay vì bóp chết cột tên. */
+  .badge {
+    grid-column: 3;
+    justify-self: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row,
+  .handle {
+    transition: none;
+  }
+}
