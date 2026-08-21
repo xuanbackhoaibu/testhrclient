@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   clearTimesheetMonthStale,
   isTimesheetMonthStale,
+  markCurrentTimesheetMonthStale,
   markTimesheetMonthStale,
 } from "./timesheetStaleMonths";
 
@@ -62,5 +63,27 @@ describe("đánh dấu kỳ công cần tính lại", () => {
     markTimesheetMonthStale({ year: 2026, month: 8 });
     expect(isTimesheetMonthStale({ year: 2026, month: 7 })).toBe(true);
     expect(isTimesheetMonthStale({ year: 2026, month: 8 })).toBe(true);
+  });
+});
+
+/*
+ * Sửa danh mục Ca làm việc (đổi giờ ca hoặc số công) làm đổi kết quả của MỌI
+ * ngày đã phân ca đó. Không gắn với một kỳ cụ thể như phân ca, nên đánh dấu kỳ
+ * HR đang làm việc — nơi họ sẽ nhìn thấy số lệch đầu tiên.
+ */
+describe("đánh dấu sau khi sửa danh mục ca", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("đánh dấu đúng kỳ của tháng hiện tại", () => {
+    const now = new Date();
+    markCurrentTimesheetMonthStale();
+    expect(
+      isTimesheetMonthStale({
+        year: now.getFullYear(),
+        month: now.getMonth() + 1,
+      }),
+    ).toBe(true);
   });
 });
