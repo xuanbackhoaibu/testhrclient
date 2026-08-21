@@ -3,6 +3,7 @@ import type { TimesheetGridDay } from "./timesheetTypes";
 /** Ký hiệu nghỉ theo ca tuần do backend ghi xuống; chỉ ẩn khi HIỂN THỊ. */
 const WEEKLY_OFF_SYMBOL = "OFF";
 import { isWeeklyTemplateAssignmentSource } from "./shiftAssignmentWeekdays";
+import { overnightTailShiftCode } from "./shiftTime";
 
 type AttendanceEventDay = Pick<
   TimesheetGridDay,
@@ -131,15 +132,30 @@ type TimesheetDayGapInput = TimesheetDataGapDay & AttendanceEventDay;
  */
 export function timesheetDayShiftDisplayValue(
   day:
-    | (AttendanceEventDay & Pick<TimesheetGridDay, "shiftCode">)
+    | (AttendanceEventDay & Pick<TimesheetGridDay, "shiftCode" | "holidayName">)
+    | undefined,
+  previousDay?:
+    | Pick<TimesheetGridDay, "shiftCode" | "shiftStartTime" | "shiftEndTime">
     | undefined,
 ): string {
   /*
-   * Ngày liền sau ca đêm chỉ còn giờ RA của ca hôm trước. Công đã tính trọn
-   * vào ngày bắt đầu ca nên ô này 0 công — nhưng để trống thì HR đọc thành
-   * "chưa phân ca". Hiện `→` cho thấy ca hôm trước kéo sang tới đây.
+   * Ô bị ca đêm hôm trước chiếm: hiện lại chính mã ca đó (VH2 nằm ở cả hai ô)
+   * để đọc thẳng thành "ca này kéo qua hai ngày".
+   *
+   * Căn cứ là CẤU HÌNH CA của ngày liền trước, không phải nguồn
+   * `OVERNIGHT_TAIL` — nguồn đó chỉ được backend gắn khi máy chấm công có
+   * thật một lượt chấm sót sang hôm sau, nên ca đêm chưa ai chấm (phần lớn
+   * lưới) sẽ không bao giờ khớp. Ca đã phân là đã chiếm ô, bất kể có dữ liệu
+   * chấm công hay chưa.
    */
-  if (day?.source === "OVERNIGHT_TAIL") return "→";
+  const tailCode = overnightTailShiftCode({
+    code: previousDay?.shiftCode,
+    startTime: previousDay?.shiftStartTime,
+    endTime: previousDay?.shiftEndTime,
+  });
+  if (tailCode && !day?.shiftCode?.trim() && !day?.holidayName) {
+    return tailCode;
+  }
   const label = timesheetDayDisplayValue(day);
   // Ngày nghỉ theo ca tuần lặp lại hàng tuần: in chữ `OFF` kín cột chủ nhật
   // làm rối mắt, che mất các ô cần chú ý. Để trống — nền xám của ô đã đủ
@@ -151,5 +167,17 @@ export function timesheetDayShiftDisplayValue(
   // hiệu nghiệp vụ vì mã ca không nói được lý do vắng.
   if (label === "+") return shiftCode;
   if (label === "-") return `${shiftCode}-`;
+  /*
+   * Ca ĐÃ PHÂN nhưng chưa có dữ liệu chấm công vẫn phải hiện mã ca.
+   *
+   * Trước đây ô này để trống, nên bảng công tháng nhìn thủng lỗ chỗ trong khi
+   * màn Phân ca hiện đủ VH1/VH2 mọi ngày. HR đối chiếu hai màn liền nhau rồi
+   * kết luận "phân ca sai" hoặc "mất ca đêm", trong khi ca vẫn đúng — chỉ là
+   * máy chấm công chưa có dữ liệu cho ngày đó.
+   *
+   * Giữ nguyên `label` cho ô đã có sự kiện chấm công (`?` chờ giải trình):
+   * đó là việc HR phải xử lý, không được mã ca che mất.
+   */
+  if (!label) return shiftCode;
   return label;
 }

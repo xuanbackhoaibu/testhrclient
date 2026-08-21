@@ -38,6 +38,9 @@ export interface TimesheetGridDay {
   /** Ca đã dùng để tính ô này; null khi ngày đó không có ca. */
   shiftCode?: string | null;
   shiftName?: string | null;
+  /** Giờ vào/ra của ca — để biết ca có kéo sang hôm sau không. API cũ có thể thiếu. */
+  shiftStartTime?: string | null;
+  shiftEndTime?: string | null;
 }
 
 export interface BccSummary {
