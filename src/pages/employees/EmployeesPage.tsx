@@ -36,7 +36,6 @@ import type {
   Employee,
   EmployeePayload,
 } from "../../features/employees/employeeTypes";
-import type { PaginationMeta } from "../../shared/types/api";
 import { useAllEmployees } from "../../features/employees/useEmployees";
 import { AccountDetailDrawer } from "../../features/employees/AccountDetailDrawer";
 import { BulkProvisionModal } from "../../features/employees/BulkProvisionModal";
@@ -63,6 +62,7 @@ import { sortByCode } from "../../shared/utils/sort";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
 import { HrmDateInput } from "../../shared/components/HrmDateInput";
+import { useClientPagination } from "../../shared/hooks/useClientPagination";
 
 const employmentStatusOptions = [
   { value: "ACTIVE", label: "Đang làm việc" },
@@ -591,25 +591,10 @@ export function EmployeesPage() {
   );
 
   // Phân trang ở client trên danh sách đã sắp xếp.
-  const totalCount = sortedEmployees.length;
-  const totalPages = Math.max(1, Math.ceil(totalCount / params.pageSize));
-  const currentPage = Math.min(params.page, totalPages);
-
-  const pagedEmployees = useMemo(() => {
-    const start = (currentPage - 1) * params.pageSize;
-    return sortedEmployees.slice(start, start + params.pageSize);
-  }, [sortedEmployees, currentPage, params.pageSize]);
-
-  const pagedMeta = useMemo<PaginationMeta>(
-    () => ({
-      page: currentPage,
-      pageSize: params.pageSize,
-      total: totalCount,
-      totalPages,
-      hasNextPage: currentPage < totalPages,
-      hasPreviousPage: currentPage > 1,
-    }),
-    [currentPage, params.pageSize, totalCount, totalPages],
+  const { pagedItems: pagedEmployees, pagedMeta } = useClientPagination(
+    sortedEmployees,
+    params.page,
+    params.pageSize,
   );
 
   const selectedEmployees = useMemo(

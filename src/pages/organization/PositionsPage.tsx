@@ -32,7 +32,6 @@ import {
   updatePosition,
 } from "../../features/organization/positionsApi";
 import type { Position } from "../../features/organization/organizationTypes";
-import type { PaginationMeta } from "../../shared/types/api";
 import { sortByCode } from "../../shared/utils/sort";
 import { useAllPositions } from "../../features/organization/usePositions";
 import {
@@ -44,6 +43,7 @@ import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
+import { useClientPagination } from "../../shared/hooks/useClientPagination";
 
 // Mã chức danh không còn nhập từ UI — backend tự sinh từ tên chức danh.
 type PositionFormValues = Omit<Position, "id" | "code">;
@@ -198,23 +198,10 @@ export function PositionsPage() {
     () => sortByCode(allPositions),
     [allPositions],
   );
-  const totalCount = sortedPositions.length;
-  const totalPages = Math.max(1, Math.ceil(totalCount / params.pageSize));
-  const currentPage = Math.min(params.page, totalPages);
-  const pagedPositions = useMemo(() => {
-    const start = (currentPage - 1) * params.pageSize;
-    return sortedPositions.slice(start, start + params.pageSize);
-  }, [sortedPositions, currentPage, params.pageSize]);
-  const pagedMeta = useMemo<PaginationMeta>(
-    () => ({
-      page: currentPage,
-      pageSize: params.pageSize,
-      total: totalCount,
-      totalPages,
-      hasNextPage: currentPage < totalPages,
-      hasPreviousPage: currentPage > 1,
-    }),
-    [currentPage, params.pageSize, totalCount, totalPages],
+  const { pagedItems: pagedPositions, pagedMeta } = useClientPagination(
+    sortedPositions,
+    params.page,
+    params.pageSize,
   );
 
   const columns = useMemo<DataTableColumn<Position>[]>(

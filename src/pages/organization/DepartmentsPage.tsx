@@ -27,7 +27,6 @@ import {
 } from "../../features/organization/departmentsApi";
 import type { Department } from "../../features/organization/organizationTypes";
 import { ApiError } from "../../shared/api/api.types";
-import type { PaginationMeta } from "../../shared/types/api";
 import { sortByCode } from "../../shared/utils/sort";
 import { useAllDepartments } from "../../features/organization/useDepartments";
 import { useUnitsSelect } from "../../features/organization/useUnits";
@@ -42,6 +41,7 @@ import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
+import { useClientPagination } from "../../shared/hooks/useClientPagination";
 
 type DepartmentFormValues = {
   code: string;
@@ -217,23 +217,10 @@ export function DepartmentsPage() {
     () => sortByCode(allDepartments),
     [allDepartments],
   );
-  const totalCount = sortedDepartments.length;
-  const totalPages = Math.max(1, Math.ceil(totalCount / params.pageSize));
-  const currentPage = Math.min(params.page, totalPages);
-  const pagedDepartments = useMemo(() => {
-    const start = (currentPage - 1) * params.pageSize;
-    return sortedDepartments.slice(start, start + params.pageSize);
-  }, [sortedDepartments, currentPage, params.pageSize]);
-  const pagedMeta = useMemo<PaginationMeta>(
-    () => ({
-      page: currentPage,
-      pageSize: params.pageSize,
-      total: totalCount,
-      totalPages,
-      hasNextPage: currentPage < totalPages,
-      hasPreviousPage: currentPage > 1,
-    }),
-    [currentPage, params.pageSize, totalCount, totalPages],
+  const { pagedItems: pagedDepartments, pagedMeta } = useClientPagination(
+    sortedDepartments,
+    params.page,
+    params.pageSize,
   );
 
   const columns = useMemo<DataTableColumn<Department>[]>(

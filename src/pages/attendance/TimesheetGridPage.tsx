@@ -78,6 +78,7 @@ import { useDepartmentsSelect } from "../../features/organization/useDepartments
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { PageHeader } from "../../shared/components/PageHeader";
 import { InfoBanner } from "../../shared/components/InfoBanner";
+import { makeDayMeta, type DayMeta } from "../../features/attendance/dayMeta";
 
 const now = new Date();
 const earliestTimesheetYear = 2020;
@@ -85,7 +86,6 @@ const latestTimesheetYear = Math.max(
   now.getFullYear() + 4,
   earliestTimesheetYear,
 );
-const weekdayLabels = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 const monthOptions = Array.from({ length: 12 }, (_, index) => ({
   value: String(index + 1),
   label: `Tháng ${index + 1}`,
@@ -246,12 +246,6 @@ interface EditingCell {
   row: TimesheetGridRow;
 }
 
-interface DayMeta {
-  day: number;
-  label: string;
-  isSunday: boolean;
-}
-
 interface PreparedTimesheetRow {
   row: TimesheetGridRow;
   daysByNumber: Map<number, TimesheetGridDay>;
@@ -315,11 +309,6 @@ function recomputeJobStatusColor(
   if (status === "FAILED") return "red";
   if (status === "CANCELLED") return "orange";
   return "blue";
-}
-
-function makeDayMeta(year: number, month: number, day: number): DayMeta {
-  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-  return { day, label: weekdayLabels[weekday], isSunday: weekday === 0 };
 }
 
 function fixedStyle(left: number, width: number, header = false) {

@@ -109,9 +109,9 @@ import {
   hasSelectedAllFiltered,
   selectableEmployeeRows,
 } from "../../features/attendance/shiftAssignmentSelection";
+import { makeDayMeta, type DayMeta } from "../../features/attendance/dayMeta";
 
 const now = new Date();
-const weekdayLabels = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 // Ô phân ca chứa mã ca (HC2, BV5) nên rộng hơn ô bảng công một chút.
 const dayColumnWidth = 40;
 const rowsPerPageOptions = [20, 50, 100].map((value) => ({
@@ -178,12 +178,6 @@ function formatWorkdayValue(value: number): string {
 const EMPTY_ROWS: ShiftAssignmentGridRow[] = [];
 const EMPTY_SELECTION = new Set<string>();
 
-interface DayMeta {
-  day: number;
-  label: string;
-  isSunday: boolean;
-}
-
 interface PreparedRow {
   row: ShiftAssignmentGridRow;
   daysByNumber: Map<number, ShiftAssignmentGridDay>;
@@ -215,11 +209,6 @@ function isoMonthStart(year: number, month: number): string {
 
 function isoMonthEnd(year: number, month: number): string {
   return new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
-}
-
-function makeDayMeta(year: number, month: number, day: number): DayMeta {
-  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-  return { day, label: weekdayLabels[weekday], isSunday: weekday === 0 };
 }
 
 function fixedStyle(left: number, width: number, header = false) {

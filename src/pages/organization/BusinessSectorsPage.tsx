@@ -24,7 +24,6 @@ import {
   updateBusinessSector,
 } from "../../features/organization/businessSectorsApi";
 import type { BusinessSector } from "../../features/organization/organizationTypes";
-import type { PaginationMeta } from "../../shared/types/api";
 import { sortByCode } from "../../shared/utils/sort";
 import { useAllBusinessSectors } from "../../features/organization/useBusinessSectors";
 import { ConfirmActionModal } from "../../shared/components/ConfirmActionModal";
@@ -37,6 +36,7 @@ import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
+import { useClientPagination } from "../../shared/hooks/useClientPagination";
 
 type BusinessSectorFormValues = {
   code: string;
@@ -176,23 +176,10 @@ export function BusinessSectorsPage() {
 
   // Sắp xếp toàn bộ lĩnh vực theo mã tăng dần rồi phân trang ở client.
   const sortedSectors = useMemo(() => sortByCode(allSectors), [allSectors]);
-  const totalCount = sortedSectors.length;
-  const totalPages = Math.max(1, Math.ceil(totalCount / params.pageSize));
-  const currentPage = Math.min(params.page, totalPages);
-  const pagedSectors = useMemo(() => {
-    const start = (currentPage - 1) * params.pageSize;
-    return sortedSectors.slice(start, start + params.pageSize);
-  }, [sortedSectors, currentPage, params.pageSize]);
-  const pagedMeta = useMemo<PaginationMeta>(
-    () => ({
-      page: currentPage,
-      pageSize: params.pageSize,
-      total: totalCount,
-      totalPages,
-      hasNextPage: currentPage < totalPages,
-      hasPreviousPage: currentPage > 1,
-    }),
-    [currentPage, params.pageSize, totalCount, totalPages],
+  const { pagedItems: pagedSectors, pagedMeta } = useClientPagination(
+    sortedSectors,
+    params.page,
+    params.pageSize,
   );
 
   const columns = useMemo<DataTableColumn<BusinessSector>[]>(
