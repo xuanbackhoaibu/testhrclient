@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import {
+  ActionIcon,
   Alert,
   Badge,
   Button,
   Group,
+  Menu,
   Modal,
   ScrollArea,
   Select,
@@ -15,10 +17,13 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconCalendarPlus,
+  IconDotsVertical,
   IconDownload,
   IconLock,
   IconLockOpen,
+  IconPencil,
   IconRefresh,
+  IconTrash,
 } from "@tabler/icons-react";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
@@ -26,10 +31,12 @@ import { useAuth } from "../../features/auth/useAuth";
 import { downloadTimesheetPeriodExport } from "../../features/attendance/timesheetApi";
 import {
   useCloseTimesheetPeriod,
+  useDeleteTimesheetPeriod,
   useOpenTimesheetPeriod,
   useReopenTimesheetPeriod,
   useTimesheetConfirmations,
   useTimesheetPeriods,
+  useUpdateTimesheetPeriod,
 } from "../../features/attendance/useTimesheet";
 import type {
   TimesheetConfirmationStatus,
@@ -102,6 +109,9 @@ export function TimesheetPeriodsPage() {
   const [openModal, setOpenModal] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<TimesheetPeriod | null>(null);
   const [reopenTarget, setReopenTarget] = useState<TimesheetPeriod | null>(null);
+  const [editTarget, setEditTarget] = useState<TimesheetPeriod | null>(null);
+  const [editDeadline, setEditDeadline] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<TimesheetPeriod | null>(null);
   const [newMonth, setNewMonth] = useState(now.getMonth() + 1);
   const [newYear, setNewYear] = useState(now.getFullYear());
   const [newUnitId, setNewUnitId] = useState<string | null>(null);
@@ -115,6 +125,8 @@ export function TimesheetPeriodsPage() {
   const openPeriod = useOpenTimesheetPeriod();
   const closePeriod = useCloseTimesheetPeriod();
   const reopenPeriod = useReopenTimesheetPeriod();
+  const updatePeriod = useUpdateTimesheetPeriod();
+  const deletePeriod = useDeleteTimesheetPeriod();
 
   const unitOptions = useMemo(
     () =>
@@ -162,6 +174,65 @@ export function TimesheetPeriodsPage() {
         color: "red",
         title: "Không chốt được kỳ công",
         message: "Kiểm tra lại trạng thái kỳ trước khi chốt.",
+      });
+    }
+  }
+
+  function startEditPeriod(period: TimesheetPeriod) {
+    setEditTarget(period);
+    // HrmDateInput làm việc với chuỗi ISO, không phải chuỗi đã format hiển thị.
+    setEditDeadline(period.confirmDeadline?.slice(0, 10) ?? "");
+  }
+
+  async function handleUpdatePeriod() {
+    if (!editTarget || !editDeadline) {
+      return;
+    }
+    try {
+      await updatePeriod.mutateAsync({
+        id: editTarget.id,
+        payload: { confirmDeadline: editDeadline },
+      });
+      notifications.show({
+        color: "green",
+        title: "Đã đổi hạn xác nhận",
+        message: `Kỳ ${editTarget.month}/${editTarget.year} có hạn mới là ${editDeadline}.`,
+      });
+      setEditTarget(null);
+    } catch (error) {
+      notifications.show({
+        color: "red",
+        title: "Không đổi được hạn xác nhận",
+        // Backend nói rõ vì sao (kỳ đã chốt, hạn trước tháng của kỳ) — hiện
+        // đúng câu đó thay vì một thông báo chung chung.
+        message:
+          error instanceof Error && error.message
+            ? error.message
+            : "Kiểm tra lại trạng thái kỳ và hạn vừa nhập.",
+      });
+    }
+  }
+
+  async function handleDeletePeriod() {
+    if (!deleteTarget) {
+      return;
+    }
+    try {
+      await deletePeriod.mutateAsync(deleteTarget.id);
+      notifications.show({
+        color: "green",
+        title: "Đã xóa kỳ công",
+        message: `Kỳ ${deleteTarget.month}/${deleteTarget.year} đã được xóa.`,
+      });
+      setDeleteTarget(null);
+    } catch (error) {
+      notifications.show({
+        color: "red",
+        title: "Không xóa được kỳ công",
+        message:
+          error instanceof Error && error.message
+            ? error.message
+            : "Kỳ đã chốt hoặc đã có người xác nhận thì không xóa được.",
       });
     }
   }
@@ -335,6 +406,42 @@ export function TimesheetPeriodsPage() {
                           Mở khóa
                         </Button>
                       ) : null}
+                      {/*
+                        Sửa và xóa nằm trong menu phụ: hai việc này hiếm khi
+                        dùng so với Xác nhận/Chốt, và để lẫn vào hàng nút chính
+                        thì nút Xóa đứng ngay cạnh nút Chốt — quá dễ bấm nhầm.
+                      */}
+                      {canEdit ? (
+                        <Menu position="bottom-end" withinPortal shadow="md">
+                          <Menu.Target>
+                            <ActionIcon
+                              variant="subtle"
+                              color="gray"
+                              aria-label={`Thao tác khác cho kỳ ${period.month}/${period.year}`}
+                            >
+                              <IconDotsVertical size={16} />
+                            </ActionIcon>
+                          </Menu.Target>
+                          <Menu.Dropdown>
+                            <Menu.Item
+                              leftSection={<IconPencil size={14} />}
+                              disabled={period.status === "CLOSED"}
+                              onClick={() => startEditPeriod(period)}
+                            >
+                              Sửa hạn xác nhận
+                            </Menu.Item>
+                            <Menu.Divider />
+                            <Menu.Item
+                              color="red"
+                              leftSection={<IconTrash size={14} />}
+                              disabled={period.status === "CLOSED"}
+                              onClick={() => setDeleteTarget(period)}
+                            >
+                              Xóa kỳ công
+                            </Menu.Item>
+                          </Menu.Dropdown>
+                        </Menu>
+                      ) : null}
                     </Group>
                   </Table.Td>
                 </Table.Tr>
@@ -494,6 +601,74 @@ export function TimesheetPeriodsPage() {
               onClick={() => void handleReopenPeriod()}
             >
               Mở khóa
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={editTarget !== null}
+        onClose={() => setEditTarget(null)}
+        title={
+          editTarget
+            ? `Sửa hạn xác nhận kỳ ${editTarget.month}/${editTarget.year}`
+            : "Sửa hạn xác nhận"
+        }
+        centered
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Chỉ đổi được hạn nhân viên bấm xác nhận. Muốn đổi tháng hoặc phạm
+            vi thì xóa kỳ rồi mở lại, vì các xác nhận đã có gắn với kỳ hiện tại.
+          </Text>
+          <HrmDateInput
+            label="Hạn xác nhận"
+            withAsterisk
+            value={editDeadline || null}
+            onChange={(value) => setEditDeadline(value ?? "")}
+          />
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={() => setEditTarget(null)}>
+              Hủy
+            </Button>
+            <Button
+              loading={updatePeriod.isPending}
+              disabled={!editDeadline}
+              onClick={() => void handleUpdatePeriod()}
+            >
+              Lưu hạn mới
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        title="Xóa kỳ công"
+        centered
+      >
+        <Stack gap="sm">
+          <Alert color="red" variant="light">
+            Xóa kỳ {deleteTarget?.month}/{deleteTarget?.year} (
+            {deleteTarget?.unit?.name ?? "Toàn công ty"}) sẽ gỡ luôn danh sách
+            chờ xác nhận của kỳ. Không hoàn tác được — muốn dùng lại thì phải mở
+            kỳ mới.
+          </Alert>
+          <Text size="sm">
+            Kỳ đã có người xác nhận hoặc đã chốt sẽ không xóa được; hệ thống báo
+            lại nếu rơi vào trường hợp đó.
+          </Text>
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={() => setDeleteTarget(null)}>
+              Hủy
+            </Button>
+            <Button
+              color="red"
+              loading={deletePeriod.isPending}
+              onClick={() => void handleDeletePeriod()}
+            >
+              Xóa kỳ công
             </Button>
           </Group>
         </Stack>
