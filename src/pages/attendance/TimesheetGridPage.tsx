@@ -71,6 +71,7 @@ import {
   isReplacingShift,
   resolveTimesheetCellEditAction,
 } from "../../features/attendance/timesheetCellEdit";
+import { sortWorkShiftCatalog } from "../../features/attendance/workShiftCatalogOrder";
 import { formatDate } from "../../shared/utils/date";
 import { useEmployees } from "../../features/employees/useEmployees";
 import { useDepartmentsSelect } from "../../features/organization/useDepartments";
@@ -825,15 +826,23 @@ export function TimesheetGridPage() {
       )?.id ?? null,
     [workShiftsQuery.data, editing],
   );
-  /** Danh mục ca cho ô chọn, kèm giờ ca để HR nhận ra ca đêm ngay khi chọn. */
+  /**
+   * Danh mục ca cho ô chọn, kèm giờ ca để HR nhận ra ca đêm ngay khi chọn.
+   *
+   * Sắp theo THỨ TỰ DANH MỤC của HR (HC1…HC4, S1…S6, C1…C3, VH, BV) như màn Ca
+   * làm việc và Phân ca. API trả theo mã tăng dần nên `C1` nhảy lên trước
+   * `HC1`, đọc ngược hẳn với các màn còn lại.
+   */
   const shiftOptions = useMemo(
     () =>
-      (workShiftsQuery.data ?? [])
-        .filter((shift) => shift.status === "ACTIVE" || shift.id === currentShiftId)
-        .map((shift) => ({
-          value: shift.id,
-          label: `${shift.code} — ${shift.name} (${shift.startTime}–${shift.endTime})`,
-        })),
+      sortWorkShiftCatalog(
+        (workShiftsQuery.data ?? []).filter(
+          (shift) => shift.status === "ACTIVE" || shift.id === currentShiftId,
+        ),
+      ).map((shift) => ({
+        value: shift.id,
+        label: `${shift.code} — ${shift.name} (${shift.startTime}–${shift.endTime})`,
+      })),
     [workShiftsQuery.data, currentShiftId],
   );
   const unitNameById = useMemo(

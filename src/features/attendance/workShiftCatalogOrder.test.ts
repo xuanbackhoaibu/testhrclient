@@ -43,3 +43,39 @@ describe("work shift catalogue order", () => {
     ]);
   });
 });
+
+/*
+ * Ô chọn ca trong hộp thoại "Sửa ô" của Bảng công tháng đọc thẳng từ API, vốn
+ * trả theo mã tăng dần — `C1` nhảy lên trước `HC1`, đọc ngược hẳn với màn Ca
+ * làm việc và Phân ca. Neo lại đúng thứ tự HR đang nhìn thấy.
+ */
+describe("thứ tự danh mục ca hiển thị cho HR", () => {
+  it("giữ đúng nhóm HC → S → C → VH → BV, ca tự tạo xếp cuối", () => {
+    const shifts = [
+      "C1",
+      "C2",
+      "C3",
+      "HC-VPTCT-082026",
+      "HC1",
+      "HC2",
+      "HC3",
+      "S1",
+      "VH2",
+      "BV1",
+    ].map((code) => ({ code }));
+
+    expect(sortWorkShiftCatalog(shifts).map((shift) => shift.code)).toEqual([
+      "HC1",
+      "HC2",
+      "HC3",
+      "S1",
+      "C1",
+      "C2",
+      "C3",
+      "VH2",
+      "BV1",
+      // Ca do HR tự tạo không nằm trong bảng 22 ca chuẩn.
+      "HC-VPTCT-082026",
+    ]);
+  });
+});
