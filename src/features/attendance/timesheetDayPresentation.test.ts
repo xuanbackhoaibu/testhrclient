@@ -211,6 +211,35 @@ describe("timesheet cell shown with the shift-assignment notation", () => {
     ).toBe("HC4-");
   });
 
+  /*
+   * Ca đã phân nhưng máy chấm công chưa có dữ liệu: bảng công phải đọc giống
+   * màn Phân ca. Để trống thì lưới thủng lỗ chỗ trong khi Phân ca hiện đủ
+   * VH1/VH2, và HR kết luận nhầm là mất ca đêm.
+   */
+  it("hiện mã ca cho ngày đã phân ca nhưng chưa có dữ liệu chấm công", () => {
+    expect(
+      timesheetDayShiftDisplayValue({
+        ...base,
+        displaySymbol: "",
+        shiftCode: "VH2",
+        source: "MISSING",
+      }),
+    ).toBe("VH2");
+  });
+
+  it("giữ dấu ? khi có chấm công nhưng chờ giải trình", () => {
+    expect(
+      timesheetDayShiftDisplayValue({
+        ...base,
+        displaySymbol: "",
+        shiftCode: "VH1",
+        source: "DEVICE",
+        firstPunch: "07:58",
+        needsExplanation: true,
+      }),
+    ).toBe("?");
+  });
+
   it("leaves the weekly OFF cell blank so Sundays stay quiet", () => {
     expect(
       timesheetDayShiftDisplayValue({
@@ -277,17 +306,87 @@ describe("timesheet cell shown with the shift-assignment notation", () => {
 describe("ngày liền sau ca đêm", () => {
   const base = { firstPunch: "07:48", lastPunch: "07:48", needsExplanation: false };
 
-  it("hiện mũi tên thay vì để trống", () => {
-    // Để trống thì HR đọc thành "chưa phân ca", trong khi công đã tính trọn
-    // vào ngày bắt đầu ca.
+  const nightShift = {
+    shiftCode: "VH2",
+    shiftStartTime: "18:41",
+    shiftEndTime: "07:48",
+  };
+
+  it("lặp lại mã ca của ngày hôm trước", () => {
+    // Để trống thì HR đọc thành "chưa phân ca", còn mũi tên `→` thì không nói
+    // được ca nào. Hiện chính mã ca hôm trước để VH2 nằm ở cả hai ô, đọc thẳng
+    // thành "ca này kéo qua hai ngày" — công vẫn tính trọn ở ngày bắt đầu ca.
     expect(
-      timesheetDayShiftDisplayValue({
-        ...base,
-        displaySymbol: "",
-        shiftCode: null,
-        source: "OVERNIGHT_TAIL",
-      }),
-    ).toBe("→");
+      timesheetDayShiftDisplayValue(
+        {
+          ...base,
+          displaySymbol: "",
+          shiftCode: null,
+          source: "OVERNIGHT_TAIL",
+        },
+        nightShift,
+      ),
+    ).toBe("VH2");
+  });
+
+  it("ca đêm chưa có dữ liệu chấm công vẫn chiếm ô hôm sau", () => {
+    // Nguồn `OVERNIGHT_TAIL` chỉ được gắn khi máy chấm công có lượt chấm sót
+    // sang hôm sau. Ca đã phân là đã chiếm ô, kể cả khi chưa ai chấm.
+    expect(
+      timesheetDayShiftDisplayValue(
+        {
+          firstPunch: null,
+          lastPunch: null,
+          needsExplanation: false,
+          displaySymbol: "",
+          shiftCode: null,
+          source: "MISSING",
+        },
+        nightShift,
+      ),
+    ).toBe("VH2");
+  });
+
+  it("ngày hôm sau đã có ca riêng thì không bị đè", () => {
+    expect(
+      timesheetDayShiftDisplayValue(
+        {
+          ...base,
+          displaySymbol: "+",
+          shiftCode: "HC1",
+          source: "ATTENDANCE",
+        },
+        nightShift,
+      ),
+    ).toBe("HC1");
+  });
+
+  it("ca trong ngày không chiếm ô hôm sau", () => {
+    expect(
+      timesheetDayShiftDisplayValue(
+        {
+          ...base,
+          displaySymbol: "",
+          shiftCode: null,
+          source: "MISSING",
+        },
+        { shiftCode: "HC1", shiftStartTime: "08:00", shiftEndTime: "17:00" },
+      ),
+    ).toBe("");
+  });
+
+  it("thiếu giờ ca (API cũ) thì không đoán bừa", () => {
+    expect(
+      timesheetDayShiftDisplayValue(
+        {
+          ...base,
+          displaySymbol: "",
+          shiftCode: null,
+          source: "OVERNIGHT_TAIL",
+        },
+        { shiftCode: "VH2" },
+      ),
+    ).toBe("");
   });
 
   it("ngày chưa phân ca thật vẫn để trống", () => {

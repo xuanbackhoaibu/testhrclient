@@ -56,10 +56,64 @@ describe('summarizeAssignmentRow', () => {
       day({ day: 1, holidayName: 'Quốc khánh' }),
       day({ day: 2, holidayName: 'Quốc khánh', shift: someShift }),
     ]);
-    expect(totals.holidayDays).toBe(2);
+    /*
+     * Ngày lễ CÓ ca thuộc về nhóm "đã phân ca", không cộng thêm vào cột ngày
+     * lễ. Đếm cả hai thì một ngày rơi vào hai nhóm và tổng phân loại vượt số
+     * ngày trong tháng — đúng mâu thuẫn với test "mỗi ngày chỉ vào đúng một
+     * cột" bên dưới, vốn chỉ không lộ ra vì ngày lễ ở đó chưa có ca.
+     */
+    expect(totals.holidayDays).toBe(1);
     // Mã ca là căn cứ tính công, nên ca đã phân trên ngày lễ không bị bỏ.
     expect(totals.assignedDays).toBe(1);
     expect(totals.workDays).toBe(1);
+  });
+
+  it('ngày lễ có ca không bị đếm sang cả cột ngày lễ', () => {
+    const days = [day({ day: 1, holidayName: 'Quốc khánh', shift: someShift })];
+    const totals = summarizeAssignmentRow(days);
+    expect(
+      totals.assignedDays +
+        totals.holidayDays +
+        totals.offDays +
+        totals.unassignedWorkingDays +
+        totals.outOfWindowDays,
+    ).toBe(days.length);
+  });
+
+  /*
+   * Ca VH2 19:30–07:30 bắt đầu ngày N và kết thúc sáng ngày N+1. Ngày N+1 đã
+   * có người trực suốt buổi sáng, nên báo "chưa phân ca" là bảo HR đi phân ca
+   * cho một ngày đã kín lịch — với ca 24 giờ thì càng vô lý.
+   */
+  it('ngày sau ca qua đêm không bị tính là chưa phân ca', () => {
+    const overnight = {
+      ...someShift,
+      code: 'VH2',
+      startTime: '19:30',
+      endTime: '07:30',
+      dayValue: 1.5,
+    };
+    const totals = summarizeAssignmentRow([
+      day({ day: 1, shift: overnight }),
+      day({ day: 2, shift: null, isWorkingDay: true }),
+    ]);
+    expect(totals.unassignedWorkingDays).toBe(0);
+    expect(totals.offDays).toBe(1);
+    expect(totals.assignedDays).toBe(1);
+  });
+
+  it('ngày sau ca TRONG NGÀY vẫn phải báo chưa phân ca', () => {
+    const dayShift = {
+      ...someShift,
+      code: 'VH1',
+      startTime: '07:30',
+      endTime: '19:30',
+    };
+    const totals = summarizeAssignmentRow([
+      day({ day: 1, shift: dayShift }),
+      day({ day: 2, shift: null, isWorkingDay: true }),
+    ]);
+    expect(totals.unassignedWorkingDays).toBe(1);
   });
 
   it('ngày ngoài khoảng tính công không vào cột nào khác', () => {
