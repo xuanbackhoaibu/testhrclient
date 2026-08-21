@@ -31,6 +31,7 @@ import {
   IconTransfer,
   IconUserCheck,
   IconUsers,
+  IconArrowsSort,
   IconCalendarStats,
 } from "@tabler/icons-react";
 import { Fragment, Suspense } from "react";
@@ -105,6 +106,11 @@ const attendanceItems: NavItem[] = [
     icon: IconCalendarStats,
     sectionLabel: "Cấu hình",
   },
+  {
+    label: "Thứ tự nhân sự",
+    path: ROUTES.attendanceRowOrder,
+    icon: IconArrowsSort,
+  },
   { label: "Ngày lễ", path: ROUTES.holidays, icon: IconCalendarCheck },
   {
     label: "Cấu hình duyệt phép",
@@ -158,6 +164,7 @@ const routeTitles: Record<string, string> = {
   [ROUTES.monthlyTimesheetRoster]: "Sắp ca tháng",
   [ROUTES.timesheetGrid]: "Bảng công tháng",
   [ROUTES.timesheetPeriods]: "Kỳ công",
+  [ROUTES.attendanceRowOrder]: "Thứ tự nhân sự",
   [ROUTES.workShifts]: "Ca làm việc",
   [ROUTES.weeklyShifts]: "Ca tuần",
   [ROUTES.holidays]: "Ngày lễ",

@@ -4,6 +4,9 @@ import {
   adjustTimesheetDay,
   closeTimesheetPeriod,
   deleteTimesheetPeriod,
+  getAttendanceRowOrder,
+  moveAttendanceRow,
+  resetAttendanceRowOrder,
   getTimesheetGrid,
   getMonthlyTimesheetRoster,
   initializeMonthlyTimesheetRoster,
@@ -17,6 +20,8 @@ import {
 } from './timesheetApi';
 import type {
   AdjustTimesheetDayPayload,
+  AttendanceRowOrder,
+  MoveAttendanceRowPayload,
   InitializeMonthlyTimesheetRosterPayload,
   MonthlyTimesheetRosterQuery,
   OpenTimesheetPeriodPayload,
@@ -33,6 +38,8 @@ export const timesheetKeys = {
   monthlyRoster: (query: MonthlyTimesheetRosterQuery | null) =>
     ['timesheet', 'monthly-roster', query] as const,
   periods: (year: number) => ['timesheet', 'periods', year] as const,
+  rowOrder: (departmentId: string | null) =>
+    ['timesheet', 'row-order', departmentId] as const,
   confirmations: (periodId: string | null) =>
     ['timesheet', 'period-confirmations', periodId] as const,
 };
@@ -143,6 +150,72 @@ export function useCloseTimesheetPeriod() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => closeTimesheetPeriod(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: timesheetKeys.all });
+    },
+  });
+}
+
+export function useAttendanceRowOrder(departmentId: string | null) {
+  return useQuery({
+    queryKey: timesheetKeys.rowOrder(departmentId),
+    queryFn: () => getAttendanceRowOrder(departmentId!),
+    enabled: Boolean(departmentId),
+    staleTime: 30_000,
+  });
+}
+
+/**
+ * Kéo thả phải phản hồi ngay dưới ngón tay, không đợi mạng. Ghi thẳng thứ tự
+ * mới vào cache trước khi gọi API; nếu server từ chối thì trả lại nguyên trạng
+ * và React Query tự đồng bộ lại bằng lần refetch sau.
+ */
+export function useMoveAttendanceRow(departmentId: string | null) {
+  const queryClient = useQueryClient();
+  const key = timesheetKeys.rowOrder(departmentId);
+  return useMutation({
+    mutationFn: (payload: MoveAttendanceRowPayload) =>
+      moveAttendanceRow(departmentId!, payload),
+    onMutate: async (payload) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<AttendanceRowOrder>(key);
+      if (previous) {
+        const members = [...previous.members];
+        const from = members.findIndex(
+          (member) => member.employeeId === payload.employeeId,
+        );
+        if (from !== -1) {
+          const [moved] = members.splice(from, 1);
+          members.splice(
+            Math.max(0, Math.min(payload.toIndex, members.length)),
+            0,
+            moved,
+          );
+          queryClient.setQueryData<AttendanceRowOrder>(key, {
+            ...previous,
+            members,
+          });
+        }
+      }
+      return { previous };
+    },
+    onError: (_error, _payload, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(key, context.previous);
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: key });
+      // Lưới BCC và Excel đọc theo thứ tự này nên phải làm mới cùng lúc.
+      void queryClient.invalidateQueries({ queryKey: timesheetKeys.all });
+    },
+  });
+}
+
+export function useResetAttendanceRowOrder(departmentId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => resetAttendanceRowOrder(departmentId!),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: timesheetKeys.all });
     },

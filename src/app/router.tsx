@@ -15,6 +15,7 @@ const AttendancePage = lazy(() => import('../pages/attendance/AttendancePage').t
 const AttendanceMappingPage = lazy(() => import('../pages/attendance/AttendanceMappingPage').then((m) => ({ default: m.AttendanceMappingPage })));
 const MonthlyTimesheetRosterPage = lazy(() => import('../pages/attendance/MonthlyTimesheetRosterPage').then((m) => ({ default: m.MonthlyTimesheetRosterPage })));
 const TimesheetGridPage = lazy(() => import('../pages/attendance/TimesheetGridPage').then((m) => ({ default: m.TimesheetGridPage })));
+const AttendanceRowOrderPage = lazy(() => import('../pages/attendance/AttendanceRowOrderPage').then((m) => ({ default: m.AttendanceRowOrderPage })));
 const TimesheetPeriodsPage = lazy(() => import('../pages/attendance/TimesheetPeriodsPage').then((m) => ({ default: m.TimesheetPeriodsPage })));
 const WorkShiftsPage = lazy(() => import('../pages/attendance/WorkShiftsPage').then((m) => ({ default: m.WorkShiftsPage })));
 const WeeklyShiftTemplatesPage = lazy(() => import('../pages/attendance/WeeklyShiftTemplatesPage').then((m) => ({ default: m.WeeklyShiftTemplatesPage })));
@@ -163,6 +164,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute route={ROUTES.timesheetPeriods}>
             <TimesheetPeriodsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.attendanceRowOrder,
+        element: (
+          <ProtectedRoute route={ROUTES.attendanceRowOrder}>
+            <AttendanceRowOrderPage />
           </ProtectedRoute>
         ),
       },
