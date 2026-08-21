@@ -1,5 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { applyMove } from './rowOrderDrop';
+
 import {
   adjustTimesheetDay,
   closeTimesheetPeriod,
@@ -180,20 +182,15 @@ export function useMoveAttendanceRow(departmentId: string | null) {
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<AttendanceRowOrder>(key);
       if (previous) {
-        const members = [...previous.members];
-        const from = members.findIndex(
+        const from = previous.members.findIndex(
           (member) => member.employeeId === payload.employeeId,
         );
         if (from !== -1) {
-          const [moved] = members.splice(from, 1);
-          members.splice(
-            Math.max(0, Math.min(payload.toIndex, members.length)),
-            0,
-            moved,
-          );
+          // Dùng chung applyMove với chỗ tính toIndex, để thứ tự hiện ngay dưới
+          // ngón tay trùng đúng thứ tự server trả về — lệch là danh sách nhảy.
           queryClient.setQueryData<AttendanceRowOrder>(key, {
             ...previous,
-            members,
+            members: applyMove(previous.members, from, payload.toIndex),
           });
         }
       }
