@@ -31,3 +31,36 @@ describe("timesheet attendance-code presentation", () => {
 function formatRowCode(row: { attendanceCode: string | null }): string {
   return formatAttendanceCode(row.attendanceCode);
 }
+
+describe("compareAttendanceIdentity — thứ tự HR sắp tay", () => {
+  const row = (
+    attendanceCode: string | null,
+    rowOrder: number | null = null,
+  ) => ({ attendanceCode, employeeCode: `HC${attendanceCode ?? "x"}`, rowOrder });
+
+  it("thứ tự sắp tay thắng mã chấm công", () => {
+    // Mã 239 lẽ ra đứng sau 31, nhưng HR đã kéo lên trước.
+    expect(
+      compareAttendanceIdentity(row("239", 1000), row("31", 2000)),
+    ).toBeLessThan(0);
+  });
+
+  it("người chưa sắp luôn xuống sau người đã sắp", () => {
+    expect(
+      compareAttendanceIdentity(row("999", 1000), row("1", null)),
+    ).toBeLessThan(0);
+    expect(
+      compareAttendanceIdentity(row("1", null), row("999", 1000)),
+    ).toBeGreaterThan(0);
+  });
+
+  it("cả hai chưa sắp thì giữ nguyên quy ước mã chấm công", () => {
+    expect(compareAttendanceIdentity(row("31"), row("239"))).toBeLessThan(0);
+  });
+
+  it("cùng thứ tự sắp tay thì so tiếp bằng mã chấm công", () => {
+    expect(
+      compareAttendanceIdentity(row("239", 1000), row("31", 1000)),
+    ).toBeGreaterThan(0);
+  });
+});

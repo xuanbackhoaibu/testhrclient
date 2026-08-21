@@ -65,6 +65,11 @@ export interface TimesheetGridRow {
   fullName: string;
   /** HR bật cho lãnh đạo/nhân sự đặc thù không cần log chấm công. */
   attendanceAutoFullDay: boolean;
+  /**
+   * Thứ tự HR sắp tay trong phòng ban (màn Thứ tự nhân sự). null = chưa sắp,
+   * dòng đó xếp sau và so theo mã chấm công như mặc định.
+   */
+  rowOrder?: number | null;
   departmentId: string | null;
   /** Mã phòng ban tại thời điểm của kỳ công, dùng để nhóm/sắp xếp BCC ổn định. */
   departmentCode?: string | null;
@@ -241,6 +246,27 @@ export interface ReopenTimesheetPeriodPayload {
  * đổi chúng sẽ kéo các xác nhận đã có sang một kỳ khác, nên phải xóa rồi mở
  * lại thay vì sửa tại chỗ.
  */
+/** Một dòng trong màn sắp thứ tự nhân sự của phòng ban. */
+export interface AttendanceRowOrderMember {
+  employeeId: string;
+  fullName: string;
+  employeeCode: string;
+  attendanceCode: string | null;
+  /** null = chưa được sắp tay, dòng này xếp sau theo mã chấm công. */
+  sortOrder: number | null;
+}
+
+export interface AttendanceRowOrder {
+  department: { id: string; code: string; name: string };
+  members: AttendanceRowOrderMember[];
+}
+
+export interface MoveAttendanceRowPayload {
+  employeeId: string;
+  /** Vị trí mới tính từ 0. */
+  toIndex: number;
+}
+
 export interface UpdateTimesheetPeriodPayload {
   confirmDeadline: string;
 }

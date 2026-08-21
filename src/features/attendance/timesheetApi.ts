@@ -4,6 +4,8 @@ import {
 } from '../../shared/api/httpClient';
 import type {
   AdjustTimesheetDayPayload,
+  AttendanceRowOrder,
+  MoveAttendanceRowPayload,
   RecomputePayload,
   RecomputeResult,
   TimesheetRecomputeJob,
@@ -166,6 +168,30 @@ export async function openTimesheetPeriod(
 
 export async function closeTimesheetPeriod(id: string): Promise<TimesheetPeriod> {
   return api.post<TimesheetPeriod>(`${PERIOD_BASE}/${id}/close`);
+}
+
+const ROW_ORDER_BASE = '/attendance/row-order/departments';
+
+export async function getAttendanceRowOrder(
+  departmentId: string,
+): Promise<AttendanceRowOrder> {
+  return api.get<AttendanceRowOrder>(`${ROW_ORDER_BASE}/${departmentId}`);
+}
+
+export async function moveAttendanceRow(
+  departmentId: string,
+  payload: MoveAttendanceRowPayload,
+): Promise<AttendanceRowOrder> {
+  return api.patch<AttendanceRowOrder>(
+    `${ROW_ORDER_BASE}/${departmentId}/move`,
+    payload,
+  );
+}
+
+export async function resetAttendanceRowOrder(
+  departmentId: string,
+): Promise<AttendanceRowOrder> {
+  return api.delete<AttendanceRowOrder>(`${ROW_ORDER_BASE}/${departmentId}`);
 }
 
 export async function updateTimesheetPeriod(

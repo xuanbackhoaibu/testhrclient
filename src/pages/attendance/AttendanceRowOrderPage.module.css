@@ -1,0 +1,95 @@
+/*
+ * Danh sách kéo thả cố ý giữ thật gọn: mỗi dòng chỉ có tay cầm, số thứ tự,
+ * tên và mã chấm công. Không cột dính, không cuộn ngang, không ô sửa được —
+ * đó là lý do kéo ở đây mượt hẳn so với kéo trên lưới bảng công 46 ô/dòng.
+ */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 28px 40px 1fr 110px;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  border-radius: var(--mantine-radius-sm);
+  background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-6));
+  /* Chỉ báo trình duyệt vẽ lại riêng dòng này khi kéo, không đụng cả danh sách. */
+  transition: border-color 120ms, box-shadow 120ms;
+}
+
+/* Dòng đang được nhấc lên: mờ đi để thấy rõ nó đang "rời chỗ". */
+.row[data-dragging='true'] {
+  opacity: 0.45;
+}
+
+/* Vạch chỉ chỗ sắp thả — rõ hơn nhiều so với việc đẩy cả danh sách chạy loạn. */
+.row[data-drop='above'] {
+  box-shadow: 0 -2px 0 0 var(--mantine-color-blue-6);
+}
+
+.row[data-drop='below'] {
+  box-shadow: 0 2px 0 0 var(--mantine-color-blue-6);
+}
+
+.handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  color: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-2));
+  border: 0;
+  background: none;
+  padding: 4px;
+  border-radius: var(--mantine-radius-sm);
+}
+
+.handle:active {
+  cursor: grabbing;
+}
+
+.handle:focus-visible {
+  outline: 2px solid var(--mantine-color-blue-6);
+  outline-offset: 1px;
+}
+
+.position {
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-1));
+}
+
+.name {
+  min-width: 0;
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: light-dark(var(--mantine-color-gray-9), var(--mantine-color-dark-0));
+}
+
+.code {
+  font-size: var(--mantine-font-size-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
+}
+
+/* Người chưa được sắp: nhạt hơn để HR thấy ngay ai còn nằm ở thứ tự mặc định. */
+.row[data-unsorted='true'] .position,
+.row[data-unsorted='true'] .name {
+  color: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-2));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row {
+    transition: none;
+  }
+}
