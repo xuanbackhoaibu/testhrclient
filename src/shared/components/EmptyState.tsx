@@ -18,7 +18,7 @@ export function EmptyState({
   icon,
 }: EmptyStateProps) {
   return (
-    <Paper p="xl" radius="md">
+    <Paper p="xl" radius="md" role="status" aria-live="polite">
       <Stack align="center" gap="xs" ta="center">
         <ThemeIcon size={42} radius="xl" variant="light" color="gray">
           {icon ?? <IconInbox size={22} />}

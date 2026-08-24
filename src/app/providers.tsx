@@ -12,6 +12,7 @@ import { clearSession, getAccessToken, setSessionUser } from '../features/auth/a
 import { useAuthStore } from '../features/auth/authStore';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { readHttpStatus } from '../shared/api/response';
+import { filterSelectOptions } from '../shared/utils/filterSelectOptions';
 
 dayjs.locale('vi');
 
@@ -45,6 +46,16 @@ const theme = createTheme({
       defaultProps: {
         verticalSpacing: 'sm',
         horizontalSpacing: 'md',
+      },
+    },
+    Select: {
+      defaultProps: {
+        filter: filterSelectOptions,
+      },
+    },
+    MultiSelect: {
+      defaultProps: {
+        filter: filterSelectOptions,
       },
     },
   },

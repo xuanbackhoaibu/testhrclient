@@ -86,8 +86,15 @@ export function DataTable<T>({
 
   if (loading) {
     return (
-      <Paper p="md" radius="md">
-        <Stack gap="sm">
+      <Paper
+        p="md"
+        radius="md"
+        role="status"
+        aria-live="polite"
+        aria-label="Đang tải dữ liệu"
+        aria-busy="true"
+      >
+        <Stack gap="sm" aria-hidden>
           {Array.from({ length: 6 }).map((_, index) => (
             <Skeleton key={index} height={34} radius="sm" />
           ))}
@@ -174,7 +181,7 @@ export function DataTable<T>({
 
       {meta && onPageChange ? (
         <Group justify="space-between" gap="sm" px="md" py="sm" className="data-table-footer">
-          <Text size="sm" c="dimmed">
+          <Text size="sm" c="dimmed" role="status" aria-live="polite" aria-atomic="true">
             {meta.total} bản ghi
           </Text>
           <Group gap="xs" wrap="nowrap">
