@@ -1,17 +1,7 @@
 import { useMemo, useState } from 'react';
-import {
-  Alert,
-  Button,
-  Card,
-  Group,
-  Select,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from '@mantine/core';
+import { ActionIcon, Alert, Badge, Group, Select, Stack, Text, Tooltip } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconDeviceFloppy, IconInfoCircle, IconTrash } from '@tabler/icons-react';
+import { IconInfoCircle, IconTrash } from '@tabler/icons-react';
 
 import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import { useAuth } from '../../features/auth/useAuth';
@@ -23,23 +13,32 @@ import {
   useUpsertLeaveApprovalAssignment,
 } from '../../features/leave/useLeaveApprovalAssignments';
 import { useAllDepartments } from '../../features/organization/useDepartments';
+import { ConfirmActionModal } from '../../shared/components/ConfirmActionModal';
 import { ErrorState } from '../../shared/components/ErrorState';
 import { LoadingState } from '../../shared/components/LoadingState';
 import { PageHeader } from '../../shared/components/PageHeader';
+import { SectionCard } from '../../shared/components/SectionCard';
+import styles from './LeaveApprovalAssignmentsPage.module.css';
 
 interface ApprovalStage {
   code: LeaveApprovalStepCode;
+  step: number;
   label: string;
   description: string;
 }
 
+interface RemoveTarget {
+  stage: ApprovalStage;
+  departmentId?: string;
+}
+
 const DEPARTMENT_STAGES: ApprovalStage[] = [
-  { code: 'ATTENDANCE_TRACKER', label: '1. Người theo dõi chấm công', description: 'Kiểm tra phép của phòng ban.' },
-  { code: 'DEPARTMENT_MANAGER', label: '2. Trưởng bộ phận', description: 'Duyệt đơn của nhân sự phòng ban.' },
+  { code: 'ATTENDANCE_TRACKER', step: 1, label: 'Người theo dõi chấm công', description: 'Kiểm tra thông tin phép của phòng ban.' },
+  { code: 'DEPARTMENT_MANAGER', step: 2, label: 'Trưởng bộ phận', description: 'Duyệt đơn của nhân sự trong phòng ban.' },
 ];
 const GLOBAL_STAGES: ApprovalStage[] = [
-  { code: 'OFFICE_CHIEF', label: '3. Chánh văn phòng', description: 'Cấp duyệt chung toàn công ty.' },
-  { code: 'BOARD', label: '4. Ban Tổng giám đốc', description: 'Cấp cuối; cũng duyệt thẳng đơn của trưởng bộ phận.' },
+  { code: 'OFFICE_CHIEF', step: 3, label: 'Chánh văn phòng', description: 'Duyệt chung cho toàn công ty.' },
+  { code: 'BOARD', step: 4, label: 'Ban Tổng giám đốc', description: 'Duyệt cuối và duyệt trực tiếp đơn của trưởng bộ phận.' },
 ];
 
 function keyFor(stepCode: LeaveApprovalStepCode, departmentId?: string | null) {
@@ -56,9 +55,11 @@ export function LeaveApprovalAssignmentsPage() {
   const remove = useDeleteLeaveApprovalAssignment();
   const [departmentId, setDepartmentId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string | null>>({});
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<RemoveTarget | null>(null);
 
-  const selectedDepartmentId =
-    departmentId ?? departments.data?.[0]?.id ?? null;
+  const selectedDepartmentId = departmentId ?? departments.data?.[0]?.id ?? null;
+  const selectedDepartment = departments.data?.find((item) => item.id === selectedDepartmentId);
 
   const reviewerOptions = useMemo(
     () => (reviewers.data ?? []).map((reviewer) => ({
@@ -77,67 +78,128 @@ export function LeaveApprovalAssignmentsPage() {
 
   const assignmentFor = (stage: ApprovalStage, scopedDepartmentId?: string | null) =>
     (assignments.data ?? []).find((item) =>
-      item.stepCode === stage.code &&
-      (scopedDepartmentId ? item.departmentId === scopedDepartmentId : item.scopeType === 'GLOBAL'),
+      item.stepCode === stage.code
+      && (scopedDepartmentId ? item.departmentId === scopedDepartmentId : item.scopeType === 'GLOBAL'),
     );
   const reviewerValue = (stage: ApprovalStage, scopedDepartmentId?: string | null) =>
     drafts[keyFor(stage.code, scopedDepartmentId)] ?? assignmentFor(stage, scopedDepartmentId)?.reviewerUserId ?? null;
 
-  async function save(stage: ApprovalStage, scopedDepartmentId?: string | null) {
-    const reviewerUserId = reviewerValue(stage, scopedDepartmentId);
-    if (!reviewerUserId) {
-      notifications.show({ color: 'red', title: 'Chưa chọn người duyệt', message: 'Chỉ được chọn người dùng HRM đang hoạt động.' });
-      return;
-    }
-    try {
-      await upsert.mutateAsync({ stepCode: stage.code, payload: { reviewerUserId, ...(scopedDepartmentId ? { departmentId: scopedDepartmentId } : {}) } });
-      notifications.show({ color: 'green', title: 'Đã lưu người duyệt', message: 'Đơn nộp sau thời điểm này sẽ chụp lại cấu hình mới.' });
-    } catch {
-      notifications.show({ color: 'red', title: 'Không lưu được cấu hình', message: 'Cần quyền cập nhật phép và phạm vi toàn công ty.' });
-    }
+  const configuredCount = [
+    ...DEPARTMENT_STAGES.map((stage) => selectedDepartmentId && assignmentFor(stage, selectedDepartmentId)),
+    ...GLOBAL_STAGES.map((stage) => assignmentFor(stage)),
+  ].filter(Boolean).length;
+
+  function clearDraft(key: string) {
+    setDrafts((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
   }
 
-  async function clear(stage: ApprovalStage, scopedDepartmentId?: string | null) {
-    try {
-      await remove.mutateAsync({ stepCode: stage.code, ...(scopedDepartmentId ? { departmentId: scopedDepartmentId } : {}) });
-      notifications.show({ color: 'blue', title: 'Đã gỡ cấu hình', message: 'Đơn mới sẽ bị chặn trình nếu thiếu cấp duyệt này.' });
-    } catch {
-      notifications.show({ color: 'red', title: 'Không gỡ được cấu hình', message: 'Kiểm tra lại phạm vi quản trị.' });
-    }
-  }
-
-  function stageCard(stage: ApprovalStage, scopedDepartmentId?: string | null) {
+  async function changeReviewer(stage: ApprovalStage, reviewerUserId: string | null, scopedDepartmentId?: string | null) {
     const assignment = assignmentFor(stage, scopedDepartmentId);
-    const value = reviewerValue(stage, scopedDepartmentId);
+    if (!reviewerUserId || reviewerUserId === assignment?.reviewerUserId) return;
+
+    const key = keyFor(stage.code, scopedDepartmentId);
+    setDrafts((current) => ({ ...current, [key]: reviewerUserId }));
+    setSavingKey(key);
+    try {
+      await upsert.mutateAsync({
+        stepCode: stage.code,
+        payload: { reviewerUserId, ...(scopedDepartmentId ? { departmentId: scopedDepartmentId } : {}) },
+      });
+      notifications.show({
+        color: 'green',
+        title: `Đã cập nhật bước ${stage.step}`,
+        message: 'Cấu hình mới áp dụng cho các đơn gửi sau thời điểm này.',
+      });
+    } catch {
+      notifications.show({
+        color: 'red',
+        title: 'Không cập nhật được người duyệt',
+        message: 'Vui lòng thử lại hoặc kiểm tra quyền quản trị phép.',
+      });
+    } finally {
+      clearDraft(key);
+      setSavingKey(null);
+    }
+  }
+
+  async function confirmRemove() {
+    if (!removeTarget) return;
+    const { stage, departmentId: scopedDepartmentId } = removeTarget;
+    try {
+      await remove.mutateAsync({
+        stepCode: stage.code,
+        ...(scopedDepartmentId ? { departmentId: scopedDepartmentId } : {}),
+      });
+      clearDraft(keyFor(stage.code, scopedDepartmentId));
+      setRemoveTarget(null);
+      notifications.show({
+        color: 'blue',
+        title: `Đã gỡ người duyệt bước ${stage.step}`,
+        message: 'Hãy chọn người thay thế để nhân sự có thể gửi đơn mới.',
+      });
+    } catch {
+      notifications.show({
+        color: 'red',
+        title: 'Không gỡ được người duyệt',
+        message: 'Vui lòng thử lại hoặc kiểm tra quyền quản trị phép.',
+      });
+    }
+  }
+
+  function stageRow(stage: ApprovalStage, scopedDepartmentId?: string | null) {
+    const assignment = assignmentFor(stage, scopedDepartmentId);
+    const key = keyFor(stage.code, scopedDepartmentId);
+    const isSaving = savingKey === key;
+
     return (
-      <Card key={keyFor(stage.code, scopedDepartmentId)} withBorder padding="md" radius="sm">
-        <Stack gap="sm">
+      <div className={styles.stage} key={key}>
+        <div className={styles.stageInfo}>
+          <span className={styles.stepNumber} aria-hidden="true">{stage.step}</span>
           <div>
-            <Text fw={600}>{stage.label}</Text>
+            <Group gap="xs" wrap="wrap">
+              <Text fw={600}>{stage.label}</Text>
+              <Badge size="sm" variant="light" color={isSaving ? 'blue' : assignment ? 'green' : 'gray'}>
+                {isSaving ? 'Đang lưu' : assignment ? 'Đã cấu hình' : 'Chưa cấu hình'}
+              </Badge>
+            </Group>
             <Text size="sm" c="dimmed">{stage.description}</Text>
           </div>
+        </div>
+
+        <div className={styles.stageControl}>
           <Select
-            label="Người duyệt"
-            placeholder="Chọn người dùng HRM"
+            className={styles.reviewerSelect}
+            label={`Người duyệt bước ${stage.step}`}
+            aria-label={`Người duyệt bước ${stage.step}: ${stage.label}`}
+            placeholder="Chọn người duyệt"
             data={reviewerOptions}
-            value={value}
+            value={reviewerValue(stage, scopedDepartmentId)}
             searchable
-            disabled={!canUpdate || reviewerOptions.length === 0}
-            onChange={(next) => setDrafts((current) => ({ ...current, [keyFor(stage.code, scopedDepartmentId)]: next }))}
+            nothingFoundMessage="Không tìm thấy người dùng"
+            disabled={!canUpdate || reviewerOptions.length === 0 || upsert.isPending || remove.isPending}
+            onChange={(next) => void changeReviewer(stage, next, scopedDepartmentId)}
           />
-          {assignment ? <Text size="xs" c="dimmed">Đang áp dụng: {assignment.reviewer.fullName ?? assignment.reviewer.id}</Text> : null}
-          <Group justify="flex-end">
-            {assignment ? (
-              <Button variant="subtle" color="red" size="xs" leftSection={<IconTrash size={14} />} disabled={!canUpdate || remove.isPending} onClick={() => void clear(stage, scopedDepartmentId)}>
-                Gỡ
-              </Button>
-            ) : null}
-            <Button size="xs" leftSection={<IconDeviceFloppy size={14} />} disabled={!canUpdate || reviewerOptions.length === 0} loading={upsert.isPending} onClick={() => void save(stage, scopedDepartmentId)}>
-              Lưu
-            </Button>
-          </Group>
-        </Stack>
-      </Card>
+          {assignment && canUpdate ? (
+            <Tooltip label="Gỡ người duyệt">
+              <ActionIcon
+                className={styles.removeButton}
+                variant="subtle"
+                color="red"
+                size="lg"
+                aria-label={`Gỡ người duyệt bước ${stage.step}`}
+                disabled={upsert.isPending || remove.isPending}
+                onClick={() => setRemoveTarget({ stage, ...(scopedDepartmentId ? { departmentId: scopedDepartmentId } : {}) })}
+              >
+                <IconTrash size={18} />
+              </ActionIcon>
+            </Tooltip>
+          ) : null}
+        </div>
+      </div>
     );
   }
 
@@ -148,26 +210,79 @@ export function LeaveApprovalAssignmentsPage() {
 
   return (
     <>
-      <PageHeader title="Cấu hình duyệt nghỉ phép" subtitle="Mọi đơn đi đủ 4 cấp cố định; riêng trưởng bộ phận nộp đơn đi thẳng Ban Tổng giám đốc. Không có ủy quyền duyệt thay." />
+      <PageHeader
+        title="Thiết lập người duyệt phép"
+        subtitle="Chọn người phụ trách theo đúng thứ tự 4 bước. Thay đổi chỉ áp dụng cho đơn mới; đơn đã gửi giữ nguyên luồng duyệt."
+      />
       <Stack gap="lg">
-        <Alert icon={<IconInfoCircle size={18} />} color="blue" variant="light" title="Người duyệt được chụp vào lúc nộp đơn">
-          Đổi cấu hình không sửa lịch sử. Thiếu một cấp bắt buộc thì backend chặn nộp đơn thay vì để đơn không có người duyệt.
-        </Alert>
-        {reviewerOptions.length === 0 ? <Alert color="orange" title="Chưa có người dùng HRM hoạt động">Hãy liên kết/cấp tài khoản cho người duyệt; giao diện không nhận ID thủ công.</Alert> : null}
-        <Card withBorder padding="lg" radius="md">
-          <Stack gap="md">
-            <div><Title order={3} size="h5">Cấp dùng chung toàn công ty</Title><Text size="sm" c="dimmed">Chánh văn phòng và Ban Tổng giám đốc không gắn phòng ban.</Text></div>
-            <SimpleGrid cols={{ base: 1, md: 2 }}>{GLOBAL_STAGES.map((stage) => stageCard(stage))}</SimpleGrid>
-          </Stack>
-        </Card>
-        <Card withBorder padding="lg" radius="md">
-          <Stack gap="md">
-            <div><Title order={3} size="h5">Cấp theo phòng ban</Title><Text size="sm" c="dimmed">Mỗi phòng phải có người theo dõi chấm công và trưởng bộ phận.</Text></div>
-            <Select label="Phòng ban" placeholder="Chọn phòng ban" data={departmentOptions} value={selectedDepartmentId} searchable disabled={!canUpdate || departmentOptions.length === 0} onChange={setDepartmentId} />
-            {selectedDepartmentId ? <SimpleGrid cols={{ base: 1, md: 2 }}>{DEPARTMENT_STAGES.map((stage) => stageCard(stage, selectedDepartmentId))}</SimpleGrid> : <Text size="sm" c="dimmed">Chưa có phòng ban hoạt động để cấu hình.</Text>}
-          </Stack>
-        </Card>
+        {!canUpdate ? (
+          <Alert icon={<IconInfoCircle size={18} />} color="blue" variant="light" title="Bạn đang xem cấu hình">
+            Tài khoản này chưa có quyền thay đổi người duyệt phép.
+          </Alert>
+        ) : null}
+        {reviewerOptions.length === 0 ? (
+          <Alert color="orange" title="Chưa có người dùng HRM hoạt động">
+            Hãy cấp hoặc liên kết tài khoản HRM trước khi chọn người duyệt.
+          </Alert>
+        ) : null}
+        {selectedDepartmentId && configuredCount < 4 ? (
+          <Alert color="orange" variant="light" title={`Còn ${4 - configuredCount} bước chưa có người duyệt`}>
+            Cần chọn đủ 4 bước để nhân sự của phòng ban này có thể gửi đơn.
+          </Alert>
+        ) : null}
+
+        <SectionCard
+          title="Luồng duyệt 4 bước"
+          count={`${configuredCount}/4 bước đã cấu hình`}
+          description="Bước 1–2 theo từng phòng ban; bước 3–4 dùng chung cho toàn công ty. Chọn người mới là hệ thống tự lưu."
+        >
+          <div className={styles.scopeHeader}>
+            <div>
+              <Text fw={600}>Theo phòng ban</Text>
+              <Text size="sm" c="dimmed">Chọn phòng ban cần xem hoặc cấu hình.</Text>
+            </div>
+            <Select
+              className={styles.departmentSelect}
+              label="Phòng ban"
+              placeholder="Chọn phòng ban"
+              data={departmentOptions}
+              value={selectedDepartmentId}
+              searchable
+              nothingFoundMessage="Không tìm thấy phòng ban"
+              disabled={departmentOptions.length === 0}
+              onChange={setDepartmentId}
+            />
+          </div>
+
+          {selectedDepartmentId ? (
+            DEPARTMENT_STAGES.map((stage) => stageRow(stage, selectedDepartmentId))
+          ) : (
+            <Text className={styles.empty} size="sm" c="dimmed">Chưa có phòng ban hoạt động để cấu hình.</Text>
+          )}
+
+          <div className={styles.scopeHeader}>
+            <div>
+              <Text fw={600}>Dùng chung toàn công ty</Text>
+              <Text size="sm" c="dimmed">
+                Áp dụng cho mọi phòng ban{selectedDepartment ? `, bao gồm ${selectedDepartment.name}` : ''}.
+              </Text>
+            </div>
+          </div>
+          {GLOBAL_STAGES.map((stage) => stageRow(stage))}
+        </SectionCard>
       </Stack>
+
+      <ConfirmActionModal
+        opened={Boolean(removeTarget)}
+        title="Gỡ người duyệt?"
+        message={removeTarget
+          ? `Bước ${removeTarget.stage.step} sẽ bị bỏ trống. Nhân sự có thể không gửi được đơn mới cho đến khi bạn chọn người thay thế.`
+          : ''}
+        confirmLabel="Gỡ người duyệt"
+        loading={remove.isPending}
+        onClose={() => setRemoveTarget(null)}
+        onConfirm={() => void confirmRemove()}
+      />
     </>
   );
 }
