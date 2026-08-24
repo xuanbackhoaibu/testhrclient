@@ -31,9 +31,8 @@ import {
   updateUnit,
 } from "../../features/organization/unitsApi";
 import type { Unit } from "../../features/organization/organizationTypes";
-import { useAllUnits } from "../../features/organization/useUnits";
+import { useUnits } from "../../features/organization/useUnits";
 import { ApiError } from "../../shared/api/api.types";
-import { sortByCode } from "../../shared/utils/sort";
 import { ConfirmActionModal } from "../../shared/components/ConfirmActionModal";
 import {
   DataTable,
@@ -45,7 +44,6 @@ import { StatusTag } from "../../shared/components/StatusTag";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
-import { useClientPagination } from "../../shared/hooks/useClientPagination";
 
 type UnitFormValues = {
   code: string;
@@ -93,11 +91,9 @@ export function UnitsPage() {
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [codeManuallyEdited, setCodeManuallyEdited] = useState(false);
-  // Lấy toàn bộ đơn vị theo bộ lọc, sắp theo mã trên toàn danh sách rồi
-  // phân trang ở client để trang 1 luôn bắt đầu từ mã nhỏ nhất.
-  const { data: allUnits, isLoading, error, refetch } = useAllUnits({
+  const { data: unitsResponse, isLoading, error, refetch } = useUnits({
+    ...params,
     search: params.search || undefined,
-    status: params.status,
   });
   const sectorsQuery = useBusinessSectorsSelect();
   const templateDownload = useHrmCoreTemplateDownload("organization-units");
@@ -320,13 +316,8 @@ export function UnitsPage() {
     },
   });
 
-  // Sắp xếp toàn bộ đơn vị theo mã tăng dần rồi phân trang ở client.
-  const sortedUnits = useMemo(() => sortByCode(allUnits), [allUnits]);
-  const { pagedItems: pagedUnits, pagedMeta } = useClientPagination(
-    sortedUnits,
-    params.page,
-    params.pageSize,
-  );
+  const units = unitsResponse?.items ?? [];
+  const unitsMeta = unitsResponse?.meta;
 
   const columns = useMemo<DataTableColumn<Unit>[]>(
     () => [
@@ -467,10 +458,10 @@ export function UnitsPage() {
         </SimpleGrid>
 
         <DataTable
-          data={pagedUnits}
+          data={units}
           columns={columns}
           rowKey={(record) => record.id}
-          meta={pagedMeta}
+          meta={unitsMeta}
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}

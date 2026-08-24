@@ -24,8 +24,7 @@ import {
   updateBusinessSector,
 } from "../../features/organization/businessSectorsApi";
 import type { BusinessSector } from "../../features/organization/organizationTypes";
-import { sortByCode } from "../../shared/utils/sort";
-import { useAllBusinessSectors } from "../../features/organization/useBusinessSectors";
+import { useBusinessSectors } from "../../features/organization/useBusinessSectors";
 import { ConfirmActionModal } from "../../shared/components/ConfirmActionModal";
 import {
   DataTable,
@@ -36,7 +35,6 @@ import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
-import { useClientPagination } from "../../shared/hooks/useClientPagination";
 
 type BusinessSectorFormValues = {
   code: string;
@@ -67,11 +65,9 @@ export function BusinessSectorsPage() {
     null,
   );
   const [open, setOpen] = useState(false);
-  // Lấy toàn bộ lĩnh vực theo bộ lọc, sắp theo mã trên toàn danh sách rồi
-  // phân trang ở client để trang 1 luôn bắt đầu từ mã nhỏ nhất.
-  const { data: allSectors, isLoading, error, refetch } = useAllBusinessSectors({
+  const { data: sectorsResponse, isLoading, error, refetch } = useBusinessSectors({
+    ...params,
     search: params.search || undefined,
-    status: params.status,
   });
 
   const form = useForm<BusinessSectorFormValues>({
@@ -174,13 +170,8 @@ export function BusinessSectorsPage() {
     },
   });
 
-  // Sắp xếp toàn bộ lĩnh vực theo mã tăng dần rồi phân trang ở client.
-  const sortedSectors = useMemo(() => sortByCode(allSectors), [allSectors]);
-  const { pagedItems: pagedSectors, pagedMeta } = useClientPagination(
-    sortedSectors,
-    params.page,
-    params.pageSize,
-  );
+  const sectors = sectorsResponse?.items ?? [];
+  const sectorsMeta = sectorsResponse?.meta;
 
   const columns = useMemo<DataTableColumn<BusinessSector>[]>(
     () => [
@@ -329,10 +320,10 @@ export function BusinessSectorsPage() {
         </SimpleGrid>
 
         <DataTable
-          data={pagedSectors}
+          data={sectors}
           columns={columns}
           rowKey={(record) => record.id}
-          meta={pagedMeta}
+          meta={sectorsMeta}
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}

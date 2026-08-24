@@ -27,8 +27,7 @@ import {
 } from "../../features/organization/departmentsApi";
 import type { Department } from "../../features/organization/organizationTypes";
 import { ApiError } from "../../shared/api/api.types";
-import { sortByCode } from "../../shared/utils/sort";
-import { useAllDepartments } from "../../features/organization/useDepartments";
+import { useDepartments } from "../../features/organization/useDepartments";
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { ConfirmActionModal } from "../../shared/components/ConfirmActionModal";
 import {
@@ -41,7 +40,6 @@ import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
-import { useClientPagination } from "../../shared/hooks/useClientPagination";
 
 type DepartmentFormValues = {
   code: string;
@@ -78,12 +76,9 @@ export function DepartmentsPage() {
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
-  // Lấy toàn bộ phòng ban theo bộ lọc, sắp theo mã trên toàn danh sách rồi
-  // phân trang ở client để trang 1 luôn bắt đầu từ mã nhỏ nhất.
-  const { data: allDepartments, isLoading, error, refetch } = useAllDepartments({
+  const { data: departmentsResponse, isLoading, error, refetch } = useDepartments({
+    ...params,
     search: params.search || undefined,
-    unitId: params.unitId,
-    status: params.status,
   });
   const unitsSelect = useUnitsSelect();
   const templateDownload = useHrmCoreTemplateDownload("departments");
@@ -212,16 +207,8 @@ export function DepartmentsPage() {
     label: `${item.name} (${item.code})`,
   }));
 
-  // Sắp xếp toàn bộ phòng ban theo mã tăng dần rồi phân trang ở client.
-  const sortedDepartments = useMemo(
-    () => sortByCode(allDepartments),
-    [allDepartments],
-  );
-  const { pagedItems: pagedDepartments, pagedMeta } = useClientPagination(
-    sortedDepartments,
-    params.page,
-    params.pageSize,
-  );
+  const departments = departmentsResponse?.items ?? [];
+  const departmentsMeta = departmentsResponse?.meta;
 
   const columns = useMemo<DataTableColumn<Department>[]>(
     () => [
@@ -390,10 +377,10 @@ export function DepartmentsPage() {
         </SimpleGrid>
 
         <DataTable
-          data={pagedDepartments}
+          data={departments}
           columns={columns}
           rowKey={(record) => record.id}
-          meta={pagedMeta}
+          meta={departmentsMeta}
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}

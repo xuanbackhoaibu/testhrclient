@@ -1,4 +1,5 @@
 import type { ListQueryParams, PaginatedResponse } from '../types/api';
+import { includesNormalizedSearch } from '../utils/normalizeSearchText';
 
 export async function mockDelay(ms = 120): Promise<void> {
   await new Promise((resolve) => {
@@ -34,7 +35,7 @@ export function includesIgnoreCase(value: string | undefined, keyword: string | 
     return true;
   }
 
-  return (value ?? '').toLowerCase().includes(keyword.toLowerCase());
+  return includesNormalizedSearch(value, keyword);
 }
 
 export function generateId(prefix: string): string {
