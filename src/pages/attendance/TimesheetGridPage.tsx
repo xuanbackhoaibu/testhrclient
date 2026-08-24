@@ -1697,8 +1697,7 @@ export function TimesheetGridPage() {
           <Stack gap="xs">
             <ScrollArea
               viewportRef={tableViewportRef}
-              type="always"
-              h="min(680px, calc(100vh - 315px))"
+              type="auto"
               offsetScrollbars
               scrollbarSize={12}
             >
