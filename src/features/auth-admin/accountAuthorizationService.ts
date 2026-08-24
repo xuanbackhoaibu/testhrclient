@@ -172,6 +172,7 @@ async function buildEffectivePermissionsWithSources(
     | 'directPermissions'
     | 'directOverrides'
     | 'effectivePermissions'
+    | 'scopes'
     | 'roleCatalog'
     | 'permissionGroupCatalog'
     | 'permissionCatalog'
@@ -268,6 +269,7 @@ async function buildEffectivePermissionsWithSources(
     directPermissions,
     directOverrides: effective.directOverrides,
     effectivePermissions,
+    scopes: effective.scopes,
     roleCatalog: roleCatalog.map((role) => toRole(role)),
     permissionGroupCatalog: permissionGroupCatalog.map((group) => ({
       id: group.id,
@@ -336,6 +338,7 @@ export async function getAccountAuthorizationDetail(
     directPermissions: authz.directPermissions,
     directOverrides: authz.directOverrides,
     effectivePermissions: authz.effectivePermissions,
+    scopes: authz.scopes,
     roleCatalog: authz.roleCatalog,
     permissionGroupCatalog: authz.permissionGroupCatalog,
     permissionCatalog: authz.permissionCatalog,
