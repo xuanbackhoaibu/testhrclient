@@ -48,6 +48,19 @@ test('authority is never restored from persisted current-user data', () => {
   assert.doesNotMatch(source, /function getStoredUser/);
 });
 
+test('every authenticated account can inspect its own effective access', () => {
+  const router = read('../../app/router.tsx');
+  const policies = read('./routePolicies.ts');
+  const layout = read('../../layouts/MainLayout.tsx');
+
+  assert.match(router, /ProtectedRoute route=\{ROUTES\.myAccess\}/);
+  assert.match(
+    policies,
+    /\[ROUTES\.myAccess\]: \{ kind: 'authenticated' \}/,
+  );
+  assert.match(layout, /Quyền của tôi/);
+});
+
 test('workflow and audit routes use canonical read permissions', () => {
   const source = read('./routePolicies.ts');
   for (const permission of [

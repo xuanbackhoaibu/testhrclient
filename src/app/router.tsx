@@ -45,6 +45,7 @@ const UnitsPage = lazy(() => import('../pages/organization/UnitsPage').then((m) 
 const DepartmentsPage = lazy(() => import('../pages/organization/DepartmentsPage').then((m) => ({ default: m.DepartmentsPage })));
 const PositionsPage = lazy(() => import('../pages/organization/PositionsPage').then((m) => ({ default: m.PositionsPage })));
 const SettingsPage = lazy(() => import('../pages/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const MyAccessPage = lazy(() => import('../pages/MyAccessPage').then((m) => ({ default: m.MyAccessPage })));
 
 
 export const router = createBrowserRouter([
@@ -283,6 +284,7 @@ export const router = createBrowserRouter([
         ),
       },
       { path: ROUTES.workReportAuthorizations, element: <ProtectedRoute route={ROUTES.workReportAuthorizations}><WorkReportAuthorizationsPage /></ProtectedRoute> },
+      { path: ROUTES.myAccess, element: <ProtectedRoute route={ROUTES.myAccess}><MyAccessPage /></ProtectedRoute> },
       { path: '*', element: <AuthorizationLanding /> },
     ],
   },

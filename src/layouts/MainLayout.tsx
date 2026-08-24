@@ -26,6 +26,7 @@ import {
   IconLogout,
   IconSettings,
   IconShield,
+  IconShieldCheck,
   IconSitemap,
   IconTable,
   IconTransfer,
@@ -186,6 +187,7 @@ const routeTitles: Record<string, string> = {
   [ROUTES.permissionGroups]: "Nhóm quyền",
   [ROUTES.permissions]: "Danh mục quyền",
   [ROUTES.workReportAuthorizations]: "Phân quyền báo cáo công việc",
+  [ROUTES.myAccess]: "Quyền truy cập của tôi",
 };
 
 function isActive(pathname: string, path: string) {
@@ -295,6 +297,13 @@ export function MainLayout() {
               </Menu.Target>
               <Menu.Dropdown>
                 <Menu.Label>Tài khoản</Menu.Label>
+                <Menu.Item
+                  leftSection={<IconShieldCheck size={16} />}
+                  onClick={() => goTo(ROUTES.myAccess)}
+                >
+                  Quyền của tôi
+                </Menu.Item>
+                <Menu.Divider />
                 <Menu.Item
                   color="red"
                   leftSection={<IconLogout size={16} />}
