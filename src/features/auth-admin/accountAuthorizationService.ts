@@ -57,6 +57,7 @@ function toRole(
     id: string;
     code: string;
     name: string;
+    description?: string;
     system: string;
     isSensitive: boolean;
     permissions?: Permission[];
@@ -242,6 +243,7 @@ async function buildEffectivePermissionsWithSources(
     id: group.id,
     code: group.key,
     name: group.name,
+    description: group.description ?? undefined,
     system: group.system ?? 'unknown',
     isSensitive: group.isSensitive === true,
   }));
@@ -271,6 +273,7 @@ async function buildEffectivePermissionsWithSources(
       id: group.id,
       code: group.key,
       name: group.name,
+      description: group.description ?? undefined,
       system: group.system ?? 'unknown',
       isSensitive: group.isSensitive === true,
     })),

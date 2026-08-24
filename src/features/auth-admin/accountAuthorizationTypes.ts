@@ -24,6 +24,7 @@ export type PermissionGroup = {
   id: string;
   code: string;
   name: string;
+  description?: string;
   system: string;
   permissions?: Permission[];
   isSensitive: boolean;

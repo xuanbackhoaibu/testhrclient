@@ -228,6 +228,7 @@ export function AccountAuthorizationPanel({
             : [
                 entry.permission.code,
                 entry.permission.name,
+                entry.permission.description,
                 ...entry.sources.map((source) => source.code),
                 ...entry.sources.map((source) => source.name),
               ]
@@ -474,9 +475,12 @@ export function AccountAuthorizationPanel({
         </Badge>
       </Text>
       <Text size="xs" c="dimmed">
-        {entry.permission.name}
+        Hiệu lực: {entry.permission.description ?? entry.permission.name}
       </Text>
-      <Group gap="xs" mt="xs">
+      <Group gap="xs" mt={6}>
+        <Badge color="gray" variant="light">
+          {entry.permission.system} / {entry.permission.module} / {entry.permission.action}
+        </Badge>
         {entry.sources.length === 0 ? (
           <Badge color="gray" variant="light">
             Chưa xác định nguồn
@@ -574,7 +578,11 @@ export function AccountAuthorizationPanel({
                           ))
                         }
                         label={roleOptionLabel(role)}
-                        description={role.description}
+                        description={
+                          role.description
+                            ? `Hiệu lực: ${role.description}`
+                            : "Chưa có mô tả phạm vi hiệu lực."
+                        }
                         onChange={(event) => {
                           const checked = event.currentTarget.checked;
                           setRoleDirty(true);
@@ -660,6 +668,7 @@ export function AccountAuthorizationPanel({
                         id: group.id,
                         code: group.code,
                         name: group.name,
+                        description: group.description,
                         system: group.system ?? "unknown",
                         isSensitive: group.isSensitive,
                       };
@@ -685,6 +694,11 @@ export function AccountAuthorizationPanel({
                             });
                           }}
                           label={`${mappedGroup.code} · ${mappedGroup.name}${mappedGroup.isSensitive ? " — Nhạy cảm" : ""}`}
+                          description={
+                            mappedGroup.description
+                              ? `Hiệu lực: ${mappedGroup.description}`
+                              : "Chưa có mô tả phạm vi hiệu lực."
+                          }
                         />
                       );
                     })}
