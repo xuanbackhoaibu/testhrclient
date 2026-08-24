@@ -34,6 +34,7 @@ const MovementsPage = lazy(() => import('../pages/movements/MovementsPage').then
 const OffboardingPage = lazy(() => import('../pages/offboarding/OffboardingPage').then((m) => ({ default: m.OffboardingPage })));
 const OnboardingPage = lazy(() => import('../pages/onboarding/OnboardingPage').then((m) => ({ default: m.OnboardingPage })));
 const AccountsPage = lazy(() => import('../pages/accounts/AccountsPage').then((m) => ({ default: m.AccountsPage })));
+const AccountAuthorizationsPage = lazy(() => import('../pages/account-authorizations/AccountAuthorizationsPage').then((m) => ({ default: m.AccountAuthorizationsPage })));
 const PendingHrLinkAccountsPage = lazy(() => import('../pages/accounts/PendingHrLinkAccountsPage').then((m) => ({ default: m.PendingHrLinkAccountsPage })));
 const RolesPage = lazy(() => import('../pages/roles/RolesPage').then((m) => ({ default: m.RolesPage })));
 const PermissionsPage = lazy(() => import('../pages/permissions/PermissionsPage').then((m) => ({ default: m.PermissionsPage })));
@@ -238,6 +239,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute route={ROUTES.accounts}>
             <AccountsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.accountAuthorizations,
+        element: (
+          <ProtectedRoute route={ROUTES.accountAuthorizations}>
+            <AccountAuthorizationsPage />
           </ProtectedRoute>
         ),
       },

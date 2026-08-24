@@ -34,6 +34,7 @@ export const ROUTE_POLICIES: Record<string, RoutePolicy> = {
   [ROUTES.auditLogs]: { kind: 'permission', permissions: [HR_PERMISSIONS.AUDIT_READ] },
   [ROUTES.settings]: { kind: 'authenticated' },
   [ROUTES.accounts]: { kind: 'permission', permissions: [AUTH_ADMIN_PERMISSIONS.USERS_READ] },
+  [ROUTES.accountAuthorizations]: { kind: 'permission', permissions: [AUTH_ADMIN_PERMISSIONS.USERS_READ] },
   [ROUTES.pendingHrLinkAccounts]: { kind: 'permission', permissions: [AUTH_ADMIN_PERMISSIONS.USERS_READ] },
   [ROUTES.roles]: { kind: 'permission', permissions: [AUTH_ADMIN_PERMISSIONS.ROLES_READ] },
   [ROUTES.permissions]: { kind: 'permission', permissions: [AUTH_ADMIN_PERMISSIONS.PERMISSIONS_READ] },

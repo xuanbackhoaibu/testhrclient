@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Badge,
@@ -7,7 +7,6 @@ import {
   Checkbox,
   Group,
   Loader,
-  Modal,
   ScrollArea,
   Select,
   Stack,
@@ -21,8 +20,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "../auth/useAuth";
 import { AUTH_ADMIN_PERMISSIONS } from "../auth/permissions";
-import type { Employee } from "../employees/employeeTypes";
-import { WorkReportAuthorizationSummary } from "../work-report-authorizations/WorkReportAuthorizationSummary";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 import {
   updateAccountDirectPermissionGroups,
@@ -41,12 +38,20 @@ import type {
   Role,
 } from "./accountAuthorizationTypes";
 import { useAccountAuthorization } from "./useAccountAuthorization";
+import { ACCOUNT_STATUS_LABELS } from "./authAdminTypes";
+
+export type AccountAuthorizationTab =
+  | "roles"
+  | "permission-groups"
+  | "permissions"
+  | "effective";
 
 type Props = {
   accountId: string | null;
-  employee: Employee | null;
-  opened: boolean;
-  onClose: () => void;
+  activeTab: AccountAuthorizationTab;
+  onTabChange: (tab: AccountAuthorizationTab) => void;
+  onDirtyChange?: (dirty: boolean) => void;
+  enabled?: boolean;
   onUpdated?: () => Promise<void> | void;
 };
 
@@ -54,10 +59,10 @@ const PERMISSION_SOURCE_LABELS: Record<string, string> = {
   ROLE: "Từ Vai trò",
   ROLE_PERMISSION_GROUP: "Từ nhóm quyền của vai trò",
   USER_PERMISSION_GROUP: "Nhóm quyền trực tiếp",
-  DIRECT_ALLOW: "Direct allow",
-  ADMIN_AUTHORITY: "Quyền quản trị canonical",
-  SPECIALIZED_PROJECTION: "Projection chuyên biệt",
-  SUPER_ADMIN_WILDCARD: "Wildcard super-admin",
+  DIRECT_ALLOW: "Cho phép trực tiếp",
+  ADMIN_AUTHORITY: "Quyền quản trị chuẩn",
+  SPECIALIZED_PROJECTION: "Phạm vi chuyên biệt",
+  SUPER_ADMIN_WILDCARD: "Toàn quyền super-admin",
 };
 
 function badgeColorForSource(sourceType: string) {
@@ -84,16 +89,17 @@ function roleOptionLabel(role: Role) {
   return role.isSensitive ? `${label} — Nhạy cảm` : label;
 }
 
-export function AccountAuthorizationModal({
+export function AccountAuthorizationPanel({
   accountId,
-  employee,
-  opened,
-  onClose,
+  activeTab,
+  onTabChange,
+  onDirtyChange,
+  enabled = true,
   onUpdated,
 }: Props) {
   const queryClient = useQueryClient();
   const { user, refreshCurrentUser, hasAnyPermission } = useAuth();
-  const authzQuery = useAccountAuthorization(accountId, opened);
+  const authzQuery = useAccountAuthorization(accountId, enabled);
 
   const canAssignRoles = hasAnyPermission([
     AUTH_ADMIN_PERMISSIONS.ROLES_ASSIGN,
@@ -234,29 +240,6 @@ export function AccountAuthorizationModal({
         ),
     [authzQuery.data?.effectivePermissions, deferredEffectiveSearch],
   );
-
-  const resetDraftState = () => {
-    setSelectedRoleCodes(authzQuery.data?.roles.map((role) => role.code) ?? []);
-    setSelectedDirectPermissionIds(
-      authzQuery.data?.directPermissions.map((permission) => permission.id) ??
-        [],
-    );
-    setSelectedDirectDenyIds(
-      authzQuery.data?.directOverrides
-        .filter((override) => override.effect === "DENY")
-        .map((override) => permissionByCode.get(override.permissionKey)?.id)
-        .filter((id): id is string => Boolean(id)) ?? [],
-    );
-    setSelectedDirectPermissionGroupIds(
-      authzQuery.data?.directPermissionGroups.map((group) => group.id) ?? [],
-    );
-    setRoleReason("");
-    setDirectPermissionReason("");
-    setDirectPermissionGroupReason("");
-    setRoleDirty(false);
-    setDirectPermissionDirty(false);
-    setDirectPermissionGroupDirty(false);
-  };
 
   const invalidateAccountList = async () => {
     await queryClient.invalidateQueries({ queryKey: ["auth-admin-users"] });
@@ -465,6 +448,14 @@ export function AccountAuthorizationModal({
     denyAdded: displayedDirectDenyIds.filter((id) => !originalDirectDenyIds.includes(id)),
     denyRemoved: originalDirectDenyIds.filter((id) => !displayedDirectDenyIds.includes(id)),
   };
+  const hasPendingChanges =
+    hasRoleChanges ||
+    hasDirectPermissionGroupChanges ||
+    hasDirectPermissionChanges;
+
+  useEffect(() => {
+    onDirtyChange?.(hasPendingChanges);
+  }, [hasPendingChanges, onDirtyChange]);
 
   const disabledTooltip = "Bạn không có quyền thực hiện thao tác này";
   const renderEffectivePermission = (entry: EffectivePermission) => (
@@ -506,7 +497,7 @@ export function AccountAuthorizationModal({
         <Stack gap={4} mt="xs">
           {entry.denies.map((deny) => (
             <Badge key={deny.sourceId ?? deny.reason} color="red" variant="light">
-              Direct deny{deny.reason ? `: ${deny.reason}` : ""}
+              Từ chối trực tiếp{deny.reason ? `: ${deny.reason}` : ""}
             </Badge>
           ))}
         </Stack>
@@ -515,20 +506,7 @@ export function AccountAuthorizationModal({
   );
 
   return (
-    <Modal
-      opened={opened}
-      onClose={() => {
-        resetDraftState();
-        onClose();
-      }}
-      title={
-        authzQuery.data?.account.email
-          ? `Phân quyền tài khoản: ${authzQuery.data.account.email}`
-          : "Phân quyền tài khoản"
-      }
-      size="xl"
-      centered
-    >
+    <>
       {authzQuery.isLoading ? (
         <Group justify="center" py="xl">
           <Loader size="sm" />
@@ -539,13 +517,13 @@ export function AccountAuthorizationModal({
         </Alert>
       ) : authzQuery.data ? (
         <Stack gap="md">
-          <Alert color="blue" title="Thong tin chung">
-            <Text size="sm">Account: {authzQuery.data.account.email}</Text>
+          <Alert color="blue" title="Thông tin tài khoản">
+            <Text size="sm">Email: {authzQuery.data.account.email}</Text>
             <Text size="sm">
-              Username: {authzQuery.data.account.username ?? "-"}
+              Tên đăng nhập: {authzQuery.data.account.username ?? "-"}
             </Text>
             <Text size="sm">
-              Trang thai: {authzQuery.data.account.accountState}
+              Trạng thái: {ACCOUNT_STATUS_LABELS[authzQuery.data.account.accountState] ?? authzQuery.data.account.accountState}
             </Text>
           </Alert>
 
@@ -555,14 +533,18 @@ export function AccountAuthorizationModal({
             </Alert>
           ) : null}
 
-          <Tabs defaultValue="roles">
+          <Tabs
+            value={activeTab}
+            onChange={(value) => {
+              if (value) onTabChange(value as AccountAuthorizationTab);
+            }}
+          >
             <Tabs.List>
               <Tabs.Tab value="roles">Vai trò</Tabs.Tab>
               <Tabs.Tab value="permission-groups">
                 Nhóm quyền trực tiếp
               </Tabs.Tab>
               <Tabs.Tab value="permissions">Quyền trực tiếp</Tabs.Tab>
-              <Tabs.Tab value="work-report">Báo cáo công việc</Tabs.Tab>
               <Tabs.Tab value="effective">Quyền hiệu lực</Tabs.Tab>
             </Tabs.List>
 
@@ -575,6 +557,9 @@ export function AccountAuthorizationModal({
 
                 <ScrollArea h={320}>
                   <Stack gap="xs">
+                    {roleOptions.length === 0 ? (
+                      <Text size="sm" c="dimmed">Chưa có vai trò nào để gán.</Text>
+                    ) : null}
                     {roleOptions.map((role) => (
                       <Checkbox
                         key={role.code}
@@ -622,8 +607,8 @@ export function AccountAuthorizationModal({
                 ) : null}
 
                 <TextInput
-                  label={hasSensitiveRoleChanges ? "Lý do thay đổi role nhạy cảm" : "Lý do (tùy chọn)"}
-                  placeholder="Nhập lý do nếu backend cần ghi audit thêm"
+                  label={hasSensitiveRoleChanges ? "Lý do thay đổi vai trò nhạy cảm" : "Lý do (tùy chọn)"}
+                  placeholder="Nhập lý do nếu hệ thống cần ghi nhật ký thêm"
                   value={roleReason}
                   onChange={(event) => setRoleReason(event.currentTarget.value)}
                   disabled={editDisabled || !canAssignRoles}
@@ -662,11 +647,14 @@ export function AccountAuthorizationModal({
                 </Alert>
 
                 <Text size="sm" fw={500}>
-                  Danh mục permission group hiện có (
+                  Danh mục nhóm quyền hiện có (
                   {permissionGroupCatalog.length})
                 </Text>
                 <ScrollArea h={260}>
                   <Stack gap="xs">
+                    {permissionGroupCatalog.length === 0 ? (
+                      <Text size="sm" c="dimmed">Chưa có nhóm quyền nào để gán.</Text>
+                    ) : null}
                     {permissionGroupCatalog.map((group) => {
                       const mappedGroup: PermissionGroup = {
                         id: group.id,
@@ -733,17 +721,19 @@ export function AccountAuthorizationModal({
                   hoặc nhóm quyền.
                 </Alert>
 
-                <Group grow align="flex-end">
+                <Group grow align="flex-end" wrap="wrap">
                   <NormalizedSearchInput
                     label="Tìm quyền"
-                    placeholder="system.module.action"
+                    placeholder="Ví dụ: hr.employee.read"
                     value={permissionSearch}
+                    miw={220}
                     onChange={setPermissionSearch}
                   />
                   <Select
                     clearable
                     label="Hệ thống"
                     data={permissionSystemOptions}
+                    miw={180}
                     value={permissionSystemFilter}
                     onChange={setPermissionSystemFilter}
                   />
@@ -751,6 +741,7 @@ export function AccountAuthorizationModal({
                     clearable
                     label="Mô-đun"
                     data={permissionModuleOptions}
+                    miw={180}
                     value={permissionModuleFilter}
                     onChange={setPermissionModuleFilter}
                   />
@@ -758,6 +749,9 @@ export function AccountAuthorizationModal({
 
                 <ScrollArea h={320}>
                   <Stack gap="xs">
+                    {filteredPermissions.length === 0 ? (
+                      <Text size="sm" c="dimmed">Không có quyền nào khớp bộ lọc.</Text>
+                    ) : null}
                     {filteredPermissions.map((permission) => {
                       const inherited = inheritedPermissionCodes.has(permission.code);
                       const sensitiveDisabled = permission.isSensitive && !canAssignSensitivePermission;
@@ -772,14 +766,14 @@ export function AccountAuthorizationModal({
                               <Group gap="xs" mt={4}>
                                 {inherited ? <Badge color="blue" variant="light">Đã có từ vai trò/nhóm</Badge> : null}
                                 {permission.isSensitive ? <Badge color="red" variant="light">Nhạy cảm</Badge> : null}
-                                {managedByHrm ? <Badge color="grape" variant="light">HRM-managed</Badge> : null}
-                                {!isDirectlyAssignablePermission(permission) ? <Badge color="gray" variant="light">Not directly assignable</Badge> : null}
+                                {managedByHrm ? <Badge color="grape" variant="light">HRM quản lý</Badge> : null}
+                                {!isDirectlyAssignablePermission(permission) ? <Badge color="gray" variant="light">Không thể gán trực tiếp</Badge> : null}
                               </Group>
                               {managedByHrm ? <Text size="xs" c="dimmed" mt={4}>{WORK_REPORT_MANAGED_ASSIGNMENT_MESSAGE}</Text> : null}
                             </Box>
                             <Group gap="md">
                               <Checkbox
-                                label="Allow"
+                                label="Cho phép"
                                 checked={selectedDirectPermissionIdSet.has(permission.id)}
                                 disabled={baseDisabled || (inherited && !selectedDirectPermissionIdSet.has(permission.id))}
                                 onChange={(event) => {
@@ -796,7 +790,7 @@ export function AccountAuthorizationModal({
                                 }}
                               />
                               <Checkbox
-                                label="Deny"
+                                label="Từ chối"
                                 color="red"
                                 checked={selectedDirectDenyIdSet.has(permission.id)}
                                 disabled={baseDisabled}
@@ -822,17 +816,17 @@ export function AccountAuthorizationModal({
                 </ScrollArea>
 
                 {hasDirectPermissionChanges ? (
-                  <Alert color="blue" title="Thay đổi direct override trước khi lưu">
-                    <Text size="sm">Allow thêm: {overrideDiff.allowAdded.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
-                    <Text size="sm">Allow thu hồi: {overrideDiff.allowRemoved.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
-                    <Text size="sm">Deny thêm: {overrideDiff.denyAdded.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
-                    <Text size="sm">Deny thu hồi: {overrideDiff.denyRemoved.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
+                  <Alert color="blue" title="Thay đổi quyền ghi đè trước khi lưu">
+                    <Text size="sm">Cho phép thêm: {overrideDiff.allowAdded.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
+                    <Text size="sm">Cho phép thu hồi: {overrideDiff.allowRemoved.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
+                    <Text size="sm">Từ chối thêm: {overrideDiff.denyAdded.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
+                    <Text size="sm">Từ chối thu hồi: {overrideDiff.denyRemoved.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
                   </Alert>
                 ) : null}
 
                 <TextInput
                   label="Lý do bắt buộc"
-                  placeholder="Nhập lý do để ghi audit log"
+                  placeholder="Nhập lý do để ghi nhật ký kiểm tra"
                   value={directPermissionReason}
                   onChange={(event) => setDirectPermissionReason(event.currentTarget.value)}
                   required
@@ -869,22 +863,11 @@ export function AccountAuthorizationModal({
               </Stack>
             </Tabs.Panel>
 
-            <Tabs.Panel value="work-report" pt="md">
-              {employee && accountId ? (
-                <WorkReportAuthorizationSummary authUserId={accountId} />
-              ) : (
-                <Alert color="yellow" title="Cần liên kết nhân sự">
-                  Quyền Báo cáo công việc được HRM quản lý theo nhân sự và phạm vi dữ liệu.
-                  Hãy liên kết tài khoản với hồ sơ nhân sự trước khi tạo hoặc cấp Work Report authorization.
-                </Alert>
-              )}
-            </Tabs.Panel>
-
             <Tabs.Panel value="effective" pt="md">
               <Stack gap="sm">
                 <NormalizedSearchInput
                   label="Tìm quyền hiệu lực"
-                  placeholder="Tìm theo permission hoặc nguồn"
+                  placeholder="Tìm theo mã quyền hoặc nguồn"
                   value={effectiveSearch}
                   onChange={setEffectiveSearch}
                 />
@@ -907,6 +890,6 @@ export function AccountAuthorizationModal({
           </Tabs>
         </Stack>
       ) : null}
-    </Modal>
+    </>
   );
 }

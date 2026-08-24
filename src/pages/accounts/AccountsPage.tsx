@@ -39,7 +39,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../features/auth/useAuth";
 import { validatePasswordPolicy } from "../../features/auth/passwordPolicy";
 import { AUTH_ADMIN_PERMISSIONS } from "../../features/auth/permissions";
-import { AccountAuthorizationModal } from "../../features/auth-admin/AccountAuthorizationModal";
 import { listAccountManagementRows } from "../../features/auth-admin/accountAuthorizationService";
 import { useAccountAuthorization } from "../../features/auth-admin/useAccountAuthorization";
 import {
@@ -65,6 +64,7 @@ import {
 } from "../../shared/components/DataTable";
 import { PageHeader } from "../../shared/components/PageHeader";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
+import { ROUTES } from "../../shared/constants/routes";
 
 const STATUS_OPTIONS = [
   { value: "", label: "Tất cả trạng thái" },
@@ -189,9 +189,6 @@ export function AccountsPage() {
   const [selectedRow, setSelectedRow] = useState<AccountManagementRow | null>(
     null,
   );
-  const [authorizationAccount, setAuthorizationAccount] = useState<
-    AccountManagementRow | null
-  >(null);
 
   const [confirmOpened, { open: openConfirm, close: closeConfirm }] =
     useDisclosure(false);
@@ -486,7 +483,7 @@ export function AccountsPage() {
                 size="sm"
                 disabled={!canAuthorizeAccounts}
                 aria-label="Quản lý phân quyền tài khoản"
-                onClick={() => setAuthorizationAccount(row)}
+                onClick={() => navigate(ROUTES.accountAuthorizations + "?accountId=" + encodeURIComponent(row.account.authUserId))}
               >
                 <IconShield size={15} />
               </ActionIcon>
@@ -936,7 +933,7 @@ export function AccountsPage() {
                     size="xs"
                     leftSection={<IconShield size={14} />}
                     disabled={!canAuthorizeAccounts}
-                    onClick={() => setAuthorizationAccount(selectedRow)}
+                    onClick={() => navigate(ROUTES.accountAuthorizations + "?accountId=" + encodeURIComponent(selectedRow.account.authUserId))}
                   >
                     Phân quyền
                   </Button>
@@ -994,15 +991,6 @@ export function AccountsPage() {
         ) : null}
       </Drawer>
 
-      <AccountAuthorizationModal
-        accountId={authorizationAccount?.account.authUserId ?? null}
-        employee={authorizationAccount?.employee ?? null}
-        opened={Boolean(authorizationAccount)}
-        onClose={() => setAuthorizationAccount(null)}
-        onUpdated={async () => {
-          await invalidateList();
-        }}
-      />
     </Stack>
   );
 }

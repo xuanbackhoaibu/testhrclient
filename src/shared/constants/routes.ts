@@ -33,6 +33,7 @@ export const ROUTES = {
   roles: '/roles',
   permissions: '/permissions',
   permissionGroups: '/permission-groups',
+  accountAuthorizations: '/administration/account-authorizations',
   workReportAuthorizations: '/administration/work-report-authorizations',
   changePassword: '/change-password',
 } as const;
