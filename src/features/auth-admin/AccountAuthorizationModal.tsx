@@ -22,6 +22,10 @@ import { useAuth } from "../auth/useAuth";
 import { AUTH_ADMIN_PERMISSIONS } from "../auth/permissions";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 import {
+  describeAccessScopes,
+  summarizeEffectiveAccess,
+} from "../auth/accessPresentation";
+import {
   updateAccountDirectPermissionGroups,
   updateAccountDirectPermissions,
   updateAccountRoles,
@@ -240,6 +244,19 @@ export function AccountAuthorizationPanel({
           left.permission.code.localeCompare(right.permission.code),
         ),
     [authzQuery.data?.effectivePermissions, deferredEffectiveSearch],
+  );
+  const effectiveAccessModules = useMemo(
+    () =>
+      summarizeEffectiveAccess(
+        (authzQuery.data?.effectivePermissions ?? [])
+          .filter((entry) => entry.effective)
+          .map((entry) => entry.permission.code),
+      ),
+    [authzQuery.data?.effectivePermissions],
+  );
+  const effectiveScopeLabels = useMemo(
+    () => describeAccessScopes(authzQuery.data?.scopes ?? []),
+    [authzQuery.data?.scopes],
   );
 
   const invalidateAccountList = async () => {
@@ -537,18 +554,47 @@ export function AccountAuthorizationPanel({
             </Alert>
           ) : null}
 
+          <Stack
+            gap="xs"
+            pb="md"
+            style={{ borderBottom: "1px solid var(--mantine-color-gray-2)" }}
+            aria-label="Quyền sau khi tài khoản đăng nhập"
+          >
+            <Text fw={700}>Sau khi đăng nhập</Text>
+            <Text size="sm" c="dimmed">
+              Tài khoản sẽ nhìn thấy các phân hệ dưới đây theo quyền hiệu lực hiện tại.
+            </Text>
+            <Group gap="xs">
+              {effectiveAccessModules.length ? (
+                effectiveAccessModules.map((module) => (
+                  <Badge key={module.key} color="blue" variant="light">
+                    {module.label}
+                  </Badge>
+                ))
+              ) : (
+                <Badge color="gray" variant="light">Chưa có phân hệ nghiệp vụ</Badge>
+              )}
+            </Group>
+            <Group gap="xs">
+              <Text size="sm" fw={600}>Phạm vi:</Text>
+              {effectiveScopeLabels.map((scope) => (
+                <Badge key={scope} color="teal" variant="light">{scope}</Badge>
+              ))}
+            </Group>
+          </Stack>
+
           <Tabs
             value={activeTab}
             onChange={(value) => {
               if (value) onTabChange(value as AccountAuthorizationTab);
             }}
           >
-            <Tabs.List>
-              <Tabs.Tab value="roles">Vai trò</Tabs.Tab>
+            <Tabs.List style={{ flexWrap: "wrap" }}>
+              <Tabs.Tab value="roles">Vai trò & phạm vi</Tabs.Tab>
               <Tabs.Tab value="permission-groups">
-                Nhóm quyền trực tiếp
+                Ngoại lệ: nhóm quyền
               </Tabs.Tab>
-              <Tabs.Tab value="permissions">Quyền trực tiếp</Tabs.Tab>
+              <Tabs.Tab value="permissions">Ngoại lệ: quyền</Tabs.Tab>
               <Tabs.Tab value="effective">Quyền hiệu lực</Tabs.Tab>
             </Tabs.List>
 
