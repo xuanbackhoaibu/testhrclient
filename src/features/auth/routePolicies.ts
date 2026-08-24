@@ -58,8 +58,10 @@ export function getRoutePolicy(route: string): RoutePolicy {
 
 export function isSuperAdmin(user: AuthUser | null | undefined): boolean {
   return Boolean(
-    user?.roles?.includes('SUPER_ADMIN') ||
-      user?.permissions?.includes('*'),
+    user?.roles?.some(
+      (role) =>
+        role.trim().toUpperCase().replace(/[\s-]+/g, '_') === 'SUPER_ADMIN',
+    ),
   );
 }
 
@@ -68,7 +70,7 @@ export function canAccessRoute(user: AuthUser | null | undefined, route: string)
   if (!user || user.accountStatus !== 'ACTIVE' || policy.kind === 'unavailable') {
     return false;
   }
-  if (route === ROUTES.dashboard) {
+  if (route === ROUTES.dashboard || route === ROUTES.accountAuthorizations) {
     return isSuperAdmin(user);
   }
   if (policy.kind === 'authenticated') {

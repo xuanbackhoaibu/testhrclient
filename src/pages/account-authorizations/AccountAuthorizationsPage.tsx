@@ -148,7 +148,7 @@ export function AccountAuthorizationsPage() {
     <Stack gap="lg">
       <PageHeader
         title="Phân quyền tài khoản"
-        subtitle="Chọn một tài khoản để gán vai trò, nhóm quyền hoặc quyền trực tiếp. Quyền báo cáo công việc được quản lý tại màn hình chuyên biệt."
+        subtitle="Chỉ Super Admin được gán vai trò, nhóm quyền hoặc quyền trực tiếp. Quyền báo cáo công việc được quản lý tại màn hình chuyên biệt."
       />
 
       <Box

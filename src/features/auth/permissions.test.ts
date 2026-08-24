@@ -7,6 +7,8 @@ import {
   hasAnyPermission,
   hasPermission,
 } from './permissions.ts';
+import { canAccessRoute, isSuperAdmin } from './routePolicies.ts';
+import { ROUTES } from '../../shared/constants/routes.ts';
 
 const principal = (permissions: string[], roles: string[] = []) => ({
   accountStatus: 'ACTIVE',
@@ -56,5 +58,20 @@ test('role definition management is not conflated with assigning a role to a use
   assert.notEqual(
     AUTH_ADMIN_PERMISSIONS.ROLES_MANAGE,
     AUTH_ADMIN_PERMISSIONS.ROLES_ASSIGN,
+  );
+});
+test('account authorization requires the canonical Super Admin role', () => {
+  const superAdmin = principal([], ['Super-Admin']);
+  const wildcardHrAdmin = principal(['*'], ['HR_ADMIN']);
+
+  assert.equal(isSuperAdmin(superAdmin as never), true);
+  assert.equal(
+    canAccessRoute(superAdmin as never, ROUTES.accountAuthorizations),
+    true,
+  );
+  assert.equal(isSuperAdmin(wildcardHrAdmin as never), false);
+  assert.equal(
+    canAccessRoute(wildcardHrAdmin as never, ROUTES.accountAuthorizations),
+    false,
   );
 });

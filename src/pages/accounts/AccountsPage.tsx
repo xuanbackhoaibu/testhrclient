@@ -38,6 +38,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../../features/auth/useAuth";
 import { validatePasswordPolicy } from "../../features/auth/passwordPolicy";
+import { isSuperAdmin } from "../../features/auth/routePolicies";
 import { AUTH_ADMIN_PERMISSIONS } from "../../features/auth/permissions";
 import { listAccountManagementRows } from "../../features/auth-admin/accountAuthorizationService";
 import { useAccountAuthorization } from "../../features/auth-admin/useAccountAuthorization";
@@ -141,7 +142,7 @@ export function AccountsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const { can, hasAnyPermission } = useAuth();
+  const { can, hasAnyPermission, user } = useAuth();
 
   const canReadAccounts = can(AUTH_ADMIN_PERMISSIONS.USERS_READ);
   const canResetPassword = can(AUTH_ADMIN_PERMISSIONS.USERS_UPDATE);
@@ -152,11 +153,7 @@ export function AccountsPage() {
     AUTH_ADMIN_PERMISSIONS.USERS_REVOKE_SESSIONS,
     AUTH_ADMIN_PERMISSIONS.USERS_SEND_ACTIVATION,
   ]);
-  const canAuthorizeAccounts = hasAnyPermission([
-    AUTH_ADMIN_PERMISSIONS.ROLES_ASSIGN,
-    AUTH_ADMIN_PERMISSIONS.PERMISSIONS_ASSIGN,
-    AUTH_ADMIN_PERMISSIONS.PERMISSION_GROUPS_ASSIGN,
-  ]);
+  const canAuthorizeAccounts = isSuperAdmin(user);
 
   const search = searchParams.get("q") ?? "";
   const status = searchParams.get("status") ?? "";
@@ -476,7 +473,13 @@ export function AccountsPage() {
             </ActionIcon>
           </Tooltip>
 
-          <Tooltip label={disabledTooltip(!canAuthorizeAccounts)}>
+          <Tooltip
+            label={
+              canAuthorizeAccounts
+                ? "Phân quyền tài khoản"
+                : "Chỉ Super Admin mới được phân quyền tài khoản"
+            }
+          >
             <span>
               <ActionIcon
                 variant="subtle"
@@ -927,7 +930,13 @@ export function AccountsPage() {
 
             <Group justify="space-between" mt="sm">
               <Text fw={600}>Quyền hiệu lực</Text>
-              <Tooltip label={disabledTooltip(!canAuthorizeAccounts)}>
+              <Tooltip
+                label={
+                  canAuthorizeAccounts
+                    ? "Phân quyền tài khoản"
+                    : "Chỉ Super Admin mới được phân quyền tài khoản"
+                }
+              >
                 <span>
                   <Button
                     size="xs"

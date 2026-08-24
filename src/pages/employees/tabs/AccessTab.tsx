@@ -32,6 +32,7 @@ import {
 import { useAvailableRoles } from '../../../features/auth-admin/useAvailableRoles';
 import { WorkReportAuthorizationSummary } from '../../../features/work-report-authorizations/WorkReportAuthorizationSummary';
 import { AUTH_ADMIN_PERMISSIONS } from '../../../features/auth/permissions';
+import { isSuperAdmin } from '../../../features/auth/routePolicies';
 import { useAuth } from '../../../features/auth/useAuth';
 import { useImeSafeSelectFilter } from '../../../shared/hooks/useImeSafeSelectFilter';
 import type { Employee } from '../../../features/employees/employeeTypes';
@@ -52,8 +53,9 @@ export function AccessTab({ employee }: Props) {
   const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
 
   const canReadRoles = can('auth.role.read');
-  const canAssignRoles = can(AUTH_ADMIN_PERMISSIONS.ROLES_ASSIGN);
-  const canAssignPerms = can(AUTH_ADMIN_PERMISSIONS.PERMISSIONS_ASSIGN);
+  const canManageAccountAuthorization = isSuperAdmin(user);
+  const canAssignRoles = canManageAccountAuthorization;
+  const canAssignPerms = canManageAccountAuthorization;
   const canAssignSensitivePerms = can(AUTH_ADMIN_PERMISSIONS.ASSIGN_SENSITIVE_PERMISSION);
   const canReadPerms = can('auth.role.read');
   const { roles: roleCatalog, asSelectOptions: roleOptions } = useAvailableRoles();
@@ -106,7 +108,7 @@ export function AccessTab({ employee }: Props) {
 
   const assignRolesMutation = useMutation({
     mutationFn: (roles: string[]) =>
-      assignRoles(authUserId!, { roles, reason: 'HR admin assigned roles' }),
+      assignRoles(authUserId!, { roles, reason: 'Super Admin assigned roles' }),
     onSuccess: async () => {
       notifications.show({ color: 'green', message: 'Đã cập nhật roles.' });
       setRoleModalOpen(false);
@@ -122,7 +124,7 @@ export function AccessTab({ employee }: Props) {
       const validated = assertDirectlyAssignablePermissions(perms, permissionCatalog);
       return assignPermissions(authUserId!, {
         permissions: validated.map((permission) => permission.code),
-        reason: 'HR admin assigned permissions',
+        reason: 'Super Admin assigned permissions',
       });
     },
     onSuccess: async () => {
@@ -181,6 +183,13 @@ export function AccessTab({ employee }: Props) {
 
   return (
     <Stack gap="lg">
+      {!canManageAccountAuthorization ? (
+        <Alert color="blue" title="Chỉ Super Admin được chỉnh sửa phân quyền">
+          Bạn có thể xem quyền hiệu lực, nhưng không thể thay đổi vai trò hoặc
+          quyền trực tiếp của tài khoản này.
+        </Alert>
+      ) : null}
+
       <Group gap="xs">
         <Text size="sm" c="dimmed">Permission Version:</Text>
         <Text size="sm">{effectivePerms.permissionVersion ?? '-'}</Text>

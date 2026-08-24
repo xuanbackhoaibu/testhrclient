@@ -66,6 +66,16 @@ export function ProtectedRoute({
     );
   }
 
+  if (route === ROUTES.accountAuthorizations && !isSuperAdmin(user)) {
+    return (
+      <StatusResult
+        status="403"
+        title="Chỉ Super Admin được phân quyền tài khoản"
+        subTitle="Tài khoản hiện tại có thể xem dữ liệu được cấp, nhưng không thể thay đổi vai trò hoặc quyền của người khác."
+      />
+    );
+  }
+
   if (routePolicy?.kind === 'unavailable') {
     return (
       <StatusResult status="403" title="Chức năng chưa được cấp policy" subTitle={routePolicy.reason} />
