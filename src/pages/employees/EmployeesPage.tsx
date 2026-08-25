@@ -32,7 +32,6 @@ import {
   getEmployeeById,
   getNextEmployeeCode,
   updateEmployee,
-  updateEmployeeBioTimeCode,
 } from "../../features/employees/employeesApi";
 import { GENDER_OPTIONS } from "../../features/employees/employeeLabels";
 import type {
@@ -258,8 +257,12 @@ export function EmployeesPage() {
       departmentId: (value) => (value ? null : "Vui lòng chọn phòng ban."),
       positionId: (value) => (value ? null : "Vui lòng chọn chức danh."),
       phone: (value) =>
-        trimOptional(value) && !/^0[0-9]{9}$/.test(trimOptional(value))
+        trimOptional(value) && !/^0[3-9][0-9]{8}$/.test(trimOptional(value))
           ? "Số điện thoại không đúng định dạng (VD: 0901234567)."
+          : null,
+      citizenId: (value) =>
+        trimOptional(value) && !/^[0-9]{12}$/.test(trimOptional(value))
+          ? "CCCD phải gồm đúng 12 chữ số."
           : null,
       companyEmail: (value) => {
         const companyEmail = trimOptional(value);
@@ -527,7 +530,10 @@ export function EmployeesPage() {
       return;
     }
 
-    const normalizedValues = normalizeEmployeePayload(values);
+    const normalizedValues = {
+      ...normalizeEmployeePayload(values),
+      biotimeEmployeeCode: biotimeEmployeeCode.trim() || null,
+    };
     form.setValues(normalizedValues);
     if (
       isLoadingNextCode ||
@@ -557,39 +563,10 @@ export function EmployeesPage() {
     }
 
     if (editing) {
-      updateMutation.mutate(normalizedValues, {
-        onSuccess: async () => {
-          // Also update BioTime code separately
-          const newBioTimeCode = biotimeEmployeeCode.trim() || null;
-          if (newBioTimeCode !== (editing.biotimeEmployeeCode ?? null)) {
-            try {
-              await updateEmployeeBioTimeCode(editing.id, newBioTimeCode);
-              notifications.show({
-                color: "green",
-                title: "Đã cập nhật mã chấm công",
-                message: newBioTimeCode
-                  ? `Mã chấm công BioTime đã được cập nhật thành "${newBioTimeCode}".`
-                  : "Đã xóa mã chấm công BioTime.",
-              });
-            } catch {
-              // BioTime code update failed but main update succeeded
-              notifications.show({
-                color: "yellow",
-                title: "Cập nhật nhân sự thành công nhưng chưa cập nhật được mã chấm công",
-                message: "Vui lòng thử cập nhật mã chấm công lại sau.",
-              });
-            }
-          }
-        },
-      });
+      updateMutation.mutate(normalizedValues);
       return;
     }
-    // Trên form tạo, mã chấm công nằm ở state riêng — phải gửi kèm payload,
-    // nếu không giá trị người dùng nhập sẽ bị bỏ im lặng.
-    createMutation.mutate({
-      ...normalizedValues,
-      biotimeEmployeeCode: biotimeEmployeeCode.trim() || null,
-    });
+    createMutation.mutate(normalizedValues);
   }
 
   const employees = employeesResponse?.items ?? [];
