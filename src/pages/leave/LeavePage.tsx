@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { ActionIcon, Group, Select, Stack, Text } from '@mantine/core';
+import { ActionIcon, Button, Drawer, Group, NumberInput, Select, SimpleGrid, Stack, Switch, Text, Textarea, TextInput } from '@mantine/core';
+import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
 
 import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import { useAuth } from '../../features/auth/useAuth';
@@ -9,9 +10,11 @@ import { useAuth } from '../../features/auth/useAuth';
 import type {
   LeaveApprovalStep,
   LeavePolicyType,
+  LeavePolicyTypePayload,
+  LeaveQuotaMode,
   LeaveRequest,
 } from '../../features/leave/leaveTypes';
-import { useDeleteCancelledLeaveRequest, useLeaveRequests, useLeaveTypes } from '../../features/leave/useLeaveRequests';
+import { useCreateLeaveType, useDeleteCancelledLeaveRequest, useDeleteLeaveType, useLeaveRequests, useLeaveTypes, useUpdateLeaveType } from '../../features/leave/useLeaveRequests';
 import { useEmployees } from '../../features/employees/useEmployees';
 import { LEAVE_TYPE_OPTIONS } from '../../shared/constants/statuses';
 import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
@@ -23,6 +26,7 @@ import { LoadingState } from '../../shared/components/LoadingState';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { SectionCard } from '../../shared/components/SectionCard';
 import { StatusTag } from '../../shared/components/StatusTag';
+import { TableActionsMenu } from '../../shared/components/TableActionsMenu';
 import { formatDate } from '../../shared/utils/date';
 const EMPLOYEE_SELECT_PAGE_SIZE = 20;
 const CATALOG_PAGE_SIZE = 10;
@@ -31,6 +35,55 @@ type EmployeeSelectOption = {
   value: string;
   label: string;
 };
+
+type LeaveTypeFormValues = {
+  name: string;
+  displaySymbol: string;
+  deductsAnnualLeave: boolean;
+  paid: 'PAID' | 'UNPAID' | 'UNSET';
+  dayValue: number | string;
+  requiresAttachment: boolean;
+  attachmentMinDays: number | string;
+  quotaMode: LeaveQuotaMode;
+  maxDaysPerEvent: number | string;
+  hrRuleStatus: 'CONFIRMED' | 'PENDING_HR_RULE';
+  note: string;
+};
+
+const EMPTY_LEAVE_TYPE_FORM: LeaveTypeFormValues = {
+  name: '',
+  displaySymbol: '',
+  deductsAnnualLeave: false,
+  paid: 'UNSET',
+  dayValue: '',
+  requiresAttachment: false,
+  attachmentMinDays: '',
+  quotaMode: 'NONE',
+  maxDaysPerEvent: '',
+  hrRuleStatus: 'CONFIRMED',
+  note: '',
+};
+
+const PAID_OPTIONS = [
+  { value: 'PAID', label: 'Có lương' },
+  { value: 'UNPAID', label: 'Không lương' },
+  { value: 'UNSET', label: 'Chưa chốt' },
+];
+
+const HR_RULE_OPTIONS = [
+  { value: 'CONFIRMED', label: 'Đã xác nhận' },
+  { value: 'PENDING_HR_RULE', label: 'Chờ HR chốt' },
+];
+
+function nullableNumber(value: number | string): number | null {
+  return typeof value === 'number' ? value : null;
+}
+
+function optionalRangeError(value: number | string, max: number) {
+  return typeof value === 'number' && (value < 0 || value > max)
+    ? `Giá trị phải từ 0 đến ${max}.`
+    : null;
+}
 
 const HALF_DAY_SESSION_OPTIONS = [
   { value: 'FULL_DAY', label: 'Cả ngày' },
@@ -81,6 +134,10 @@ const QUOTA_MODE_LABELS: Record<string, string> = {
   PENDING_HR_RULE: 'Chờ HR chốt quy tắc',
 };
 
+const QUOTA_MODE_OPTIONS = Object.entries(QUOTA_MODE_LABELS).map(
+  ([value, label]) => ({ value, label }),
+);
+
 const APPROVAL_STEP_LABELS: Record<string, string> = {
   ATTENDANCE_TRACKER: 'Người theo dõi chấm công',
   DEPARTMENT_MANAGER: 'Trưởng bộ phận',
@@ -117,7 +174,40 @@ function approvalLabel(step: LeaveApprovalStep | null) {
 }
 
 function policyName(record: LeavePolicyType) {
-  return labelFrom(LEAVE_TYPE_LABELS, record.code) || record.name;
+  return record.name || labelFrom(LEAVE_TYPE_LABELS, record.code);
+}
+
+function leaveTypeFormValues(record: LeavePolicyType): LeaveTypeFormValues {
+  return {
+    name: record.name,
+    displaySymbol: record.displaySymbol,
+    deductsAnnualLeave: record.deductsAnnualLeave,
+    paid: record.paid === true ? 'PAID' : record.paid === false ? 'UNPAID' : 'UNSET',
+    dayValue: record.dayValue ?? '',
+    requiresAttachment: record.requiresAttachment,
+    attachmentMinDays: record.attachmentMinDays ?? '',
+    quotaMode: record.quotaMode as LeaveQuotaMode,
+    maxDaysPerEvent: record.maxDaysPerEvent ?? '',
+    hrRuleStatus:
+      record.hrRuleStatus === 'PENDING_HR_RULE'
+        ? 'PENDING_HR_RULE'
+        : 'CONFIRMED',
+    note: record.note ?? '',
+  };
+}
+
+function leaveTypeErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : '';
+  if (message.includes('LEAVE_POLICY_TYPE_CODE_ALREADY_EXISTS')) {
+    return 'Không thể tạo ký hiệu lúc này. Hãy thử lại.';
+  }
+  if (message.includes('LEAVE_APPROVAL_CONFIGURATION_SCOPE_DENIED')) {
+    return 'Tài khoản không có phạm vi toàn hệ thống để sửa danh mục này.';
+  }
+  if (message.includes('LEAVE_POLICY_TYPE_NOT_FOUND')) {
+    return 'Ký hiệu không còn tồn tại hoặc đã được người khác xóa.';
+  }
+  return 'Không thể lưu thay đổi. Kiểm tra dữ liệu và thử lại.';
 }
 
 const leaveTypeOptions = LEAVE_TYPE_OPTIONS.map((item) => ({
@@ -133,9 +223,13 @@ const statusOptions = REQUEST_STATUS_OPTIONS.map((item) => ({
 export function LeavePage() {
   const { can } = useAuth();
   const canDeleteCancelled = can(HR_PERMISSIONS.LEAVE_CANCEL);
+  const canManageCatalog = can(HR_PERMISSIONS.LEAVE_UPDATE);
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeSelectOption | null>(null);
   const [deletingRequest, setDeletingRequest] = useState<LeaveRequest | null>(null);
+  const [editingLeaveType, setEditingLeaveType] = useState<LeavePolicyType | null>(null);
+  const [deletingLeaveType, setDeletingLeaveType] = useState<LeavePolicyType | null>(null);
+  const [leaveTypeDrawerOpened, setLeaveTypeDrawerOpened] = useState(false);
   const [catalogPage, setCatalogPage] = useState(1);
   const [params, setParams] = useState({
     page: 1,
@@ -145,8 +239,29 @@ export function LeavePage() {
     status: undefined as string | undefined,
   });
   const { data, isLoading, error, refetch } = useLeaveRequests(params);
-  const { data: leaveTypes = [], isLoading: isLeaveTypesLoading } = useLeaveTypes();
+  const leaveTypesQuery = useLeaveTypes();
+  const leaveTypes = leaveTypesQuery.data ?? [];
   const deleteCancelledLeaveRequest = useDeleteCancelledLeaveRequest();
+  const createLeaveType = useCreateLeaveType();
+  const updateLeaveType = useUpdateLeaveType();
+  const deleteLeaveType = useDeleteLeaveType();
+  const leaveTypeForm = useForm<LeaveTypeFormValues>({
+    initialValues: EMPTY_LEAVE_TYPE_FORM,
+    validateInputOnBlur: true,
+    validate: {
+      name: (value) =>
+        value.trim() && value.trim().length <= 120
+          ? null
+          : 'Nhập tên ký hiệu, tối đa 120 ký tự.',
+      displaySymbol: (value) =>
+        value.trim() && !/[;\s]/u.test(value) && value.length <= 12
+          ? null
+          : 'Ký hiệu không có khoảng trắng hoặc dấu chấm phẩy.',
+      dayValue: (value) => optionalRangeError(value, 1),
+      attachmentMinDays: (value) => optionalRangeError(value, 365),
+      maxDaysPerEvent: (value) => optionalRangeError(value, 365),
+    },
+  });
   const employeesQuery = useEmployees({
     search: employeeSearch.trim() || undefined,
     page: 1,
@@ -201,6 +316,95 @@ export function LeavePage() {
       });
     }
   }
+  function closeLeaveTypeDrawer() {
+    setLeaveTypeDrawerOpened(false);
+    setEditingLeaveType(null);
+    leaveTypeForm.reset();
+  }
+
+  function openCreateLeaveType() {
+    setEditingLeaveType(null);
+    leaveTypeForm.setValues(EMPTY_LEAVE_TYPE_FORM);
+    leaveTypeForm.resetDirty();
+    setLeaveTypeDrawerOpened(true);
+  }
+
+  function openEditLeaveType(record: LeavePolicyType) {
+    setEditingLeaveType(record);
+    leaveTypeForm.setValues(leaveTypeFormValues(record));
+    leaveTypeForm.resetDirty();
+    setLeaveTypeDrawerOpened(true);
+  }
+
+  async function handleSaveLeaveType(values: LeaveTypeFormValues) {
+    const payload: LeavePolicyTypePayload = {
+      name: values.name.trim(),
+      displaySymbol: values.displaySymbol.trim(),
+      deductsAnnualLeave: values.deductsAnnualLeave,
+      paid:
+        values.paid === 'PAID'
+          ? true
+          : values.paid === 'UNPAID'
+            ? false
+            : null,
+      dayValue: nullableNumber(values.dayValue),
+      requiresAttachment: values.requiresAttachment,
+      attachmentMinDays: values.requiresAttachment
+        ? nullableNumber(values.attachmentMinDays)
+        : null,
+      quotaMode: values.quotaMode,
+      maxDaysPerEvent:
+        values.quotaMode === 'PER_EVENT'
+          ? nullableNumber(values.maxDaysPerEvent)
+          : null,
+      hrRuleStatus: values.hrRuleStatus,
+      note: values.note.trim() || null,
+    };
+
+    try {
+      if (editingLeaveType) {
+        await updateLeaveType.mutateAsync({
+          id: editingLeaveType.id,
+          payload,
+        });
+      } else {
+        await createLeaveType.mutateAsync(payload);
+        setCatalogPage(1);
+      }
+      notifications.show({
+        color: 'green',
+        title: editingLeaveType ? 'Đã cập nhật ký hiệu' : 'Đã thêm ký hiệu',
+        message: `${payload.displaySymbol} · ${payload.name} đã được lưu.`,
+      });
+      closeLeaveTypeDrawer();
+    } catch (saveError) {
+      notifications.show({
+        color: 'red',
+        title: 'Không lưu được ký hiệu',
+        message: leaveTypeErrorMessage(saveError),
+      });
+    }
+  }
+
+  async function handleDeleteLeaveType() {
+    if (!deletingLeaveType) return;
+    try {
+      await deleteLeaveType.mutateAsync(deletingLeaveType.id);
+      notifications.show({
+        color: 'green',
+        title: 'Đã xóa ký hiệu',
+        message: `${deletingLeaveType.displaySymbol} đã được ngừng sử dụng và ẩn khỏi danh mục.`,
+      });
+      setDeletingLeaveType(null);
+    } catch (deleteError) {
+      notifications.show({
+        color: 'red',
+        title: 'Không xóa được ký hiệu',
+        message: leaveTypeErrorMessage(deleteError),
+      });
+    }
+  }
+
 
 
 
@@ -347,16 +551,6 @@ export function LeavePage() {
       ),
     },
     {
-      key: 'code',
-      header: 'Mã',
-      minWidth: 150,
-      render: (record) => (
-        <Text size="sm" c="dimmed">
-          {record.code}
-        </Text>
-      ),
-    },
-    {
       key: 'name',
       header: 'Tên ký hiệu',
       minWidth: 200,
@@ -415,6 +609,33 @@ export function LeavePage() {
       ),
     },
   ];
+  if (canManageCatalog) {
+    catalogColumns.push({
+      key: 'actions',
+      header: '',
+      width: 96,
+      align: 'right',
+      render: (record) => (
+        <TableActionsMenu
+          label={`Thao tác ký hiệu ${record.displaySymbol}`}
+          actions={[
+            {
+              label: `Chỉnh sửa ${record.displaySymbol}`,
+              icon: <IconEdit size={16} />,
+              onClick: () => openEditLeaveType(record),
+            },
+            {
+              label: `Xóa ${record.displaySymbol}`,
+              icon: <IconTrash size={16} />,
+              color: 'red',
+              onClick: () => setDeletingLeaveType(record),
+            },
+          ]}
+        />
+      ),
+    });
+  }
+
 
   return (
     <>
@@ -509,6 +730,17 @@ export function LeavePage() {
           title="Danh mục ký hiệu nghỉ phép"
           count={`${leaveTypes.length} ký hiệu`}
           description="Ký hiệu dùng khi đối chiếu bảng công tháng."
+          actions={
+            canManageCatalog ? (
+              <Button
+                size="sm"
+                leftSection={<IconPlus size={16} />}
+                onClick={openCreateLeaveType}
+              >
+                Thêm ký hiệu
+              </Button>
+            ) : null
+          }
           flushHeader
         >
           <Stack gap="xs" px="sm" pb="sm">
@@ -516,7 +748,9 @@ export function LeavePage() {
               data={pagedLeaveTypes}
               columns={catalogColumns}
               rowKey={(record) => record.id}
-              loading={isLeaveTypesLoading}
+              loading={leaveTypesQuery.isLoading}
+              error={leaveTypesQuery.error}
+              onRetry={() => void leaveTypesQuery.refetch()}
               meta={catalogMeta}
               onPageChange={(page) => setCatalogPage(page)}
               emptyTitle="Chưa có ký hiệu nghỉ phép"
@@ -524,6 +758,174 @@ export function LeavePage() {
           </Stack>
         </SectionCard>
       </Stack>
+
+      <Drawer
+        opened={leaveTypeDrawerOpened}
+        onClose={closeLeaveTypeDrawer}
+        title={
+          editingLeaveType
+            ? `Chỉnh sửa ký hiệu ${editingLeaveType.displaySymbol}`
+            : 'Thêm ký hiệu nghỉ phép'
+        }
+        position="right"
+        size="lg"
+      >
+        <form
+          onSubmit={leaveTypeForm.onSubmit((values) =>
+            void handleSaveLeaveType(values),
+          )}
+        >
+          <Stack gap="md">
+            <Text size="sm" c="dimmed">
+              Ký hiệu được dùng khi đối chiếu và giải thích bảng công. Hãy chọn
+              ký hiệu ngắn gọn và dễ nhận biết.
+            </Text>
+
+            <TextInput
+              label="Ký hiệu"
+              placeholder="P"
+              description="Tối đa 12 ký tự, không có khoảng trắng hoặc dấu ;"
+              withAsterisk
+              maxLength={12}
+              {...leaveTypeForm.getInputProps('displaySymbol')}
+            />
+
+            <TextInput
+              label="Tên ký hiệu"
+              placeholder="Nghỉ phép năm"
+              withAsterisk
+              maxLength={120}
+              {...leaveTypeForm.getInputProps('name')}
+            />
+
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+              <Select
+                label="Tính lương"
+                data={PAID_OPTIONS}
+                allowDeselect={false}
+                value={leaveTypeForm.values.paid}
+                onChange={(value) =>
+                  leaveTypeForm.setFieldValue(
+                    'paid',
+                    (value ?? 'UNSET') as LeaveTypeFormValues['paid'],
+                  )
+                }
+              />
+              <NumberInput
+                label="Giá trị ngày"
+                placeholder="Chưa chốt"
+                min={0}
+                max={1}
+                step={0.5}
+                decimalScale={2}
+                {...leaveTypeForm.getInputProps('dayValue')}
+              />
+            </SimpleGrid>
+
+            <Select
+              label="Quỹ phép"
+              data={QUOTA_MODE_OPTIONS}
+              allowDeselect={false}
+              value={leaveTypeForm.values.quotaMode}
+              onChange={(value) =>
+                leaveTypeForm.setFieldValue(
+                  'quotaMode',
+                  (value ?? 'NONE') as LeaveQuotaMode,
+                )
+              }
+            />
+
+            {leaveTypeForm.values.quotaMode === 'PER_EVENT' ? (
+              <NumberInput
+                label="Số ngày tối đa mỗi sự kiện"
+                placeholder="Không giới hạn"
+                min={0}
+                max={365}
+                step={0.5}
+                decimalScale={2}
+                {...leaveTypeForm.getInputProps('maxDaysPerEvent')}
+              />
+            ) : null}
+
+            <Switch
+              label="Trừ vào quỹ phép năm"
+              description="Bật khi ký hiệu làm giảm số ngày phép năm còn lại."
+              {...leaveTypeForm.getInputProps('deductsAnnualLeave', {
+                type: 'checkbox',
+              })}
+            />
+
+            <Switch
+              label="Bắt buộc có chứng từ"
+              description="Áp dụng cho nghỉ ốm, thai sản hoặc chính sách cần hồ sơ."
+              {...leaveTypeForm.getInputProps('requiresAttachment', {
+                type: 'checkbox',
+              })}
+            />
+
+            {leaveTypeForm.values.requiresAttachment ? (
+              <NumberInput
+                label="Bắt buộc chứng từ từ số ngày"
+                placeholder="Áp dụng cho mọi thời lượng"
+                min={0}
+                max={365}
+                step={0.5}
+                decimalScale={2}
+                {...leaveTypeForm.getInputProps('attachmentMinDays')}
+              />
+            ) : null}
+
+            <Select
+              label="Quy tắc HR"
+              data={HR_RULE_OPTIONS}
+              allowDeselect={false}
+              value={leaveTypeForm.values.hrRuleStatus}
+              onChange={(value) =>
+                leaveTypeForm.setFieldValue(
+                  'hrRuleStatus',
+                  (value ?? 'CONFIRMED') as LeaveTypeFormValues['hrRuleStatus'],
+                )
+              }
+            />
+
+            <Textarea
+              label="Ghi chú"
+              placeholder="Mô tả điều kiện áp dụng hoặc nội dung HR cần chốt"
+              minRows={3}
+              autosize
+              maxLength={500}
+              {...leaveTypeForm.getInputProps('note')}
+            />
+
+            <Group justify="flex-end" mt="xs">
+              <Button
+                type="button"
+                variant="default"
+                onClick={closeLeaveTypeDrawer}
+                disabled={createLeaveType.isPending || updateLeaveType.isPending}
+              >
+                Hủy
+              </Button>
+              <Button
+                type="submit"
+                loading={createLeaveType.isPending || updateLeaveType.isPending}
+              >
+                {editingLeaveType ? 'Lưu thay đổi' : 'Thêm ký hiệu'}
+              </Button>
+            </Group>
+          </Stack>
+        </form>
+      </Drawer>
+
+      <ConfirmActionModal
+        opened={deletingLeaveType !== null}
+        title={`Xóa ký hiệu ${deletingLeaveType?.displaySymbol ?? ''}?`}
+        message="Ký hiệu sẽ ngừng sử dụng và biến mất khỏi danh mục. Dữ liệu quỹ phép và lịch sử liên quan vẫn được giữ nguyên."
+        confirmLabel="Xóa khỏi danh mục"
+        loading={deleteLeaveType.isPending}
+        onClose={() => setDeletingLeaveType(null)}
+        onConfirm={() => void handleDeleteLeaveType()}
+      />
 
       <ConfirmActionModal
         opened={deletingRequest !== null}

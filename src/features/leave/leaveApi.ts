@@ -5,7 +5,7 @@ import { mockEmployees } from '../../shared/mocks/mockEmployees';
 import { paginate, includesIgnoreCase, generateId, mockDelay } from '../../shared/mocks/mockHelpers';
 import { mockLeaveRequests } from '../../shared/mocks/mockWorkflows';
 import type { ListQueryParams, PaginatedData, PaginatedResponse } from '../../shared/types/api';
-import type { LeaveApprovalStep, LeavePolicyType, LeaveRequest, LeaveRequestPayload } from './leaveTypes';
+import type { LeaveApprovalStep, LeavePolicyType, LeavePolicyTypePayload, LeaveRequest, LeaveRequestPayload } from './leaveTypes';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
 const mockApprovalSteps = [
@@ -106,10 +106,70 @@ export async function listLeaveRequests(params: ListQueryParams = {}): Promise<P
 export async function listLeaveTypes(): Promise<LeavePolicyType[]> {
   if (isMockMode) {
     await mockDelay();
-    return mockLeavePolicyTypes;
+    return mockLeavePolicyTypes.filter((item) => item.status === 'ACTIVE');
   }
 
   return api.get<LeavePolicyType[]>('/leave/types');
+}
+
+export async function createLeaveType(
+  payload: LeavePolicyTypePayload,
+): Promise<LeavePolicyType> {
+  if (isMockMode) {
+    await mockDelay();
+    const item: LeavePolicyType = {
+      id: generateId('lpt'),
+      code: generateId('leave-type').toUpperCase().replaceAll('-', '_'),
+      ...payload,
+      status: 'ACTIVE',
+    };
+    mockLeavePolicyTypes.unshift(item);
+    appendAuditLog({
+      entityType: 'LEAVE_POLICY_TYPE',
+      entityId: item.id,
+      action: 'CREATE',
+      afterJson: item as unknown as Record<string, unknown>,
+    });
+    return item;
+  }
+  return api.post<LeavePolicyType>('/leave/types', payload);
+}
+
+export async function updateLeaveType(
+  id: string,
+  payload: LeavePolicyTypePayload,
+): Promise<LeavePolicyType> {
+  if (isMockMode) {
+    await mockDelay();
+    const item = mockLeavePolicyTypes.find((record) => record.id === id);
+    if (!item || item.status !== 'ACTIVE') {
+      throw new Error('LEAVE_POLICY_TYPE_NOT_FOUND');
+    }
+    const before = { ...item };
+    Object.assign(item, payload);
+    appendAuditLog({
+      entityType: 'LEAVE_POLICY_TYPE',
+      entityId: id,
+      action: 'UPDATE',
+      beforeJson: before as unknown as Record<string, unknown>,
+      afterJson: item as unknown as Record<string, unknown>,
+    });
+    return item;
+  }
+  return api.patch<LeavePolicyType>(`/leave/types/${id}`, payload);
+}
+
+export async function deleteLeaveType(id: string): Promise<{ id: string }> {
+  if (isMockMode) {
+    await mockDelay();
+    const item = mockLeavePolicyTypes.find((record) => record.id === id);
+    if (!item || item.status !== 'ACTIVE') {
+      throw new Error('LEAVE_POLICY_TYPE_NOT_FOUND');
+    }
+    item.status = 'INACTIVE';
+    return { id };
+  }
+  return api.delete<{ id: string }>(`/leave/types/${id}`);
 }
 
 export async function createLeaveRequest(payload: LeaveRequestPayload): Promise<LeaveRequest> {

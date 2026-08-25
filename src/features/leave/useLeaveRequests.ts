@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { ListQueryParams } from '../../shared/types/api';
-import { deleteCancelledLeaveRequest, listLeaveRequests, listLeaveTypes } from './leaveApi';
+import { createLeaveType, deleteCancelledLeaveRequest, deleteLeaveType, listLeaveRequests, listLeaveTypes, updateLeaveType } from './leaveApi';
+import type { LeavePolicyTypePayload } from './leaveTypes';
 
 export function useLeaveRequests(params: ListQueryParams) {
   return useQuery({
@@ -16,6 +17,38 @@ export function useLeaveTypes() {
     queryFn: listLeaveTypes,
   });
 }
+function useInvalidateLeaveTypes() {
+  const queryClient = useQueryClient();
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: ['leave-types'] });
+  };
+}
+
+export function useCreateLeaveType() {
+  const invalidate = useInvalidateLeaveTypes();
+  return useMutation({
+    mutationFn: createLeaveType,
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateLeaveType() {
+  const invalidate = useInvalidateLeaveTypes();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: LeavePolicyTypePayload }) =>
+      updateLeaveType(id, payload),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteLeaveType() {
+  const invalidate = useInvalidateLeaveTypes();
+  return useMutation({
+    mutationFn: deleteLeaveType,
+    onSuccess: invalidate,
+  });
+}
+
 
 
 export function useDeleteCancelledLeaveRequest() {

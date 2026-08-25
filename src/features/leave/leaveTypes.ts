@@ -53,6 +53,28 @@ export interface LeavePolicyType {
   status: string;
 }
 
+export type LeaveQuotaMode =
+  | 'NONE'
+  | 'ANNUAL_BALANCE'
+  | 'COMPENSATORY_BALANCE'
+  | 'PER_EVENT'
+  | 'INSURANCE'
+  | 'PENDING_HR_RULE';
+
+export interface LeavePolicyTypePayload {
+  name: string;
+  displaySymbol: string;
+  deductsAnnualLeave: boolean;
+  paid: boolean | null;
+  dayValue: number | null;
+  requiresAttachment: boolean;
+  attachmentMinDays: number | null;
+  quotaMode: LeaveQuotaMode;
+  maxDaysPerEvent: number | null;
+  hrRuleStatus: 'CONFIRMED' | 'PENDING_HR_RULE';
+  note: string | null;
+}
+
 export interface LeaveRequestPayload {
   employeeId: string;
   leaveType: string;
