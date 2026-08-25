@@ -11,6 +11,7 @@ import {
 import type { DemoRole, LoginCredentials } from './types';
 import { toast } from '../../shared/utils/toast';
 import { readHttpStatus } from '../../shared/api/response';
+import { isDefinitiveAuthRefreshFailure } from '../../shared/api/authRefreshFailure';
 
 
 export function useAuth() {
@@ -39,7 +40,7 @@ export function useAuth() {
         return;
       }
 
-      if (status === 401) {
+      if (status === 401 && isDefinitiveAuthRefreshFailure(error)) {
         clearSession();
         return;
       }

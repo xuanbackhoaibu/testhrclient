@@ -24,8 +24,9 @@ export function isDefinitiveAuthRefreshFailure(error: unknown): boolean {
   }
 
   if (!axios.isAxiosError(error) || !error.response) return false;
-  if (error.response.status === 400 || error.response.status === 401) return true;
 
+  // Proxies may map temporary upstream failures to 400/401. Only the Auth
+  // service reason code is strong enough evidence to destroy local session.
   const data = error.response.data as {
     reasonCode?: unknown;
     code?: unknown;
