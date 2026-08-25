@@ -14,7 +14,6 @@ type AttendanceEventDay = Pick<
   | "needsExplanation"
   | "source"
   | "totalMinutes"
-
 >;
 
 /** A template OFF is an explicit rest day, never an unassigned schedule. */
@@ -23,8 +22,8 @@ export function isWeeklyTemplateOffDay(
 ): boolean {
   return Boolean(
     day &&
-      isWeeklyTemplateAssignmentSource(day.source ?? "") &&
-      !day.isWorkingDay,
+    isWeeklyTemplateAssignmentSource(day.source ?? "") &&
+    !day.isWorkingDay,
   );
 }
 
@@ -33,9 +32,7 @@ export function hasTimesheetAttendanceEvent(
   day: AttendanceEventDay | undefined,
 ): boolean {
   return Boolean(
-    day?.firstPunch ||
-      day?.lastPunch ||
-      typeof day?.totalMinutes === "number",
+    day?.firstPunch || day?.lastPunch || typeof day?.totalMinutes === "number",
   );
 }
 
@@ -124,11 +121,10 @@ type TimesheetDayGapInput = TimesheetDataGapDay & AttendanceEventDay;
  *
  * HR đối chiếu hai màn liên tục: Phân ca hiện mã ca (HC2, HC4, Nghỉ), còn bảng
  * công lại hiện `+`/`-`, nên phải nhớ ngày nào ca nào mới biết ô đủ công đó
- * thuộc ca gì. Ô làm việc bình thường vì thế hiện thẳng mã ca đã tính; nửa
- * công giữ hậu tố `-` để không mất thông tin `+`/`-` vốn có.
+ * thuộc ca gì. Ô đi làm vì thế luôn hiện thẳng mã ca đã tính; phần công vẫn
+ * nằm trong số liệu tổng hợp và không chen thêm dấu vào mã ca.
  *
- * Chỉ thay phần hiển thị: `displaySymbol` lưu trong DB, số liệu BCC và file
- * Excel vẫn dùng nguyên `+`/`-` qua `timesheetDayDisplayValue`.
+ * Stored payroll symbols and totals stay unchanged; only UI/export labels are normalized.
  */
 export function timesheetDayShiftDisplayValue(
   day:
@@ -162,22 +158,14 @@ export function timesheetDayShiftDisplayValue(
   // cho biết là ngày nghỉ, tooltip vẫn ghi "Nghỉ theo ca tuần".
   if (label === WEEKLY_OFF_SYMBOL) return "";
   const shiftCode = day?.shiftCode?.trim();
-  if (!shiftCode) return label;
-  // Chỉ ô công đi làm mới quy về mã ca. Nghỉ phép, ốm, lễ... giữ nguyên ký
-  // hiệu nghiệp vụ vì mã ca không nói được lý do vắng.
-  if (label === "+") return shiftCode;
-  if (label === "-") return `${shiftCode}-`;
-  /*
-   * Ca ĐÃ PHÂN nhưng chưa có dữ liệu chấm công vẫn phải hiện mã ca.
-   *
-   * Trước đây ô này để trống, nên bảng công tháng nhìn thủng lỗ chỗ trong khi
-   * màn Phân ca hiện đủ VH1/VH2 mọi ngày. HR đối chiếu hai màn liền nhau rồi
-   * kết luận "phân ca sai" hoặc "mất ca đêm", trong khi ca vẫn đúng — chỉ là
-   * máy chấm công chưa có dữ liệu cho ngày đó.
-   *
-   * Giữ nguyên `label` cho ô đã có sự kiện chấm công (`?` chờ giải trình):
-   * đó là việc HR phải xử lý, không được mã ca che mất.
-   */
-  if (!label) return shiftCode;
-  return label;
+  // +/- are internal work-fraction tokens. Keep them in payroll data, but
+  // never expose them as labels; a composite such as P;- is shown as P.
+  const businessLabel = label
+    .split(";")
+    .map((token) => token.trim())
+    .filter((token) => token && token !== "+" && token !== "-")
+    .join(";");
+  if (!shiftCode) return businessLabel;
+  if (!businessLabel) return shiftCode;
+  return businessLabel;
 }

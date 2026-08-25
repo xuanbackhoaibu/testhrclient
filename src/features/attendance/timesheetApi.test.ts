@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { get, post, downloadToSelectedLocation } = vi.hoisted(() => ({
+const { get, post, download } = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
-  downloadToSelectedLocation: vi.fn(),
+  download: vi.fn(),
 }));
 
 vi.mock("../../shared/api/httpClient", () => ({
-  api: { get, post, downloadToSelectedLocation },
+  api: { get, post, download },
 }));
 
 import {
@@ -22,7 +22,7 @@ describe("timesheet grid export query", () => {
   beforeEach(() => {
     get.mockReset();
     post.mockReset();
-    downloadToSelectedLocation.mockReset();
+    download.mockReset();
   });
 
   it("uses the same active period and scope filters as the visible grid", async () => {
@@ -40,10 +40,7 @@ describe("timesheet grid export query", () => {
     };
 
     get.mockResolvedValue({ rows: [] });
-    downloadToSelectedLocation.mockResolvedValue({
-      status: "saved",
-      filename: "bang-cham-cong-2026-08.xlsx",
-    });
+    download.mockResolvedValue(undefined);
 
     await getTimesheetGrid(activeGridQuery);
     await downloadTimesheetGridExport(activeGridQuery);
@@ -51,7 +48,7 @@ describe("timesheet grid export query", () => {
     expect(get).toHaveBeenCalledWith("/attendance/timesheet/grid", {
       params: expectedParams,
     });
-    expect(downloadToSelectedLocation).toHaveBeenCalledWith(
+    expect(download).toHaveBeenCalledWith(
       "/attendance/timesheet/export",
       "bang-cham-cong-2026-08.xlsx",
       expectedParams,
