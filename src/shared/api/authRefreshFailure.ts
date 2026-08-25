@@ -15,7 +15,16 @@ const DEFINITIVE_REFRESH_REASON_CODES = new Set([
 ]);
 
 export function isDefinitiveAuthRefreshFailure(error: unknown): boolean {
+  const localReasonCode = (error as { reasonCode?: unknown })?.reasonCode;
+  if (
+    typeof localReasonCode === 'string' &&
+    DEFINITIVE_REFRESH_REASON_CODES.has(localReasonCode)
+  ) {
+    return true;
+  }
+
   if (!axios.isAxiosError(error) || !error.response) return false;
+  if (error.response.status === 400 || error.response.status === 401) return true;
 
   const data = error.response.data as {
     reasonCode?: unknown;
