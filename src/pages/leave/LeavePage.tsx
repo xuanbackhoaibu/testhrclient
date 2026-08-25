@@ -198,6 +198,9 @@ function leaveTypeFormValues(record: LeavePolicyType): LeaveTypeFormValues {
 
 function leaveTypeErrorMessage(error: unknown) {
   const message = error instanceof Error ? error.message : '';
+  if (message.includes('LEAVE_POLICY_TYPE_SYMBOL_ALREADY_EXISTS')) {
+    return 'Ký hiệu này đã tồn tại. Hãy chọn ký hiệu khác.';
+  }
   if (message.includes('LEAVE_POLICY_TYPE_CODE_ALREADY_EXISTS')) {
     return 'Không thể tạo ký hiệu lúc này. Hãy thử lại.';
   }
