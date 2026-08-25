@@ -13,6 +13,7 @@ import { useAuthStore } from '../features/auth/authStore';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { readHttpStatus } from '../shared/api/response';
 import { filterSelectOptions } from '../shared/utils/filterSelectOptions';
+import { isDefinitiveAuthRefreshFailure } from '../shared/api/authRefreshFailure';
 
 dayjs.locale('vi');
 
@@ -86,7 +87,7 @@ function AuthBootstrap({ children }: PropsWithChildren) {
         useAuthStore.getState().setError(null);
       } catch (error: unknown) {
         const status = readHttpStatus(error);
-        if (status === 401) {
+        if (status === 401 && isDefinitiveAuthRefreshFailure(error)) {
           clearSession();
         } else if (status === 403) {
           useAuthStore.getState().setError('Tài khoản đã xác thực nhưng không được phép truy cập HRM.');
@@ -116,7 +117,10 @@ function AuthBootstrap({ children }: PropsWithChildren) {
         lastAuthorityRefreshAt.current = Date.now();
         useAuthStore.getState().setError(null);
       } catch (error: unknown) {
-        if (readHttpStatus(error) === 401) {
+        if (
+          readHttpStatus(error) === 401 &&
+          isDefinitiveAuthRefreshFailure(error)
+        ) {
           clearSession();
           return;
         }
