@@ -34,11 +34,12 @@ import {
   updateEmployee,
   updateEmployeeBioTimeCode,
 } from "../../features/employees/employeesApi";
+import { GENDER_OPTIONS } from "../../features/employees/employeeLabels";
 import type {
   Employee,
   EmployeePayload,
 } from "../../features/employees/employeeTypes";
-import { useAllEmployees } from "../../features/employees/useEmployees";
+import { useEmployees } from "../../features/employees/useEmployees";
 import { AccountDetailDrawer } from "../../features/employees/AccountDetailDrawer";
 import { BulkProvisionModal } from "../../features/employees/BulkProvisionModal";
 import { BulkClearBioTimeCodeModal } from "../../features/employees/BulkClearBioTimeCodeModal";
@@ -61,19 +62,18 @@ import { usePositionsSelect } from "../../features/organization/usePositions";
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { ApiError } from "../../shared/api/api.types";
 import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
-import { sortByCode } from "../../shared/utils/sort";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
 import { HrmDateInput } from "../../shared/components/HrmDateInput";
-import { useClientPagination } from "../../shared/hooks/useClientPagination";
+import { STATUS_LABEL_MAP } from "../../shared/constants/statusLabels";
 
 const employmentStatusOptions = [
-  { value: "ACTIVE", label: "Đang làm việc" },
-  { value: "PROBATION", label: "Thử việc" },
-  { value: "SUSPENDED", label: "Tạm dừng" },
-  { value: "TERMINATED", label: "Nghỉ việc" },
-  { value: "RESIGNED", label: "Admin" },
-];
+  "ACTIVE",
+  "PROBATION",
+  "SUSPENDED",
+  "TERMINATED",
+  "RESIGNED",
+].map((value) => ({ value, label: STATUS_LABEL_MAP[value] }));
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -227,6 +227,9 @@ export function EmployeesPage() {
   const [provisionTarget, setProvisionTarget] = useState<Employee | null>(null);
   const [accountDetailTarget, setAccountDetailTarget] = useState<Employee | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedEmployeesById, setSelectedEmployeesById] = useState<
+    Map<string, Employee>
+  >(new Map());
   const [bulkProvisionOpen, setBulkProvisionOpen] = useState(false);
   const [bulkClearBioTimeOpen, setBulkClearBioTimeOpen] = useState(false);
 
@@ -273,10 +276,8 @@ export function EmployeesPage() {
     },
   });
 
-  // Lấy toàn bộ nhân sự theo bộ lọc (gộp mọi trang từ server) để có thể
-  // sắp xếp theo Mã chấm công trên TOÀN danh sách rồi mới phân trang ở client.
-  // Nhờ vậy trang 1 luôn bắt đầu từ mã chấm công nhỏ nhất.
-  const { data: allEmployees, isLoading, error, refetch } = useAllEmployees({
+  const { data: employeesResponse, isLoading, error, refetch } = useEmployees({
+    ...params,
     employmentStatus: params.employmentStatus,
     unitId: params.unitId,
     departmentId: params.departmentId,
@@ -591,24 +592,29 @@ export function EmployeesPage() {
     });
   }
 
-  // Sắp xếp nhân sự theo Mã chấm công (BioTime) tăng dần từ 1 tới lớn nhất.
-  // Nhân sự chưa có mã chấm công sẽ dồn xuống cuối danh sách.
-  const sortedEmployees = useMemo(
-    () => sortByCode(allEmployees, (emp) => emp.biotimeEmployeeCode),
-    [allEmployees],
+  const employees = employeesResponse?.items ?? [];
+  const employeeMeta = employeesResponse?.meta;
+  const selectedEmployees = Array.from(selectedEmployeesById.values()).filter(
+    (employee) => selectedIds.has(employee.id),
   );
 
-  // Phân trang ở client trên danh sách đã sắp xếp.
-  const { pagedItems: pagedEmployees, pagedMeta } = useClientPagination(
-    sortedEmployees,
-    params.page,
-    params.pageSize,
-  );
+  function handleSelectionChange(nextIds: Set<string>) {
+    setSelectedIds(nextIds);
+    setSelectedEmployeesById((current) => {
+      const next = new Map(
+        Array.from(current).filter(([employeeId]) => nextIds.has(employeeId)),
+      );
+      employees.forEach((employee) => {
+        if (nextIds.has(employee.id)) next.set(employee.id, employee);
+      });
+      return next;
+    });
+  }
 
-  const selectedEmployees = useMemo(
-    () => sortedEmployees.filter((emp) => selectedIds.has(emp.id)),
-    [sortedEmployees, selectedIds],
-  );
+  function clearSelection() {
+    setSelectedIds(new Set());
+    setSelectedEmployeesById(new Map());
+  }
 
   const columns = useMemo<DataTableColumn<Employee>[]>(
     () => [
@@ -636,14 +642,14 @@ export function EmployeesPage() {
       },
       {
         key: "companyEmail",
-        header: "Email",
+        header: "Email công ty",
         render: (record) => (
           <TruncatedCell value={record.companyEmail} maxWidth={240} />
         ),
       },
       {
         key: "phone",
-        header: "SDT",
+        header: "Số điện thoại",
         width: 130,
         render: (record) => record.phone || "-",
       },
@@ -658,6 +664,13 @@ export function EmployeesPage() {
         header: "TT tài khoản",
         width: 150,
         render: (record) => <AccountStatusBadge record={record} />,
+      },
+      {
+        key: "unit",
+        header: "Đơn vị",
+        render: (record) => (
+          <TruncatedCell value={record.currentEmployeeAssignment?.unitName} />
+        ),
       },
       {
         key: "department",
@@ -868,7 +881,7 @@ export function EmployeesPage() {
                   size="compact-xs"
                   variant="subtle"
                   color="gray"
-                  onClick={() => setSelectedIds(new Set())}
+                  onClick={clearSelection}
                 >
                   Bỏ chọn
                 </Button>
@@ -902,10 +915,10 @@ export function EmployeesPage() {
         ) : null}
 
         <DataTable
-          data={pagedEmployees}
+          data={employees}
           columns={columns}
           rowKey={(record) => record.id}
-          meta={pagedMeta}
+          meta={employeeMeta}
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}
@@ -914,7 +927,7 @@ export function EmployeesPage() {
             setParams((current) => ({ ...current, page, pageSize }))
           }
           selectedIds={mayBulkSelect ? selectedIds : undefined}
-          onSelectionChange={mayBulkSelect ? setSelectedIds : undefined}
+          onSelectionChange={mayBulkSelect ? handleSelectionChange : undefined}
           emptyTitle="Chưa có nhân sự"
           emptyDescription="Không tìm thấy nhân sự phù hợp với bộ lọc hiện tại."
         />
@@ -968,31 +981,13 @@ export function EmployeesPage() {
             />
             <TextInput
               label="Số điện thoại"
-              withAsterisk
               {...form.getInputProps("phone")}
             />
             <Select
-              label="Giới tính"
-              clearable
-              data={[
-                { value: "MALE", label: "Nam" },
-                { value: "FEMALE", label: "Nữ" },
-                { value: "OTHER", label: "Khác" },
-              ]}
-              {...form.getInputProps("gender")}
-            />
-            <HrmDateInput
-              label="Ngày sinh"
-              value={form.values.dateOfBirth || null}
-              onChange={(value) => form.setFieldValue("dateOfBirth", value ?? "")}
-              error={form.errors.dateOfBirth}
-            />
-            <HrmDateInput
-              label="Ngày vào làm"
+              label="Trạng thái nhân sự"
               withAsterisk
-              value={form.values.hireDate || null}
-              onChange={(value) => form.setFieldValue("hireDate", value ?? "")}
-              error={form.errors.hireDate}
+              data={employmentStatusOptions}
+              {...form.getInputProps("employmentStatus")}
             />
             <Select
               label="Đơn vị"
@@ -1079,12 +1074,28 @@ export function EmployeesPage() {
               }
             />
             <Select
-              label="Trạng thái"
-              withAsterisk
-              data={employmentStatusOptions}
-              {...form.getInputProps("employmentStatus")}
+              label="Giới tính"
+              clearable
+              data={GENDER_OPTIONS}
+              {...form.getInputProps("gender")}
             />
-            <TextInput label="CCCD" {...form.getInputProps("citizenId")} />
+            <HrmDateInput
+              label="Ngày sinh"
+              value={form.values.dateOfBirth || null}
+              onChange={(value) => form.setFieldValue("dateOfBirth", value ?? "")}
+              error={form.errors.dateOfBirth}
+            />
+            <TextInput
+              label="CCCD/CMND"
+              {...form.getInputProps("citizenId")}
+            />
+            <HrmDateInput
+              label="Ngày vào làm"
+              withAsterisk
+              value={form.values.hireDate || null}
+              onChange={(value) => form.setFieldValue("hireDate", value ?? "")}
+              error={form.errors.hireDate}
+            />
             <Group justify="flex-end" mt="md">
               <Button variant="default" onClick={closeEmployeeDrawer}>
                 Hủy
@@ -1151,7 +1162,7 @@ export function EmployeesPage() {
           opened={bulkProvisionOpen}
           onClose={() => setBulkProvisionOpen(false)}
           onSuccess={() => {
-            setSelectedIds(new Set());
+            clearSelection();
             void queryClient.invalidateQueries({ queryKey: ["employees"] });
           }}
         />
@@ -1163,7 +1174,7 @@ export function EmployeesPage() {
           opened={bulkClearBioTimeOpen}
           onClose={() => setBulkClearBioTimeOpen(false)}
           onSuccess={() => {
-            setSelectedIds(new Set());
+            clearSelection();
             void queryClient.invalidateQueries({ queryKey: ["employees"] });
             void queryClient.invalidateQueries({ queryKey: ["employee-detail"] });
           }}

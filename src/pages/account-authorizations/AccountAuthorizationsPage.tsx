@@ -15,6 +15,7 @@ import {
   Text,
   Title,
   UnstyledButton,
+  VisuallyHidden,
 } from "@mantine/core";
 import { IconShieldCheck, IconUserCheck } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
@@ -196,6 +197,15 @@ export function AccountAuthorizationsPage() {
           </Stack>
 
           <Box style={{ borderTop: "1px solid var(--mantine-color-gray-2)" }}>
+            <VisuallyHidden role="status" aria-live="polite" aria-atomic="true">
+              {accountsQuery.isLoading
+                ? "Đang tìm tài khoản."
+                : accountsQuery.data
+                  ? search
+                    ? `Tìm thấy ${accountsQuery.data.total} tài khoản cho từ khóa ${search}.`
+                    : `Có ${accountsQuery.data.total} tài khoản.`
+                  : ""}
+            </VisuallyHidden>
             {accountsQuery.isLoading ? (
               <Center h={360}>
                 <Loader size="sm" />
@@ -260,9 +270,25 @@ export function AccountAuthorizationsPage() {
               </ScrollArea>
             ) : (
               <Center h={300} p="xl">
-                <Text size="sm" c="dimmed" ta="center">
-                  Không tìm thấy tài khoản phù hợp.
-                </Text>
+                <Stack gap="xs" align="center">
+                  <Text size="sm" fw={600} ta="center">
+                    Không tìm thấy tài khoản
+                  </Text>
+                  <Text size="sm" c="dimmed" ta="center">
+                    {search
+                      ? `Không có kết quả cho “${search}”. Hãy thử tên, email, tên đăng nhập hoặc mã nhân viên khác.`
+                      : "Không có tài khoản phù hợp với trạng thái đã chọn."}
+                  </Text>
+                  {search ? (
+                    <Button
+                      size="xs"
+                      variant="light"
+                      onClick={() => updateQuery({ q: null, page: null })}
+                    >
+                      Xóa từ khóa
+                    </Button>
+                  ) : null}
+                </Stack>
               </Center>
             )}
           </Box>

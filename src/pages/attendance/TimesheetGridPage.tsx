@@ -132,9 +132,9 @@ const colorLegendItems = [
     description: "Thiếu chấm công hoặc chưa đủ điều kiện ghi công",
   },
   {
-    color: "#ffedd5",
-    label: "Đi muộn",
-    description: "Đã vượt ngưỡng đi muộn của ca",
+    color: "#ffffff",
+    label: "Đi muộn (chữ đỏ)",
+    description: "Mã ca được tô chữ đỏ khi vượt ngưỡng đi muộn của ca",
   },
   {
     color: "#e5e7eb",
@@ -189,9 +189,9 @@ const colorLegendItems = [
   },
   {
     color: "#ffffff",
-    label: "Mã ca / nửa công",
+    label: "Mã ca",
     description:
-      "Ô đi làm hiện mã ca như màn Phân ca (VD: HC2). Hậu tố - là nửa công. Số liệu BCC và file Excel vẫn giữ ký hiệu +/-.",
+      "Ô đi làm hiện đúng mã ca như màn Phân ca (VD: HC2); phần công nằm trong các cột tổng hợp.",
   },
 ] as const;
 const bccTailColumns = [
@@ -614,9 +614,7 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
                     ? "#dbeafe"
                     : hasExplanationEvent
                       ? "#fee2e2"
-                      : (day?.lateMinutes ?? 0) > 0
-                        ? "#ffedd5"
-                        : undefined));
+                      : undefined));
         const isEditable =
           canEdit && day !== undefined && !day.isLocked && !day.isDerived;
 
@@ -643,6 +641,8 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
               c={
                 label.includes("KL")
                   ? "red.9"
+                  : (day?.lateMinutes ?? 0) > 0
+                    ? "red.7"
                   : // Mã ca của ngày chưa có dữ liệu chấm công: hiện mờ để đọc
                     // được là "đã phân ca này" mà không bị nhầm thành đã tính
                     // đủ công như ô in đậm bên cạnh.
@@ -1382,23 +1382,12 @@ export function TimesheetGridPage() {
     if (isGridScopeLoading || isExporting) return;
     setIsExporting(true);
     try {
-      const result = await downloadTimesheetGridExport(query);
-      if (result.status === "cancelled") {
-        return;
-      }
-      if (result.status === "unsupported") {
-        notifications.show({
-          color: "orange",
-          title: "Chưa thể chọn nơi lưu",
-          message:
-            "Hãy mở Hacom HRM bằng Chrome hoặc Microsoft Edge để chọn thư mục và tên file Excel.",
-        });
-        return;
-      }
+      await downloadTimesheetGridExport(query);
       notifications.show({
         color: "green",
-        title: "Đã lưu Excel",
-        message: `Đã lưu ${result.filename} theo đúng phạm vi đang chọn.`,
+        title: "Đã tải Excel",
+        message:
+          "File đã được tải theo đúng phạm vi đang chọn và có trong lịch sử tải xuống của trình duyệt (Ctrl+J).",
       });
     } catch {
       notifications.show({
@@ -1708,8 +1697,7 @@ export function TimesheetGridPage() {
           <Stack gap="xs">
             <ScrollArea
               viewportRef={tableViewportRef}
-              type="always"
-              h="min(680px, calc(100vh - 315px))"
+              type="auto"
               offsetScrollbars
               scrollbarSize={12}
             >

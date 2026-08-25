@@ -101,7 +101,12 @@ describe("countTimesheetDataGaps", () => {
       {
         days: [
           { day: 1, source: "MISSING" },
-          { day: 2, source: "DEVICE", needsExplanation: true, firstPunch: "08:00" },
+          {
+            day: 2,
+            source: "DEVICE",
+            needsExplanation: true,
+            firstPunch: "08:00",
+          },
           { day: 3, source: "UNASSIGNED" },
         ],
       },
@@ -124,7 +129,9 @@ describe("countTimesheetDataGaps", () => {
       },
     ];
     // Chỉ ngày 18 được tính; 19 và 31 chưa tới nên chưa thể có chấm công.
-    expect(countTimesheetDataGaps(rows, today, period).missingAttendance).toBe(1);
+    expect(countTimesheetDataGaps(rows, today, period).missingAttendance).toBe(
+      1,
+    );
   });
 
   it("không báo gì cho kỳ công hoàn toàn ở tương lai", () => {
@@ -136,7 +143,12 @@ describe("countTimesheetDataGaps", () => {
 
   it("đếm trọn tháng đã qua, không cắt theo ngày hôm nay", () => {
     const rows = [
-      { days: [{ day: 25, source: "MISSING" }, { day: 30, source: "MISSING" }] },
+      {
+        days: [
+          { day: 25, source: "MISSING" },
+          { day: 30, source: "MISSING" },
+        ],
+      },
     ];
     expect(
       countTimesheetDataGaps(rows, today, { year: 2026, month: 7 })
@@ -148,7 +160,9 @@ describe("countTimesheetDataGaps", () => {
     const rows = [
       { days: [{ day: 1, source: "MISSING", firstPunch: "08:00" }] },
     ];
-    expect(countTimesheetDataGaps(rows, today, period).missingAttendance).toBe(0);
+    expect(countTimesheetDataGaps(rows, today, period).missingAttendance).toBe(
+      0,
+    );
   });
 
   it("ô chờ giải trình mà không có chấm công thì không tính", () => {
@@ -164,7 +178,12 @@ describe("countTimesheetDataGaps", () => {
     const rows = [
       {
         days: [
-          { day: 1, source: "UNASSIGNED", needsExplanation: true, firstPunch: "08:00" },
+          {
+            day: 1,
+            source: "UNASSIGNED",
+            needsExplanation: true,
+            firstPunch: "08:00",
+          },
         ],
       },
     ];
@@ -201,14 +220,34 @@ describe("timesheet cell shown with the shift-assignment notation", () => {
     ).toBe("HC2");
   });
 
-  it("marks a half day with the shift code plus the - suffix", () => {
+  it("shows the assigned shift without appending a half-day suffix", () => {
     expect(
       timesheetDayShiftDisplayValue({
         ...base,
         displaySymbol: "-",
         shiftCode: "HC4",
       }),
-    ).toBe("HC4-");
+    ).toBe("HC4");
+  });
+
+  it("removes internal work-fraction tokens from composite leave labels", () => {
+    expect(
+      timesheetDayShiftDisplayValue({
+        ...base,
+        displaySymbol: "P;-",
+        shiftCode: "HC4",
+      }),
+    ).toBe("P");
+  });
+
+  it("never exposes a bare half-day token when no shift is available", () => {
+    expect(
+      timesheetDayShiftDisplayValue({
+        ...base,
+        displaySymbol: "-",
+        shiftCode: null,
+      }),
+    ).toBe("");
   });
 
   /*
@@ -249,9 +288,9 @@ describe("timesheet cell shown with the shift-assignment notation", () => {
       }),
     ).toBe("");
     // Ô vẫn là ngày nghỉ theo ca tuần — chỉ ẩn chữ, không đổi dữ liệu.
-    expect(
-      timesheetDayDisplayValue({ ...base, displaySymbol: "OFF" }),
-    ).toBe("OFF");
+    expect(timesheetDayDisplayValue({ ...base, displaySymbol: "OFF" })).toBe(
+      "OFF",
+    );
   });
 
   it("keeps leave and absence symbols, which a shift code cannot explain", () => {
@@ -266,17 +305,17 @@ describe("timesheet cell shown with the shift-assignment notation", () => {
     }
   });
 
-  it("falls back to the plain symbol when the day carries no shift code", () => {
-    expect(
-      timesheetDayShiftDisplayValue({ ...base, displaySymbol: "+" }),
-    ).toBe("+");
+  it("does not expose an internal work token when the day carries no shift code", () => {
+    expect(timesheetDayShiftDisplayValue({ ...base, displaySymbol: "+" })).toBe(
+      "",
+    );
     expect(
       timesheetDayShiftDisplayValue({
         ...base,
         displaySymbol: "+",
         shiftCode: "   ",
       }),
-    ).toBe("+");
+    ).toBe("");
   });
 
   it("still flags a day awaiting explanation rather than showing its shift", () => {
@@ -304,7 +343,11 @@ describe("timesheet cell shown with the shift-assignment notation", () => {
 });
 
 describe("ngày liền sau ca đêm", () => {
-  const base = { firstPunch: "07:48", lastPunch: "07:48", needsExplanation: false };
+  const base = {
+    firstPunch: "07:48",
+    lastPunch: "07:48",
+    needsExplanation: false,
+  };
 
   const nightShift = {
     shiftCode: "VH2",

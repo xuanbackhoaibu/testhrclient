@@ -103,10 +103,23 @@ export async function refreshCurrentAuthority(): Promise<AuthUser> {
   }
 }
 
-export async function refreshSessionAuthority(): Promise<void> {
+let sessionRefreshPromise: Promise<void> | null = null;
+
+export function refreshSessionAuthority(): Promise<void> {
+  if (!sessionRefreshPromise) {
+    sessionRefreshPromise = performSessionAuthorityRefresh().finally(() => {
+      sessionRefreshPromise = null;
+    });
+  }
+  return sessionRefreshPromise;
+}
+
+async function performSessionAuthorityRefresh(): Promise<void> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) {
-    throw new Error('No refresh token available');
+    throw Object.assign(new Error('No refresh token available'), {
+      reasonCode: 'REFRESH_TOKEN_MISSING',
+    });
   }
 
   const authBaseUrl = readAuthEnv(

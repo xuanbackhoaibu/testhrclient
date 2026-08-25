@@ -32,8 +32,7 @@ import {
   updatePosition,
 } from "../../features/organization/positionsApi";
 import type { Position } from "../../features/organization/organizationTypes";
-import { sortByCode } from "../../shared/utils/sort";
-import { useAllPositions } from "../../features/organization/usePositions";
+import { usePositions } from "../../features/organization/usePositions";
 import {
   DataTable,
   type DataTableColumn,
@@ -43,7 +42,6 @@ import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
-import { useClientPagination } from "../../shared/hooks/useClientPagination";
 
 // Mã chức danh không còn nhập từ UI — backend tự sinh từ tên chức danh.
 type PositionFormValues = Omit<Position, "id" | "code">;
@@ -71,11 +69,9 @@ export function PositionsPage() {
     search: "",
     status: undefined as string | undefined,
   });
-  // Lấy toàn bộ vị trí theo bộ lọc, sắp theo tên trên toàn danh sách rồi
-  // phân trang ở client để trang 1 luôn bắt đầu từ tên nhỏ nhất.
-  const { data: allPositions, isLoading, error, refetch } = useAllPositions({
+  const { data: positionsResponse, isLoading, error, refetch } = usePositions({
+    ...params,
     search: params.search || undefined,
-    status: params.status,
   });
   const templateDownload = useHrmCoreTemplateDownload("positions");
 
@@ -193,16 +189,8 @@ export function PositionsPage() {
     },
   });
 
-  // This endpoint returns all matching records, so client-side code ordering is complete.
-  const sortedPositions = useMemo(
-    () => sortByCode(allPositions),
-    [allPositions],
-  );
-  const { pagedItems: pagedPositions, pagedMeta } = useClientPagination(
-    sortedPositions,
-    params.page,
-    params.pageSize,
-  );
+  const positions = positionsResponse?.items ?? [];
+  const positionsMeta = positionsResponse?.meta;
 
   const columns = useMemo<DataTableColumn<Position>[]>(
     () => [
@@ -372,10 +360,10 @@ export function PositionsPage() {
         </SimpleGrid>
 
         <DataTable
-          data={pagedPositions}
+          data={positions}
           columns={columns}
           rowKey={(record) => record.id}
-          meta={pagedMeta}
+          meta={positionsMeta}
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}

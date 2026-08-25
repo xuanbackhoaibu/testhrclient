@@ -3,13 +3,20 @@
  * It must not be used as an authorization identifier or persisted value.
  */
 export function normalizeSearchText(value: unknown): string {
-  return String(value ?? '')
+  const raw = String(value ?? '').trim();
+  if (/^[+\d\s().-]+$/.test(raw) && /\d/.test(raw)) {
+    return raw.replace(/\D/g, '');
+  }
+
+  return raw
+    .normalize('NFKC')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[đĐ]/g, 'd')
+    .replace(/[-–—‐―.,/\\_]+/g, ' ')
     .toLocaleLowerCase('vi-VN')
-    .trim()
-    .replace(/\s+/g, ' ');
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export function includesNormalizedSearch(value: unknown, query: unknown): boolean {
