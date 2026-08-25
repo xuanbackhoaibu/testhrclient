@@ -25,6 +25,7 @@ import type { Contract } from '../../features/contracts/contractTypes';
 import type { LeaveRequest } from '../../features/leave/leaveTypes';
 import { useEmployeeDetail } from '../../features/employees/useEmployeeDetail';
 import { updateEmployeeBioTimeCode } from '../../features/employees/employeesApi';
+import { getGenderLabel } from '../../features/employees/employeeLabels';
 import { LoadingState } from '../../shared/components/LoadingState';
 import { ErrorState } from '../../shared/components/ErrorState';
 import { PageHeader } from '../../shared/components/PageHeader';
@@ -176,12 +177,12 @@ export function EmployeeDetailPage() {
             <Title order={5} mb="md">Thông tin cá nhân</Title>
             <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xs">
               <InfoRow label="Họ tên">{employee.fullName}</InfoRow>
-              <InfoRow label="Giới tính">{employee.gender ?? '-'}</InfoRow>
-              <InfoRow label="Ngày sinh">{formatDate(employee.dateOfBirth)}</InfoRow>
-              <InfoRow label="CCCD/CMND">{employee.citizenIdMasked ?? '●●●●●●'}</InfoRow>
               <InfoRow label="Email công ty">{employee.companyEmail ?? '-'}</InfoRow>
               <InfoRow label="Email cá nhân">{employee.personalEmail ?? '-'}</InfoRow>
               <InfoRow label="Số điện thoại">{employee.phone ?? '-'}</InfoRow>
+              <InfoRow label="Giới tính">{getGenderLabel(employee.gender)}</InfoRow>
+              <InfoRow label="Ngày sinh">{formatDate(employee.dateOfBirth)}</InfoRow>
+              <InfoRow label="CCCD/CMND">{employee.citizenIdMasked ?? '-'}</InfoRow>
               <InfoRow label="Ngày vào làm">{formatDate(employee.hireDate)}</InfoRow>
             </SimpleGrid>
           </Card>

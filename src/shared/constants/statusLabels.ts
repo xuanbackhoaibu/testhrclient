@@ -8,7 +8,7 @@ export const STATUS_LABEL_MAP: Record<string, string> = {
   INACTIVE: 'Tạm ngưng',
   PROBATION: 'Thử việc',
   TERMINATED: 'Nghỉ việc',
-  RESIGNED: 'Admin',
+  RESIGNED: 'Đã nghỉ việc',
   SUSPENDED: 'Tạm dừng',
   DRAFT: 'Nháp',
   SUBMITTED: 'Đang trình duyệt',

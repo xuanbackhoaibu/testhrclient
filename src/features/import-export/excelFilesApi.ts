@@ -2,7 +2,10 @@ import { api } from '../../shared/api/httpClient';
 import type { ListQueryParams } from '../../shared/types/api';
 import { listEmployees } from '../employees/employeesApi';
 import type { Employee } from '../employees/employeeTypes';
-import { exportRowsToExcel } from '../../shared/utils/excel';
+import {
+  exportRowsToExcel,
+  type ExcelExportColumn,
+} from '../../shared/utils/excel';
 import { formatDate as formatDisplayDate } from '../../shared/utils/date';
 
 function formatExcelDate(value?: string | null): string {
@@ -80,6 +83,35 @@ export function downloadDepartmentsExport(params: ListQueryParams = {}) {
   );
 }
 
+export const EMPLOYEE_EXPORT_COLUMNS: Array<ExcelExportColumn<Employee>> = [
+  { header: 'Mã NS', key: 'employeeCode', width: 14, value: (r) => r.employeeCode },
+  { header: 'Mã chấm công', key: 'biotimeEmployeeCode', width: 16, value: (r) => r.biotimeEmployeeCode ?? '' },
+  { header: 'Họ tên', key: 'fullName', width: 28, value: (r) => r.fullName },
+  { header: 'Email công ty', key: 'companyEmail', width: 34, value: (r) => r.companyEmail ?? '' },
+  { header: 'Email cá nhân', key: 'personalEmail', width: 34, value: (r) => r.personalEmail ?? '' },
+  { header: 'Số điện thoại', key: 'phone', width: 16, value: (r) => r.phone ?? '' },
+  {
+    header: 'TT nhân sự', key: 'employmentStatus', width: 18,
+    value: (r) => r.employmentStatus,
+  },
+  {
+    header: 'TT tài khoản', key: 'accountStatus', width: 18,
+    value: (r) => {
+      const status = r.accountStatus ?? 'NOT_CREATED';
+      return r.accountDisplayStatus ?? ACCOUNT_STATUS_LABELS[status] ?? status;
+    },
+  },
+  { header: 'Đơn vị', key: 'unit', width: 30, value: (r) => r.currentEmployeeAssignment?.unitName ?? r.unitName ?? '' },
+  { header: 'mã đơn vị', key: 'unitCode', width: 14, value: (r) => r.currentEmployeeAssignment?.unitCode ?? '' },
+  { header: 'Phòng ban', key: 'department', width: 26, value: (r) => r.currentEmployeeAssignment?.departmentName ?? '' },
+  { header: 'Mã Phòng ban', key: 'departmentCode', width: 16, value: (r) => r.currentEmployeeAssignment?.departmentCode ?? '' },
+  { header: 'Chức danh', key: 'jobTitle', width: 24, value: (r) => r.currentEmployeeAssignment?.positionName ?? r.currentEmployeeAssignment?.jobTitle ?? '' },
+  { header: 'Giới tính', key: 'gender', width: 10, value: (r) => r.gender ?? '' },
+  { header: 'Ngày sinh', key: 'dateOfBirth', width: 14, value: (r) => formatExcelDate(r.dateOfBirth) },
+  { header: 'CCCD/CMND', key: 'citizenId', width: 18, value: () => '' },
+  { header: 'Ngày vào làm', key: 'hireDate', width: 14, value: (r) => formatExcelDate(r.hireDate) },
+];
+
 export async function downloadEmployeesExport(params: ListQueryParams = {}): Promise<void> {
   const pageSize = 100;
   const allItems: Employee[] = [];
@@ -97,33 +129,7 @@ export async function downloadEmployeesExport(params: ListQueryParams = {}): Pro
   await exportRowsToExcel<Employee>({
     fileName: `hrm-employees-${date}.xlsx`,
     sheetName: 'NhanSu',
-    columns: [
-      { header: 'Mã NS', key: 'employeeCode', width: 14, value: (r) => r.employeeCode },
-      { header: 'Mã chấm công', key: 'biotimeEmployeeCode', width: 16, value: (r) => r.biotimeEmployeeCode ?? '' },
-      { header: 'Họ tên', key: 'fullName', width: 28, value: (r) => r.fullName },
-      { header: 'Email công ty', key: 'companyEmail', width: 34, value: (r) => r.companyEmail ?? '' },
-      { header: 'Email cá nhân', key: 'personalEmail', width: 34, value: (r) => r.personalEmail ?? '' },
-      { header: 'Số điện thoại', key: 'phone', width: 16, value: (r) => r.phone ?? '' },
-      {
-        header: 'TT nhân sự', key: 'employmentStatus', width: 18,
-        value: (r) => r.employmentStatus,
-      },
-      {
-        header: 'TT tài khoản', key: 'accountStatus', width: 18,
-        value: (r) => {
-          const status = r.accountStatus ?? 'NOT_CREATED';
-          return r.accountDisplayStatus ?? ACCOUNT_STATUS_LABELS[status] ?? status;
-        },
-      },
-      { header: 'Đơn vị', key: 'unit', width: 30, value: (r) => r.currentEmployeeAssignment?.unitName ?? r.unitName ?? '' },
-      { header: 'mã đơn vị', key: 'unitCode', width: 14, value: (r) => r.currentEmployeeAssignment?.unitCode ?? '' },
-      { header: 'Phòng ban', key: 'department', width: 26, value: (r) => r.currentEmployeeAssignment?.departmentName ?? '' },
-      { header: 'Mã Phòng ban', key: 'departmentCode', width: 16, value: (r) => r.currentEmployeeAssignment?.departmentCode ?? '' },
-      { header: 'Chức danh', key: 'jobTitle', width: 24, value: (r) => r.currentEmployeeAssignment?.positionName ?? r.currentEmployeeAssignment?.jobTitle ?? '' },
-      { header: 'Giới tính', key: 'gender', width: 10, value: (r) => r.gender ?? '' },
-      { header: 'Ngày sinh', key: 'dateOfBirth', width: 14, value: (r) => formatExcelDate(r.dateOfBirth) },
-      { header: 'Ngày vào làm', key: 'hireDate', width: 14, value: (r) => formatExcelDate(r.hireDate) },
-    ],
+    columns: EMPLOYEE_EXPORT_COLUMNS,
     rows: allItems,
   });
 }
