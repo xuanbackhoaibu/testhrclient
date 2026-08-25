@@ -8,24 +8,8 @@ function formatDate(value?: string | null): string {
   if (!value) return '';
   const d = new Date(value);
   if (isNaN(d.getTime())) return value;
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `${dd}/${mm}/${d.getFullYear()}`;
+  return d.toISOString().slice(0, 10);
 }
-
-const GENDER_LABELS: Record<string, string> = {
-  MALE: 'Nam',
-  FEMALE: 'Nữ',
-  OTHER: 'Khác',
-};
-
-const EMPLOYMENT_STATUS_LABELS: Record<string, string> = {
-  ACTIVE: 'Đang làm việc',
-  PROBATION: 'Thử việc',
-  SUSPENDED: 'Tạm dừng',
-  TERMINATED: 'Nghỉ việc',
-  RESIGNED: 'Admin',
-};
 
 const ACCOUNT_STATUS_LABELS: Record<string, string> = {
   NOT_CREATED: 'Chưa tạo',
@@ -114,7 +98,7 @@ export async function downloadEmployeesExport(params: ListQueryParams = {}): Pro
   const date = new Date().toISOString().slice(0, 10);
   await exportRowsToExcel<Employee>({
     fileName: `hrm-employees-${date}.xlsx`,
-    sheetName: 'Nhân sự',
+    sheetName: 'NhanSu',
     columns: [
       { header: 'Mã NS', key: 'employeeCode', width: 14, value: (r) => r.employeeCode },
       { header: 'Mã chấm công', key: 'biotimeEmployeeCode', width: 16, value: (r) => r.biotimeEmployeeCode ?? '' },
@@ -124,7 +108,7 @@ export async function downloadEmployeesExport(params: ListQueryParams = {}): Pro
       { header: 'Số điện thoại', key: 'phone', width: 16, value: (r) => r.phone ?? '' },
       {
         header: 'TT nhân sự', key: 'employmentStatus', width: 18,
-        value: (r) => EMPLOYMENT_STATUS_LABELS[r.employmentStatus] ?? r.employmentStatus,
+        value: (r) => r.employmentStatus,
       },
       {
         header: 'TT tài khoản', key: 'accountStatus', width: 18,
@@ -138,9 +122,8 @@ export async function downloadEmployeesExport(params: ListQueryParams = {}): Pro
       { header: 'Phòng ban', key: 'department', width: 26, value: (r) => r.currentEmployeeAssignment?.departmentName ?? '' },
       { header: 'Mã Phòng ban', key: 'departmentCode', width: 16, value: (r) => r.currentEmployeeAssignment?.departmentCode ?? '' },
       { header: 'Chức danh', key: 'jobTitle', width: 24, value: (r) => r.currentEmployeeAssignment?.positionName ?? r.currentEmployeeAssignment?.jobTitle ?? '' },
-      { header: 'Giới tính', key: 'gender', width: 10, value: (r) => GENDER_LABELS[r.gender ?? ''] ?? r.gender ?? '' },
+      { header: 'Giới tính', key: 'gender', width: 10, value: (r) => r.gender ?? '' },
       { header: 'Ngày sinh', key: 'dateOfBirth', width: 14, value: (r) => formatDate(r.dateOfBirth) },
-      { header: 'CCCD/CMND', key: 'citizenId', width: 18, value: (r) => r.citizenIdMasked ?? '' },
       { header: 'Ngày vào làm', key: 'hireDate', width: 14, value: (r) => formatDate(r.hireDate) },
     ],
     rows: allItems,
