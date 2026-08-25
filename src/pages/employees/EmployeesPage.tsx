@@ -34,6 +34,7 @@ import {
   updateEmployee,
   updateEmployeeBioTimeCode,
 } from "../../features/employees/employeesApi";
+import { GENDER_OPTIONS } from "../../features/employees/employeeLabels";
 import type {
   Employee,
   EmployeePayload,
@@ -64,14 +65,15 @@ import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
 import { HrmDateInput } from "../../shared/components/HrmDateInput";
+import { STATUS_LABEL_MAP } from "../../shared/constants/statusLabels";
 
 const employmentStatusOptions = [
-  { value: "ACTIVE", label: "Đang làm việc" },
-  { value: "PROBATION", label: "Thử việc" },
-  { value: "SUSPENDED", label: "Tạm dừng" },
-  { value: "TERMINATED", label: "Nghỉ việc" },
-  { value: "RESIGNED", label: "Admin" },
-];
+  "ACTIVE",
+  "PROBATION",
+  "SUSPENDED",
+  "TERMINATED",
+  "RESIGNED",
+].map((value) => ({ value, label: STATUS_LABEL_MAP[value] }));
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -640,14 +642,14 @@ export function EmployeesPage() {
       },
       {
         key: "companyEmail",
-        header: "Email",
+        header: "Email công ty",
         render: (record) => (
           <TruncatedCell value={record.companyEmail} maxWidth={240} />
         ),
       },
       {
         key: "phone",
-        header: "SDT",
+        header: "Số điện thoại",
         width: 130,
         render: (record) => record.phone || "-",
       },
@@ -662,6 +664,13 @@ export function EmployeesPage() {
         header: "TT tài khoản",
         width: 150,
         render: (record) => <AccountStatusBadge record={record} />,
+      },
+      {
+        key: "unit",
+        header: "Đơn vị",
+        render: (record) => (
+          <TruncatedCell value={record.currentEmployeeAssignment?.unitName} />
+        ),
       },
       {
         key: "department",
@@ -972,31 +981,13 @@ export function EmployeesPage() {
             />
             <TextInput
               label="Số điện thoại"
-              withAsterisk
               {...form.getInputProps("phone")}
             />
             <Select
-              label="Giới tính"
-              clearable
-              data={[
-                { value: "MALE", label: "Nam" },
-                { value: "FEMALE", label: "Nữ" },
-                { value: "OTHER", label: "Khác" },
-              ]}
-              {...form.getInputProps("gender")}
-            />
-            <HrmDateInput
-              label="Ngày sinh"
-              value={form.values.dateOfBirth || null}
-              onChange={(value) => form.setFieldValue("dateOfBirth", value ?? "")}
-              error={form.errors.dateOfBirth}
-            />
-            <HrmDateInput
-              label="Ngày vào làm"
+              label="Trạng thái nhân sự"
               withAsterisk
-              value={form.values.hireDate || null}
-              onChange={(value) => form.setFieldValue("hireDate", value ?? "")}
-              error={form.errors.hireDate}
+              data={employmentStatusOptions}
+              {...form.getInputProps("employmentStatus")}
             />
             <Select
               label="Đơn vị"
@@ -1083,12 +1074,28 @@ export function EmployeesPage() {
               }
             />
             <Select
-              label="Trạng thái"
-              withAsterisk
-              data={employmentStatusOptions}
-              {...form.getInputProps("employmentStatus")}
+              label="Giới tính"
+              clearable
+              data={GENDER_OPTIONS}
+              {...form.getInputProps("gender")}
             />
-            <TextInput label="CCCD" {...form.getInputProps("citizenId")} />
+            <HrmDateInput
+              label="Ngày sinh"
+              value={form.values.dateOfBirth || null}
+              onChange={(value) => form.setFieldValue("dateOfBirth", value ?? "")}
+              error={form.errors.dateOfBirth}
+            />
+            <TextInput
+              label="CCCD/CMND"
+              {...form.getInputProps("citizenId")}
+            />
+            <HrmDateInput
+              label="Ngày vào làm"
+              withAsterisk
+              value={form.values.hireDate || null}
+              onChange={(value) => form.setFieldValue("hireDate", value ?? "")}
+              error={form.errors.hireDate}
+            />
             <Group justify="flex-end" mt="md">
               <Button variant="default" onClick={closeEmployeeDrawer}>
                 Hủy
