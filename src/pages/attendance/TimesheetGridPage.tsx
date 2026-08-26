@@ -32,6 +32,7 @@ import {
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
+import { showAttendanceError } from "../../features/attendance/attendanceErrorNotification";
 import { summarizeBccFromDays } from "../../features/attendance/bccSummary";
 import {
   compareAttendanceIdentity,
@@ -1219,16 +1220,14 @@ export function TimesheetGridPage() {
           "Thay đổi được lưu lịch sử và không bị cập nhật tự động ghi đè.",
       });
       setEditing(null);
-    } catch {
-      notifications.show({
-        color: "red",
-        title: shiftChanged
-          ? "Không đổi được ca"
-          : "Không lưu được ô chấm công",
-        message: shiftChanged
-          ? "Ô này có thể chưa có ca để đổi, hoặc kỳ công đã chốt."
-          : "Kiểm tra lại ký hiệu, số công và trạng thái chốt kỳ.",
-      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        shiftChanged ? "Không đổi được ca" : "Không lưu được ô chấm công",
+        shiftChanged
+          ? "Kiểm tra ca hiện tại và trạng thái kỳ công rồi thử lại."
+          : "Kiểm tra ký hiệu, số công rồi thử lại.",
+      );
     }
   }
 
@@ -1291,15 +1290,11 @@ export function TimesheetGridPage() {
         });
       }
     } catch (error) {
-      const message =
-        error instanceof Error && error.message.trim()
-          ? error.message
-          : "Vui lòng thử lại sau.";
-      notifications.show({
-        color: "red",
-        title: "Không thể tạo job cập nhật bảng công",
-        message,
-      });
+      showAttendanceError(
+        error,
+        "Không thể tạo job cập nhật bảng công",
+        "Kiểm tra phạm vi kỳ công rồi thử lại.",
+      );
     } finally {
       // The job hook invalidates once at terminal state. Two animation frames in
       // restoreTimesheetScroll retain the HR viewport if that refetch swaps rows.
@@ -1318,14 +1313,11 @@ export function TimesheetGridPage() {
           "Máy chủ sẽ dừng an toàn sau đơn vị xử lý hiện tại; các tháng đã hoàn tất vẫn được giữ.",
       });
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Chưa gửi được yêu cầu dừng",
-        message:
-          error instanceof Error && error.message.trim()
-            ? error.message
-            : "Vui lòng thử lại sau.",
-      });
+      showAttendanceError(
+        error,
+        "Chưa gửi được yêu cầu dừng",
+        "Kiểm tra kết nối rồi gửi lại yêu cầu dừng.",
+      );
     }
   }
 
@@ -1367,12 +1359,12 @@ export function TimesheetGridPage() {
           message: `Không thay đổi ${result.recompute.skippedLocked} ngày đã chốt và ${result.recompute.skippedAdjusted} ngày HR đã sửa tay.`,
         });
       }
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Không lưu được đủ công mặc định",
-        message: "Kiểm tra lại quyền HR và thử lại sau.",
-      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không lưu được đủ công mặc định",
+        "Tải lại bảng công rồi thử lần nữa.",
+      );
     } finally {
       restoreTimesheetScroll();
     }
@@ -1389,12 +1381,12 @@ export function TimesheetGridPage() {
         message:
           "File đã được tải theo đúng phạm vi đang chọn và có trong lịch sử tải xuống của trình duyệt (Ctrl+J).",
       });
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Không xuất được Excel",
-        message: "Vui lòng thử lại sau hoặc kiểm tra quyền xuất dữ liệu.",
-      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không xuất được Excel",
+        "Kiểm tra kết nối rồi thử tải lại file.",
+      );
     } finally {
       setIsExporting(false);
     }
@@ -1653,7 +1645,14 @@ export function TimesheetGridPage() {
                 nothingFoundMessage={
                   employeeSearchQuery.isFetching
                     ? "Đang tìm nhân sự…"
+                    : employeeSearchQuery.isError
+                      ? "Không tải được kết quả tìm kiếm"
                     : "Không tìm thấy nhân sự"
+                }
+                error={
+                  employeeSearchQuery.isError
+                    ? "Không tải được nhân sự. Thay đổi từ khóa để thử lại."
+                    : undefined
                 }
                 onSearchChange={setEmployeeSearch}
                 onChange={(value) => {
@@ -1678,11 +1677,53 @@ export function TimesheetGridPage() {
           </Group>
         </Paper>
 
+        {unitsQuery.isError || departmentsQuery.isError ? (
+          <Alert color="red" variant="light" title="Không tải được phạm vi bảng công">
+            <Group gap="xs" wrap="wrap">
+              <Text size="sm">Không thể lấy đầy đủ danh sách đơn vị hoặc phòng ban.</Text>
+              {unitsQuery.isError ? (
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void unitsQuery.refetch()}
+                >
+                  Tải lại đơn vị
+                </Button>
+              ) : null}
+              {departmentsQuery.isError ? (
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void departmentsQuery.refetch()}
+                >
+                  Tải lại phòng ban
+                </Button>
+              ) : null}
+            </Group>
+          </Alert>
+        ) : null}
+
         {isGridScopeLoading ? (
           <Alert color="blue" variant="light" title="Đang tải bảng công">
             {isGridPlaceholderData
               ? "Dữ liệu của kỳ hoặc phạm vi trước đã được ẩn để tránh nhầm lẫn."
               : "Đang tải đúng kỳ và phạm vi đã chọn."}
+          </Alert>
+        ) : gridQuery.isError ? (
+          <Alert color="red" variant="light" title="Không tải được bảng công">
+            <Stack gap="xs" align="flex-start">
+              <Text size="sm">
+                Không thể lấy dữ liệu đúng kỳ và phạm vi đang chọn; dữ liệu cũ không được hiển thị thay thế.
+              </Text>
+              <Button
+                size="compact-sm"
+                variant="light"
+                leftSection={<IconRefresh size={15} />}
+                onClick={() => void gridQuery.refetch()}
+              >
+                Thử lại
+              </Button>
+            </Stack>
           </Alert>
         ) : rows.length === 0 ? (
           <Alert
@@ -2210,6 +2251,20 @@ export function TimesheetGridPage() {
             }
             onChange={(value) => setEditShiftId(value)}
           />
+          {workShiftsQuery.isError ? (
+            <Alert color="red" variant="light" title="Không tải được danh mục ca">
+              <Group justify="space-between" align="center" wrap="wrap">
+                <Text size="sm">Không thể đổi ca cho tới khi tải lại danh mục.</Text>
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void workShiftsQuery.refetch()}
+                >
+                  Thử lại
+                </Button>
+              </Group>
+            </Alert>
+          ) : null}
           {editShiftId && editShiftId !== currentShiftId ? (
             <Alert color="blue" variant="light">
               Đổi ca xong hệ thống sẽ tính lại ô này theo ca mới, nên ký hiệu và

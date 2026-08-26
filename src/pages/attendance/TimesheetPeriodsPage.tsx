@@ -28,6 +28,7 @@ import {
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
+import { showAttendanceError } from "../../features/attendance/attendanceErrorNotification";
 import { downloadTimesheetPeriodExport } from "../../features/attendance/timesheetApi";
 import {
   useCloseTimesheetPeriod,
@@ -152,12 +153,12 @@ export function TimesheetPeriodsPage() {
       });
       setOpenModal(false);
       setYear(newYear);
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Không mở được kỳ công",
-        message: "Kỳ có thể đã được mở hoặc phạm vi không có nhân viên.",
-      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không mở được kỳ công",
+        "Kiểm tra kỳ, phạm vi nhân viên rồi thử lại.",
+      );
     }
   }
 
@@ -169,12 +170,12 @@ export function TimesheetPeriodsPage() {
         title: "Đã chốt kỳ công",
         message: "Toàn bộ ngày công trong kỳ đã bị khóa.",
       });
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Không chốt được kỳ công",
-        message: "Kiểm tra lại trạng thái kỳ trước khi chốt.",
-      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không chốt được kỳ công",
+        "Tải lại trạng thái kỳ rồi thử chốt lần nữa.",
+      );
     }
   }
 
@@ -200,16 +201,11 @@ export function TimesheetPeriodsPage() {
       });
       setEditTarget(null);
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Không đổi được hạn xác nhận",
-        // Backend nói rõ vì sao (kỳ đã chốt, hạn trước tháng của kỳ) — hiện
-        // đúng câu đó thay vì một thông báo chung chung.
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Kiểm tra lại trạng thái kỳ và hạn vừa nhập.",
-      });
+      showAttendanceError(
+        error,
+        "Không đổi được hạn xác nhận",
+        "Kiểm tra trạng thái kỳ và hạn vừa nhập.",
+      );
     }
   }
 
@@ -226,14 +222,11 @@ export function TimesheetPeriodsPage() {
       });
       setDeleteTarget(null);
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Không xóa được kỳ công",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Kỳ đã chốt hoặc đã có người xác nhận thì không xóa được.",
-      });
+      showAttendanceError(
+        error,
+        "Không xóa được kỳ công",
+        "Kỳ đã chốt hoặc đã có người xác nhận thì không xóa được.",
+      );
     }
   }
 
@@ -261,12 +254,12 @@ export function TimesheetPeriodsPage() {
       });
       setReopenTarget(null);
       setReopenReason("");
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Không mở khóa được kỳ công",
-        message: "Chỉ kỳ đã chốt mới được mở khóa.",
-      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không mở khóa được kỳ công",
+        "Tải lại trạng thái kỳ rồi thử mở khóa lần nữa.",
+      );
     }
   }
 
@@ -274,12 +267,12 @@ export function TimesheetPeriodsPage() {
     setExportingPeriodId(period.id);
     try {
       await downloadTimesheetPeriodExport(period);
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Không xuất được Excel",
-        message: "Kiểm tra quyền xuất dữ liệu chấm công hoặc thử tải lại trang.",
-      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không xuất được Excel",
+        "Kiểm tra kết nối rồi thử tải lại file.",
+      );
     } finally {
       setExportingPeriodId(null);
     }
@@ -330,6 +323,21 @@ export function TimesheetPeriodsPage() {
             Tải lại
           </Button>
         </Group>
+
+        {periodsQuery.isError ? (
+          <Alert color="red" variant="light" title="Không tải được danh sách kỳ công">
+            <Stack gap="xs" align="flex-start">
+              <Text size="sm">Không thể lấy trạng thái các kỳ công của năm đang chọn.</Text>
+              <Button
+                size="compact-sm"
+                variant="light"
+                onClick={() => void periodsQuery.refetch()}
+              >
+                Thử lại
+              </Button>
+            </Stack>
+          </Alert>
+        ) : null}
 
         <ScrollArea type="auto">
           <Table striped highlightOnHover withTableBorder miw={760}>
@@ -446,7 +454,9 @@ export function TimesheetPeriodsPage() {
                   </Table.Td>
                 </Table.Tr>
               ))}
-              {!periodsQuery.isLoading && periods.length === 0 ? (
+              {!periodsQuery.isLoading &&
+              !periodsQuery.isError &&
+              periods.length === 0 ? (
                 <Table.Tr>
                   <Table.Td colSpan={6}>
                     <Text c="dimmed" ta="center" py="xl">
@@ -490,7 +500,22 @@ export function TimesheetPeriodsPage() {
             data={unitOptions}
             value={newUnitId}
             onChange={setNewUnitId}
+            disabled={unitsQuery.isLoading}
           />
+          {unitsQuery.isError ? (
+            <Alert color="red" variant="light" title="Không tải được danh sách đơn vị">
+              <Group justify="space-between" align="center" wrap="wrap">
+                <Text size="sm">Bạn vẫn có thể mở kỳ toàn công ty hoặc tải lại danh sách.</Text>
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void unitsQuery.refetch()}
+                >
+                  Thử lại
+                </Button>
+              </Group>
+            </Alert>
+          ) : null}
           <HrmDateInput
             label="Hạn xác nhận"
             description="HR nhập theo lịch vận hành thực tế. Không tự suy ngày mở kỳ trong phần mềm."
@@ -525,6 +550,20 @@ export function TimesheetPeriodsPage() {
             <Badge color="green">Đã xác nhận: {counts.CONFIRMED}</Badge>
             <Badge color="orange">Khiếu nại: {counts.DISPUTED}</Badge>
           </Group>
+          {confirmationsQuery.isError ? (
+            <Alert color="red" variant="light" title="Không tải được danh sách xác nhận">
+              <Group justify="space-between" align="center" wrap="wrap">
+                <Text size="sm">Không thể lấy trạng thái xác nhận của nhân viên trong kỳ này.</Text>
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void confirmationsQuery.refetch()}
+                >
+                  Thử lại
+                </Button>
+              </Group>
+            </Alert>
+          ) : null}
           <ScrollArea type="auto">
             <Table striped withTableBorder miw={560}>
               <Table.Thead>
@@ -558,7 +597,9 @@ export function TimesheetPeriodsPage() {
                     </Table.Td>
                   </Table.Tr>
                 ))}
-                {!confirmationsQuery.isLoading && confirmations.length === 0 ? (
+                {!confirmationsQuery.isLoading &&
+                !confirmationsQuery.isError &&
+                confirmations.length === 0 ? (
                   <Table.Tr>
                     <Table.Td colSpan={3}>
                       <Text c="dimmed" ta="center" py="md">

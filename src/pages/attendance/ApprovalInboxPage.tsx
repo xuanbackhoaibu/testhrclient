@@ -29,6 +29,7 @@ import {
   type AttendanceExplanation,
   type AttendanceExplanationType,
 } from "../../features/attendance/attendanceExplanationApi";
+import { showAttendanceError } from "../../features/attendance/attendanceErrorNotification";
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
 import {
@@ -216,7 +217,11 @@ export function ApprovalInboxPage() {
       await queryClient.invalidateQueries({ queryKey: ["approval-inbox"] });
     },
     onError: async (error) => {
-      toast.error(reviewErrorMessage(error));
+      showAttendanceError(
+        error,
+        "Không xử lý được yêu cầu",
+        reviewErrorMessage(error),
+      );
       await queryClient.invalidateQueries({ queryKey: ["approval-inbox"] });
     },
   });

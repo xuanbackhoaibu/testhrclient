@@ -19,6 +19,7 @@ import {
 import { buildAttendanceDailyExportParams } from '../../features/attendance/attendanceDailyExport';
 import { summarizeAttendanceRecords } from '../../features/attendance/summarizeAttendanceRecords';
 import { addMinutesToTime } from '../../features/attendance/shiftTime';
+import { showAttendanceError } from '../../features/attendance/attendanceErrorNotification';
 import { useAuth } from '../../features/auth/useAuth';
 import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import { DataTable } from '../../shared/components/DataTable';
@@ -168,7 +169,12 @@ export function AttendancePage() {
 
   // Queries
   const { data, isLoading, error, refetch, isFetching } = useAttendanceDailyRecords(queryParams);
-  const { data: syncStatus, isLoading: syncStatusLoading } = useAttendanceSyncStatus();
+  const {
+    data: syncStatus,
+    isError: syncStatusError,
+    isLoading: syncStatusLoading,
+    refetch: refetchSyncStatus,
+  } = useAttendanceSyncStatus();
   const manualSync = useManualAttendanceSync();
 
   const records = useMemo(() => data?.data ?? [], [data]);
@@ -245,11 +251,11 @@ export function AttendancePage() {
       },
       onError: (err) => {
         closeSyncModal();
-        notifications.show({
-          title: 'Đồng bộ thất bại',
-          message: err instanceof Error ? err.message : 'Lỗi không xác định',
-          color: 'red',
-        });
+        showAttendanceError(
+          err,
+          'Đồng bộ thất bại',
+          'Kiểm tra kết nối BioTime rồi thử lại.',
+        );
       },
     });
   };
@@ -270,12 +276,12 @@ export function AttendancePage() {
         `attendance_${dayjs().format('YYYYMMDD_HHmmss')}.csv`,
         { ...params },
       );
-    } catch {
-      notifications.show({
-        title: 'Xuất thất bại',
-        message: 'Không thể tải file xuất. Vui lòng thử lại sau.',
-        color: 'red',
-      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        'Xuất dữ liệu thất bại',
+        'Kiểm tra kết nối rồi thử tải lại file.',
+      );
     } finally {
       setIsExporting(false);
     }
@@ -283,6 +289,13 @@ export function AttendancePage() {
 
   // Determine empty state reason
   const getEmptyStateReason = (): { title: string; description: string; action?: () => void } => {
+    if (syncStatusError) {
+      return {
+        title: 'Không xác định được trạng thái đồng bộ',
+        description: 'Tải lại trạng thái BioTime trước khi kết luận chưa có dữ liệu.',
+      };
+    }
+
     const hasActiveFilters =
       filters.search ||
       filters.date ||
@@ -369,12 +382,20 @@ export function AttendancePage() {
 
       <Stack gap="xs">
         {/* Sync Status Card */}
-        <AttendanceSyncStatusCard
-          status={syncStatus}
-          isLoading={syncStatusLoading}
-          onViewSyncHistory={openSyncHistory}
-          mayViewSyncLog={mayViewSyncLog}
-        />
+        {syncStatusError ? (
+          <ErrorState
+            title="Không tải được trạng thái đồng bộ"
+            description="Dữ liệu chấm công bên dưới vẫn dùng được; tải lại để kiểm tra tình trạng BioTime."
+            onRetry={() => void refetchSyncStatus()}
+          />
+        ) : (
+          <AttendanceSyncStatusCard
+            status={syncStatus}
+            isLoading={syncStatusLoading}
+            onViewSyncHistory={openSyncHistory}
+            mayViewSyncLog={mayViewSyncLog}
+          />
+        )}
 
         {/* Summary strip */}
         <AttendanceSummaryCards

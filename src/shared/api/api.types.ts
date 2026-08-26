@@ -58,6 +58,7 @@ export class ApiError extends Error {
   errors: ApiErrorDetail[];
   requestId?: string;
   requiredPermissions?: string[];
+  userNotified = false;
 
   constructor(payload: ApiErrorPayload | ApiErrorResponse) {
     super(payload.message);
