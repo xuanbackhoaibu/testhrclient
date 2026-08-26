@@ -18,6 +18,7 @@ import {
   downloadAnnualLeaveImportErrors,
   downloadAnnualLeaveTemplate,
   getAnnualLeaveLedger,
+  listAllAnnualLeaveBalances,
   listAnnualLeaveBalances,
   previewAnnualLeaveImport,
 } from "./annualLeaveApi";
@@ -71,6 +72,49 @@ describe("annual leave balance API contract", () => {
     await expect(
       listAnnualLeaveBalances({ year: 2026, page: 1, pageSize: 20 }),
     ).resolves.toEqual({ data: [row], pagination });
+  });
+
+  it("loads every server page for the grouped annual leave view", async () => {
+    get
+      .mockResolvedValueOnce({
+        items: [{ employeeId: "employee-1" }],
+        pagination: {
+          page: 1,
+          pageSize: 100,
+          total: 2,
+          totalPages: 2,
+          hasNextPage: true,
+          hasPreviousPage: false,
+        },
+      })
+      .mockResolvedValueOnce({
+        items: [{ employeeId: "employee-2" }],
+        pagination: {
+          page: 2,
+          pageSize: 100,
+          total: 2,
+          totalPages: 2,
+          hasNextPage: false,
+          hasPreviousPage: true,
+        },
+      });
+
+    const result = await listAllAnnualLeaveBalances({
+      year: 2026,
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(result.data.map((row) => row.employeeId)).toEqual([
+      "employee-1",
+      "employee-2",
+    ]);
+    expect(get).toHaveBeenNthCalledWith(1, "/leave/annual-balances", {
+      params: { year: 2026, page: 1, pageSize: 100 },
+    });
+    expect(get).toHaveBeenNthCalledWith(2, "/leave/annual-balances", {
+      params: { year: 2026, page: 2, pageSize: 100 },
+    });
   });
 
   it("uses a two-step preview and commit flow with downloadable errors", async () => {

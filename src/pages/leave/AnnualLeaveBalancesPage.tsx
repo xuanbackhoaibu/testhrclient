@@ -30,7 +30,7 @@ import {
   IconRefresh,
   IconSearch,
 } from "@tabler/icons-react";
-import { useMemo, useState, type CSSProperties } from "react";
+import { Fragment, useMemo, useState, type CSSProperties } from "react";
 
 import {
   downloadAnnualLeaveExport,
@@ -44,7 +44,7 @@ import type {
 } from "../../features/annual-leave/annualLeaveTypes";
 import {
   useAdjustAnnualLeaveBalance,
-  useAnnualLeaveBalances,
+  useAllAnnualLeaveBalances,
   useAnnualLeaveImportPreview,
   useAnnualLeaveLedger,
   useCommitAnnualLeaveImport,
@@ -91,6 +91,41 @@ const fixedColumns = [
   { key: "department", width: 170, left: 254 },
   { key: "hireDate", width: 136, left: 424 },
 ] as const;
+const fixedColumnsWidth = fixedColumns.reduce(
+  (total, column) => total + column.width,
+  0,
+);
+
+interface AnnualLeaveGroup {
+  key: string;
+  label: string;
+  index: number;
+  startIndex: number;
+  totalRows: number;
+  rows: AnnualLeaveRow[];
+}
+
+function organizationKey(...parts: Array<string | null | undefined>): string {
+  return parts
+    .map((part) =>
+      (part ?? "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replaceAll("đ", "d")
+        .replaceAll("Đ", "D")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase(),
+    )
+    .join("\u0000");
+}
+
+function organizationLabel(row: AnnualLeaveRow): string {
+  return (
+    [row.unit?.name, row.department?.name].filter(Boolean).join(" · ") ||
+    "Chưa phân đơn vị / phòng ban"
+  );
+}
 
 function fixedCellStyle(
   column: (typeof fixedColumns)[number],
@@ -215,27 +250,23 @@ export function AnnualLeaveBalancesPage() {
   const [importOpened, importDisclosure] = useDisclosure(false);
   const [selectedRow, setSelectedRow] = useState<AnnualLeaveRow | null>(null);
 
-  const query: AnnualLeaveQuery = useMemo(
+  const listQuery: AnnualLeaveQuery = useMemo(
     () => ({
       year,
-      page,
-      pageSize,
+      page: 1,
+      pageSize: 100,
       search: debouncedSearch.trim() || undefined,
       unitId: unitId ?? undefined,
       departmentId: departmentId ?? undefined,
       reconciliationStatus: reconciliationStatus ?? undefined,
     }),
-    [
-      year,
-      page,
-      pageSize,
-      debouncedSearch,
-      unitId,
-      departmentId,
-      reconciliationStatus,
-    ],
+    [year, debouncedSearch, unitId, departmentId, reconciliationStatus],
   );
-  const balances = useAnnualLeaveBalances(query);
+  const exportQuery: AnnualLeaveQuery = useMemo(
+    () => ({ ...listQuery, page, pageSize }),
+    [listQuery, page, pageSize],
+  );
+  const balances = useAllAnnualLeaveBalances(listQuery);
   const units = useUnitsSelect();
   const departments = useDepartmentsSelect(unitId ?? undefined);
 
@@ -277,7 +308,7 @@ export function AnnualLeaveBalancesPage() {
   async function handleExport() {
     setIsExporting(true);
     try {
-      await downloadAnnualLeaveExport(query);
+      await downloadAnnualLeaveExport(exportQuery);
       notifications.show({
         color: "green",
         title: "Đã xuất bảng phép năm",
@@ -295,8 +326,101 @@ export function AnnualLeaveBalancesPage() {
   }
 
   const previousYear = year - 1;
-  const rows = balances.data?.data ?? [];
+  const rows = useMemo(() => balances.data?.data ?? [], [balances.data?.data]);
   const pagination = balances.data?.pagination;
+  const unitCodeById = useMemo(
+    () => new Map((units.data ?? []).map((unit) => [unit.id, unit.code])),
+    [units.data],
+  );
+  const departmentCodeById = useMemo(
+    () =>
+      new Map(
+        (departments.data ?? []).map((department) => [
+          department.id,
+          department.code,
+        ]),
+      ),
+    [departments.data],
+  );
+  const groupedRows = useMemo<AnnualLeaveGroup[]>(() => {
+    const groups = new Map<
+      string,
+      { key: string; label: string; sortKey: string; rows: AnnualLeaveRow[] }
+    >();
+    for (const row of rows) {
+      const normalizedKey = organizationKey(
+        row.unit?.name,
+        row.department?.name,
+      );
+      const key = row.department?.id ?? (normalizedKey || "unassigned");
+      const label = organizationLabel(row);
+      const sortKey = [
+        row.unit?.id ? unitCodeById.get(row.unit.id) : undefined,
+        row.department?.id
+          ? departmentCodeById.get(row.department.id)
+          : undefined,
+        label,
+      ]
+        .map((part) => part ?? "ZZZ")
+        .join("\u0000");
+      const group = groups.get(key);
+      if (group) group.rows.push(row);
+      else groups.set(key, { key, label, sortKey, rows: [row] });
+    }
+
+    return [...groups.values()]
+      .sort((left, right) =>
+        left.sortKey.localeCompare(right.sortKey, "vi", {
+          numeric: true,
+          sensitivity: "base",
+        }),
+      )
+      .map((group, index, sortedGroups) => {
+        const sortedRows = [...group.rows].sort(
+          (left, right) =>
+            left.sequence - right.sequence ||
+            left.fullName.localeCompare(right.fullName, "vi", {
+              sensitivity: "base",
+            }),
+        );
+        const startIndex = sortedGroups
+          .slice(0, index)
+          .reduce(
+            (total, previousGroup) => total + previousGroup.rows.length,
+            0,
+          );
+        return {
+          ...group,
+          index: index + 1,
+          startIndex,
+          totalRows: sortedRows.length,
+          rows: sortedRows,
+        };
+      });
+  }, [departmentCodeById, rows, unitCodeById]);
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * pageSize;
+  const pageEnd = pageStart + pageSize;
+  const pagedGroups = useMemo(
+    () =>
+      groupedRows.flatMap((group) => {
+        const sliceStart = Math.max(0, pageStart - group.startIndex);
+        const sliceEnd = Math.min(
+          group.rows.length,
+          pageEnd - group.startIndex,
+        );
+        if (sliceStart >= sliceEnd) return [];
+        return [
+          {
+            ...group,
+            startIndex: group.startIndex + sliceStart,
+            rows: group.rows.slice(sliceStart, sliceEnd),
+          },
+        ];
+      }),
+    [groupedRows, pageEnd, pageStart],
+  );
 
   return (
     <>
@@ -564,133 +688,181 @@ export function AnnualLeaveBalancesPage() {
                     </Table.Td>
                   </Table.Tr>
                 ) : (
-                  rows.map((row) => (
-                    <Table.Tr key={row.employeeId}>
-                      <Table.Td
-                        style={{
-                          ...fixedCellStyle(fixedColumns[0]),
-                          textAlign: "center",
-                          fontVariantNumeric: "tabular-nums",
-                        }}
-                      >
-                        {row.sequence}
-                      </Table.Td>
-                      <Table.Td style={fixedCellStyle(fixedColumns[1])}>
-                        <UnstyledButton
-                          onClick={() => setSelectedRow(row)}
+                  pagedGroups.map((group) => (
+                    <Fragment key={group.key}>
+                      <Table.Tr>
+                        <Table.Td
+                          colSpan={5}
                           style={{
-                            display: "block",
-                            minWidth: 0,
-                            textAlign: "left",
-                            width: "100%",
+                            background: "#d9d2e9",
+                            boxShadow: "2px 0 0 var(--mantine-color-gray-4)",
+                            fontSize: 12,
+                            fontWeight: 700,
+                            left: 0,
+                            minWidth: fixedColumnsWidth,
+                            padding: "7px 10px",
+                            position: "sticky",
+                            width: fixedColumnsWidth,
+                            zIndex: 3,
                           }}
-                          aria-label={`Mở sổ phép của ${row.fullName}`}
                         >
-                          <Text size="xs" fw={600} truncate="end" td="underline">
-                            {row.fullName}
+                          {group.index}. {group.label}{" "}
+                          <Text component="span" size="xs" c="dimmed">
+                            (
+                            {group.rows.length < group.totalRows
+                              ? group.rows.length +
+                                "/" +
+                                group.totalRows +
+                                " CBNV"
+                              : group.totalRows + " CBNV"}
+                            )
                           </Text>
-                          <Group gap={5} mt={3} wrap="nowrap">
-                            {statusBadge(row.reconciliationStatus)}
-                            {row.warnings.length ? (
-                              <IconAlertTriangle
-                                size={14}
-                                color="var(--mantine-color-orange-7)"
-                              />
-                            ) : null}
-                          </Group>
-                        </UnstyledButton>
-                      </Table.Td>
-                      <Table.Td
-                        style={{
-                          ...fixedCellStyle(fixedColumns[2]),
-                          textAlign: "center",
-                          fontVariantNumeric: "tabular-nums",
-                        }}
-                      >
-                        <Text
-                          size="xs"
-                          fw={600}
-                          c={row.attendanceCode ? undefined : "red"}
-                        >
-                          {row.attendanceCode ?? "Thiếu"}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td style={fixedCellStyle(fixedColumns[3])}>
-                        <Text
-                          size="xs"
-                          truncate
-                          title={row.department?.name ?? ""}
-                        >
-                          {row.department?.name ?? "—"}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td
-                        style={{
-                          ...fixedCellStyle(fixedColumns[4]),
-                          textAlign: "center",
-                        }}
-                      >
-                        <Text size="sm" c={row.hireDate ? undefined : "red"}>
-                          {row.hireDate
-                            ? formatDate(row.hireDate)
-                            : "Thiếu dữ liệu"}
-                        </Text>
-                      </Table.Td>
-                      {[
-                        row.carryOverDays,
-                        row.accruedDays,
-                        row.seniorityDays,
-                        row.otherDays,
-                      ].map((value, index) => (
-                        <Table.Td
-                          key={`source-${index}`}
-                          style={numberCellStyle}
-                        >
-                          {day(value)}
                         </Table.Td>
-                      ))}
-                      {row.monthlyUsed.map((value, index) => (
                         <Table.Td
-                          key={`month-${index}`}
+                          colSpan={21}
                           style={{
-                            ...numberCellStyle,
-                            minWidth: 54,
-                            background: value > 0 ? "#fff59d" : undefined,
+                            background: "#d9d2e9",
+                            padding: "7px 10px",
                           }}
-                        >
-                          {value ? day(value) : "—"}
-                        </Table.Td>
+                        />
+                      </Table.Tr>
+                      {group.rows.map((row, rowIndex) => (
+                        <Table.Tr key={row.employeeId}>
+                          <Table.Td
+                            style={{
+                              ...fixedCellStyle(fixedColumns[0]),
+                              textAlign: "center",
+                              fontVariantNumeric: "tabular-nums",
+                            }}
+                          >
+                            {group.startIndex + rowIndex + 1}
+                          </Table.Td>
+                          <Table.Td style={fixedCellStyle(fixedColumns[1])}>
+                            <UnstyledButton
+                              onClick={() => setSelectedRow(row)}
+                              style={{
+                                display: "block",
+                                minWidth: 0,
+                                textAlign: "left",
+                                width: "100%",
+                              }}
+                              aria-label={`Mở sổ phép của ${row.fullName}`}
+                            >
+                              <Text
+                                size="xs"
+                                fw={600}
+                                truncate="end"
+                                td="underline"
+                              >
+                                {row.fullName}
+                              </Text>
+                              <Group gap={5} mt={3} wrap="nowrap">
+                                {statusBadge(row.reconciliationStatus)}
+                                {row.warnings.length ? (
+                                  <IconAlertTriangle
+                                    size={14}
+                                    color="var(--mantine-color-orange-7)"
+                                  />
+                                ) : null}
+                              </Group>
+                            </UnstyledButton>
+                          </Table.Td>
+                          <Table.Td
+                            style={{
+                              ...fixedCellStyle(fixedColumns[2]),
+                              textAlign: "center",
+                              fontVariantNumeric: "tabular-nums",
+                            }}
+                          >
+                            <Text
+                              size="xs"
+                              fw={600}
+                              c={row.attendanceCode ? undefined : "red"}
+                            >
+                              {row.attendanceCode ?? "Thiếu"}
+                            </Text>
+                          </Table.Td>
+                          <Table.Td style={fixedCellStyle(fixedColumns[3])}>
+                            <Text
+                              size="xs"
+                              truncate
+                              title={row.department?.name ?? ""}
+                            >
+                              {row.department?.name ?? "—"}
+                            </Text>
+                          </Table.Td>
+                          <Table.Td
+                            style={{
+                              ...fixedCellStyle(fixedColumns[4]),
+                              textAlign: "center",
+                            }}
+                          >
+                            <Text
+                              size="sm"
+                              c={row.hireDate ? undefined : "red"}
+                            >
+                              {row.hireDate
+                                ? formatDate(row.hireDate)
+                                : "Thiếu dữ liệu"}
+                            </Text>
+                          </Table.Td>
+                          {[
+                            row.carryOverDays,
+                            row.accruedDays,
+                            row.seniorityDays,
+                            row.otherDays,
+                          ].map((value, index) => (
+                            <Table.Td
+                              key={`source-${index}`}
+                              style={numberCellStyle}
+                            >
+                              {day(value)}
+                            </Table.Td>
+                          ))}
+                          {row.monthlyUsed.map((value, index) => (
+                            <Table.Td
+                              key={`month-${index}`}
+                              style={{
+                                ...numberCellStyle,
+                                minWidth: 54,
+                                background: value > 0 ? "#fff59d" : undefined,
+                              }}
+                            >
+                              {value ? day(value) : "—"}
+                            </Table.Td>
+                          ))}
+                          <Table.Td style={numberCellStyle}>
+                            {day(row.previousYearUsedDays)}
+                          </Table.Td>
+                          <Table.Td style={numberCellStyle}>
+                            {day(row.usedCurrentYearDays)}
+                          </Table.Td>
+                          <Table.Td style={numberCellStyle}>
+                            {day(row.carryOverUsedDays)}
+                          </Table.Td>
+                          <Table.Td style={numberCellStyle}>
+                            {day(row.carryOverExpiredDays)}
+                          </Table.Td>
+                          <Table.Td
+                            style={{
+                              ...numberCellStyle,
+                              minWidth: 165,
+                              fontWeight: 800,
+                              color:
+                                row.remainingDays < 0
+                                  ? "var(--mantine-color-red-7)"
+                                  : "var(--mantine-color-blue-8)",
+                              background:
+                                row.remainingDays < 0
+                                  ? "var(--mantine-color-red-0)"
+                                  : "#dbeafe",
+                            }}
+                          >
+                            {day(row.remainingDays)}
+                          </Table.Td>
+                        </Table.Tr>
                       ))}
-                      <Table.Td style={numberCellStyle}>
-                        {day(row.previousYearUsedDays)}
-                      </Table.Td>
-                      <Table.Td style={numberCellStyle}>
-                        {day(row.usedCurrentYearDays)}
-                      </Table.Td>
-                      <Table.Td style={numberCellStyle}>
-                        {day(row.carryOverUsedDays)}
-                      </Table.Td>
-                      <Table.Td style={numberCellStyle}>
-                        {day(row.carryOverExpiredDays)}
-                      </Table.Td>
-                      <Table.Td
-                        style={{
-                          ...numberCellStyle,
-                          minWidth: 165,
-                          fontWeight: 800,
-                          color:
-                            row.remainingDays < 0
-                              ? "var(--mantine-color-red-7)"
-                              : "var(--mantine-color-blue-8)",
-                          background:
-                            row.remainingDays < 0
-                              ? "var(--mantine-color-red-0)"
-                              : "#dbeafe",
-                        }}
-                      >
-                        {day(row.remainingDays)}
-                      </Table.Td>
-                    </Table.Tr>
+                    </Fragment>
                   ))
                 )}
               </Table.Tbody>
@@ -713,8 +885,8 @@ export function AnnualLeaveBalancesPage() {
                 }}
               />
               <Pagination
-                value={page}
-                total={Math.max(1, pagination?.totalPages ?? 1)}
+                value={currentPage}
+                total={totalPages}
                 onChange={setPage}
                 size="sm"
               />

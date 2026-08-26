@@ -9,6 +9,7 @@ import {
   adjustAnnualLeaveBalance,
   commitAnnualLeaveImport,
   getAnnualLeaveLedger,
+  listAllAnnualLeaveBalances,
   listAnnualLeaveBalances,
   previewAnnualLeaveImport,
 } from "./annualLeaveApi";
@@ -17,6 +18,8 @@ import type { AnnualLeaveQuery } from "./annualLeaveTypes";
 export const annualLeaveKeys = {
   all: ["annual-leave"] as const,
   list: (query: AnnualLeaveQuery) => ["annual-leave", "list", query] as const,
+  allList: (query: AnnualLeaveQuery) =>
+    ["annual-leave", "all-list", query] as const,
   ledger: (employeeId: string | null, year: number) =>
     ["annual-leave", "ledger", employeeId, year] as const,
 };
@@ -25,6 +28,15 @@ export function useAnnualLeaveBalances(query: AnnualLeaveQuery) {
   return useQuery({
     queryKey: annualLeaveKeys.list(query),
     queryFn: () => listAnnualLeaveBalances(query),
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
+}
+
+export function useAllAnnualLeaveBalances(query: AnnualLeaveQuery) {
+  return useQuery({
+    queryKey: annualLeaveKeys.allList(query),
+    queryFn: () => listAllAnnualLeaveBalances(query),
     placeholderData: keepPreviousData,
     staleTime: 30_000,
   });

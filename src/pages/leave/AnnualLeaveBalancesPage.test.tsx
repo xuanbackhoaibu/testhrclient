@@ -67,7 +67,7 @@ vi.mock("../../features/organization/useDepartments", () => ({
 }));
 
 vi.mock("../../features/annual-leave/useAnnualLeave", () => ({
-  useAnnualLeaveBalances: () => ({
+  useAllAnnualLeaveBalances: () => ({
     data: {
       data: [
         {
@@ -273,6 +273,9 @@ describe("AnnualLeaveBalancesPage", () => {
     const employeeRow = screen
       .getByRole("button", { name: "Mở sổ phép của Nguyễn Văn Một" })
       .closest("tr");
+    const organizationRow = screen
+      .getByText(/1\. Công ty A · Phòng Nhân sự/)
+      .closest("tr");
 
     const groupHeaders = [
       ["Thông tin nhân sự", "5"],
@@ -286,6 +289,9 @@ describe("AnnualLeaveBalancesPage", () => {
       return header;
     });
     expect(groupHeaders).toHaveLength(4);
+    expect(organizationRow?.children[0].getAttribute("colspan")).toBe("5");
+    expect(organizationRow?.children[1].getAttribute("colspan")).toBe("21");
+    expect(organizationRow?.textContent).toContain("(1 CBNV)");
     expect(nameHeader.style.top).toBe("34px");
     expect(nameHeader.style.background).toBe("rgb(230, 242, 223)");
     expect(

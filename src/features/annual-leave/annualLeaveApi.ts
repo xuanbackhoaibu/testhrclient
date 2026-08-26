@@ -10,6 +10,7 @@ import type {
 } from "./annualLeaveTypes";
 
 const BASE = "/leave/annual-balances";
+const maxListPageSize = 100;
 const isMockMode = import.meta.env.VITE_USE_MOCKS === "true";
 
 function queryParams(query: AnnualLeaveQuery): Record<string, unknown> {
@@ -138,8 +139,44 @@ export async function listAnnualLeaveBalances(
   const response = await api.get<AnnualLeaveListResult>(BASE, {
     params: queryParams(query),
   });
-  const normalized = normalizePaginatedResponse<AnnualLeaveRow>(response, query);
+  const normalized = normalizePaginatedResponse<AnnualLeaveRow>(
+    response,
+    query,
+  );
   return { data: normalized.items, pagination: normalized.pagination };
+}
+
+export async function listAllAnnualLeaveBalances(
+  query: AnnualLeaveQuery,
+): Promise<AnnualLeaveListResult> {
+  const firstPage = await listAnnualLeaveBalances({
+    ...query,
+    page: 1,
+    pageSize: maxListPageSize,
+  });
+  const remainingPages = await Promise.all(
+    Array.from(
+      { length: Math.max(0, firstPage.pagination.totalPages - 1) },
+      (_, index) =>
+        listAnnualLeaveBalances({
+          ...query,
+          page: index + 2,
+          pageSize: maxListPageSize,
+        }),
+    ),
+  );
+  const data = [firstPage, ...remainingPages].flatMap((result) => result.data);
+  return {
+    data,
+    pagination: {
+      page: 1,
+      pageSize: data.length || maxListPageSize,
+      total: data.length,
+      totalPages: data.length ? 1 : 0,
+      hasNextPage: false,
+      hasPreviousPage: false,
+    },
+  };
 }
 
 export function downloadAnnualLeaveTemplate(year: number) {
