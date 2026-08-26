@@ -34,8 +34,9 @@ import {
   IconUsers,
   IconArrowsSort,
   IconCalendarStats,
+  IconChecklist,
 } from "@tabler/icons-react";
-import { Fragment, Suspense } from "react";
+import { Suspense } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../features/auth/useAuth";
@@ -49,11 +50,11 @@ interface NavItem {
   label: string;
   path: string;
   icon: typeof IconDashboard;
-  /**
-   * Tiêu đề nhóm hiện NGAY TRÊN mục này. Chỉ để phân tách thị giác — vẫn là
-   * danh sách phẳng, một cú nhấn là tới, không phải menu lồng nhau.
-   */
-  sectionLabel?: string;
+}
+
+interface NavSection {
+  label: string;
+  items: NavItem[];
 }
 
 const primaryItems: NavItem[] = [
@@ -65,58 +66,76 @@ const preAttendanceItems: NavItem[] = [
   { label: "Điều chuyển", path: ROUTES.movements, icon: IconTransfer },
 ];
 
-/*
- * Ba nhóm theo đúng việc HR làm, không trộn lẫn:
- *
- *   1. Khai báo ca   — dựng mẫu ca, dùng lại nhiều tháng
- *   2. Làm hằng tháng — gán ca cho người, chốt công, xử lý phép
- *   3. Cấu hình      — dựng một lần rồi hiếm khi đụng
- *
- * Vẫn là danh sách phẳng: `sectionLabel` chỉ thêm tiêu đề phân tách, không
- * biến thành menu lồng nhau bắt HR bấm hai lần mới tới nơi.
- */
-const attendanceItems: NavItem[] = [
+/* Bốn nhóm theo đúng thứ tự HR vận hành, mỗi nhóm có thể thu gọn độc lập. */
+const attendanceSections: NavSection[] = [
   {
-    label: "Dữ liệu chấm công",
-    path: ROUTES.attendance,
-    icon: IconClipboardList,
-    sectionLabel: "Dữ liệu máy chấm công",
-  },
-  // Xử lý mapping là việc sửa lỗi của chính dữ liệu máy chấm công. Trước đây
-  // nó nằm NGOÀI nhóm Chấm công, hiện ngang hàng Dashboard — tách rời khỏi
-  // đúng màn nó phục vụ.
-  { label: "Xử lý mapping", path: ROUTES.attendanceMapping, icon: IconLink },
-  {
-    label: "Ca làm việc",
-    path: ROUTES.workShifts,
-    icon: IconClock,
-    sectionLabel: "Khai báo ca",
-  },
-  { label: "Ca tuần", path: ROUTES.weeklyShifts, icon: IconCalendarTime },
-  {
-    label: "Phân ca",
-    path: ROUTES.shiftAssignments,
-    icon: IconCalendarTime,
-    sectionLabel: "Làm hằng tháng",
-  },
-  { label: "Bảng công tháng", path: ROUTES.timesheetGrid, icon: IconTable },
-  { label: "Nghỉ phép", path: ROUTES.leave, icon: IconCalendarCheck },
-  {
-    label: "Kỳ công",
-    path: ROUTES.timesheetPeriods,
-    icon: IconCalendarStats,
-    sectionLabel: "Cấu hình",
+    label: "Quy trình chấm công",
+    items: [
+      {
+        label: "Xếp lịch làm việc",
+        path: ROUTES.shiftAssignments,
+        icon: IconCalendarTime,
+      },
+      { label: "Bảng chấm công", path: ROUTES.timesheetGrid, icon: IconTable },
+      {
+        label: "Duyệt công ca phép",
+        path: ROUTES.approvalInbox,
+        icon: IconChecklist,
+      },
+      {
+        label: "Kỳ chốt công",
+        path: ROUTES.timesheetPeriods,
+        icon: IconCalendarStats,
+      },
+      {
+        label: "Bảng phép năm",
+        path: ROUTES.annualLeaveBalances,
+        icon: IconCalendarStats,
+      },
+    ],
   },
   {
-    label: "Thứ tự nhân sự",
-    path: ROUTES.attendanceRowOrder,
-    icon: IconArrowsSort,
+    label: "Thiết lập",
+    items: [
+      { label: "Ca làm việc", path: ROUTES.workShifts, icon: IconClock },
+      { label: "Loại nghỉ phép", path: ROUTES.leave, icon: IconCalendarCheck },
+      {
+        label: "Mẫu lịch tuần",
+        path: ROUTES.weeklyShifts,
+        icon: IconCalendarTime,
+      },
+    ],
   },
-  { label: "Ngày lễ", path: ROUTES.holidays, icon: IconCalendarCheck },
   {
-    label: "Cấu hình duyệt phép",
-    path: ROUTES.leaveApprovalAssignments,
-    icon: IconUserCheck,
+    label: "Máy chấm công",
+    items: [
+      {
+        label: "Dữ liệu chấm công",
+        path: ROUTES.attendance,
+        icon: IconClipboardList,
+      },
+      {
+        label: "Đối soát dữ liệu",
+        path: ROUTES.attendanceMapping,
+        icon: IconLink,
+      },
+    ],
+  },
+  {
+    label: "Cấu hình",
+    items: [
+      {
+        label: "Thứ tự nhân sự",
+        path: ROUTES.attendanceRowOrder,
+        icon: IconArrowsSort,
+      },
+      { label: "Ngày lễ", path: ROUTES.holidays, icon: IconCalendarCheck },
+      {
+        label: "Cấu hình duyệt phép",
+        path: ROUTES.leaveApprovalAssignments,
+        icon: IconUserCheck,
+      },
+    ],
   },
 ];
 
@@ -163,18 +182,20 @@ const routeTitles: Record<string, string> = {
   [ROUTES.positions]: "Chức danh",
   [ROUTES.movements]: "Điều chuyển",
   [ROUTES.contracts]: "Hợp đồng",
-  [ROUTES.leave]: "Nghỉ phép",
+  [ROUTES.leave]: "Loại nghỉ phép",
   [ROUTES.leaveApprovalAssignments]: "Cấu hình duyệt phép",
-  [ROUTES.attendance]: "Chấm công",
-  [ROUTES.attendanceMapping]: "Xử lý mapping",
+  [ROUTES.attendance]: "Dữ liệu chấm công",
+  [ROUTES.attendanceMapping]: "Đối soát dữ liệu",
   [ROUTES.monthlyTimesheetRoster]: "Sắp ca tháng",
-  [ROUTES.timesheetGrid]: "Bảng công tháng",
-  [ROUTES.timesheetPeriods]: "Kỳ công",
+  [ROUTES.timesheetGrid]: "Bảng chấm công",
+  [ROUTES.approvalInbox]: "Duyệt công ca phép",
+  [ROUTES.annualLeaveBalances]: "Bảng phép năm",
+  [ROUTES.timesheetPeriods]: "Kỳ chốt công",
   [ROUTES.attendanceRowOrder]: "Thứ tự nhân sự",
   [ROUTES.workShifts]: "Ca làm việc",
-  [ROUTES.weeklyShifts]: "Ca tuần",
+  [ROUTES.weeklyShifts]: "Mẫu lịch tuần",
   [ROUTES.holidays]: "Ngày lễ",
-  [ROUTES.shiftAssignments]: "Phân ca",
+  [ROUTES.shiftAssignments]: "Xếp lịch làm việc",
   [ROUTES.onboarding]: "Onboarding",
   [ROUTES.offboarding]: "Offboarding",
   [ROUTES.imports]: "Imports",
@@ -209,8 +230,14 @@ export function MainLayout() {
   const visiblePreAttendanceItems = preAttendanceItems.filter((item) =>
     canAccessRoute(user, item.path),
   );
-  const visibleAttendanceItems = attendanceItems.filter((item) =>
-    canAccessRoute(user, item.path),
+  const visibleAttendanceSections = attendanceSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => canAccessRoute(user, item.path)),
+    }))
+    .filter((section) => section.items.length > 0);
+  const visibleAttendanceItems = visibleAttendanceSections.flatMap(
+    (section) => section.items,
   );
   const visibleFinalItems = finalItems.filter((item) =>
     canAccessRoute(user, item.path),
@@ -221,16 +248,20 @@ export function MainLayout() {
   const visibleIamItems = iamItems.filter((item) =>
     canAccessRoute(user, item.path),
   );
-  const visibleIamAccountItems = visibleIamItems.filter((item) =>
-    item.path === ROUTES.accounts || item.path === ROUTES.pendingHrLinkAccounts,
+  const visibleIamAccountItems = visibleIamItems.filter(
+    (item) =>
+      item.path === ROUTES.accounts ||
+      item.path === ROUTES.pendingHrLinkAccounts,
   );
-  const visibleIamCatalogItems = visibleIamItems.filter((item) =>
-    item.path === ROUTES.roles ||
+  const visibleIamCatalogItems = visibleIamItems.filter(
+    (item) =>
+      item.path === ROUTES.roles ||
       item.path === ROUTES.permissionGroups ||
       item.path === ROUTES.permissions,
   );
-  const visibleIamAuthorizationItems = visibleIamItems.filter((item) =>
-    item.path === ROUTES.accountAuthorizations ||
+  const visibleIamAuthorizationItems = visibleIamItems.filter(
+    (item) =>
+      item.path === ROUTES.accountAuthorizations ||
       item.path === ROUTES.workReportAuthorizations,
   );
 
@@ -254,7 +285,7 @@ export function MainLayout() {
   return (
     <AppShell
       header={{ height: 56 }}
-      navbar={{ width: 232, breakpoint: "md", collapsed: { mobile: !opened } }}
+      navbar={{ width: 256, breakpoint: "md", collapsed: { mobile: !opened } }}
       padding="md"
       bg="#f6f8fb"
     >
@@ -323,7 +354,7 @@ export function MainLayout() {
             <BrandLogo compact />
           </Group>
 
-          <ScrollArea flex={1}>
+          <ScrollArea flex={1} type="never">
             <Stack gap={4}>
               {visiblePrimaryItems.map((item) => {
                 const Icon = item.icon;
@@ -371,8 +402,9 @@ export function MainLayout() {
                 >
                   <NavLink
                     label="Người dùng và tài khoản"
-                    defaultOpened={visibleIamAccountItems
-                      .some((item) => isActive(location.pathname, item.path))}
+                    defaultOpened={visibleIamAccountItems.some((item) =>
+                      isActive(location.pathname, item.path),
+                    )}
                   >
                     {visibleIamAccountItems.map((item) => {
                       const Icon = item.icon;
@@ -390,8 +422,9 @@ export function MainLayout() {
                   </NavLink>
                   <NavLink
                     label="Vai trò và quyền"
-                    defaultOpened={visibleIamCatalogItems
-                      .some((item) => isActive(location.pathname, item.path))}
+                    defaultOpened={visibleIamCatalogItems.some((item) =>
+                      isActive(location.pathname, item.path),
+                    )}
                   >
                     {visibleIamCatalogItems.map((item) => {
                       const Icon = item.icon;
@@ -412,7 +445,11 @@ export function MainLayout() {
                     return (
                       <NavLink
                         key={item.path}
-                        label={item.path === ROUTES.workReportAuthorizations ? "Báo cáo công việc" : item.label}
+                        label={
+                          item.path === ROUTES.workReportAuthorizations
+                            ? "Báo cáo công việc"
+                            : item.label
+                        }
                         leftSection={<Icon size={17} />}
                         active={isActive(location.pathname, item.path)}
                         onClick={() => goTo(item.path)}
@@ -444,36 +481,30 @@ export function MainLayout() {
                   defaultOpened={isAttendanceRoute}
                   className="app-nav-link"
                 >
-                  {visibleAttendanceItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <Fragment key={item.path}>
-                        {item.sectionLabel ? (
-                          <Text
-                            fz={10}
-                            fw={700}
-                            c="dimmed"
-                            tt="uppercase"
-                            pl="md"
-                            pt={8}
-                            pb={2}
-                          >
-                            {item.sectionLabel}
-                          </Text>
-                        ) : null}
-                        <NavLink
-                          label={item.label}
-                          leftSection={<Icon size={17} />}
-                          active={isActive(location.pathname, item.path)}
-                          onClick={() => goTo(item.path)}
-                          className="app-nav-link"
-                        />
-                      </Fragment>
-                    );
-                  })}
+                  {visibleAttendanceSections.map((section) => (
+                    <NavLink
+                      key={section.label}
+                      label={section.label}
+                      defaultOpened
+                      className="app-nav-link"
+                    >
+                      {section.items.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <NavLink
+                            key={item.path}
+                            label={item.label}
+                            leftSection={<Icon size={17} />}
+                            active={isActive(location.pathname, item.path)}
+                            onClick={() => goTo(item.path)}
+                            className="app-nav-link"
+                          />
+                        );
+                      })}
+                    </NavLink>
+                  ))}
                 </NavLink>
               ) : null}
-
 
               {visibleFinalItems.map((item) => {
                 const Icon = item.icon;

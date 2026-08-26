@@ -103,6 +103,27 @@ export async function listLeaveRequests(params: ListQueryParams = {}): Promise<P
   return normalizePaginatedResponse<LeaveRequest>(response, params);
 }
 
+export async function listPendingLeaveApprovals(
+  params: Pick<ListQueryParams, "page" | "pageSize"> = {},
+): Promise<PaginatedResponse<LeaveRequest>> {
+  if (isMockMode) {
+    await mockDelay();
+    const pending = mockLeaveRequests.filter((item) => item.status === "SUBMITTED");
+    pending.forEach((item) => {
+      const steps = ensureMockApprovalSteps(item);
+      item.currentApprovalStep = steps.find((step) => step.status === "SUBMITTED") ?? null;
+      ensureMockNotice(item);
+    });
+    return paginate(pending, params);
+  }
+
+  const response = await api.get<PaginatedData<LeaveRequest>>(
+    "/leave/requests/pending-approval",
+    { params },
+  );
+  return normalizePaginatedResponse<LeaveRequest>(response, params);
+}
+
 export async function listLeaveTypes(): Promise<LeavePolicyType[]> {
   if (isMockMode) {
     await mockDelay();
@@ -192,7 +213,12 @@ export async function createLeaveRequest(payload: LeaveRequestPayload): Promise<
   return api.post<LeaveRequest>('/leave/requests', payload);
 }
 
-async function updateLeaveStatus(id: string, status: string, action: string): Promise<LeaveRequest> {
+async function updateLeaveStatus(
+  id: string,
+  status: string,
+  action: string,
+  note?: string,
+): Promise<LeaveRequest> {
   if (isMockMode) {
     await mockDelay();
     const leave = mockLeaveRequests.find((item) => item.id === id);
@@ -210,6 +236,7 @@ async function updateLeaveStatus(id: string, status: string, action: string): Pr
         currentStep.status = 'APPROVED';
         currentStep.reviewerUserId = 'mock-reviewer';
         currentStep.reviewedAt = new Date().toISOString();
+        currentStep.note = note?.trim() || null;
         leave.status = currentStep.stepOrder === mockApprovalSteps.length ? 'APPROVED' : 'SUBMITTED';
       }
     } else if (action === 'REJECT') {
@@ -218,6 +245,7 @@ async function updateLeaveStatus(id: string, status: string, action: string): Pr
         currentStep.status = 'REJECTED';
         currentStep.reviewerUserId = 'mock-reviewer';
         currentStep.reviewedAt = new Date().toISOString();
+        currentStep.note = note?.trim() || null;
       }
       leave.status = status;
     } else if (action === 'CANCEL') {
@@ -240,19 +268,26 @@ async function updateLeaveStatus(id: string, status: string, action: string): Pr
     return leave;
   }
 
-  return api.post<LeaveRequest>(`/leave/requests/${id}/${action.toLowerCase()}`);
+  const path = "/leave/requests/" + id + "/" + action.toLowerCase();
+  if (action === "APPROVE" || action === "REJECT") {
+    return api.post<LeaveRequest>(
+      path,
+      note?.trim() ? { note: note.trim() } : {},
+    );
+  }
+  return api.post<LeaveRequest>(path);
 }
 
 export function submitLeaveRequest(id: string) {
   return updateLeaveStatus(id, 'SUBMITTED', 'SUBMIT');
 }
 
-export function approveLeaveRequest(id: string) {
-  return updateLeaveStatus(id, 'APPROVED', 'APPROVE');
+export function approveLeaveRequest(id: string, note?: string) {
+  return updateLeaveStatus(id, "APPROVED", "APPROVE", note);
 }
 
-export function rejectLeaveRequest(id: string) {
-  return updateLeaveStatus(id, 'REJECTED', 'REJECT');
+export function rejectLeaveRequest(id: string, note?: string) {
+  return updateLeaveStatus(id, "REJECTED", "REJECT", note);
 }
 
 export function cancelLeaveRequest(id: string) {

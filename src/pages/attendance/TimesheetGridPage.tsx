@@ -1404,7 +1404,7 @@ export function TimesheetGridPage() {
     <>
       <PageHeader
         compact
-        title="Bảng chấm công tháng"
+        title="Bảng chấm công"
         subtitle="Theo dõi theo công ty, phòng ban và nhân viên; nhấn họ tên để thiết lập đủ công mặc định."
         actions={
           canEdit || canExport ? (

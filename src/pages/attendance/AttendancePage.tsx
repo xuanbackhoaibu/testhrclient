@@ -328,7 +328,7 @@ export function AttendancePage() {
   return (
     <>
       <PageHeader
-        title="Chấm công"
+        title="Dữ liệu chấm công"
         subtitle="Theo dõi dữ liệu chấm công đồng bộ từ BioTime/ZKTeco"
         actions={
           <Group gap="xs">

@@ -1,6 +1,14 @@
 import type { PropsWithChildren } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { MantineProvider, createTheme } from '@mantine/core';
+import {
+  Center,
+  Image,
+  Loader,
+  MantineProvider,
+  Stack,
+  Text,
+  createTheme,
+} from '@mantine/core';
 import { DatesProvider } from '@mantine/dates';
 import { Notifications } from '@mantine/notifications';
 import dayjs from 'dayjs';
@@ -138,7 +146,17 @@ function AuthBootstrap({ children }: PropsWithChildren) {
   }, []);
 
   if (!ready) {
-    return null;
+    return (
+      <Center mih="100dvh">
+        <Stack align="center" gap="sm" role="status" aria-live="polite">
+          <Image src="/logo.png" alt="" h={56} w="auto" fit="contain" />
+          <Loader color="red" size="sm" />
+          <Text c="dimmed" size="sm">
+            Đang xác minh phiên đăng nhập...
+          </Text>
+        </Stack>
+      </Center>
+    );
   }
 
   return <>{children}</>;

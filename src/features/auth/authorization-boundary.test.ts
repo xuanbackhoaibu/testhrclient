@@ -27,6 +27,8 @@ test('every router screen is wrapped by the shared route policy', () => {
     'ROUTES.onboarding',
     'ROUTES.offboarding',
     'ROUTES.weeklyShifts',
+    'ROUTES.annualLeaveBalances',
+    'ROUTES.approvalInbox',
   ]) {
     assert.match(source, new RegExp(`ProtectedRoute route=\\{${route.replace('.', '\\.')}\\}`));
   }
@@ -38,9 +40,26 @@ test('weekly schedules are discoverable through the attendance navigation', () =
 
   assert.match(
     layout,
-    /label: "Ca tuần", path: ROUTES\.weeklyShifts/,
+    /label: "Mẫu lịch tuần"[\s\S]*?path: ROUTES\.weeklyShifts/,
   );
-  assert.match(policies, /\[ROUTES\.weeklyShifts\].*ATTENDANCE_READ/);
+  assert.match(
+    policies,
+    /\[ROUTES\.weeklyShifts\][\s\S]*?HR_PERMISSIONS\.ATTENDANCE_READ/,
+  );
+});
+
+test('annual leave balances use their dedicated permission and attendance navigation', () => {
+  const layout = read('../../layouts/MainLayout.tsx');
+  const policies = read('./routePolicies.ts');
+
+  assert.match(
+    layout,
+    /label: "Bảng phép năm"[\s\S]*?path: ROUTES\.annualLeaveBalances/,
+  );
+  assert.match(
+    policies,
+    /\[ROUTES\.annualLeaveBalances\][\s\S]*?HR_PERMISSIONS\.LEAVE_BALANCE_READ/,
+  );
 });
 test('authority is never restored from persisted current-user data', () => {
   const source = read('./authClient.ts');
@@ -56,7 +75,7 @@ test('every authenticated account can inspect its own effective access', () => {
   assert.match(router, /ProtectedRoute route=\{ROUTES\.myAccess\}/);
   assert.match(
     policies,
-    /\[ROUTES\.myAccess\]: \{ kind: 'authenticated' \}/,
+    /\[ROUTES\.myAccess\]: \{ kind: ["']authenticated["'] \}/,
   );
   assert.match(layout, /Quyền của tôi/);
 });
@@ -77,15 +96,52 @@ test('workflow and audit routes use canonical read permissions', () => {
   assert.doesNotMatch(source, /canonical permission contract/);
 });
 
-test('global settings remains the final sidebar action after leave management', () => {
+test('attendance navigation follows the requested workflow and keeps settings last', () => {
   const source = read('../../layouts/MainLayout.tsx');
-  const leaveItem = source.indexOf('{ label: "Nghỉ phép"');
-  const approvalItem = source.indexOf('label: "Cấu hình duyệt phép"');
-  const settingsItem = source.indexOf('{ label: "Cài đặt"');
+  const navigation = source.slice(
+    source.indexOf('const attendanceSections'),
+    source.indexOf('const finalItems'),
+  );
+  const expectedOrder = [
+    'Quy trình chấm công',
+    'Xếp lịch làm việc',
+    'Bảng chấm công',
+    'Duyệt công ca phép',
+    'Kỳ chốt công',
+    'Bảng phép năm',
+    'Thiết lập',
+    'Ca làm việc',
+    'Loại nghỉ phép',
+    'Mẫu lịch tuần',
+    'Máy chấm công',
+    'Dữ liệu chấm công',
+    'Đối soát dữ liệu',
+    'Cấu hình',
+    'Thứ tự nhân sự',
+    'Ngày lễ',
+    'Cấu hình duyệt phép',
+  ];
 
-  assert.ok(leaveItem >= 0, 'leave navigation item must exist');
-  assert.ok(approvalItem > leaveItem, 'approval configuration follows leave');
-  assert.ok(settingsItem > approvalItem, 'settings must be the final main item');
+  let previousIndex = -1;
+  for (const label of expectedOrder) {
+    const currentIndex = navigation.indexOf(`label: "${label}"`);
+    assert.ok(currentIndex > previousIndex, `${label} must follow the requested order`);
+    previousIndex = currentIndex;
+  }
+
+  assert.match(source, /visibleAttendanceSections\.map[\s\S]*?label=\{section\.label\}[\s\S]*?defaultOpened/);
+  assert.ok(source.indexOf('const finalItems') > source.indexOf('const attendanceSections'));
+});
+
+test('attendance setup screens use the requested business labels', () => {
+  const workShifts = read('../../pages/attendance/WorkShiftsPage.tsx');
+  const weeklyShifts = read('../../pages/attendance/WeeklyShiftTemplatesPage.tsx');
+
+  assert.match(workShifts, /header: "Thời gian làm việc"/);
+  assert.doesNotMatch(workShifts, /header: "Giờ ca"/);
+  assert.match(weeklyShifts, /header: "Lịch tuần"/);
+  assert.match(weeklyShifts, /label="Lịch tuần"/);
+  assert.doesNotMatch(weeklyShifts, /(?:header: |label=)"Tên ca tuần"/);
 });
 
 test('employee account controls use canonical Auth actor permissions', () => {
