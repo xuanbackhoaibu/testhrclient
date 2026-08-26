@@ -103,12 +103,10 @@ function fixedCellStyle(
     minWidth: column.width,
     maxWidth: column.width,
     zIndex: header ? 5 : 2,
-    background: header
-      ? "var(--mantine-color-blue-8)"
-      : "var(--mantine-color-body)",
+    background: header ? "#e6f2df" : "var(--mantine-color-body)",
     boxShadow:
       column.key === "hireDate"
-        ? "2px 0 5px rgba(15, 23, 42, 0.12)"
+        ? "2px 0 0 var(--mantine-color-gray-4)"
         : undefined,
   };
 }
@@ -120,10 +118,11 @@ const headerStyle: CSSProperties = {
   minWidth: 76,
   height: 78,
   padding: "8px 7px",
-  color: "white",
-  background: "var(--mantine-color-blue-8)",
-  borderColor: "var(--mantine-color-blue-6)",
+  color: "var(--mantine-color-dark-7)",
+  background: "#e6f2df",
+  borderColor: "var(--mantine-color-gray-4)",
   fontSize: 12,
+  fontWeight: 700,
   lineHeight: 1.25,
   textAlign: "center",
   whiteSpace: "normal",
@@ -135,12 +134,12 @@ const groupHeaderStyle: CSSProperties = {
   zIndex: 6,
   height: 34,
   padding: "6px 8px",
-  color: "var(--mantine-color-blue-0)",
-  background: "var(--mantine-color-blue-9)",
-  borderColor: "var(--mantine-color-blue-7)",
+  color: "var(--mantine-color-dark-7)",
+  background: "#d9d2e9",
+  borderColor: "var(--mantine-color-gray-4)",
   fontSize: 11,
   fontWeight: 800,
-  letterSpacing: "0.02em",
+  letterSpacing: "0.01em",
   textAlign: "center",
 };
 
@@ -651,9 +650,7 @@ export function AnnualLeaveBalancesPage() {
                             ...numberCellStyle,
                             minWidth: 54,
                             background:
-                              value > 0
-                                ? "var(--mantine-color-yellow-0)"
-                                : undefined,
+                              value > 0 ? "#fff59d" : undefined,
                           }}
                         >
                           {value ? day(value) : "—"}
@@ -683,7 +680,7 @@ export function AnnualLeaveBalancesPage() {
                           background:
                             row.remainingDays < 0
                               ? "var(--mantine-color-red-0)"
-                              : "var(--mantine-color-blue-0)",
+                              : "#dbeafe",
                         }}
                       >
                         {day(row.remainingDays)}

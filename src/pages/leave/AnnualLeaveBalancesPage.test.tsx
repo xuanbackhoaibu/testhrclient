@@ -261,6 +261,28 @@ describe("AnnualLeaveBalancesPage", () => {
     expect(screen.queryByText("Điều chỉnh có biên bản")).toBeNull();
   });
 
+  it("uses the same operational table palette as monthly attendance and shift assignment", () => {
+    renderPage();
+
+    const identityGroup = screen.getByRole("columnheader", {
+      name: "Thông tin nhân sự",
+    });
+    const nameHeader = screen.getByRole("columnheader", { name: "Họ và tên" });
+    const employeeRow = screen
+      .getByRole("button", { name: "Mở sổ phép của Nguyễn Văn Một" })
+      .closest("tr");
+
+    expect(identityGroup.style.background).toBe("rgb(217, 210, 233)");
+    expect(nameHeader.style.background).toBe("rgb(230, 242, 223)");
+    expect(employeeRow).not.toBeNull();
+    expect((employeeRow?.children[9] as HTMLElement).style.background).toBe(
+      "rgb(255, 245, 157)",
+    );
+    expect(
+      (employeeRow?.lastElementChild as HTMLElement).style.background,
+    ).toBe("rgb(219, 234, 254)");
+  });
+
   it("requires a note in the modal before committing rows with other leave", async () => {
     const user = userEvent.setup();
     mocks.permissions = [
