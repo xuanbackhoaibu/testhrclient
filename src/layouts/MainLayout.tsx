@@ -285,7 +285,7 @@ export function MainLayout() {
   return (
     <AppShell
       header={{ height: 56 }}
-      navbar={{ width: 232, breakpoint: "md", collapsed: { mobile: !opened } }}
+      navbar={{ width: 256, breakpoint: "md", collapsed: { mobile: !opened } }}
       padding="md"
       bg="#f6f8fb"
     >
@@ -354,7 +354,7 @@ export function MainLayout() {
             <BrandLogo compact />
           </Group>
 
-          <ScrollArea flex={1}>
+          <ScrollArea flex={1} type="never">
             <Stack gap={4}>
               {visiblePrimaryItems.map((item) => {
                 const Icon = item.icon;
