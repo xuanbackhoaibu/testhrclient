@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MantineProvider } from "@mantine/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -129,6 +129,14 @@ Object.defineProperty(globalThis, "ResizeObserver", {
   },
 });
 
+Object.defineProperty(document, "fonts", {
+  configurable: true,
+  value: {
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  },
+});
+
 describe("WeeklyShiftTemplatesPage browser-mock smoke", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -146,7 +154,9 @@ describe("WeeklyShiftTemplatesPage browser-mock smoke", () => {
       </MantineProvider>,
     );
 
-    expect(screen.getByText("Ca tuần là mẫu dùng chung, áp riêng cho từng CBNV")).toBeTruthy();
+    expect(
+      screen.getByText("Ca tuần là mẫu dùng chung, áp riêng cho từng CBNV"),
+    ).toBeTruthy();
     expect(screen.getByText("Lịch Ca tuần đã áp dụng")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Tạo ca tuần" })).toBeTruthy();
     expect(screen.getAllByText("Hành chính T2–T6").length).toBeGreaterThan(0);
@@ -157,5 +167,22 @@ describe("WeeklyShiftTemplatesPage browser-mock smoke", () => {
     expect(weeklyState.cancel).not.toHaveBeenCalled();
     expect(weeklyState.delete).not.toHaveBeenCalled();
     expect(weeklyState.update).not.toHaveBeenCalled();
+  });
+
+  it("states that the new weekly schedule replaces old shifts without an opt-out", async () => {
+    render(
+      <MantineProvider>
+        <WeeklyShiftTemplatesPage />
+      </MantineProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Áp dụng cho CBNV" }));
+
+    expect(
+      await screen.findByText(/Ca tuần mới thay phần ca cũ chồng khoảng/),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("checkbox", { name: /Ghi đè ca cá nhân/ }),
+    ).toBeNull();
   });
 });

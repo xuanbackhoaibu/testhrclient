@@ -543,7 +543,6 @@ export function WeeklyShiftTemplatesPage() {
     isoMonthEnd(now.getFullYear(), now.getMonth() + 1),
   );
   const [includeInTimesheet, setIncludeInTimesheet] = useState(true);
-  const [overwriteExisting, setOverwriteExisting] = useState(false);
   const [applyNote, setApplyNote] = useState("");
 
   const templates = templatesQuery.data ?? EMPTY_TEMPLATES;
@@ -683,7 +682,6 @@ export function WeeklyShiftTemplatesPage() {
     setApplyTemplate(template);
     setApplyEmployeeIds([]);
     setIncludeInTimesheet(true);
-    setOverwriteExisting(false);
     setApplyNote("");
   }
 
@@ -734,7 +732,7 @@ export function WeeklyShiftTemplatesPage() {
         effectiveFrom,
         effectiveTo,
         ...(applyNote.trim() ? { note: applyNote.trim() } : {}),
-        ...(overwriteExisting ? { overwriteExisting: true } : {}),
+        overwriteExisting: true,
         ...(includeInTimesheet ? {} : { includeInTimesheet: false }),
       });
       notifications.show({
@@ -1162,17 +1160,6 @@ export function WeeklyShiftTemplatesPage() {
             disabled={applyTemplateMutation.isPending}
             onChange={(event) => setIncludeInTimesheet(event.currentTarget.checked)}
           />
-          <Stack gap={2}>
-            <Checkbox
-              label="Ghi đè ca cá nhân trong thời gian áp dụng"
-              checked={overwriteExisting}
-              disabled={applyTemplateMutation.isPending}
-              onChange={(event) => setOverwriteExisting(event.currentTarget.checked)}
-            />
-            <Text size="xs" c="dimmed" pl={26}>
-              Chỉ thay thế ca cá nhân chồng khoảng khi HR chủ động chọn. Ca phòng ban/đơn vị không bị xóa; chỉnh sửa theo đúng một ngày vẫn được giữ lại.
-            </Text>
-          </Stack>
           <Textarea
             label="Ghi chú áp dụng"
             placeholder="Ví dụ: Áp dụng cho tổ trực tháng này"
@@ -1183,7 +1170,7 @@ export function WeeklyShiftTemplatesPage() {
             onChange={(event) => setApplyNote(event.currentTarget.value)}
           />
           <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-            Chỉ áp dụng trong Kỳ công đã chọn. Nếu ca cá nhân chồng khoảng mà chưa chọn ghi đè, hệ thống sẽ báo để HR quyết định; không tự mất lịch sử ngoài phạm vi này.
+            Chỉ áp dụng trong Kỳ công đã chọn. Ca tuần mới thay phần ca cũ chồng khoảng; ngày nằm ngoài phạm vi vẫn được giữ nguyên.
           </Alert>
           <Group justify="flex-end">
             <Button variant="default" onClick={closeApply}>
