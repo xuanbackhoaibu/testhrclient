@@ -263,7 +263,7 @@ describe("AnnualLeaveBalancesPage", () => {
     expect(screen.queryByText("Điều chỉnh có biên bản")).toBeNull();
   });
 
-  it("uses the monthly attendance header palette and identity column rhythm", () => {
+  it("groups the annual balance columns and keeps the monthly attendance palette", () => {
     renderPage();
 
     const nameHeader = screen.getByRole("columnheader", { name: "Họ và tên" });
@@ -274,17 +274,19 @@ describe("AnnualLeaveBalancesPage", () => {
       .getByRole("button", { name: "Mở sổ phép của Nguyễn Văn Một" })
       .closest("tr");
 
-    for (const groupHeader of [
-      "Thông tin nhân sự",
-      "Nguồn phép",
-      "Đã nghỉ theo tháng",
-      "Đối chiếu và số dư",
-    ]) {
-      expect(
-        screen.queryByRole("columnheader", { name: groupHeader }),
-      ).toBeNull();
-    }
-    expect(nameHeader.style.top).toBe("0px");
+    const groupHeaders = [
+      ["Thông tin nhân sự", "5"],
+      ["Nguồn phép", "4"],
+      ["Đã nghỉ theo tháng", "12"],
+      ["Đối chiếu và số dư", "5"],
+    ].map(([name, colSpan]) => {
+      const header = screen.getByRole("columnheader", { name });
+      expect(header.getAttribute("colspan")).toBe(colSpan);
+      expect(header.style.background).toBe("rgb(217, 210, 233)");
+      return header;
+    });
+    expect(groupHeaders).toHaveLength(4);
+    expect(nameHeader.style.top).toBe("34px");
     expect(nameHeader.style.background).toBe("rgb(230, 242, 223)");
     expect(
       identityColumns.map(({ style }) => ({

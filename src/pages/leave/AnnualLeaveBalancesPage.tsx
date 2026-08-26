@@ -113,7 +113,7 @@ function fixedCellStyle(
 
 const headerStyle: CSSProperties = {
   position: "sticky",
-  top: 0,
+  top: 34,
   zIndex: 4,
   minWidth: 76,
   height: 78,
@@ -126,6 +126,21 @@ const headerStyle: CSSProperties = {
   lineHeight: 1.25,
   textAlign: "center",
   whiteSpace: "normal",
+};
+
+const groupHeaderStyle: CSSProperties = {
+  position: "sticky",
+  top: 0,
+  zIndex: 6,
+  height: 34,
+  padding: "6px 8px",
+  color: "var(--mantine-color-dark-7)",
+  background: "#d9d2e9",
+  borderColor: "var(--mantine-color-gray-4)",
+  fontSize: 11,
+  fontWeight: 800,
+  letterSpacing: "0.01em",
+  textAlign: "center",
 };
 
 const numberCellStyle: CSSProperties = {
@@ -427,6 +442,20 @@ export function AnnualLeaveBalancesPage() {
               }}
             >
               <Table.Thead>
+                <Table.Tr>
+                  <Table.Th colSpan={5} style={groupHeaderStyle}>
+                    Thông tin nhân sự
+                  </Table.Th>
+                  <Table.Th colSpan={4} style={groupHeaderStyle}>
+                    Nguồn phép
+                  </Table.Th>
+                  <Table.Th colSpan={12} style={groupHeaderStyle}>
+                    Đã nghỉ theo tháng
+                  </Table.Th>
+                  <Table.Th colSpan={5} style={groupHeaderStyle}>
+                    Đối chiếu và số dư
+                  </Table.Th>
+                </Table.Tr>
                 <Table.Tr>
                   <Table.Th
                     style={{
