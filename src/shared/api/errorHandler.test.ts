@@ -38,6 +38,7 @@ describe("handleAxiosResponseError — chat-auth x-api-contract:2 nested error.c
     );
     expect(rejected).toBeInstanceOf(ApiError);
     expect(rejected.errorCode).toBe("SENSITIVE_ASSIGNMENT_DENIED");
+    expect(rejected.userNotified).toBe(true);
 
     const [call] = notificationsShow.mock.calls.at(-1)!;
     expect(call.message).toContain("Bạn không được phép thay đổi quyền nhạy cảm");
@@ -91,5 +92,6 @@ describe("handleAxiosResponseError — chat-auth x-api-contract:2 nested error.c
     );
     expect(rejected).toBeInstanceOf(ApiError);
     expect(rejected.errorCode).toBe("NETWORK_ERROR");
+    expect(rejected.userNotified).toBe(false);
   });
 });

@@ -29,6 +29,7 @@ import {
   WEEKDAY_LABELS,
   type Holiday,
 } from "../../features/attendance/workScheduleTypes";
+import { showAttendanceError } from "../../features/attendance/attendanceErrorNotification";
 import {
   DataTable,
   type DataTableColumn,
@@ -110,12 +111,12 @@ export function HolidaysPage() {
       });
       setCreateOpen(false);
       form.reset();
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Không thêm được ngày lễ",
-        message: "Ngày này có thể đã được khai rồi.",
-      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không thêm được ngày lễ",
+        "Kiểm tra ngày vừa chọn và thử lại.",
+      );
     }
   }
 
@@ -135,12 +136,12 @@ export function HolidaysPage() {
       });
       setCloneOpen(false);
       setYear(cloneToYear);
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Không nhân bản được",
-        message: "Năm nguồn phải có sẵn ngày lễ và khác năm đích.",
-      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không nhân bản được",
+        "Năm nguồn phải có ngày lễ và khác năm đích.",
+      );
     }
   }
 
@@ -153,12 +154,12 @@ export function HolidaysPage() {
         message: `${holiday.name} đã được gỡ khỏi lịch ${holiday.year}.`,
       });
       setDeleting(null);
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Không xóa được ngày lễ",
-        message: "Vui lòng thử lại sau.",
-      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không xóa được ngày lễ",
+        "Tải lại danh sách rồi thử xóa lần nữa.",
+      );
     }
   }
 

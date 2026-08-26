@@ -41,6 +41,7 @@ import {
   useWeeklyShiftAssignments,
   useWorkShifts,
 } from "../../features/attendance/useWorkSchedule";
+import { showAttendanceError } from "../../features/attendance/attendanceErrorNotification";
 import {
   getWorkShiftCatalogOrder,
   sortWorkShiftCatalog,
@@ -300,14 +301,11 @@ function WeeklyShiftAssignmentsPanel({
       });
       setCancelling(null);
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Không thể hủy ca tuần",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Kiểm tra Kỳ công, đơn vị và khoảng hiệu lực rồi thử lại.",
-      });
+      showAttendanceError(
+        error,
+        "Không thể hủy ca tuần",
+        "Kiểm tra kỳ công, đơn vị và khoảng hiệu lực rồi thử lại.",
+      );
     }
   }
 
@@ -667,14 +665,11 @@ export function WeeklyShiftTemplatesPage() {
       setEditorOpened(false);
       setEditingTemplate(null);
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Không lưu được ca tuần",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Kiểm tra tên mẫu, 7 ngày trong tuần và trạng thái kỳ công rồi thử lại.",
-      });
+      showAttendanceError(
+        error,
+        "Không lưu được ca tuần",
+        "Kiểm tra tên mẫu và đủ 7 ngày trong tuần rồi thử lại.",
+      );
     }
   }
 
@@ -744,14 +739,11 @@ export function WeeklyShiftTemplatesPage() {
       setApplyTemplate(null);
       setApplyEmployeeIds([]);
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Chưa thể áp ca tuần",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Kiểm tra kỳ công, khoảng ngày và ca cá nhân chồng lấn rồi thử lại.",
-      });
+      showAttendanceError(
+        error,
+        "Chưa thể áp ca tuần",
+        "Kiểm tra kỳ công và khoảng ngày rồi thử lại.",
+      );
     }
   }
 
@@ -766,14 +758,11 @@ export function WeeklyShiftTemplatesPage() {
       });
       setDeletingTemplate(null);
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Không xóa được ca tuần",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Mẫu đã từng áp dụng được giữ lại để bảo toàn lịch sử phân ca.",
-      });
+      showAttendanceError(
+        error,
+        "Không xóa được ca tuần",
+        "Mẫu đã áp dụng cần được giữ lại để bảo toàn lịch sử phân ca.",
+      );
     }
   }
 
@@ -1059,7 +1048,20 @@ export function WeeklyShiftTemplatesPage() {
               />
             ))}
           </SimpleGrid>
-          {!activeShifts.length && !shiftsQuery.isLoading ? (
+          {shiftsQuery.isError ? (
+            <Alert color="red" variant="light" title="Không tải được danh mục ca">
+              <Group justify="space-between" align="center" wrap="wrap">
+                <Text size="sm">Không thể cấu hình các ngày cho tới khi tải lại danh mục ca.</Text>
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void shiftsQuery.refetch()}
+                >
+                  Thử lại
+                </Button>
+              </Group>
+            </Alert>
+          ) : !activeShifts.length && !shiftsQuery.isLoading ? (
             <Alert color="yellow" variant="light">
               Chưa có ca làm việc trong ngày đang áp dụng. Tạo ca ở “Ca làm việc” trước khi lập Ca tuần.
             </Alert>
@@ -1142,6 +1144,34 @@ export function WeeklyShiftTemplatesPage() {
               onChange={(value) => setEffectiveTo(value ?? periodEnd)}
             />
           </SimpleGrid>
+          {unitsQuery.isError ? (
+            <Alert color="red" variant="light" title="Không tải được danh sách đơn vị">
+              <Group justify="space-between" align="center" wrap="wrap">
+                <Text size="sm">Tải lại danh sách trước khi áp ca tuần.</Text>
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void unitsQuery.refetch()}
+                >
+                  Thử lại
+                </Button>
+              </Group>
+            </Alert>
+          ) : null}
+          {employeesQuery.isError ? (
+            <Alert color="red" variant="light" title="Không tải được danh sách CBNV">
+              <Group justify="space-between" align="center" wrap="wrap">
+                <Text size="sm">Không thể chọn CBNV của đơn vị đang áp dụng.</Text>
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void employeesQuery.refetch()}
+                >
+                  Thử lại
+                </Button>
+              </Group>
+            </Alert>
+          ) : null}
           <MultiSelect
             label="Nhân sự"
             description={`Đã chọn ${applyEmployeeIds.length} CBNV trong đơn vị.`}

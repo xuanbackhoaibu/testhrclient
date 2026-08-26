@@ -131,4 +131,16 @@ describe('AttendanceMappingPage', () => {
     // Natural sort: E1 < E2 < E10 (không phải thứ tự chuỗi E1, E10, E2).
     expect(codes).toEqual(['E1', 'E2', 'E10']);
   });
+
+  it('hiển thị lỗi tải và đường thử lại thay vì báo nhầm là không có dữ liệu', async () => {
+    getAttendanceMappingStats.mockRejectedValue(new Error('stats unavailable'));
+    getUnmappedAttendance.mockRejectedValue(new Error('mapping unavailable'));
+
+    renderPage();
+
+    expect(await screen.findByText('Không tải được số liệu mapping')).toBeTruthy();
+    expect(screen.getByText('Không tải được bản ghi chưa map')).toBeTruthy();
+    expect(screen.queryByText('Không có bản ghi nào cần xử lý.')).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'Thử lại' })).toHaveLength(2);
+  });
 });

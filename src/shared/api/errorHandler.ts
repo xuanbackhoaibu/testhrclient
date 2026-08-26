@@ -97,6 +97,10 @@ export async function handleAxiosResponseError(
           | string
           | undefined,
       });
+  const showApiError = (message: string) => {
+    apiError.userNotified = true;
+    showError(message);
+  };
 
   if (import.meta.env.DEV) {
     console.error('[HR API ERROR]', {
@@ -126,7 +130,7 @@ export async function handleAxiosResponseError(
     }
 
     if (errorCode === 'NO_HRM_ACCESS' || errorCode === 'AUTHENTICATED_BUT_NO_HRM_ACCESS') {
-      showError(
+      showApiError(
         appendRequestId(
           'Tài khoản đã đăng nhập nhưng chưa được cấp quyền truy cập HRM. Vui lòng liên hệ quản trị viên.',
           apiError.requestId,
@@ -140,7 +144,7 @@ export async function handleAxiosResponseError(
         ? ` Quyền yêu cầu: ${apiError.requiredPermissions.join(', ')}.`
         : '';
     const authorizationMessage = AUTHORIZATION_MESSAGES[errorCode];
-    showError(
+    showApiError(
       appendRequestId(
         `${authorizationMessage || apiError.message || STATUS_MESSAGES[403]}${requiredPermissions}`,
         apiError.requestId,
@@ -159,7 +163,7 @@ export async function handleAxiosResponseError(
       });
     }
 
-    showError(appendRequestId(apiError.message || STATUS_MESSAGES[404], apiError.requestId));
+    showApiError(appendRequestId(apiError.message || STATUS_MESSAGES[404], apiError.requestId));
     return Promise.reject(apiError);
   }
 
@@ -168,7 +172,7 @@ export async function handleAxiosResponseError(
     const messageText = first
       ? `${first.field ? `[${first.field}] ` : ''}${first.message}`
       : apiError.message;
-    showError(appendRequestId(messageText, apiError.requestId));
+    showApiError(appendRequestId(messageText, apiError.requestId));
     return Promise.reject(apiError);
   }
 
@@ -176,7 +180,7 @@ export async function handleAxiosResponseError(
     apiError.statusCode === 409 &&
     apiError.errorCode === 'EMPLOYEE_LINK_REQUIRED'
   ) {
-    showError(
+    showApiError(
       appendRequestId(
         'Tài khoản của bạn chưa được liên kết với hồ sơ nhân sự. Vui lòng liên hệ quản trị viên để được cấp hồ sơ nhân sự trước khi sử dụng lịch.',
         apiError.requestId,
@@ -188,24 +192,24 @@ export async function handleAxiosResponseError(
   if (apiError.statusCode === 409) {
     const leaveDurationMessage = getLeaveDurationErrorMessage(apiError);
     if (leaveDurationMessage) {
-      showError(appendRequestId(leaveDurationMessage, apiError.requestId));
+      showApiError(appendRequestId(leaveDurationMessage, apiError.requestId));
       return Promise.reject(apiError);
     }
     if (apiError.errorCode === 'HR_PROJECTION_NOT_READY') {
-      showError(appendRequestId(
+      showApiError(appendRequestId(
         'Dữ liệu nhân sự đang được đồng bộ sang hệ thống tài khoản. Vui lòng thử lại sau ít phút.',
         apiError.requestId,
       ));
       return Promise.reject(apiError);
     }
     if (apiError.errorCode === 'IDENTITY_CONFLICT') {
-      showError(appendRequestId(
+      showApiError(appendRequestId(
         'Dữ liệu định danh nhân sự đang bị trùng. Vui lòng liên hệ quản trị viên xử lý.',
         apiError.requestId,
       ));
       return Promise.reject(apiError);
     }
-    showError(appendRequestId(
+    showApiError(appendRequestId(
       AUTHORIZATION_MESSAGES[apiError.errorCode]
         || `${apiError.message || STATUS_MESSAGES[409]} Vui lòng tải lại dữ liệu trước khi thử lại.`,
       apiError.requestId,
@@ -214,7 +218,7 @@ export async function handleAxiosResponseError(
   }
 
   if (apiError.statusCode === 503 && apiError.errorCode.includes('AUTH')) {
-    showError(appendRequestId(
+    showApiError(appendRequestId(
       AUTHORIZATION_MESSAGES.AUTHORITY_SERVICE_UNAVAILABLE,
       apiError.requestId,
     ));
@@ -223,7 +227,7 @@ export async function handleAxiosResponseError(
 
   const mapped = STATUS_MESSAGES[apiError.statusCode];
   if (mapped) {
-    showError(appendRequestId(mapped, apiError.requestId));
+    showApiError(appendRequestId(mapped, apiError.requestId));
     return Promise.reject(apiError);
   }
 
