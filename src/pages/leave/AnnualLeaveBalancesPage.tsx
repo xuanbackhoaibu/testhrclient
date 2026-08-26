@@ -92,8 +92,7 @@ const fixedColumns = [
   { key: "sequence", width: 32, left: 0 },
   { key: "name", width: 160, left: 32 },
   { key: "code", width: 62, left: 192 },
-  { key: "department", width: 170, left: 254 },
-  { key: "hireDate", width: 136, left: 424 },
+  { key: "hireDate", width: 136, left: 254 },
 ] as const;
 const fixedColumnsWidth = fixedColumns.reduce(
   (total, column) => total + column.width,
@@ -558,7 +557,7 @@ export function AnnualLeaveBalancesPage() {
               horizontalSpacing={0}
               verticalSpacing={0}
               style={{
-                minWidth: 2_900,
+                minWidth: 2_730,
                 borderCollapse: "separate",
                 borderSpacing: 0,
               }}
@@ -594,15 +593,6 @@ export function AnnualLeaveBalancesPage() {
                     style={{
                       ...headerStyle,
                       ...fixedCellStyle(fixedColumns[3], true),
-                      textAlign: "left",
-                    }}
-                  >
-                    Phòng ban
-                  </Table.Th>
-                  <Table.Th
-                    style={{
-                      ...headerStyle,
-                      ...fixedCellStyle(fixedColumns[4], true),
                     }}
                   >
                     Ngày bắt đầu làm việc
@@ -647,7 +637,7 @@ export function AnnualLeaveBalancesPage() {
               <Table.Tbody>
                 {balances.isLoading ? (
                   <Table.Tr>
-                    <Table.Td colSpan={26} py="xl">
+                    <Table.Td colSpan={25} py="xl">
                       <Group justify="center">
                         <Loader size="sm" />
                         <Text size="sm" c="dimmed">
@@ -658,7 +648,7 @@ export function AnnualLeaveBalancesPage() {
                   </Table.Tr>
                 ) : rows.length === 0 ? (
                   <Table.Tr>
-                    <Table.Td colSpan={26} py={48}>
+                    <Table.Td colSpan={25} py={48}>
                       <Stack align="center" gap={4}>
                         <IconBook2
                           size={28}
@@ -676,7 +666,7 @@ export function AnnualLeaveBalancesPage() {
                     <Fragment key={group.key}>
                       <Table.Tr>
                         <Table.Td
-                          colSpan={5}
+                          colSpan={4}
                           style={{
                             background: "#d9d2e9",
                             boxShadow: "2px 0 0 var(--mantine-color-gray-4)",
@@ -766,18 +756,9 @@ export function AnnualLeaveBalancesPage() {
                               {row.attendanceCode ?? "Thiếu"}
                             </Text>
                           </Table.Td>
-                          <Table.Td style={fixedCellStyle(fixedColumns[3])}>
-                            <Text
-                              size="xs"
-                              truncate
-                              title={row.department?.name ?? ""}
-                            >
-                              {row.department?.name ?? "—"}
-                            </Text>
-                          </Table.Td>
                           <Table.Td
                             style={{
-                              ...fixedCellStyle(fixedColumns[4]),
+                              ...fixedCellStyle(fixedColumns[3]),
                               textAlign: "center",
                             }}
                           >

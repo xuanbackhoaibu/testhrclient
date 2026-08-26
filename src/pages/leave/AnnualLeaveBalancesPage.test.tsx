@@ -244,13 +244,15 @@ describe("AnnualLeaveBalancesPage", () => {
       "TT",
       "Họ và tên",
       "MCB",
-      "Phòng ban",
       "Ngày bắt đầu làm việc",
       "T1",
       "T12",
     ]) {
       expect(screen.getByRole("columnheader", { name: header })).toBeDefined();
     }
+    expect(
+      screen.queryByRole("columnheader", { name: "Phòng ban" }),
+    ).toBeNull();
     expect(screen.getByText("00108")).toBeDefined();
     expect(screen.getByText("02/01/2020")).toBeDefined();
     expect(screen.queryByRole("button", { name: "Import Excel" })).toBeNull();
@@ -307,9 +309,12 @@ describe("AnnualLeaveBalancesPage", () => {
     expect(screen.getByText("Hiển thị 1–1 / 1 CBNV")).toBeDefined();
 
     const nameHeader = screen.getByRole("columnheader", { name: "Họ và tên" });
-    const identityColumns = ["TT", "Họ và tên", "MCB", "Phòng ban"].map(
-      (header) => screen.getByRole("columnheader", { name: header }),
-    );
+    const identityColumns = [
+      "TT",
+      "Họ và tên",
+      "MCB",
+      "Ngày bắt đầu làm việc",
+    ].map((header) => screen.getByRole("columnheader", { name: header }));
     const employeeRow = screen
       .getByRole("button", { name: "Mở sổ phép của Nguyễn Văn Một" })
       .closest("tr");
@@ -327,7 +332,7 @@ describe("AnnualLeaveBalancesPage", () => {
         screen.queryByRole("columnheader", { name: removedHeader }),
       ).toBeNull();
     }
-    expect(organizationRow?.children[0].getAttribute("colspan")).toBe("5");
+    expect(organizationRow?.children[0].getAttribute("colspan")).toBe("4");
     expect(organizationRow?.children[1].getAttribute("colspan")).toBe("21");
     expect(organizationRow?.textContent).toContain("(1 CBNV)");
     expect(nameHeader.style.top).toBe("0px");
@@ -341,10 +346,10 @@ describe("AnnualLeaveBalancesPage", () => {
       { left: "0px", width: "32px" },
       { left: "32px", width: "160px" },
       { left: "192px", width: "62px" },
-      { left: "254px", width: "170px" },
+      { left: "254px", width: "136px" },
     ]);
     expect(employeeRow).not.toBeNull();
-    expect((employeeRow?.children[9] as HTMLElement).style.background).toBe(
+    expect((employeeRow?.children[8] as HTMLElement).style.background).toBe(
       "rgb(255, 245, 157)",
     );
     expect(
