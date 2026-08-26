@@ -51,7 +51,6 @@ export function AuthLayout() {
       goToSlide((index + 1) % HACOM_IMAGES.length);
     }, SLIDE_DURATION);
     return () => window.clearInterval(id);
-     
   }, [index]);
 
   const current = HACOM_IMAGES[index];
@@ -82,18 +81,24 @@ export function AuthLayout() {
             {current.subtitle}
           </p>
 
-          <div className="auth-shell-dots">
+          <div className="auth-shell-dots" aria-label="Chọn dự án nổi bật">
             {HACOM_IMAGES.map((img, i) => (
               <button
                 key={img.src}
                 type="button"
                 aria-label={`Xem ${img.title}`}
+                aria-current={i === index ? 'true' : undefined}
                 onClick={() => goToSlide(i)}
                 className={`auth-shell-dot${i === index ? ' is-active' : ''}`}
               >
-                {i === index && phase === 'enter' ? (
-                  <span key={index} className="auth-shell-dot-fill" />
-                ) : null}
+                <span className="auth-shell-dot-label">
+                  {img.title.replace('Hacom ', '')}
+                </span>
+                <span className="auth-shell-dot-track">
+                  {i === index && phase === 'enter' ? (
+                    <span key={index} className="auth-shell-dot-fill" />
+                  ) : null}
+                </span>
               </button>
             ))}
           </div>
