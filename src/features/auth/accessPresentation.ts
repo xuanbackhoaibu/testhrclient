@@ -65,7 +65,7 @@ const ACCESS_MODULES: AccessModuleDefinition[] = [
     key: "attendance",
     label: "Công, ca và phép",
     description:
-      "Dữ liệu máy chấm công, ca, phân ca, kỳ công, bảng công, đơn nghỉ và bảng phép năm.",
+      "Dữ liệu chấm công, lịch làm việc, kỳ chốt công, bảng chấm công, loại nghỉ phép và bảng phép năm.",
     matches: (permission) =>
       permission.startsWith("hr.attendance.") ||
       permission.startsWith("hr.leave.") ||

@@ -733,7 +733,7 @@ export function LeavePage() {
   return (
     <>
       <PageHeader
-        title="Quản lý nghỉ phép"
+        title="Loại nghỉ phép"
         subtitle="Theo dõi trạng thái đơn và quy tắc ký hiệu nghỉ phép trước khi đối chiếu bảng công. Tạo và xử lý đơn thực hiện trên Hacom Chat."
       />
 
