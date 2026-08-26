@@ -78,6 +78,7 @@ export interface AnnualLeaveImportPreview {
   warningRows: number;
   failedRows: number;
   canCommit: boolean;
+  requiresNote: boolean;
   rows: AnnualLeaveImportPreviewRow[];
 }
 

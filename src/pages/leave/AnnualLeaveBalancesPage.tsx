@@ -952,6 +952,12 @@ function AnnualLeaveImportModal({
             <Textarea
               label="Lý do / ghi chú đối chiếu"
               description="Bắt buộc nếu file có Số ngày phép khác lớn hơn 0."
+              required={preview.data.requiresNote}
+              error={
+                preview.data.requiresNote && !note.trim()
+                  ? "File có Số ngày phép khác; cần nhập lý do trước khi xác nhận."
+                  : undefined
+              }
               minRows={2}
               maxLength={500}
               value={note}
@@ -969,7 +975,8 @@ function AnnualLeaveImportModal({
             disabled={
               !preview.data ||
               !preview.data.canCommit ||
-              (preview.data.warningRows > 0 && !allowWarnings)
+              (preview.data.warningRows > 0 && !allowWarnings) ||
+              (preview.data.requiresNote && !note.trim())
             }
             onClick={() => void commitFile()}
           >
