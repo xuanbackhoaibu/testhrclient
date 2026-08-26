@@ -4,6 +4,7 @@ import { notifications } from '@mantine/notifications';
 import { IconCheck, IconRefresh, IconUsers } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 import { useBioTimeDepartments, useSyncBioTimeDepartments } from '../../../features/attendance/useAttendanceSync';
+import { showAttendanceError } from '../../../features/attendance/attendanceErrorNotification';
 import { DataTable } from '../../../shared/components/DataTable';
 import { sortByCode } from '../../../shared/utils/sort';
 import { NormalizedSearchInput } from '../../../shared/components/NormalizedSearchInput';
@@ -14,7 +15,7 @@ export function BioTimeDepartmentsTable() {
   const [keyword, setKeyword] = useState('');
   const PAGE_SIZE = 50;
 
-  const { data, isLoading, refetch } = useBioTimeDepartments({
+  const { data, error, isLoading, refetch } = useBioTimeDepartments({
     page,
     pageSize: PAGE_SIZE,
     isActive: true,
@@ -39,16 +40,16 @@ export function BioTimeDepartmentsTable() {
         void refetch();
       },
       onError: (err) => {
-        notifications.show({
-          title: 'Đồng bộ thất bại',
-          message: err instanceof Error ? err.message : 'Lỗi không xác định',
-          color: 'red',
-        });
+        showAttendanceError(
+          err,
+          'Đồng bộ phòng ban thất bại',
+          'Kiểm tra kết nối BioTime rồi thử lại.',
+        );
       },
     });
   };
 
-  if (totalCount === 0 && !isLoading) {
+  if (totalCount === 0 && !isLoading && !error) {
     return (
       <Stack gap="sm">
         <Alert
@@ -172,6 +173,8 @@ export function BioTimeDepartmentsTable() {
         rowKey={(dept) => dept.id}
         meta={pagination}
         loading={isLoading}
+        error={error}
+        onRetry={() => void refetch()}
         onPageChange={(newPage: number) => setPage(newPage)}
       />
     </Stack>

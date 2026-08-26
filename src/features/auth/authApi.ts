@@ -6,7 +6,19 @@ import type { AuthUser } from './types';
 
 const isMockMode = import.meta.env.VITE_USE_MOCKS === 'true';
 
-export async function getCurrentUser(): Promise<AuthUser> {
+let currentUserPromise: Promise<AuthUser> | null = null;
+
+export function getCurrentUser(): Promise<AuthUser> {
+  if (!currentUserPromise) {
+    currentUserPromise = fetchCurrentUser().finally(() => {
+      currentUserPromise = null;
+    });
+  }
+
+  return currentUserPromise;
+}
+
+async function fetchCurrentUser(): Promise<AuthUser> {
   if (isMockMode) {
     await mockDelay();
     const token = window.localStorage.getItem('hr-web-client.accessToken');

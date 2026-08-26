@@ -38,6 +38,7 @@ import {
 } from "@tabler/icons-react";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
+import { showAttendanceError } from "../../features/attendance/attendanceErrorNotification";
 import {
   ALL_ASSIGNMENT_WEEKDAYS,
   canOpenShiftAssignmentGridPicker,
@@ -460,7 +461,7 @@ function Legend() {
               width: 11,
             }}
           />
-          <Text fz={10} lh={1.2} c="dimmed">
+          <Text size="xs" lh={1.2} c="dimmed">
             {item.label}
           </Text>
         </Group>
@@ -478,7 +479,7 @@ function Legend() {
             width: 11,
           }}
         />
-        <Text fz={10} lh={1.2} c="dimmed">
+        <Text size="xs" lh={1.2} c="dimmed">
           Ca qua ngày (lặp lại mã ca ở ngày kết thúc)
         </Text>
       </Group>
@@ -1091,7 +1092,7 @@ export function MonthlyShiftAssignmentGrid({
           ? error.message
           : replacesExistingAssignment
             ? "Không thể đổi ca. Kiểm tra kỳ công hoặc phạm vi áp dụng rồi thử lại."
-            : "Không thể áp ca. Kiểm tra kỳ công hoặc ca đang chồng lấn rồi thử lại.",
+            : "Không thể áp ca. Kiểm tra kỳ công hoặc phạm vi áp dụng rồi thử lại.",
       );
     } finally {
       setCellShiftApplyingId(null);
@@ -1193,14 +1194,11 @@ export function MonthlyShiftAssignmentGrid({
           : `Đã phân ca cho ${result.created} CBNV. Họ chưa vào BCC; dùng nút “Đưa vào BCC” khi đã sẵn sàng.`,
       });
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Chưa thể áp ca",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Kiểm tra khoảng ngày hoặc ca cá nhân đang chồng lấn rồi thử lại.",
-      });
+      showAttendanceError(
+        error,
+        "Chưa thể áp ca",
+        "Kiểm tra khoảng ngày rồi thử áp lại.",
+      );
     }
   }
 
@@ -1224,12 +1222,12 @@ export function MonthlyShiftAssignmentGrid({
           ? `Đã hủy ${result.cancelled} ngày ca cá nhân. CBNV vẫn ở trong BCC; mở Bảng công rồi bấm Cập nhật bảng công để áp lại.`
           : "Các ngày đã chọn không có ca cá nhân nào. Ca theo phòng ban, đơn vị hoặc ca tuần phải sửa ở đúng quy tắc nguồn.",
       });
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Không hủy được ca",
-        message: "Kiểm tra lại khoảng ngày và trạng thái kỳ công.",
-      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không hủy được ca",
+        "Kiểm tra khoảng ngày rồi thử lại.",
+      );
     }
   }
 
@@ -1268,14 +1266,11 @@ export function MonthlyShiftAssignmentGrid({
             : "Các CBNV đã chọn đã ở BCC; không có ca nào bị thay đổi.",
       });
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Chưa thể đưa vào BCC",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Kiểm tra kỳ công, phạm vi đơn vị hoặc CBNV đã có ở BCC đơn vị khác rồi thử lại.",
-      });
+      showAttendanceError(
+        error,
+        "Chưa thể đưa vào BCC",
+        "Kiểm tra kỳ công và phạm vi đơn vị rồi thử lại.",
+      );
     }
   }
 
@@ -1291,18 +1286,6 @@ export function MonthlyShiftAssignmentGrid({
 
   return (
     <Stack gap="md">
-      <InfoBanner title="Cách phân ca và quan hệ với BCC" collapsible>
-        Phân ca ở đây tạo <b>ca cá nhân</b> cho các CBNV được tích chọn; ca cá
-        nhân ưu tiên hơn ca phòng ban và đơn vị. Nhấn ô <b>—</b> để chọn ca trực
-        tiếp cho đúng CBNV/ngày; thao tác này luôn đưa CBNV vào BCC. Chủ nhật
-        mặc định nghỉ; HR chỉ có thể phân ca ngày này khi chủ động chọn ca tại ô
-        hoặc chọn Chủ nhật trong phần Ngày áp dụng. Ngày lễ vẫn không áp ca tại
-        đây. Mặc định, <b>Áp dụng ca</b> cũng đưa đúng các CBNV đó vào BCC. Bỏ
-        chọn “Đưa vào BCC cùng ca” khi chỉ muốn lập kế hoạch ca. Với CBNV đã có
-        ca, dùng <b>Đưa vào BCC</b> để bổ sung bảng công mà không tạo lại ca.
-        Sau đó mở đúng kỳ, bấm <b>Cập nhật bảng công</b> rồi mới xuất Excel.
-      </InfoBanner>
-
       <FilterBar>
         <Select
           aria-label="Kỳ công"
@@ -1573,17 +1556,34 @@ export function MonthlyShiftAssignmentGrid({
             </div>
           </div>
 
-          <div className={toolbarStyles.footer}>
-            <Legend />
-            <Text size="xs" c="dimmed">
-              Ca cá nhân đang chồng ngày sẽ được báo lỗi; hệ thống không tự ghi
-              đè lịch sử. Cột (1)–(6) quy số công theo danh mục ca (ca 12 giờ
-              1.5 công, ca 24 giờ 3 công) và tính trên lịch đã phân — công chốt
-              cuối kỳ vẫn lấy ở Bảng công tháng sau khi có dữ liệu chấm công.
-            </Text>
-          </div>
         </div>
       </Paper>
+
+      {unitsQuery.isError || departmentsQuery.isError ? (
+        <Alert color="red" variant="light" title="Không tải được phạm vi phân ca">
+          <Group gap="xs" wrap="wrap">
+            <Text size="sm">Không thể lấy đầy đủ đơn vị hoặc phòng ban để phân ca.</Text>
+            {unitsQuery.isError ? (
+              <Button
+                size="compact-sm"
+                variant="light"
+                onClick={() => void unitsQuery.refetch()}
+              >
+                Tải lại đơn vị
+              </Button>
+            ) : null}
+            {departmentsQuery.isError ? (
+              <Button
+                size="compact-sm"
+                variant="light"
+                onClick={() => void departmentsQuery.refetch()}
+              >
+                Tải lại phòng ban
+              </Button>
+            ) : null}
+          </Group>
+        </Alert>
+      ) : null}
 
       {rosterMismatch.assignedNotInTimesheet ||
       rosterMismatch.inTimesheetWithoutShift ? (
@@ -2433,6 +2433,40 @@ export function MonthlyShiftAssignmentGrid({
           </Group>
         </Stack>
       ) : null}
+
+      <InfoBanner
+        title="Cách phân ca và quan hệ với BCC"
+        tone="neutral"
+        collapsible
+      >
+        <Stack gap="sm">
+          <Text size="sm" inherit>
+            Phân ca ở đây tạo <b>ca cá nhân</b> cho các CBNV được tích chọn; ca
+            cá nhân ưu tiên hơn ca phòng ban và đơn vị. Nhấn ô <b>—</b> để chọn
+            ca trực tiếp cho đúng CBNV/ngày; thao tác này luôn đưa CBNV vào BCC.
+            Chủ nhật mặc định nghỉ; HR chỉ có thể phân ca ngày này khi chủ động
+            chọn ca tại ô hoặc chọn Chủ nhật trong phần Ngày áp dụng. Ngày lễ
+            vẫn không áp ca tại đây. Mặc định, <b>Áp dụng ca</b> cũng đưa đúng
+            các CBNV đó vào BCC. Bỏ chọn “Đưa vào BCC cùng ca” khi chỉ muốn lập
+            kế hoạch ca. Với CBNV đã có ca, dùng <b>Đưa vào BCC</b> để bổ sung
+            bảng công mà không tạo lại ca. Sau đó mở đúng kỳ, bấm <b>Cập nhật
+            bảng công</b> rồi mới xuất Excel.
+          </Text>
+          <Stack gap={6}>
+            <Text size="xs" fw={700} c="dimmed">
+              Chú giải bảng
+            </Text>
+            <Legend />
+            <Text size="xs" c="dimmed">
+              Ca mới thay phần ca cũ chồng ngày; phần lịch nằm ngoài khoảng áp
+              dụng vẫn được giữ nguyên. Cột (1)–(6) quy số công theo danh mục ca
+              (ca 12 giờ 1.5 công, ca 24 giờ 3 công) và tính trên lịch đã phân —
+              công chốt cuối kỳ vẫn lấy ở Bảng công tháng sau khi có dữ liệu
+              chấm công.
+            </Text>
+          </Stack>
+        </Stack>
+      </InfoBanner>
 
       <ConfirmActionModal
         opened={bulkCancelConfirmOpen}

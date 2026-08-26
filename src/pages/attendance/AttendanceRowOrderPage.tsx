@@ -24,6 +24,7 @@ import {
   resolveDropIndex,
   type DropSide,
 } from "../../features/attendance/rowOrderDrop";
+import { showAttendanceError } from "../../features/attendance/attendanceErrorNotification";
 import { useDepartmentsSelect } from "../../features/organization/useDepartments";
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { PageHeader } from "../../shared/components/PageHeader";
@@ -124,14 +125,11 @@ export function AttendanceRowOrderPage() {
         { employeeId: moved, toIndex },
         {
           onError: (error) => {
-            notifications.show({
-              color: "red",
-              title: "Không lưu được thứ tự",
-              message:
-                error instanceof Error && error.message
-                  ? error.message
-                  : "Thứ tự đã được trả về như cũ.",
-            });
+            showAttendanceError(
+              error,
+              "Không lưu được thứ tự",
+              "Thứ tự đã được trả về như cũ. Tải lại rồi thử lần nữa.",
+            );
           },
         },
       );
@@ -148,14 +146,11 @@ export function AttendanceRowOrderPage() {
         message: "Phòng ban quay lại sắp theo mã chấm công.",
       });
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Không bỏ được thứ tự",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Thử lại sau.",
-      });
+      showAttendanceError(
+        error,
+        "Không bỏ được thứ tự",
+        "Tải lại danh sách rồi thử lần nữa.",
+      );
     }
   }
 
@@ -213,6 +208,32 @@ export function AttendanceRowOrderPage() {
         </Group>
       </Paper>
 
+      {unitsQuery.isError || departmentsQuery.isError ? (
+        <Alert color="red" variant="light" title="Không tải được phạm vi nhân sự">
+          <Group gap="xs" wrap="wrap">
+            <Text size="sm">Không thể lấy đầy đủ đơn vị hoặc phòng ban để sắp thứ tự.</Text>
+            {unitsQuery.isError ? (
+              <Button
+                size="compact-sm"
+                variant="light"
+                onClick={() => void unitsQuery.refetch()}
+              >
+                Tải lại đơn vị
+              </Button>
+            ) : null}
+            {departmentsQuery.isError ? (
+              <Button
+                size="compact-sm"
+                variant="light"
+                onClick={() => void departmentsQuery.refetch()}
+              >
+                Tải lại phòng ban
+              </Button>
+            ) : null}
+          </Group>
+        </Alert>
+      ) : null}
+
       {!departmentId ? (
         <Alert color="blue" variant="light">
           Chọn đơn vị và phòng ban để bắt đầu sắp thứ tự.
@@ -231,7 +252,18 @@ export function AttendanceRowOrderPage() {
 
       {departmentId && orderQuery.isError ? (
         <Alert color="red" variant="light" title="Không tải được danh sách">
-          Kiểm tra lại phòng ban đang chọn rồi thử lại.
+          <Stack gap="xs" align="flex-start">
+            <Text size="sm">
+              Không thể lấy thứ tự nhân sự của phòng ban đang chọn.
+            </Text>
+            <Button
+              size="compact-sm"
+              variant="light"
+              onClick={() => void orderQuery.refetch()}
+            >
+              Thử lại
+            </Button>
+          </Stack>
         </Alert>
       ) : null}
 

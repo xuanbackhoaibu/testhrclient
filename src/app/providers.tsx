@@ -25,6 +25,7 @@ import { isDefinitiveAuthRefreshFailure } from '../shared/api/authRefreshFailure
 
 dayjs.locale('vi');
 
+const authorityRecoveryIntervalMs = 10_000;
 
 const theme = createTheme({
   primaryColor: 'blue',
@@ -139,9 +140,30 @@ function AuthBootstrap({ children }: PropsWithChildren) {
       }
     }
 
+    function recoverMissingAuthority() {
+      const { isAuthenticated, user } = useAuthStore.getState();
+      if (
+        !isAuthenticated ||
+        user ||
+        document.visibilityState !== 'visible' ||
+        !navigator.onLine
+      ) {
+        return;
+      }
+
+      void refreshAuthorityOnForeground();
+    }
+
     document.addEventListener('visibilitychange', refreshAuthorityOnForeground);
+    window.addEventListener('online', recoverMissingAuthority);
+    const recoveryInterval = window.setInterval(
+      recoverMissingAuthority,
+      authorityRecoveryIntervalMs,
+    );
     return () => {
       document.removeEventListener('visibilitychange', refreshAuthorityOnForeground);
+      window.removeEventListener('online', recoverMissingAuthority);
+      window.clearInterval(recoveryInterval);
     };
   }, []);
 

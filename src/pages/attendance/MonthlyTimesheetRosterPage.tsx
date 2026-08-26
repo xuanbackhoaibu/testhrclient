@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  Alert,
   Badge,
   Button,
   Checkbox,
@@ -27,6 +28,7 @@ import {
   useMonthlyTimesheetRoster,
   useUpdateMonthlyTimesheetRosterMembers,
 } from "../../features/attendance/useTimesheet";
+import { showAttendanceError } from "../../features/attendance/attendanceErrorNotification";
 import type {
   MonthlyTimesheetRosterQuery,
   MonthlyTimesheetRosterRow,
@@ -310,14 +312,11 @@ export function MonthlyTimesheetRosterPage() {
         message: "Chọn các CBNV đủ điều kiện rồi lưu để đưa vào BCC.",
       });
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Không khởi tạo được bảng sắp ca",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Vui lòng kiểm tra đơn vị và thử lại.",
-      });
+      showAttendanceError(
+        error,
+        "Không khởi tạo được bảng sắp ca",
+        "Kiểm tra đơn vị rồi thử lại.",
+      );
     }
   }
 
@@ -348,14 +347,11 @@ export function MonthlyTimesheetRosterPage() {
         message: "Bảng công tháng sẽ dùng các CBNV đã chọn trong đơn vị này.",
       });
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Không lưu được danh sách BCC",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Kiểm tra ngày tính công và quyền thao tác rồi thử lại.",
-      });
+      showAttendanceError(
+        error,
+        "Không lưu được danh sách BCC",
+        "Kiểm tra ngày tính công rồi thử lại.",
+      );
     }
   }
 
@@ -616,6 +612,32 @@ export function MonthlyTimesheetRosterPage() {
             className={filterStyles.grow}
           />
         </FilterBar>
+
+        {unitsQuery.isError || departmentsQuery.isError ? (
+          <Alert color="red" variant="light" title="Không tải được phạm vi nhân sự">
+            <Group gap="xs" wrap="wrap">
+              <Text size="sm">Không thể lấy đầy đủ đơn vị hoặc phòng ban để lập danh sách BCC.</Text>
+              {unitsQuery.isError ? (
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void unitsQuery.refetch()}
+                >
+                  Tải lại đơn vị
+                </Button>
+              ) : null}
+              {departmentsQuery.isError ? (
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void departmentsQuery.refetch()}
+                >
+                  Tải lại phòng ban
+                </Button>
+              ) : null}
+            </Group>
+          </Alert>
+        ) : null}
 
         {!selectedUnitId ? (
           <InfoBanner>

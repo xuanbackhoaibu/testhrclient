@@ -39,6 +39,7 @@ import {
   useWorkCalendar,
   useWorkShifts,
 } from "../../features/attendance/useWorkSchedule";
+import { showAttendanceError } from "../../features/attendance/attendanceErrorNotification";
 import {
   getWorkShiftCatalogOrder,
   sortWorkShiftCatalog,
@@ -336,14 +337,11 @@ export function WorkShiftsPage() {
       setEditing(null);
       form.reset();
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Không lưu được ca làm việc",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Kiểm tra lại mã ca (không trùng) và định dạng giờ HH:mm.",
-      });
+      showAttendanceError(
+        error,
+        "Không lưu được ca làm việc",
+        "Kiểm tra mã ca không trùng và các mốc giờ HH:mm.",
+      );
     }
   }
 
@@ -359,12 +357,12 @@ export function WorkShiftsPage() {
         title: "Đã cập nhật lịch tuần",
         message: `${WEEKDAY_LABELS[weekday]} đã được lưu.`,
       });
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Không cập nhật được lịch tuần",
-        message: "Ngày làm việc bắt buộc phải chọn ca áp dụng.",
-      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không cập nhật được lịch tuần",
+        "Ngày làm việc bắt buộc phải có ca áp dụng.",
+      );
     }
   }
 
@@ -381,14 +379,11 @@ export function WorkShiftsPage() {
       });
       setDeleting(null);
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Không xóa được ca làm việc",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Ca đã được dùng có thể chỉ tạm ngưng để giữ lịch sử chấm công.",
-      });
+      showAttendanceError(
+        error,
+        "Không xóa được ca làm việc",
+        "Ca đã được dùng cần chuyển sang tạm ngưng để giữ lịch sử.",
+      );
     }
   }
 
@@ -578,6 +573,19 @@ export function WorkShiftsPage() {
               <Text c="dimmed" size="sm">
                 Đang tải lịch tuần…
               </Text>
+            ) : calendarQuery.isError ? (
+              <Alert color="red" variant="light" title="Không tải được lịch tuần">
+                <Stack gap="xs" align="flex-start">
+                  <Text size="sm">Không thể lấy cấu hình ngày làm việc mặc định.</Text>
+                  <Button
+                    size="compact-sm"
+                    variant="light"
+                    onClick={() => void calendarQuery.refetch()}
+                  >
+                    Thử lại
+                  </Button>
+                </Stack>
+              </Alert>
             ) : (
               <Stack gap="xs">
                 {(calendarQuery.data ?? [])

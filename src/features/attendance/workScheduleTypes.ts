@@ -212,8 +212,8 @@ export interface BulkShiftAssignmentPayload {
    */
   includeInTimesheet?: boolean;
   /**
-   * Ca mới đè ca cá nhân đã có trong khoảng áp thay vì báo lỗi chồng ngày.
-   * Phần ca cũ nằm ngoài khoảng áp vẫn được backend giữ nguyên.
+   * Tương thích backend cũ; backend hiện luôn để ca mới thắng phần ca cũ giao
+   * cả ngày lẫn thứ và giữ nguyên phần ngoài phạm vi.
    */
   overwriteExisting?: boolean;
   note?: string;
@@ -295,7 +295,7 @@ export interface ApplyWeeklyShiftTemplatePayload {
   effectiveFrom: string;
   effectiveTo: string;
   note?: string;
-  /** Mặc định false: không âm thầm ghi đè ca cá nhân hiện hữu. */
+  /** Tương thích backend cũ; ca tuần mới luôn thay phần ca cũ chồng khoảng. */
   overwriteExisting?: boolean;
   /** Mặc định backend là true; chỉ gửi false khi HR chủ động bỏ chọn. */
   includeInTimesheet?: boolean;
@@ -307,7 +307,7 @@ export interface ApplyWeeklyShiftTemplateResult {
   replacedWeeklyAssignments: number;
   /** Số phân ca cá nhân cũ bị thay thế trong đúng khoảng đã chọn. */
   replacedDirectAssignments: number;
-  /** Các chỉnh sửa ca đúng một ngày được giữ nguyên. */
+  /** Trường tương thích ngược; chính sách mới luôn trả 0. */
   preservedDayOverrides: number;
   affected: Array<{
     employeeId: string;
@@ -318,7 +318,6 @@ export interface ApplyWeeklyShiftTemplateResult {
   includedInTimesheet: number;
   recomputeRequired: true;
 }
-
 
 /** Snapshot Ca tuần đã áp cho một CBNV; sửa mẫu sau này không đổi bản ghi này. */
 export interface WeeklyShiftAssignment {
