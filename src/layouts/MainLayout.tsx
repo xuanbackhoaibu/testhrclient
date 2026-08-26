@@ -100,6 +100,11 @@ const attendanceItems: NavItem[] = [
     sectionLabel: "Làm hằng tháng",
   },
   { label: "Bảng công tháng", path: ROUTES.timesheetGrid, icon: IconTable },
+  {
+    label: "Bảng phép năm",
+    path: ROUTES.annualLeaveBalances,
+    icon: IconCalendarStats,
+  },
   { label: "Nghỉ phép", path: ROUTES.leave, icon: IconCalendarCheck },
   {
     label: "Kỳ công",
@@ -169,6 +174,7 @@ const routeTitles: Record<string, string> = {
   [ROUTES.attendanceMapping]: "Xử lý mapping",
   [ROUTES.monthlyTimesheetRoster]: "Sắp ca tháng",
   [ROUTES.timesheetGrid]: "Bảng công tháng",
+  [ROUTES.annualLeaveBalances]: "Bảng phép năm",
   [ROUTES.timesheetPeriods]: "Kỳ công",
   [ROUTES.attendanceRowOrder]: "Thứ tự nhân sự",
   [ROUTES.workShifts]: "Ca làm việc",
@@ -221,16 +227,20 @@ export function MainLayout() {
   const visibleIamItems = iamItems.filter((item) =>
     canAccessRoute(user, item.path),
   );
-  const visibleIamAccountItems = visibleIamItems.filter((item) =>
-    item.path === ROUTES.accounts || item.path === ROUTES.pendingHrLinkAccounts,
+  const visibleIamAccountItems = visibleIamItems.filter(
+    (item) =>
+      item.path === ROUTES.accounts ||
+      item.path === ROUTES.pendingHrLinkAccounts,
   );
-  const visibleIamCatalogItems = visibleIamItems.filter((item) =>
-    item.path === ROUTES.roles ||
+  const visibleIamCatalogItems = visibleIamItems.filter(
+    (item) =>
+      item.path === ROUTES.roles ||
       item.path === ROUTES.permissionGroups ||
       item.path === ROUTES.permissions,
   );
-  const visibleIamAuthorizationItems = visibleIamItems.filter((item) =>
-    item.path === ROUTES.accountAuthorizations ||
+  const visibleIamAuthorizationItems = visibleIamItems.filter(
+    (item) =>
+      item.path === ROUTES.accountAuthorizations ||
       item.path === ROUTES.workReportAuthorizations,
   );
 
@@ -371,8 +381,9 @@ export function MainLayout() {
                 >
                   <NavLink
                     label="Người dùng và tài khoản"
-                    defaultOpened={visibleIamAccountItems
-                      .some((item) => isActive(location.pathname, item.path))}
+                    defaultOpened={visibleIamAccountItems.some((item) =>
+                      isActive(location.pathname, item.path),
+                    )}
                   >
                     {visibleIamAccountItems.map((item) => {
                       const Icon = item.icon;
@@ -390,8 +401,9 @@ export function MainLayout() {
                   </NavLink>
                   <NavLink
                     label="Vai trò và quyền"
-                    defaultOpened={visibleIamCatalogItems
-                      .some((item) => isActive(location.pathname, item.path))}
+                    defaultOpened={visibleIamCatalogItems.some((item) =>
+                      isActive(location.pathname, item.path),
+                    )}
                   >
                     {visibleIamCatalogItems.map((item) => {
                       const Icon = item.icon;
@@ -412,7 +424,11 @@ export function MainLayout() {
                     return (
                       <NavLink
                         key={item.path}
-                        label={item.path === ROUTES.workReportAuthorizations ? "Báo cáo công việc" : item.label}
+                        label={
+                          item.path === ROUTES.workReportAuthorizations
+                            ? "Báo cáo công việc"
+                            : item.label
+                        }
                         leftSection={<Icon size={17} />}
                         active={isActive(location.pathname, item.path)}
                         onClick={() => goTo(item.path)}
@@ -472,7 +488,6 @@ export function MainLayout() {
                   })}
                 </NavLink>
               ) : null}
-
 
               {visibleFinalItems.map((item) => {
                 const Icon = item.icon;

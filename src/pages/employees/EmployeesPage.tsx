@@ -25,7 +25,10 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
-import { AUTH_ADMIN_PERMISSIONS, HR_PERMISSIONS } from "../../features/auth/permissions";
+import {
+  AUTH_ADMIN_PERMISSIONS,
+  HR_PERMISSIONS,
+} from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
 import {
   createEmployee,
@@ -65,6 +68,7 @@ import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchI
 import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
 import { HrmDateInput } from "../../shared/components/HrmDateInput";
 import { STATUS_LABEL_MAP } from "../../shared/constants/statusLabels";
+import { formatDate } from "../../shared/utils/date";
 
 const employmentStatusOptions = [
   "ACTIVE",
@@ -170,7 +174,8 @@ function normalizeEmployeePayload(values: EmployeePayload): EmployeePayload {
     employeeCode: employeeCode || undefined,
     fullName: values.fullName.trim(),
     companyEmail: trimOptional(values.companyEmail).toLowerCase() || undefined,
-    personalEmail: trimOptional(values.personalEmail).toLowerCase() || undefined,
+    personalEmail:
+      trimOptional(values.personalEmail).toLowerCase() || undefined,
     phone: trimOptional(values.phone) || undefined,
     gender: trimOptional(values.gender),
     dateOfBirth: trimOptional(values.dateOfBirth),
@@ -224,7 +229,8 @@ export function EmployeesPage() {
   } | null>(null);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [provisionTarget, setProvisionTarget] = useState<Employee | null>(null);
-  const [accountDetailTarget, setAccountDetailTarget] = useState<Employee | null>(null);
+  const [accountDetailTarget, setAccountDetailTarget] =
+    useState<Employee | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedEmployeesById, setSelectedEmployeesById] = useState<
     Map<string, Employee>
@@ -279,7 +285,12 @@ export function EmployeesPage() {
     },
   });
 
-  const { data: employeesResponse, isLoading, error, refetch } = useEmployees({
+  const {
+    data: employeesResponse,
+    isLoading,
+    error,
+    refetch,
+  } = useEmployees({
     ...params,
     employmentStatus: params.employmentStatus,
     unitId: params.unitId,
@@ -316,7 +327,8 @@ export function EmployeesPage() {
   }));
 
   const exportMutation = useMutation({
-    mutationFn: () => downloadEmployeesExport({ ...params, search: searchInput }),
+    mutationFn: () =>
+      downloadEmployeesExport({ ...params, search: searchInput }),
     onError: () => {
       notifications.show({
         color: "red",
@@ -557,7 +569,8 @@ export function EmployeesPage() {
       notifications.show({
         color: "red",
         title: "Không tải được danh mục",
-        message: "Vui lòng tải lại đơn vị, phòng ban và chức danh trước khi lưu.",
+        message:
+          "Vui lòng tải lại đơn vị, phòng ban và chức danh trước khi lưu.",
       });
       return;
     }
@@ -629,6 +642,12 @@ export function EmployeesPage() {
         header: "Số điện thoại",
         width: 130,
         render: (record) => record.phone || "-",
+      },
+      {
+        key: "hireDate",
+        header: "Ngày bắt đầu làm việc",
+        width: 154,
+        render: (record) => formatDate(record.hireDate),
       },
       {
         key: "employmentStatus",
@@ -845,7 +864,10 @@ export function EmployeesPage() {
             radius="md"
             px="md"
             py={8}
-            style={{ minHeight: 52, visibility: hasSelection ? undefined : "hidden" }}
+            style={{
+              minHeight: 52,
+              visibility: hasSelection ? undefined : "hidden",
+            }}
             aria-hidden={!hasSelection}
             inert={!hasSelection}
           >
@@ -930,7 +952,9 @@ export function EmployeesPage() {
               <TextInput
                 label="Mã nhân sự"
                 description="Hệ thống tự sinh nếu để trống. Nhập để đặt mã thủ công (VD: HN000001)."
-                placeholder={isLoadingNextCode ? "Đang lấy mã gợi ý..." : "HN000001"}
+                placeholder={
+                  isLoadingNextCode ? "Đang lấy mã gợi ý..." : "HN000001"
+                }
                 disabled={isLoadingNextCode}
                 error={form.errors.employeeCode ?? nextCodeError}
                 {...form.getInputProps("employeeCode")}
@@ -956,10 +980,7 @@ export function EmployeesPage() {
               label="Email cá nhân"
               {...form.getInputProps("personalEmail")}
             />
-            <TextInput
-              label="Số điện thoại"
-              {...form.getInputProps("phone")}
-            />
+            <TextInput label="Số điện thoại" {...form.getInputProps("phone")} />
             <Select
               label="Trạng thái nhân sự"
               withAsterisk
@@ -983,7 +1004,6 @@ export function EmployeesPage() {
                 form.setFieldValue("unitId", value ?? "");
                 form.setFieldValue("departmentId", "");
                 if (editing || !value) {
-            
                   setNextCodeError(null);
                   setIsLoadingNextCode(false);
                   return;
@@ -1000,7 +1020,6 @@ export function EmployeesPage() {
                     }
                   })
                   .catch((error) => {
-              
                     setNextCodeError(getApiErrorMessage(error));
                   })
                   .finally(() => {
@@ -1059,15 +1078,14 @@ export function EmployeesPage() {
             <HrmDateInput
               label="Ngày sinh"
               value={form.values.dateOfBirth || null}
-              onChange={(value) => form.setFieldValue("dateOfBirth", value ?? "")}
+              onChange={(value) =>
+                form.setFieldValue("dateOfBirth", value ?? "")
+              }
               error={form.errors.dateOfBirth}
             />
-            <TextInput
-              label="CCCD/CMND"
-              {...form.getInputProps("citizenId")}
-            />
+            <TextInput label="CCCD/CMND" {...form.getInputProps("citizenId")} />
             <HrmDateInput
-              label="Ngày vào làm"
+              label="Ngày bắt đầu làm việc"
               withAsterisk
               value={form.values.hireDate || null}
               onChange={(value) => form.setFieldValue("hireDate", value ?? "")}
@@ -1153,7 +1171,9 @@ export function EmployeesPage() {
           onSuccess={() => {
             clearSelection();
             void queryClient.invalidateQueries({ queryKey: ["employees"] });
-            void queryClient.invalidateQueries({ queryKey: ["employee-detail"] });
+            void queryClient.invalidateQueries({
+              queryKey: ["employee-detail"],
+            });
           }}
         />
       )}

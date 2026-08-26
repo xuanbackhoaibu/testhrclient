@@ -27,6 +27,7 @@ test('every router screen is wrapped by the shared route policy', () => {
     'ROUTES.onboarding',
     'ROUTES.offboarding',
     'ROUTES.weeklyShifts',
+    'ROUTES.annualLeaveBalances',
   ]) {
     assert.match(source, new RegExp(`ProtectedRoute route=\\{${route.replace('.', '\\.')}\\}`));
   }
@@ -40,7 +41,24 @@ test('weekly schedules are discoverable through the attendance navigation', () =
     layout,
     /label: "Ca tuần", path: ROUTES\.weeklyShifts/,
   );
-  assert.match(policies, /\[ROUTES\.weeklyShifts\].*ATTENDANCE_READ/);
+  assert.match(
+    policies,
+    /\[ROUTES\.weeklyShifts\][\s\S]*?HR_PERMISSIONS\.ATTENDANCE_READ/,
+  );
+});
+
+test('annual leave balances use their dedicated permission and attendance navigation', () => {
+  const layout = read('../../layouts/MainLayout.tsx');
+  const policies = read('./routePolicies.ts');
+
+  assert.match(
+    layout,
+    /label: "Bảng phép năm"[\s\S]*?path: ROUTES\.annualLeaveBalances/,
+  );
+  assert.match(
+    policies,
+    /\[ROUTES\.annualLeaveBalances\][\s\S]*?HR_PERMISSIONS\.LEAVE_BALANCE_READ/,
+  );
 });
 test('authority is never restored from persisted current-user data', () => {
   const source = read('./authClient.ts');
@@ -56,7 +74,7 @@ test('every authenticated account can inspect its own effective access', () => {
   assert.match(router, /ProtectedRoute route=\{ROUTES\.myAccess\}/);
   assert.match(
     policies,
-    /\[ROUTES\.myAccess\]: \{ kind: 'authenticated' \}/,
+    /\[ROUTES\.myAccess\]: \{ kind: ["']authenticated["'] \}/,
   );
   assert.match(layout, /Quyền của tôi/);
 });
