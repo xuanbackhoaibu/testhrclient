@@ -292,7 +292,7 @@ export function TimesheetPeriodsPage() {
   return (
     <>
       <PageHeader
-        title="Quản lý kỳ công"
+        title="Kỳ chốt công"
         subtitle="Mở kỳ để nhân viên xác nhận, theo dõi ai chưa xác nhận, chốt kỳ và mở khóa khi HR cần sửa lại."
         actions={
           canEdit ? (

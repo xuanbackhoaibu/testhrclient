@@ -1,68 +1,95 @@
-import assert from 'node:assert/strict';
-import { test } from 'vitest';
+import assert from "node:assert/strict";
+import { test } from "vitest";
 
 import {
   AUTH_ADMIN_PERMISSIONS,
   hasAllPermissions,
   hasAnyPermission,
   hasPermission,
-} from './permissions.ts';
-import { canAccessRoute, isSuperAdmin } from './routePolicies.ts';
-import { ROUTES } from '../../shared/constants/routes.ts';
+} from "./permissions.ts";
+import { canAccessRoute, isSuperAdmin } from "./routePolicies.ts";
+import { ROUTES } from "../../shared/constants/routes.ts";
 
 const principal = (permissions: string[], roles: string[] = []) => ({
-  accountStatus: 'ACTIVE',
-  authoritySource: 'chat-auth-runtime',
+  accountStatus: "ACTIVE",
+  authoritySource: "chat-auth-runtime",
   permissions,
   roles,
 });
 
-test('role names never bypass canonical effective permissions', () => {
-  const user = principal([], ['SUPER_ADMIN']);
-  assert.equal(hasPermission(user as never, 'hr.employee.update'), false);
-  assert.equal(hasAnyPermission(user as never, ['auth.user.assign_role']), false);
+test("role names never bypass canonical effective permissions", () => {
+  const user = principal([], ["SUPER_ADMIN"]);
+  assert.equal(hasPermission(user as never, "hr.employee.update"), false);
+  assert.equal(
+    hasAnyPermission(user as never, ["auth.user.assign_role"]),
+    false,
+  );
 });
 
-test('can/canAny/canAll are derived only from the current permission snapshot', () => {
-  const user = principal(['hr.employee.read', 'hr.employee.update']);
-  assert.equal(hasPermission(user as never, 'hr.employee.read'), true);
-  assert.equal(hasAnyPermission(user as never, ['hr.employee.delete', 'hr.employee.update']), true);
-  assert.equal(hasAllPermissions(user as never, ['hr.employee.read', 'hr.employee.update']), true);
-  assert.equal(hasAllPermissions(user as never, ['hr.employee.read', 'hr.employee.delete']), false);
+test("can/canAny/canAll are derived only from the current permission snapshot", () => {
+  const user = principal(["hr.employee.read", "hr.employee.update"]);
+  assert.equal(hasPermission(user as never, "hr.employee.read"), true);
+  assert.equal(
+    hasAnyPermission(user as never, [
+      "hr.employee.delete",
+      "hr.employee.update",
+    ]),
+    true,
+  );
+  assert.equal(
+    hasAllPermissions(user as never, [
+      "hr.employee.read",
+      "hr.employee.update",
+    ]),
+    true,
+  );
+  assert.equal(
+    hasAllPermissions(user as never, [
+      "hr.employee.read",
+      "hr.employee.delete",
+    ]),
+    false,
+  );
 });
 
-test('permission matching is exact and supports only the canonical explicit wildcard', () => {
-  const user = principal(['hr.employee.read', '*']);
-  assert.equal(hasPermission(user as never, 'HR.EMPLOYEE.READ'), true);
-  assert.equal(hasPermission(user as never, 'hr.employee.update'), true);
-  assert.equal(hasPermission(user as never, '*'), true);
+test("permission matching is exact and supports only the canonical explicit wildcard", () => {
+  const user = principal(["hr.employee.read", "*"]);
+  assert.equal(hasPermission(user as never, "HR.EMPLOYEE.READ"), true);
+  assert.equal(hasPermission(user as never, "hr.employee.update"), true);
+  assert.equal(hasPermission(user as never, "*"), true);
 });
 
-test('empty, duplicate, null, and undefined inputs fail closed predictably', () => {
-  const duplicateUser = principal(['hr.employee.read', 'hr.employee.read']);
+test("empty, duplicate, null, and undefined inputs fail closed predictably", () => {
+  const duplicateUser = principal(["hr.employee.read", "hr.employee.read"]);
   assert.equal(hasAllPermissions(duplicateUser as never, []), true);
   assert.equal(hasAnyPermission(duplicateUser as never, []), false);
-  assert.equal(hasPermission(null, 'hr.employee.read'), false);
-  assert.equal(hasPermission(undefined, 'hr.employee.read'), false);
-  assert.equal(hasAllPermissions(duplicateUser as never, ['hr.employee.read']), true);
+  assert.equal(hasPermission(null, "hr.employee.read"), false);
+  assert.equal(hasPermission(undefined, "hr.employee.read"), false);
+  assert.equal(
+    hasAllPermissions(duplicateUser as never, ["hr.employee.read"]),
+    true,
+  );
 });
 
-test('a permission removed by canonical direct deny is absent and therefore denied', () => {
-  const effectiveAfterDeny = principal(['hr.employee.read'], ['HR_ADMIN']);
-  assert.equal(hasPermission(effectiveAfterDeny as never, 'hr.employee.update'), false);
+test("a permission removed by canonical direct deny is absent and therefore denied", () => {
+  const effectiveAfterDeny = principal(["hr.employee.read"], ["HR_ADMIN"]);
+  assert.equal(
+    hasPermission(effectiveAfterDeny as never, "hr.employee.update"),
+    false,
+  );
 });
 
-test('role definition management is not conflated with assigning a role to a user', () => {
-  assert.equal(AUTH_ADMIN_PERMISSIONS.ROLES_MANAGE, 'auth.role.manage');
-  assert.equal(AUTH_ADMIN_PERMISSIONS.ROLES_ASSIGN, 'auth.user.assign_role');
+test("role definition management is not conflated with assigning a role to a user", () => {
+  assert.equal(AUTH_ADMIN_PERMISSIONS.ROLES_MANAGE, "auth.role.manage");
+  assert.equal(AUTH_ADMIN_PERMISSIONS.ROLES_ASSIGN, "auth.user.assign_role");
   assert.notEqual(
     AUTH_ADMIN_PERMISSIONS.ROLES_MANAGE,
     AUTH_ADMIN_PERMISSIONS.ROLES_ASSIGN,
   );
 });
-test('account authorization requires the canonical Super Admin role', () => {
-  const superAdmin = principal([], ['Super-Admin']);
-  const wildcardHrAdmin = principal(['*'], ['HR_ADMIN']);
+test("account authorization requires the canonical Super Admin role", () => {
+  const superAdmin = principal([], ["Super-Admin"]);
+  const wildcardHrAdmin = principal(["*"], ["HR_ADMIN"]);
 
   assert.equal(isSuperAdmin(superAdmin as never), true);
   assert.equal(
@@ -73,5 +100,38 @@ test('account authorization requires the canonical Super Admin role', () => {
   assert.equal(
     canAccessRoute(wildcardHrAdmin as never, ROUTES.accountAuthorizations),
     false,
+  );
+});
+
+test("annual leave balance route requires its dedicated read permission", () => {
+  const annualLeaveReader = principal(["hr.leave_balance.read"]);
+  const attendanceOnly = principal(["hr.attendance.read"]);
+
+  assert.equal(
+    canAccessRoute(annualLeaveReader as never, ROUTES.annualLeaveBalances),
+    true,
+  );
+  assert.equal(
+    canAccessRoute(attendanceOnly as never, ROUTES.annualLeaveBalances),
+    false,
+  );
+});
+
+test("approval inbox accepts leave review permission or the complete attendance pair", () => {
+  const leaveReviewer = principal(["hr.leave.approve"]);
+  const attendanceUpdaterOnly = principal(["hr.attendance.update"]);
+  const attendanceReviewer = principal([
+    "hr.attendance.read",
+    "hr.attendance.update",
+  ]);
+
+  assert.equal(canAccessRoute(leaveReviewer as never, ROUTES.approvalInbox), true);
+  assert.equal(
+    canAccessRoute(attendanceUpdaterOnly as never, ROUTES.approvalInbox),
+    false,
+  );
+  assert.equal(
+    canAccessRoute(attendanceReviewer as never, ROUTES.approvalInbox),
+    true,
   );
 });

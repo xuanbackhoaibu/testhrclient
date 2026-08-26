@@ -1,11 +1,26 @@
-import { useMemo, useState } from 'react';
-import { ActionIcon, Button, Drawer, Group, NumberInput, Select, SimpleGrid, Stack, Switch, Text, Textarea, TextInput } from '@mantine/core';
-import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
-import { IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
+import { useMemo, useState } from "react";
+import {
+  ActionIcon,
+  Badge,
+  Button,
+  Drawer,
+  Group,
+  NumberInput,
+  Paper,
+  Select,
+  SimpleGrid,
+  Stack,
+  Switch,
+  Text,
+  Textarea,
+  TextInput,
+} from "@mantine/core";
+import { useForm } from "@mantine/form";
+import { notifications } from "@mantine/notifications";
+import { IconEdit, IconPlus, IconTrash } from "@tabler/icons-react";
 
-import { HR_PERMISSIONS } from '../../features/auth/permissions';
-import { useAuth } from '../../features/auth/useAuth';
+import { HR_PERMISSIONS } from "../../features/auth/permissions";
+import { useAuth } from "../../features/auth/useAuth";
 
 import type {
   LeaveApprovalStep,
@@ -13,21 +28,31 @@ import type {
   LeavePolicyTypePayload,
   LeaveQuotaMode,
   LeaveRequest,
-} from '../../features/leave/leaveTypes';
-import { useCreateLeaveType, useDeleteCancelledLeaveRequest, useDeleteLeaveType, useLeaveRequests, useLeaveTypes, useUpdateLeaveType } from '../../features/leave/useLeaveRequests';
-import { useEmployees } from '../../features/employees/useEmployees';
-import { LEAVE_TYPE_OPTIONS } from '../../shared/constants/statuses';
-import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
-import { ConfirmActionModal } from '../../shared/components/ConfirmActionModal';
-import { ErrorState } from '../../shared/components/ErrorState';
-import { FilterBar } from '../../shared/components/FilterBar';
-import filterStyles from '../../shared/components/FilterBar.module.css';
-import { LoadingState } from '../../shared/components/LoadingState';
-import { PageHeader } from '../../shared/components/PageHeader';
-import { SectionCard } from '../../shared/components/SectionCard';
-import { StatusTag } from '../../shared/components/StatusTag';
-import { TableActionsMenu } from '../../shared/components/TableActionsMenu';
-import { formatDate } from '../../shared/utils/date';
+} from "../../features/leave/leaveTypes";
+import {
+  useCreateLeaveType,
+  useDeleteCancelledLeaveRequest,
+  useDeleteLeaveType,
+  useLeaveRequests,
+  useLeaveTypes,
+  useUpdateLeaveType,
+} from "../../features/leave/useLeaveRequests";
+import { useEmployees } from "../../features/employees/useEmployees";
+import { LEAVE_TYPE_OPTIONS } from "../../shared/constants/statuses";
+import {
+  DataTable,
+  type DataTableColumn,
+} from "../../shared/components/DataTable";
+import { ConfirmActionModal } from "../../shared/components/ConfirmActionModal";
+import { ErrorState } from "../../shared/components/ErrorState";
+import { FilterBar } from "../../shared/components/FilterBar";
+import filterStyles from "../../shared/components/FilterBar.module.css";
+import { LoadingState } from "../../shared/components/LoadingState";
+import { PageHeader } from "../../shared/components/PageHeader";
+import { SectionCard } from "../../shared/components/SectionCard";
+import { StatusTag } from "../../shared/components/StatusTag";
+import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
+import { formatDate } from "../../shared/utils/date";
 const EMPLOYEE_SELECT_PAGE_SIZE = 20;
 const CATALOG_PAGE_SIZE = 10;
 
@@ -40,98 +65,104 @@ type LeaveTypeFormValues = {
   name: string;
   displaySymbol: string;
   deductsAnnualLeave: boolean;
-  paid: 'PAID' | 'UNPAID' | 'UNSET';
+  paid: "PAID" | "UNPAID" | "UNSET";
   dayValue: number | string;
   requiresAttachment: boolean;
   attachmentMinDays: number | string;
   quotaMode: LeaveQuotaMode;
   maxDaysPerEvent: number | string;
-  hrRuleStatus: 'CONFIRMED' | 'PENDING_HR_RULE';
+  hrRuleStatus: "CONFIRMED" | "PENDING_HR_RULE";
   note: string;
 };
 
 const EMPTY_LEAVE_TYPE_FORM: LeaveTypeFormValues = {
-  name: '',
-  displaySymbol: '',
+  name: "",
+  displaySymbol: "",
   deductsAnnualLeave: false,
-  paid: 'UNSET',
-  dayValue: '',
+  paid: "UNSET",
+  dayValue: "",
   requiresAttachment: false,
-  attachmentMinDays: '',
-  quotaMode: 'NONE',
-  maxDaysPerEvent: '',
-  hrRuleStatus: 'CONFIRMED',
-  note: '',
+  attachmentMinDays: "",
+  quotaMode: "NONE",
+  maxDaysPerEvent: "",
+  hrRuleStatus: "CONFIRMED",
+  note: "",
 };
 
 const PAID_OPTIONS = [
-  { value: 'PAID', label: 'Có lương' },
-  { value: 'UNPAID', label: 'Không lương' },
-  { value: 'UNSET', label: 'Chưa chốt' },
+  { value: "PAID", label: "Có lương" },
+  { value: "UNPAID", label: "Không lương" },
+  { value: "UNSET", label: "Chưa chốt" },
 ];
 
 const HR_RULE_OPTIONS = [
-  { value: 'CONFIRMED', label: 'Đã xác nhận' },
-  { value: 'PENDING_HR_RULE', label: 'Chờ HR chốt' },
+  { value: "CONFIRMED", label: "Đã xác nhận" },
+  { value: "PENDING_HR_RULE", label: "Chờ HR chốt" },
 ];
 
 function nullableNumber(value: number | string): number | null {
-  return typeof value === 'number' ? value : null;
+  return typeof value === "number" ? value : null;
 }
 
 function optionalRangeError(value: number | string, max: number) {
-  return typeof value === 'number' && (value < 0 || value > max)
+  return typeof value === "number" && (value < 0 || value > max)
     ? `Giá trị phải từ 0 đến ${max}.`
     : null;
 }
 
 const HALF_DAY_SESSION_OPTIONS = [
-  { value: 'FULL_DAY', label: 'Cả ngày' },
-  { value: 'MORNING', label: 'Buổi sáng' },
-  { value: 'AFTERNOON', label: 'Buổi chiều' },
+  { value: "FULL_DAY", label: "Cả ngày" },
+  { value: "MORNING", label: "Buổi sáng" },
+  { value: "AFTERNOON", label: "Buổi chiều" },
 ] as const;
 
 const LEAVE_TYPE_LABELS: Record<string, string> = {
-  ANNUAL: 'Nghỉ phép năm',
-  SICK: 'Nghỉ ốm',
-  UNPAID: 'Nghỉ không lương',
-  MARRIAGE: 'Nghỉ kết hôn',
-  MATERNITY: 'Thai sản',
-  OTHER: 'Nghỉ khác',
-  WORK_FULL: 'Làm việc cả ngày',
-  WORK_HALF: 'Làm việc nửa ngày',
-  PAID_PERSONAL: 'Nghỉ việc riêng có lương',
-  CHILD_SICK: 'Nghỉ con ốm',
-  WORK_ACCIDENT: 'Tai nạn lao động',
-  COMPENSATORY: 'Nghỉ bù',
-  HOLIDAY: 'Lễ Tết',
-  COMPANY_TRIP: 'Du lịch',
-  WORK_STOP: 'Nghỉ ngừng việc',
-  BUSINESS_TRIP: 'Công tác',
-  SECONDMENT: 'Công tác biệt phái',
-  OFFICE_DUTY: 'Trực văn phòng',
-  MEETING: 'Hội họp',
-  COMPULSORY_LABOR: 'Lao động nghĩa vụ',
-  ONLINE_WORK: 'Làm việc online',
+  ANNUAL: "Nghỉ phép năm",
+  SICK: "Nghỉ ốm",
+  UNPAID: "Nghỉ không lương",
+  MARRIAGE: "Nghỉ kết hôn",
+  MATERNITY: "Thai sản",
+  OTHER: "Nghỉ khác",
+  WORK_FULL: "Làm việc cả ngày",
+  WORK_HALF: "Làm việc nửa ngày",
+  PAID_PERSONAL: "Nghỉ việc riêng có lương",
+  CHILD_SICK: "Nghỉ con ốm",
+  WORK_ACCIDENT: "Tai nạn lao động",
+  COMPENSATORY: "Nghỉ bù",
+  HOLIDAY: "Lễ Tết",
+  COMPANY_TRIP: "Du lịch",
+  WORK_STOP: "Nghỉ ngừng việc",
+  BUSINESS_TRIP: "Công tác",
+  SECONDMENT: "Công tác biệt phái",
+  OFFICE_DUTY: "Trực văn phòng",
+  MEETING: "Hội họp",
+  COMPULSORY_LABOR: "Lao động nghĩa vụ",
+  ONLINE_WORK: "Làm việc online",
 };
 
-const REQUEST_STATUS_OPTIONS = ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'CANCELLED'] as const;
+const REQUEST_STATUS_OPTIONS = [
+  "DRAFT",
+  "SUBMITTED",
+  "APPROVED",
+  "REJECTED",
+  "CANCELLED",
+] as const;
 
 const REQUEST_STATUS_LABELS: Record<string, string> = {
-  DRAFT: 'Nháp',
-  SUBMITTED: 'Đang trình duyệt',
-  APPROVED: 'Đã duyệt',
-  REJECTED: 'Từ chối',
-  CANCELLED: 'Đã hủy',
+  DRAFT: "Nháp",
+  SUBMITTED: "Đang trình duyệt",
+  APPROVED: "Đã duyệt",
+  REJECTED: "Từ chối",
+  CANCELLED: "Đã hủy",
 };
 
 const QUOTA_MODE_LABELS: Record<string, string> = {
-  NONE: 'Không trừ quỹ',
-  ANNUAL_BALANCE: 'Trừ phép năm',
-  PER_EVENT: 'Theo từng sự kiện',
-  INSURANCE: 'Chế độ BHXH',
-  COMPENSATORY_BALANCE: 'Quỹ nghỉ bù',
-  PENDING_HR_RULE: 'Chờ HR chốt quy tắc',
+  NONE: "Không trừ quỹ",
+  ANNUAL_BALANCE: "Trừ phép năm",
+  PER_EVENT: "Theo từng sự kiện",
+  INSURANCE: "Chế độ BHXH",
+  COMPENSATORY_BALANCE: "Quỹ nghỉ bù",
+  PENDING_HR_RULE: "Chờ HR chốt quy tắc",
 };
 
 const QUOTA_MODE_OPTIONS = Object.entries(QUOTA_MODE_LABELS).map(
@@ -139,18 +170,21 @@ const QUOTA_MODE_OPTIONS = Object.entries(QUOTA_MODE_LABELS).map(
 );
 
 const APPROVAL_STEP_LABELS: Record<string, string> = {
-  ATTENDANCE_TRACKER: 'Người theo dõi chấm công',
-  DEPARTMENT_MANAGER: 'Trưởng bộ phận',
-  OFFICE_CHIEF: 'Chánh văn phòng',
-  BOARD: 'Ban Tổng giám đốc',
+  ATTENDANCE_TRACKER: "Người theo dõi chấm công",
+  DEPARTMENT_MANAGER: "Trưởng bộ phận",
+  OFFICE_CHIEF: "Chánh văn phòng",
+  BOARD: "Ban Tổng giám đốc",
 };
 
 function labelFrom(map: Record<string, string>, value?: string | null) {
-  return value ? map[value] ?? value : '-';
+  return value ? (map[value] ?? value) : "-";
 }
 
 function sessionLabel(value?: string | null) {
-  return HALF_DAY_SESSION_OPTIONS.find((item) => item.value === value)?.label ?? 'Cả ngày';
+  return (
+    HALF_DAY_SESSION_OPTIONS.find((item) => item.value === value)?.label ??
+    "Cả ngày"
+  );
 }
 
 function sessionRangeLabel(record: LeaveRequest) {
@@ -160,14 +194,23 @@ function sessionRangeLabel(record: LeaveRequest) {
 }
 
 function noticeLabel(record: LeaveRequest) {
-  const actual = record.noticeActualDays ?? '-';
-  const required = record.noticeRequiredDays ?? '-';
-  return record.lateSubmission ? `Trễ hạn (${actual}/${required})` : `${actual}/${required}`;
+  const actual = record.noticeActualDays ?? "-";
+  const required = record.noticeRequiredDays ?? "-";
+  return record.lateSubmission
+    ? `Trễ hạn (${actual}/${required})`
+    : `${actual}/${required}`;
+}
+
+function leaveDays(value: number) {
+  return new Intl.NumberFormat("vi-VN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
 function approvalLabel(step: LeaveApprovalStep | null) {
   if (!step) {
-    return '-';
+    return "-";
   }
 
   return `Cấp ${step.stepOrder}: ${labelFrom(APPROVAL_STEP_LABELS, step.stepCode) || step.stepName}`;
@@ -182,35 +225,40 @@ function leaveTypeFormValues(record: LeavePolicyType): LeaveTypeFormValues {
     name: record.name,
     displaySymbol: record.displaySymbol,
     deductsAnnualLeave: record.deductsAnnualLeave,
-    paid: record.paid === true ? 'PAID' : record.paid === false ? 'UNPAID' : 'UNSET',
-    dayValue: record.dayValue ?? '',
+    paid:
+      record.paid === true
+        ? "PAID"
+        : record.paid === false
+          ? "UNPAID"
+          : "UNSET",
+    dayValue: record.dayValue ?? "",
     requiresAttachment: record.requiresAttachment,
-    attachmentMinDays: record.attachmentMinDays ?? '',
+    attachmentMinDays: record.attachmentMinDays ?? "",
     quotaMode: record.quotaMode as LeaveQuotaMode,
-    maxDaysPerEvent: record.maxDaysPerEvent ?? '',
+    maxDaysPerEvent: record.maxDaysPerEvent ?? "",
     hrRuleStatus:
-      record.hrRuleStatus === 'PENDING_HR_RULE'
-        ? 'PENDING_HR_RULE'
-        : 'CONFIRMED',
-    note: record.note ?? '',
+      record.hrRuleStatus === "PENDING_HR_RULE"
+        ? "PENDING_HR_RULE"
+        : "CONFIRMED",
+    note: record.note ?? "",
   };
 }
 
 function leaveTypeErrorMessage(error: unknown) {
-  const message = error instanceof Error ? error.message : '';
-  if (message.includes('LEAVE_POLICY_TYPE_SYMBOL_ALREADY_EXISTS')) {
-    return 'Ký hiệu này đã tồn tại. Hãy chọn ký hiệu khác.';
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("LEAVE_POLICY_TYPE_SYMBOL_ALREADY_EXISTS")) {
+    return "Ký hiệu này đã tồn tại. Hãy chọn ký hiệu khác.";
   }
-  if (message.includes('LEAVE_POLICY_TYPE_CODE_ALREADY_EXISTS')) {
-    return 'Không thể tạo ký hiệu lúc này. Hãy thử lại.';
+  if (message.includes("LEAVE_POLICY_TYPE_CODE_ALREADY_EXISTS")) {
+    return "Không thể tạo ký hiệu lúc này. Hãy thử lại.";
   }
-  if (message.includes('LEAVE_APPROVAL_CONFIGURATION_SCOPE_DENIED')) {
-    return 'Tài khoản không có phạm vi toàn hệ thống để sửa danh mục này.';
+  if (message.includes("LEAVE_APPROVAL_CONFIGURATION_SCOPE_DENIED")) {
+    return "Tài khoản không có phạm vi toàn hệ thống để sửa danh mục này.";
   }
-  if (message.includes('LEAVE_POLICY_TYPE_NOT_FOUND')) {
-    return 'Ký hiệu không còn tồn tại hoặc đã được người khác xóa.';
+  if (message.includes("LEAVE_POLICY_TYPE_NOT_FOUND")) {
+    return "Ký hiệu không còn tồn tại hoặc đã được người khác xóa.";
   }
-  return 'Không thể lưu thay đổi. Kiểm tra dữ liệu và thử lại.';
+  return "Không thể lưu thay đổi. Kiểm tra dữ liệu và thử lại.";
 }
 
 const leaveTypeOptions = LEAVE_TYPE_OPTIONS.map((item) => ({
@@ -227,11 +275,20 @@ export function LeavePage() {
   const { can } = useAuth();
   const canDeleteCancelled = can(HR_PERMISSIONS.LEAVE_CANCEL);
   const canManageCatalog = can(HR_PERMISSIONS.LEAVE_UPDATE);
-  const [employeeSearch, setEmployeeSearch] = useState('');
-  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeSelectOption | null>(null);
-  const [deletingRequest, setDeletingRequest] = useState<LeaveRequest | null>(null);
-  const [editingLeaveType, setEditingLeaveType] = useState<LeavePolicyType | null>(null);
-  const [deletingLeaveType, setDeletingLeaveType] = useState<LeavePolicyType | null>(null);
+  const [employeeSearch, setEmployeeSearch] = useState("");
+  const [selectedEmployee, setSelectedEmployee] =
+    useState<EmployeeSelectOption | null>(null);
+  const [deletingRequest, setDeletingRequest] = useState<LeaveRequest | null>(
+    null,
+  );
+  const [editingLeaveType, setEditingLeaveType] =
+    useState<LeavePolicyType | null>(null);
+  const [selectedLeaveTypeIds, setSelectedLeaveTypeIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [deletingLeaveTypes, setDeletingLeaveTypes] = useState<
+    LeavePolicyType[]
+  >([]);
   const [leaveTypeDrawerOpened, setLeaveTypeDrawerOpened] = useState(false);
   const [catalogPage, setCatalogPage] = useState(1);
   const [params, setParams] = useState({
@@ -255,11 +312,11 @@ export function LeavePage() {
       name: (value) =>
         value.trim() && value.trim().length <= 120
           ? null
-          : 'Nhập tên ký hiệu, tối đa 120 ký tự.',
+          : "Nhập tên ký hiệu, tối đa 120 ký tự.",
       displaySymbol: (value) =>
         value.trim() && !/[;\s]/u.test(value) && value.length <= 12
           ? null
-          : 'Ký hiệu không có khoảng trắng hoặc dấu chấm phẩy.',
+          : "Ký hiệu không có khoảng trắng hoặc dấu chấm phẩy.",
       dayValue: (value) => optionalRangeError(value, 1),
       attachmentMinDays: (value) => optionalRangeError(value, 365),
       maxDaysPerEvent: (value) => optionalRangeError(value, 365),
@@ -270,24 +327,21 @@ export function LeavePage() {
     page: 1,
     pageSize: EMPLOYEE_SELECT_PAGE_SIZE,
   });
-  const employeeOptions = useMemo<EmployeeSelectOption[]>(
-    () => {
-      const options = (employeesQuery.data?.items ?? []).map((employee) => ({
-        value: employee.id,
-        label: employee.fullName,
-      }));
+  const employeeOptions = useMemo<EmployeeSelectOption[]>(() => {
+    const options = (employeesQuery.data?.items ?? []).map((employee) => ({
+      value: employee.id,
+      label: employee.fullName,
+    }));
 
-      if (
-        selectedEmployee &&
-        !options.some((option) => option.value === selectedEmployee.value)
-      ) {
-        return [selectedEmployee, ...options];
-      }
+    if (
+      selectedEmployee &&
+      !options.some((option) => option.value === selectedEmployee.value)
+    ) {
+      return [selectedEmployee, ...options];
+    }
 
-      return options;
-    },
-    [employeesQuery.data?.items, selectedEmployee],
-  );
+    return options;
+  }, [employeesQuery.data?.items, selectedEmployee]);
 
   if (isLoading) {
     return <LoadingState />;
@@ -298,8 +352,9 @@ export function LeavePage() {
   }
 
   const currentApprovalStep = (record: LeaveRequest) =>
-    record.status === 'SUBMITTED'
-      ? (record.approvalSteps?.find((step) => step.status === 'SUBMITTED') ?? null)
+    record.status === "SUBMITTED"
+      ? (record.approvalSteps?.find((step) => step.status === "SUBMITTED") ??
+        null)
       : null;
 
   async function handleDeleteCancelledRequest(record: LeaveRequest) {
@@ -307,15 +362,15 @@ export function LeavePage() {
       await deleteCancelledLeaveRequest.mutateAsync(record.id);
       setDeletingRequest(null);
       notifications.show({
-        title: 'Đã xóa đơn',
-        message: 'Đơn nghỉ phép đã hủy được xóa khỏi danh sách.',
-        color: 'green',
+        title: "Đã xóa đơn",
+        message: "Đơn nghỉ phép đã hủy được xóa khỏi danh sách.",
+        color: "green",
       });
     } catch {
       notifications.show({
-        title: 'Không xóa được đơn',
-        message: 'Đơn chỉ được xóa khi đã ở trạng thái hủy.',
-        color: 'red',
+        title: "Không xóa được đơn",
+        message: "Đơn chỉ được xóa khi đã ở trạng thái hủy.",
+        color: "red",
       });
     }
   }
@@ -345,11 +400,7 @@ export function LeavePage() {
       displaySymbol: values.displaySymbol.trim(),
       deductsAnnualLeave: values.deductsAnnualLeave,
       paid:
-        values.paid === 'PAID'
-          ? true
-          : values.paid === 'UNPAID'
-            ? false
-            : null,
+        values.paid === "PAID" ? true : values.paid === "UNPAID" ? false : null,
       dayValue: nullableNumber(values.dayValue),
       requiresAttachment: values.requiresAttachment,
       attachmentMinDays: values.requiresAttachment
@@ -357,7 +408,7 @@ export function LeavePage() {
         : null,
       quotaMode: values.quotaMode,
       maxDaysPerEvent:
-        values.quotaMode === 'PER_EVENT'
+        values.quotaMode === "PER_EVENT"
           ? nullableNumber(values.maxDaysPerEvent)
           : null,
       hrRuleStatus: values.hrRuleStatus,
@@ -375,51 +426,83 @@ export function LeavePage() {
         setCatalogPage(1);
       }
       notifications.show({
-        color: 'green',
-        title: editingLeaveType ? 'Đã cập nhật ký hiệu' : 'Đã thêm ký hiệu',
+        color: "green",
+        title: editingLeaveType ? "Đã cập nhật ký hiệu" : "Đã thêm ký hiệu",
         message: `${payload.displaySymbol} · ${payload.name} đã được lưu.`,
       });
       closeLeaveTypeDrawer();
     } catch (saveError) {
       notifications.show({
-        color: 'red',
-        title: 'Không lưu được ký hiệu',
+        color: "red",
+        title: "Không lưu được ký hiệu",
         message: leaveTypeErrorMessage(saveError),
       });
     }
   }
 
   async function handleDeleteLeaveType() {
-    if (!deletingLeaveType) return;
-    try {
-      await deleteLeaveType.mutateAsync(deletingLeaveType.id);
+    if (!deletingLeaveTypes.length) return;
+
+    const targets = [...deletingLeaveTypes];
+    const results = await Promise.allSettled(
+      targets.map((record) => deleteLeaveType.mutateAsync(record.id)),
+    );
+    const deletedIds = targets
+      .filter((_, index) => results[index]?.status === "fulfilled")
+      .map((record) => record.id);
+    const failed = targets.filter(
+      (_, index) => results[index]?.status === "rejected",
+    );
+
+    setSelectedLeaveTypeIds((current) => {
+      const next = new Set(current);
+      deletedIds.forEach((id) => next.delete(id));
+      return next;
+    });
+    setDeletingLeaveTypes([]);
+
+    if (failed.length) {
+      const firstError = results.find(
+        (result) => result.status === "rejected",
+      );
       notifications.show({
-        color: 'green',
-        title: 'Đã xóa ký hiệu',
-        message: `${deletingLeaveType.displaySymbol} đã được ngừng sử dụng và ẩn khỏi danh mục.`,
+        color: "red",
+        title:
+          deletedIds.length > 0
+            ? "Một số ký hiệu chưa xóa được"
+            : "Không xóa được ký hiệu",
+        message:
+          deletedIds.length > 0
+            ? `Đã xóa ${deletedIds.length} ký hiệu; ${failed.length} ký hiệu chưa xóa được. Hãy thử lại.`
+            : leaveTypeErrorMessage(
+                firstError?.status === "rejected" ? firstError.reason : null,
+              ),
       });
-      setDeletingLeaveType(null);
-    } catch (deleteError) {
-      notifications.show({
-        color: 'red',
-        title: 'Không xóa được ký hiệu',
-        message: leaveTypeErrorMessage(deleteError),
-      });
+      return;
     }
+
+    notifications.show({
+      color: "green",
+      title:
+        targets.length === 1 ? "Đã xóa ký hiệu" : "Đã xóa ký hiệu đã chọn",
+      message:
+        targets.length === 1
+          ? `${targets[0]?.displaySymbol} đã được ngừng sử dụng và ẩn khỏi danh mục.`
+          : `${targets.length} ký hiệu đã được ngừng sử dụng và ẩn khỏi danh mục.`,
+    });
   }
-
-
-
 
   const requestColumns: DataTableColumn<LeaveRequest>[] = [
     {
-      key: 'employee',
-      header: 'Nhân viên',
+      key: "employee",
+      header: "Nhân viên",
       minWidth: 190,
       render: (record) => (
         <Stack gap={0}>
           <Text size="sm" fw={500}>
-            {record.employeeName ?? record.employee?.fullName ?? record.employeeId}
+            {record.employeeName ??
+              record.employee?.fullName ??
+              record.employeeId}
           </Text>
           <Text size="xs" c="dimmed">
             {record.employee?.employeeCode ?? record.employeeId}
@@ -428,78 +511,122 @@ export function LeavePage() {
       ),
     },
     {
-      key: 'leaveType',
-      header: 'Loại nghỉ',
+      key: "leaveType",
+      header: "Loại nghỉ",
       minWidth: 150,
       render: (record) => (
         <Text size="sm">{labelFrom(LEAVE_TYPE_LABELS, record.leaveType)}</Text>
       ),
     },
     {
-      key: 'startDate',
-      header: 'Từ ngày',
+      key: "startDate",
+      header: "Từ ngày",
       width: 108,
-      align: 'center',
+      align: "center",
       render: (record) => (
-        <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
+        <Text size="sm" style={{ fontVariantNumeric: "tabular-nums" }}>
           {formatDate(record.startDate)}
         </Text>
       ),
     },
     {
-      key: 'endDate',
-      header: 'Đến ngày',
+      key: "endDate",
+      header: "Đến ngày",
       width: 108,
-      align: 'center',
+      align: "center",
       render: (record) => (
-        <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
+        <Text size="sm" style={{ fontVariantNumeric: "tabular-nums" }}>
           {formatDate(record.endDate)}
         </Text>
       ),
     },
     {
-      key: 'session',
-      header: 'Buổi nghỉ',
+      key: "session",
+      header: "Buổi nghỉ",
       minWidth: 130,
       render: (record) => <Text size="sm">{sessionRangeLabel(record)}</Text>,
     },
     {
-      key: 'totalDays',
-      header: 'Số ngày',
+      key: "totalDays",
+      header: "Số ngày",
       width: 84,
-      align: 'right',
+      align: "right",
       render: (record) => (
-        <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
-          {record.totalDays ?? '-'}
+        <Text size="sm" style={{ fontVariantNumeric: "tabular-nums" }}>
+          {record.totalDays ?? "-"}
         </Text>
       ),
     },
     {
-      key: 'notice',
-      header: 'Báo trước',
+      key: "attendanceAllocation",
+      header: "Phân bổ P/KL",
+      minWidth: 140,
+      render: (record) =>
+        record.leaveType === "ANNUAL" ? (
+          <Group gap={4} wrap="nowrap">
+            <Badge color="green" variant="light" size="sm">
+              {leaveDays(record.annualPaidDays ?? record.totalDays)} P
+            </Badge>
+            <Badge color="gray" variant="light" size="sm">
+              {leaveDays(record.unpaidDays ?? 0)} KL
+            </Badge>
+          </Group>
+        ) : (
+          <Text size="sm" c="dimmed">
+            —
+          </Text>
+        ),
+    },
+    {
+      key: "replacementEmployee",
+      header: "Người nhận bàn giao",
+      minWidth: 180,
+      render: (record) =>
+        record.replacementEmployee ? (
+          <Stack gap={0}>
+            <Text size="sm" fw={500}>
+              {record.replacementEmployee.fullName ?? "Chưa có họ tên"}
+            </Text>
+            <Text size="xs" c="dimmed">
+              {record.replacementEmployee.employeeCode ??
+                record.replacementEmployee.attendanceCode ??
+                "Chưa có mã"}
+            </Text>
+          </Stack>
+        ) : (
+          <Text size="sm" c="dimmed">
+            Không khai báo
+          </Text>
+        ),
+    },
+    {
+      key: "notice",
+      header: "Báo trước",
       width: 116,
-      align: 'center',
+      align: "center",
       render: (record) => (
-        <Text size="sm" c={record.lateSubmission ? 'orange.7' : undefined}>
+        <Text size="sm" c={record.lateSubmission ? "orange.7" : undefined}>
           {noticeLabel(record)}
         </Text>
       ),
     },
     {
-      key: 'status',
-      header: 'Trạng thái',
+      key: "status",
+      header: "Trạng thái",
       width: 168,
       render: (record) => (
         <Group gap={4} wrap="nowrap">
           <StatusTag status={record.status} />
-          {record.status === 'CANCELLED' && canDeleteCancelled ? (
+          {record.status === "CANCELLED" && canDeleteCancelled ? (
             <ActionIcon
               variant="subtle"
               color="red"
               size="sm"
               aria-label={
-                'Xóa đơn nghỉ phép đã hủy của ' +
-                (record.employeeName ?? record.employee?.fullName ?? record.employeeId)
+                "Xóa đơn nghỉ phép đã hủy của " +
+                (record.employeeName ??
+                  record.employee?.fullName ??
+                  record.employeeId)
               }
               disabled={deleteCancelledLeaveRequest.isPending}
               onClick={() => setDeletingRequest(record)}
@@ -511,8 +638,8 @@ export function LeavePage() {
       ),
     },
     {
-      key: 'approval',
-      header: 'Luồng duyệt',
+      key: "approval",
+      header: "Luồng duyệt",
       minWidth: 180,
       render: (record) => (
         <Text size="sm" c="dimmed">
@@ -540,13 +667,16 @@ export function LeavePage() {
     hasNextPage: catalogCurrentPage < catalogTotalPages,
     hasPreviousPage: catalogCurrentPage > 1,
   };
+  const selectedLeaveTypes = leaveTypes.filter((record) =>
+    selectedLeaveTypeIds.has(record.id),
+  );
 
   const catalogColumns: DataTableColumn<LeavePolicyType>[] = [
     {
-      key: 'symbol',
-      header: 'Ký hiệu',
+      key: "symbol",
+      header: "Ký hiệu",
       width: 84,
-      align: 'center',
+      align: "center",
       render: (record) => (
         <Text size="sm" fw={600}>
           {record.displaySymbol}
@@ -554,8 +684,8 @@ export function LeavePage() {
       ),
     },
     {
-      key: 'name',
-      header: 'Tên ký hiệu',
+      key: "name",
+      header: "Tên ký hiệu",
       minWidth: 200,
       render: (record) => (
         <Stack gap={0}>
@@ -569,55 +699,57 @@ export function LeavePage() {
       ),
     },
     {
-      key: 'dayValue',
-      header: 'Giá trị ngày',
+      key: "dayValue",
+      header: "Giá trị ngày",
       width: 106,
-      align: 'right',
+      align: "right",
       render: (record) => (
-        <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
-          {record.dayValue ?? '-'}
+        <Text size="sm" style={{ fontVariantNumeric: "tabular-nums" }}>
+          {record.dayValue ?? "-"}
         </Text>
       ),
     },
     {
-      key: 'quotaMode',
-      header: 'Quỹ phép',
+      key: "quotaMode",
+      header: "Quỹ phép",
       minWidth: 160,
       render: (record) => (
         <Text size="sm">{labelFrom(QUOTA_MODE_LABELS, record.quotaMode)}</Text>
       ),
     },
     {
-      key: 'hrRule',
-      header: 'Quy tắc HR',
+      key: "hrRule",
+      header: "Quy tắc HR",
       width: 150,
       render: (record) => <StatusTag status={record.hrRuleStatus} />,
     },
     {
-      key: 'annual',
-      header: 'Trừ phép năm',
+      key: "annual",
+      header: "Trừ phép năm",
       width: 122,
-      align: 'center',
+      align: "center",
       render: (record) => (
-        <Text size="sm">{record.deductsAnnualLeave ? 'Có' : 'Không'}</Text>
+        <Text size="sm">{record.deductsAnnualLeave ? "Có" : "Không"}</Text>
       ),
     },
     {
-      key: 'attachment',
-      header: 'Chứng từ',
+      key: "attachment",
+      header: "Chứng từ",
       width: 112,
-      align: 'center',
+      align: "center",
       render: (record) => (
-        <Text size="sm">{record.requiresAttachment ? 'Bắt buộc' : 'Không'}</Text>
+        <Text size="sm">
+          {record.requiresAttachment ? "Bắt buộc" : "Không"}
+        </Text>
       ),
     },
   ];
   if (canManageCatalog) {
     catalogColumns.push({
-      key: 'actions',
-      header: '',
+      key: "actions",
+      header: "",
       width: 96,
-      align: 'right',
+      align: "right",
       render: (record) => (
         <TableActionsMenu
           label={`Thao tác ký hiệu ${record.displaySymbol}`}
@@ -630,8 +762,8 @@ export function LeavePage() {
             {
               label: `Xóa ${record.displaySymbol}`,
               icon: <IconTrash size={16} />,
-              color: 'red',
-              onClick: () => setDeletingLeaveType(record),
+              color: "red",
+              onClick: () => setDeletingLeaveTypes([record]),
             },
           ]}
         />
@@ -639,11 +771,10 @@ export function LeavePage() {
     });
   }
 
-
   return (
     <>
       <PageHeader
-        title="Quản lý nghỉ phép"
+        title="Loại nghỉ phép"
         subtitle="Theo dõi trạng thái đơn và quy tắc ký hiệu nghỉ phép trước khi đối chiếu bảng công. Tạo và xử lý đơn thực hiện trên Hacom Chat."
       />
 
@@ -666,13 +797,14 @@ export function LeavePage() {
                 className={filterStyles.fieldWide}
                 nothingFoundMessage={
                   employeesQuery.isFetching
-                    ? 'Đang tải nhân viên...'
-                    : 'Không tìm thấy nhân viên'
+                    ? "Đang tải nhân viên..."
+                    : "Không tìm thấy nhân viên"
                 }
                 onSearchChange={setEmployeeSearch}
                 onChange={(value) => {
                   setSelectedEmployee(
-                    employeeOptions.find((option) => option.value === value) ?? null,
+                    employeeOptions.find((option) => option.value === value) ??
+                      null,
                   );
                   setParams((current) => ({
                     ...current,
@@ -747,6 +879,56 @@ export function LeavePage() {
           flushHeader
         >
           <Stack gap="xs" px="sm" pb="sm">
+            {canManageCatalog ? (
+              <Paper
+                withBorder
+                radius="md"
+                px="md"
+                py={8}
+                style={{
+                  minHeight: 52,
+                  visibility: selectedLeaveTypes.length ? undefined : "hidden",
+                }}
+                aria-hidden={!selectedLeaveTypes.length}
+                inert={!selectedLeaveTypes.length}
+              >
+                <Group justify="space-between" gap="sm" wrap="wrap">
+                  <Group gap="sm" wrap="nowrap">
+                    <Text size="sm" fw={600}>
+                      Đã chọn {selectedLeaveTypes.length} ký hiệu
+                    </Text>
+                    <Button
+                      size="compact-xs"
+                      variant="subtle"
+                      color="gray"
+                      onClick={() => setSelectedLeaveTypeIds(new Set())}
+                    >
+                      Bỏ chọn
+                    </Button>
+                  </Group>
+                  <Group gap="xs" wrap="wrap">
+                    <Button
+                      size="xs"
+                      variant="light"
+                      leftSection={<IconEdit size={16} />}
+                      disabled={selectedLeaveTypes.length !== 1}
+                      onClick={() => openEditLeaveType(selectedLeaveTypes[0]!)}
+                    >
+                      Sửa
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="red"
+                      leftSection={<IconTrash size={16} />}
+                      onClick={() => setDeletingLeaveTypes(selectedLeaveTypes)}
+                    >
+                      Xóa
+                    </Button>
+                  </Group>
+                </Group>
+              </Paper>
+            ) : null}
             <DataTable
               data={pagedLeaveTypes}
               columns={catalogColumns}
@@ -756,6 +938,12 @@ export function LeavePage() {
               onRetry={() => void leaveTypesQuery.refetch()}
               meta={catalogMeta}
               onPageChange={(page) => setCatalogPage(page)}
+              selectedIds={
+                canManageCatalog ? selectedLeaveTypeIds : undefined
+              }
+              onSelectionChange={
+                canManageCatalog ? setSelectedLeaveTypeIds : undefined
+              }
               emptyTitle="Chưa có ký hiệu nghỉ phép"
             />
           </Stack>
@@ -768,14 +956,14 @@ export function LeavePage() {
         title={
           editingLeaveType
             ? `Chỉnh sửa ký hiệu ${editingLeaveType.displaySymbol}`
-            : 'Thêm ký hiệu nghỉ phép'
+            : "Thêm ký hiệu nghỉ phép"
         }
         position="right"
         size="lg"
       >
         <form
-          onSubmit={leaveTypeForm.onSubmit((values) =>
-            void handleSaveLeaveType(values),
+          onSubmit={leaveTypeForm.onSubmit(
+            (values) => void handleSaveLeaveType(values),
           )}
         >
           <Stack gap="md">
@@ -790,7 +978,7 @@ export function LeavePage() {
               description="Tối đa 12 ký tự, không có khoảng trắng hoặc dấu ;"
               withAsterisk
               maxLength={12}
-              {...leaveTypeForm.getInputProps('displaySymbol')}
+              {...leaveTypeForm.getInputProps("displaySymbol")}
             />
 
             <TextInput
@@ -798,7 +986,7 @@ export function LeavePage() {
               placeholder="Nghỉ phép năm"
               withAsterisk
               maxLength={120}
-              {...leaveTypeForm.getInputProps('name')}
+              {...leaveTypeForm.getInputProps("name")}
             />
 
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
@@ -809,8 +997,8 @@ export function LeavePage() {
                 value={leaveTypeForm.values.paid}
                 onChange={(value) =>
                   leaveTypeForm.setFieldValue(
-                    'paid',
-                    (value ?? 'UNSET') as LeaveTypeFormValues['paid'],
+                    "paid",
+                    (value ?? "UNSET") as LeaveTypeFormValues["paid"],
                   )
                 }
               />
@@ -821,7 +1009,7 @@ export function LeavePage() {
                 max={1}
                 step={0.5}
                 decimalScale={2}
-                {...leaveTypeForm.getInputProps('dayValue')}
+                {...leaveTypeForm.getInputProps("dayValue")}
               />
             </SimpleGrid>
 
@@ -832,13 +1020,13 @@ export function LeavePage() {
               value={leaveTypeForm.values.quotaMode}
               onChange={(value) =>
                 leaveTypeForm.setFieldValue(
-                  'quotaMode',
-                  (value ?? 'NONE') as LeaveQuotaMode,
+                  "quotaMode",
+                  (value ?? "NONE") as LeaveQuotaMode,
                 )
               }
             />
 
-            {leaveTypeForm.values.quotaMode === 'PER_EVENT' ? (
+            {leaveTypeForm.values.quotaMode === "PER_EVENT" ? (
               <NumberInput
                 label="Số ngày tối đa mỗi sự kiện"
                 placeholder="Không giới hạn"
@@ -846,23 +1034,23 @@ export function LeavePage() {
                 max={365}
                 step={0.5}
                 decimalScale={2}
-                {...leaveTypeForm.getInputProps('maxDaysPerEvent')}
+                {...leaveTypeForm.getInputProps("maxDaysPerEvent")}
               />
             ) : null}
 
             <Switch
               label="Trừ vào quỹ phép năm"
               description="Bật khi ký hiệu làm giảm số ngày phép năm còn lại."
-              {...leaveTypeForm.getInputProps('deductsAnnualLeave', {
-                type: 'checkbox',
+              {...leaveTypeForm.getInputProps("deductsAnnualLeave", {
+                type: "checkbox",
               })}
             />
 
             <Switch
               label="Bắt buộc có chứng từ"
               description="Áp dụng cho nghỉ ốm, thai sản hoặc chính sách cần hồ sơ."
-              {...leaveTypeForm.getInputProps('requiresAttachment', {
-                type: 'checkbox',
+              {...leaveTypeForm.getInputProps("requiresAttachment", {
+                type: "checkbox",
               })}
             />
 
@@ -874,7 +1062,7 @@ export function LeavePage() {
                 max={365}
                 step={0.5}
                 decimalScale={2}
-                {...leaveTypeForm.getInputProps('attachmentMinDays')}
+                {...leaveTypeForm.getInputProps("attachmentMinDays")}
               />
             ) : null}
 
@@ -885,8 +1073,8 @@ export function LeavePage() {
               value={leaveTypeForm.values.hrRuleStatus}
               onChange={(value) =>
                 leaveTypeForm.setFieldValue(
-                  'hrRuleStatus',
-                  (value ?? 'CONFIRMED') as LeaveTypeFormValues['hrRuleStatus'],
+                  "hrRuleStatus",
+                  (value ?? "CONFIRMED") as LeaveTypeFormValues["hrRuleStatus"],
                 )
               }
             />
@@ -897,7 +1085,7 @@ export function LeavePage() {
               minRows={3}
               autosize
               maxLength={500}
-              {...leaveTypeForm.getInputProps('note')}
+              {...leaveTypeForm.getInputProps("note")}
             />
 
             <Group justify="flex-end" mt="xs">
@@ -905,7 +1093,9 @@ export function LeavePage() {
                 type="button"
                 variant="default"
                 onClick={closeLeaveTypeDrawer}
-                disabled={createLeaveType.isPending || updateLeaveType.isPending}
+                disabled={
+                  createLeaveType.isPending || updateLeaveType.isPending
+                }
               >
                 Hủy
               </Button>
@@ -913,7 +1103,7 @@ export function LeavePage() {
                 type="submit"
                 loading={createLeaveType.isPending || updateLeaveType.isPending}
               >
-                {editingLeaveType ? 'Lưu thay đổi' : 'Thêm ký hiệu'}
+                {editingLeaveType ? "Lưu thay đổi" : "Thêm ký hiệu"}
               </Button>
             </Group>
           </Stack>
@@ -921,12 +1111,20 @@ export function LeavePage() {
       </Drawer>
 
       <ConfirmActionModal
-        opened={deletingLeaveType !== null}
-        title={`Xóa ký hiệu ${deletingLeaveType?.displaySymbol ?? ''}?`}
-        message="Ký hiệu sẽ ngừng sử dụng và biến mất khỏi danh mục. Dữ liệu quỹ phép và lịch sử liên quan vẫn được giữ nguyên."
-        confirmLabel="Xóa khỏi danh mục"
+        opened={deletingLeaveTypes.length > 0}
+        title={
+          deletingLeaveTypes.length === 1
+            ? `Xóa ký hiệu ${deletingLeaveTypes[0]?.displaySymbol ?? ""}?`
+            : `Xóa ${deletingLeaveTypes.length} ký hiệu đã chọn?`
+        }
+        message="Ký hiệu đã chọn sẽ ngừng sử dụng và biến mất khỏi danh mục. Dữ liệu quỹ phép và lịch sử liên quan vẫn được giữ nguyên."
+        confirmLabel={
+          deletingLeaveTypes.length === 1
+            ? "Xóa khỏi danh mục"
+            : `Xóa ${deletingLeaveTypes.length} ký hiệu`
+        }
         loading={deleteLeaveType.isPending}
-        onClose={() => setDeletingLeaveType(null)}
+        onClose={() => setDeletingLeaveTypes([])}
         onConfirm={() => void handleDeleteLeaveType()}
       />
 

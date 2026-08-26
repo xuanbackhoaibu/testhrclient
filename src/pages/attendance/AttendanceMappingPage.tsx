@@ -567,9 +567,9 @@ export function AttendanceMappingPage() {
   return (
     <>
       <PageHeader
-        title="Xử lý mapping chấm công"
+        title="Đối soát dữ liệu chấm công"
         subtitle="Map dữ liệu chấm công BioTime với nhân sự HRM"
-        breadcrumbs={['Chấm công', 'Xử lý mapping']}
+        breadcrumbs={['Chấm công', 'Máy chấm công', 'Đối soát dữ liệu']}
         actions={
           <>
             <Button

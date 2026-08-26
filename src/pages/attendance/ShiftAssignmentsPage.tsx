@@ -33,7 +33,7 @@ export function ShiftAssignmentsPage() {
   return (
     <>
       <PageHeader
-        title="Phân ca"
+        title="Xếp lịch làm việc"
         subtitle="Tick CBNV, chọn ca và ngày áp dụng. BCC dùng đúng ca kế hoạch này sau khi được cập nhật lại."
       />
 

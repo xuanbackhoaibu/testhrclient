@@ -430,7 +430,7 @@ export function WorkShiftsPage() {
       },
       {
         key: "hours",
-        header: "Giờ ca",
+        header: "Thời gian làm việc",
         minWidth: 168,
         render: (record) => (
           <Stack gap={2}>

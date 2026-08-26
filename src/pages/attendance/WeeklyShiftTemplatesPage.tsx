@@ -789,7 +789,7 @@ export function WeeklyShiftTemplatesPage() {
     },
     {
       key: "name",
-      header: "Tên ca tuần",
+      header: "Lịch tuần",
       minWidth: 230,
       render: (template) => (
         <Stack gap={2}>
@@ -885,7 +885,7 @@ export function WeeklyShiftTemplatesPage() {
   return (
     <>
       <PageHeader
-        title="Ca tuần"
+        title="Mẫu lịch tuần"
         subtitle="Tạo mẫu lịch lặp từ Thứ 2 đến Chủ nhật, rồi áp dụng cho một hoặc nhiều CBNV trong đúng Kỳ công và đơn vị đã chọn."
         actions={
           canEdit ? (
@@ -1026,7 +1026,7 @@ export function WeeklyShiftTemplatesPage() {
       >
         <Stack gap="md">
           <TextInput
-            label="Tên ca tuần"
+            label="Lịch tuần"
             placeholder="Ví dụ: Hành chính T2–T6, sáng Thứ 7"
             withAsterisk
             value={editorName}
