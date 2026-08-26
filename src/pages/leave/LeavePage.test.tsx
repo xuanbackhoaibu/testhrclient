@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   update: vi.fn(),
   remove: vi.fn(),
   requestItems: [] as Array<Record<string, unknown>>,
+  leaveTypeItems: [] as Array<Record<string, unknown>>,
 }));
 
 const leaveType = {
@@ -61,7 +62,7 @@ vi.mock("../../features/leave/useLeaveRequests", () => ({
     refetch: vi.fn(),
   }),
   useLeaveTypes: () => ({
-    data: [leaveType],
+    data: mocks.leaveTypeItems,
     isLoading: false,
     error: null,
     refetch: vi.fn(),
@@ -124,6 +125,7 @@ function renderPage() {
 afterEach(cleanup);
 beforeEach(() => {
   mocks.requestItems = [];
+  mocks.leaveTypeItems = [leaveType];
   mocks.create.mockReset().mockResolvedValue(undefined);
   mocks.update.mockReset().mockResolvedValue(undefined);
   mocks.remove.mockReset().mockResolvedValue(undefined);
@@ -154,6 +156,71 @@ describe("LeavePage leave policy catalog", () => {
         }),
       ),
     );
+  });
+
+  it("lets HR tick a leave policy and use the selected edit/delete actions", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const selectAll = screen.getByRole("checkbox", { name: "Chọn tất cả" });
+    const selectRow = screen.getByRole("checkbox", { name: "Chọn dòng" });
+
+    await user.click(selectAll);
+    expect((selectRow as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByText("Đã chọn 1 ký hiệu")).toBeDefined();
+
+    await user.click(screen.getByRole("button", { name: "Bỏ chọn" }));
+    expect((selectRow as HTMLInputElement).checked).toBe(false);
+
+    await user.click(selectRow);
+    await user.click(screen.getByRole("button", { name: "Sửa" }));
+    const drawer = await screen.findByRole("dialog");
+    expect(
+      (within(drawer).getByLabelText(/^Tên ký hiệu/) as HTMLInputElement).value,
+    ).toBe("Nghỉ phép năm");
+    await user.click(within(drawer).getByRole("button", { name: "Hủy" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    await user.click(screen.getByRole("button", { name: "Xóa" }));
+    expect(await screen.findByText("Xóa ký hiệu P?")).toBeDefined();
+    await user.click(screen.getByRole("button", { name: "Xóa khỏi danh mục" }));
+
+    await waitFor(() =>
+      expect(mocks.remove).toHaveBeenCalledWith("leave-type-1"),
+    );
+  });
+
+  it("deletes multiple checked leave policies and prevents bulk edit", async () => {
+    mocks.leaveTypeItems = [
+      leaveType,
+      {
+        ...leaveType,
+        id: "leave-type-2",
+        code: "UNPAID",
+        name: "Nghỉ không lương",
+        displaySymbol: "KL",
+        deductsAnnualLeave: false,
+      },
+    ];
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("checkbox", { name: "Chọn tất cả" }));
+    expect(screen.getByText("Đã chọn 2 ký hiệu")).toBeDefined();
+    expect(
+      (screen.getByRole("button", { name: "Sửa" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+
+    await user.click(screen.getByRole("button", { name: "Xóa" }));
+    expect(await screen.findByText("Xóa 2 ký hiệu đã chọn?")).toBeDefined();
+    await user.click(screen.getByRole("button", { name: "Xóa 2 ký hiệu" }));
+
+    await waitFor(() => {
+      expect(mocks.remove).toHaveBeenCalledTimes(2);
+      expect(mocks.remove).toHaveBeenCalledWith("leave-type-1");
+      expect(mocks.remove).toHaveBeenCalledWith("leave-type-2");
+    });
   });
 
   it("edits an existing leave policy type", async () => {

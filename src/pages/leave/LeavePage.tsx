@@ -6,6 +6,7 @@ import {
   Drawer,
   Group,
   NumberInput,
+  Paper,
   Select,
   SimpleGrid,
   Stack,
@@ -282,8 +283,12 @@ export function LeavePage() {
   );
   const [editingLeaveType, setEditingLeaveType] =
     useState<LeavePolicyType | null>(null);
-  const [deletingLeaveType, setDeletingLeaveType] =
-    useState<LeavePolicyType | null>(null);
+  const [selectedLeaveTypeIds, setSelectedLeaveTypeIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [deletingLeaveTypes, setDeletingLeaveTypes] = useState<
+    LeavePolicyType[]
+  >([]);
   const [leaveTypeDrawerOpened, setLeaveTypeDrawerOpened] = useState(false);
   const [catalogPage, setCatalogPage] = useState(1);
   const [params, setParams] = useState({
@@ -436,22 +441,55 @@ export function LeavePage() {
   }
 
   async function handleDeleteLeaveType() {
-    if (!deletingLeaveType) return;
-    try {
-      await deleteLeaveType.mutateAsync(deletingLeaveType.id);
-      notifications.show({
-        color: "green",
-        title: "Đã xóa ký hiệu",
-        message: `${deletingLeaveType.displaySymbol} đã được ngừng sử dụng và ẩn khỏi danh mục.`,
-      });
-      setDeletingLeaveType(null);
-    } catch (deleteError) {
+    if (!deletingLeaveTypes.length) return;
+
+    const targets = [...deletingLeaveTypes];
+    const results = await Promise.allSettled(
+      targets.map((record) => deleteLeaveType.mutateAsync(record.id)),
+    );
+    const deletedIds = targets
+      .filter((_, index) => results[index]?.status === "fulfilled")
+      .map((record) => record.id);
+    const failed = targets.filter(
+      (_, index) => results[index]?.status === "rejected",
+    );
+
+    setSelectedLeaveTypeIds((current) => {
+      const next = new Set(current);
+      deletedIds.forEach((id) => next.delete(id));
+      return next;
+    });
+    setDeletingLeaveTypes([]);
+
+    if (failed.length) {
+      const firstError = results.find(
+        (result) => result.status === "rejected",
+      );
       notifications.show({
         color: "red",
-        title: "Không xóa được ký hiệu",
-        message: leaveTypeErrorMessage(deleteError),
+        title:
+          deletedIds.length > 0
+            ? "Một số ký hiệu chưa xóa được"
+            : "Không xóa được ký hiệu",
+        message:
+          deletedIds.length > 0
+            ? `Đã xóa ${deletedIds.length} ký hiệu; ${failed.length} ký hiệu chưa xóa được. Hãy thử lại.`
+            : leaveTypeErrorMessage(
+                firstError?.status === "rejected" ? firstError.reason : null,
+              ),
       });
+      return;
     }
+
+    notifications.show({
+      color: "green",
+      title:
+        targets.length === 1 ? "Đã xóa ký hiệu" : "Đã xóa ký hiệu đã chọn",
+      message:
+        targets.length === 1
+          ? `${targets[0]?.displaySymbol} đã được ngừng sử dụng và ẩn khỏi danh mục.`
+          : `${targets.length} ký hiệu đã được ngừng sử dụng và ẩn khỏi danh mục.`,
+    });
   }
 
   const requestColumns: DataTableColumn<LeaveRequest>[] = [
@@ -629,6 +667,9 @@ export function LeavePage() {
     hasNextPage: catalogCurrentPage < catalogTotalPages,
     hasPreviousPage: catalogCurrentPage > 1,
   };
+  const selectedLeaveTypes = leaveTypes.filter((record) =>
+    selectedLeaveTypeIds.has(record.id),
+  );
 
   const catalogColumns: DataTableColumn<LeavePolicyType>[] = [
     {
@@ -722,7 +763,7 @@ export function LeavePage() {
               label: `Xóa ${record.displaySymbol}`,
               icon: <IconTrash size={16} />,
               color: "red",
-              onClick: () => setDeletingLeaveType(record),
+              onClick: () => setDeletingLeaveTypes([record]),
             },
           ]}
         />
@@ -838,6 +879,56 @@ export function LeavePage() {
           flushHeader
         >
           <Stack gap="xs" px="sm" pb="sm">
+            {canManageCatalog ? (
+              <Paper
+                withBorder
+                radius="md"
+                px="md"
+                py={8}
+                style={{
+                  minHeight: 52,
+                  visibility: selectedLeaveTypes.length ? undefined : "hidden",
+                }}
+                aria-hidden={!selectedLeaveTypes.length}
+                inert={!selectedLeaveTypes.length}
+              >
+                <Group justify="space-between" gap="sm" wrap="wrap">
+                  <Group gap="sm" wrap="nowrap">
+                    <Text size="sm" fw={600}>
+                      Đã chọn {selectedLeaveTypes.length} ký hiệu
+                    </Text>
+                    <Button
+                      size="compact-xs"
+                      variant="subtle"
+                      color="gray"
+                      onClick={() => setSelectedLeaveTypeIds(new Set())}
+                    >
+                      Bỏ chọn
+                    </Button>
+                  </Group>
+                  <Group gap="xs" wrap="wrap">
+                    <Button
+                      size="xs"
+                      variant="light"
+                      leftSection={<IconEdit size={16} />}
+                      disabled={selectedLeaveTypes.length !== 1}
+                      onClick={() => openEditLeaveType(selectedLeaveTypes[0]!)}
+                    >
+                      Sửa
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="red"
+                      leftSection={<IconTrash size={16} />}
+                      onClick={() => setDeletingLeaveTypes(selectedLeaveTypes)}
+                    >
+                      Xóa
+                    </Button>
+                  </Group>
+                </Group>
+              </Paper>
+            ) : null}
             <DataTable
               data={pagedLeaveTypes}
               columns={catalogColumns}
@@ -847,6 +938,12 @@ export function LeavePage() {
               onRetry={() => void leaveTypesQuery.refetch()}
               meta={catalogMeta}
               onPageChange={(page) => setCatalogPage(page)}
+              selectedIds={
+                canManageCatalog ? selectedLeaveTypeIds : undefined
+              }
+              onSelectionChange={
+                canManageCatalog ? setSelectedLeaveTypeIds : undefined
+              }
               emptyTitle="Chưa có ký hiệu nghỉ phép"
             />
           </Stack>
@@ -1014,12 +1111,20 @@ export function LeavePage() {
       </Drawer>
 
       <ConfirmActionModal
-        opened={deletingLeaveType !== null}
-        title={`Xóa ký hiệu ${deletingLeaveType?.displaySymbol ?? ""}?`}
-        message="Ký hiệu sẽ ngừng sử dụng và biến mất khỏi danh mục. Dữ liệu quỹ phép và lịch sử liên quan vẫn được giữ nguyên."
-        confirmLabel="Xóa khỏi danh mục"
+        opened={deletingLeaveTypes.length > 0}
+        title={
+          deletingLeaveTypes.length === 1
+            ? `Xóa ký hiệu ${deletingLeaveTypes[0]?.displaySymbol ?? ""}?`
+            : `Xóa ${deletingLeaveTypes.length} ký hiệu đã chọn?`
+        }
+        message="Ký hiệu đã chọn sẽ ngừng sử dụng và biến mất khỏi danh mục. Dữ liệu quỹ phép và lịch sử liên quan vẫn được giữ nguyên."
+        confirmLabel={
+          deletingLeaveTypes.length === 1
+            ? "Xóa khỏi danh mục"
+            : `Xóa ${deletingLeaveTypes.length} ký hiệu`
+        }
         loading={deleteLeaveType.isPending}
-        onClose={() => setDeletingLeaveType(null)}
+        onClose={() => setDeletingLeaveTypes([])}
         onConfirm={() => void handleDeleteLeaveType()}
       />
 
