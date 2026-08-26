@@ -80,14 +80,17 @@ export function useAdjustAnnualLeaveBalance() {
     mutationFn: ({
       employeeId,
       year,
+      month,
       daysDelta,
       note,
     }: {
       employeeId: string;
       year: number;
+      month: number;
       daysDelta: number;
       note: string;
-    }) => adjustAnnualLeaveBalance(employeeId, year, { daysDelta, note }),
+    }) =>
+      adjustAnnualLeaveBalance(employeeId, year, { month, daysDelta, note }),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: annualLeaveKeys.all }),
   });

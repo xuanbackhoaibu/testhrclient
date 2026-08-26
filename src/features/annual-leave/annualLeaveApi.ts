@@ -254,7 +254,7 @@ export function getAnnualLeaveLedger(employeeId: string, year: number) {
 export function adjustAnnualLeaveBalance(
   employeeId: string,
   year: number,
-  payload: { daysDelta: number; note: string },
+  payload: { month: number; daysDelta: number; note: string },
 ) {
   if (isMockMode) return Promise.resolve({ employeeId, year, ...payload });
   return api.post(`${BASE}/${employeeId}/adjustments`, payload, {

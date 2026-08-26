@@ -151,6 +151,7 @@ describe("annual leave balance API contract", () => {
 
     await getAnnualLeaveLedger("employee-1", 2026);
     await adjustAnnualLeaveBalance("employee-1", 2026, {
+      month: 8,
       daysDelta: 0.5,
       note: "Biên bản 01",
     });
@@ -161,7 +162,7 @@ describe("annual leave balance API contract", () => {
     );
     expect(post).toHaveBeenCalledWith(
       "/leave/annual-balances/employee-1/adjustments",
-      { daysDelta: 0.5, note: "Biên bản 01" },
+      { month: 8, daysDelta: 0.5, note: "Biên bản 01" },
       { params: { year: 2026 } },
     );
   });

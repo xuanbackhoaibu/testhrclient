@@ -67,6 +67,10 @@ const pageSizeOptions = [20, 50, 100].map((value) => ({
   value: String(value),
   label: `${value}/trang`,
 }));
+const monthOptions = Array.from({ length: 12 }, (_, index) => ({
+  value: String(index + 1),
+  label: `Tháng ${index + 1}`,
+}));
 
 const reconciliationOptions: Array<{
   value: AnnualLeaveReconciliationStatus;
@@ -148,7 +152,7 @@ function fixedCellStyle(
 
 const headerStyle: CSSProperties = {
   position: "sticky",
-  top: 34,
+  top: 0,
   zIndex: 4,
   minWidth: 76,
   height: 78,
@@ -161,21 +165,6 @@ const headerStyle: CSSProperties = {
   lineHeight: 1.25,
   textAlign: "center",
   whiteSpace: "normal",
-};
-
-const groupHeaderStyle: CSSProperties = {
-  position: "sticky",
-  top: 0,
-  zIndex: 6,
-  height: 34,
-  padding: "6px 8px",
-  color: "var(--mantine-color-dark-7)",
-  background: "#d9d2e9",
-  borderColor: "var(--mantine-color-gray-4)",
-  fontSize: 11,
-  fontWeight: 800,
-  letterSpacing: "0.01em",
-  textAlign: "center",
 };
 
 const numberCellStyle: CSSProperties = {
@@ -576,20 +565,6 @@ export function AnnualLeaveBalancesPage() {
             >
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th colSpan={5} style={groupHeaderStyle}>
-                    Thông tin nhân sự
-                  </Table.Th>
-                  <Table.Th colSpan={4} style={groupHeaderStyle}>
-                    Nguồn phép
-                  </Table.Th>
-                  <Table.Th colSpan={12} style={groupHeaderStyle}>
-                    Đã nghỉ theo tháng
-                  </Table.Th>
-                  <Table.Th colSpan={5} style={groupHeaderStyle}>
-                    Đối chiếu và số dư
-                  </Table.Th>
-                </Table.Tr>
-                <Table.Tr>
                   <Table.Th
                     style={{
                       ...headerStyle,
@@ -877,13 +852,7 @@ export function AnnualLeaveBalancesPage() {
               </Table.Tbody>
             </Table>
           </ScrollArea>
-          <Group
-            justify="space-between"
-            px="xs"
-            py={6}
-            gap="sm"
-            wrap="wrap"
-          >
+          <Group justify="space-between" px="xs" py={6} gap="sm" wrap="wrap">
             <Text size="xs" c="dimmed">
               Hiển thị {rows.length ? pageStart + 1 : 0}–
               {Math.min(pageEnd, rows.length)} / {rows.length} CBNV
@@ -924,13 +893,16 @@ export function AnnualLeaveBalancesPage() {
         year={year}
         canUpdate={canUpdate}
         onClose={() => setSelectedRow(null)}
-        onAdjusted={(daysDelta) =>
+        onAdjusted={(daysDelta, month) =>
           setSelectedRow((current) =>
             current
               ? {
                   ...current,
-                  otherDays: current.otherDays + daysDelta,
-                  remainingDays: current.remainingDays + daysDelta,
+                  monthlyUsed: current.monthlyUsed.map((value, index) =>
+                    index === month - 1 ? value + daysDelta : value,
+                  ),
+                  usedCurrentYearDays: current.usedCurrentYearDays + daysDelta,
+                  remainingDays: current.remainingDays - daysDelta,
                 }
               : current,
           )
@@ -1208,10 +1180,11 @@ function AnnualLeaveLedgerDrawer({
   year: number;
   canUpdate: boolean;
   onClose: () => void;
-  onAdjusted: (daysDelta: number) => void;
+  onAdjusted: (daysDelta: number, month: number) => void;
 }) {
   const ledger = useAnnualLeaveLedger(row?.employeeId ?? null, year);
   const adjustment = useAdjustAnnualLeaveBalance();
+  const [month, setMonth] = useState(String(new Date().getMonth() + 1));
   const [daysDelta, setDaysDelta] = useState<number | string>(0.5);
   const [note, setNote] = useState("");
 
@@ -1227,16 +1200,17 @@ function AnnualLeaveLedgerDrawer({
       await adjustment.mutateAsync({
         employeeId: row.employeeId,
         year,
+        month: Number(month),
         daysDelta,
         note: note.trim(),
       });
-      onAdjusted(daysDelta);
+      onAdjusted(daysDelta, Number(month));
       setDaysDelta(0.5);
       setNote("");
       notifications.show({
         color: "green",
         title: "Đã ghi điều chỉnh",
-        message: "Sổ phép và tổng số ngày còn lại đã được cập nhật.",
+        message: `Tháng ${month} và tổng số ngày còn lại đã được cập nhật.`,
       });
     } catch (error) {
       notifications.show({
@@ -1302,12 +1276,19 @@ function AnnualLeaveLedgerDrawer({
           {canUpdate ? (
             <Paper withBorder radius="md" p="md">
               <Text fw={700} mb="xs">
-                Điều chỉnh có biên bản
+                Điều chỉnh số ngày đã nghỉ
               </Text>
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                <Select
+                  label="Tháng nghỉ"
+                  data={monthOptions}
+                  value={month}
+                  onChange={(value) => value && setMonth(value)}
+                  allowDeselect={false}
+                />
                 <NumberInput
-                  label="Số ngày tăng / giảm"
-                  description="Dùng số âm để giảm; bước 0,5 ngày."
+                  label="Số ngày nghỉ tăng / giảm"
+                  description="Dùng số âm để giảm số đã nghỉ; bước 0,5 ngày."
                   step={0.5}
                   decimalScale={1}
                   value={daysDelta}
@@ -1319,6 +1300,7 @@ function AnnualLeaveLedgerDrawer({
                   maxLength={500}
                   value={note}
                   onChange={(event) => setNote(event.currentTarget.value)}
+                  style={{ gridColumn: "1 / -1" }}
                 />
               </SimpleGrid>
               <Group justify="flex-end" mt="sm">
