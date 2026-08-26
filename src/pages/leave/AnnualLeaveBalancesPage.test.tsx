@@ -266,6 +266,10 @@ describe("AnnualLeaveBalancesPage", () => {
   it("groups the annual balance columns and keeps the monthly attendance palette", () => {
     renderPage();
 
+    const table = screen.getByRole("table");
+    expect(table.classList.contains("timesheet-bcc-table")).toBe(true);
+    expect(screen.getByText("Hiển thị 1–1 / 1 CBNV")).toBeDefined();
+
     const nameHeader = screen.getByRole("columnheader", { name: "Họ và tên" });
     const identityColumns = ["TT", "Họ và tên", "MCB", "Phòng ban"].map(
       (header) => screen.getByRole("columnheader", { name: header }),

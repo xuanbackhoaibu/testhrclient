@@ -554,11 +554,20 @@ export function AnnualLeaveBalancesPage() {
         ) : null}
 
         <Paper withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
-          <ScrollArea type="auto" scrollbarSize={12}>
+          <ScrollArea
+            type="always"
+            h="min(680px, calc(100vh - 355px))"
+            offsetScrollbars
+            scrollbarSize={12}
+          >
             <Table
+              className="timesheet-bcc-table"
+              withTableBorder
               withColumnBorders
               withRowBorders
               highlightOnHover
+              horizontalSpacing={0}
+              verticalSpacing={0}
               style={{
                 minWidth: 2_900,
                 borderCollapse: "separate",
@@ -868,14 +877,22 @@ export function AnnualLeaveBalancesPage() {
               </Table.Tbody>
             </Table>
           </ScrollArea>
-          <Group justify="space-between" p="sm" gap="sm" wrap="wrap">
+          <Group
+            justify="space-between"
+            px="xs"
+            py={6}
+            gap="sm"
+            wrap="wrap"
+          >
             <Text size="xs" c="dimmed">
-              Nhấn vào họ tên để xem sổ phép và lịch sử điều chỉnh.
+              Hiển thị {rows.length ? pageStart + 1 : 0}–
+              {Math.min(pageEnd, rows.length)} / {rows.length} CBNV
             </Text>
-            <Group gap="sm">
+            <Group gap="xs">
               <Select
                 aria-label="Số dòng mỗi trang"
-                w={120}
+                size="xs"
+                w={96}
                 data={pageSizeOptions}
                 value={String(pageSize)}
                 allowDeselect={false}
@@ -889,6 +906,8 @@ export function AnnualLeaveBalancesPage() {
                 total={totalPages}
                 onChange={setPage}
                 size="sm"
+                siblings={1}
+                boundaries={1}
               />
             </Group>
           </Group>
