@@ -60,6 +60,15 @@ export const ROUTE_POLICIES: Record<string, RoutePolicy> = {
     kind: "permission",
     permissions: [HR_PERMISSIONS.ATTENDANCE_READ],
   },
+  [ROUTES.approvalInbox]: {
+    kind: "permission",
+    permissions: [
+      HR_PERMISSIONS.LEAVE_APPROVE,
+      HR_PERMISSIONS.LEAVE_REJECT,
+      HR_PERMISSIONS.ATTENDANCE_UPDATE,
+    ],
+    match: "any",
+  },
   [ROUTES.annualLeaveBalances]: {
     kind: "permission",
     permissions: [HR_PERMISSIONS.LEAVE_BALANCE_READ],
@@ -187,6 +196,16 @@ export function canAccessRoute(
     policy.kind === "unavailable"
   ) {
     return false;
+  }
+  if (route === ROUTES.approvalInbox) {
+    const permissions = user.permissions ?? [];
+    return (
+      permissions.includes("*") ||
+      permissions.includes(HR_PERMISSIONS.LEAVE_APPROVE) ||
+      permissions.includes(HR_PERMISSIONS.LEAVE_REJECT) ||
+      (permissions.includes(HR_PERMISSIONS.ATTENDANCE_READ) &&
+        permissions.includes(HR_PERMISSIONS.ATTENDANCE_UPDATE))
+    );
   }
   if (route === ROUTES.dashboard || route === ROUTES.accountAuthorizations) {
     return isSuperAdmin(user);

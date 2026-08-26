@@ -29,6 +29,7 @@ export interface LeaveRequest {
   lateSubmission?: boolean;
   status: string;
   approvalSteps?: LeaveApprovalStep[];
+  currentApprovalStep?: LeaveApprovalStep | null;
 }
 
 export type LeaveHalfDaySession = "FULL_DAY" | "MORNING" | "AFTERNOON";
@@ -41,6 +42,7 @@ export interface LeaveApprovalStep {
   stepName: string;
   status: string;
   reviewerUserId?: string | null;
+  assignedReviewerUserId?: string | null;
   reviewedAt?: string | null;
   note?: string | null;
 }

@@ -28,6 +28,7 @@ test('every router screen is wrapped by the shared route policy', () => {
     'ROUTES.offboarding',
     'ROUTES.weeklyShifts',
     'ROUTES.annualLeaveBalances',
+    'ROUTES.approvalInbox',
   ]) {
     assert.match(source, new RegExp(`ProtectedRoute route=\\{${route.replace('.', '\\.')}\\}`));
   }
@@ -105,6 +106,7 @@ test('attendance navigation follows the requested workflow and keeps settings la
     'Quy trình chấm công',
     'Xếp lịch làm việc',
     'Bảng chấm công',
+    'Duyệt công ca phép',
     'Kỳ chốt công',
     'Bảng phép năm',
     'Thiết lập',

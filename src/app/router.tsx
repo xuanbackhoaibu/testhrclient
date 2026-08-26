@@ -31,6 +31,11 @@ const TimesheetGridPage = lazy(() =>
     default: m.TimesheetGridPage,
   })),
 );
+const ApprovalInboxPage = lazy(() =>
+  import("../pages/attendance/ApprovalInboxPage").then((m) => ({
+    default: m.ApprovalInboxPage,
+  })),
+);
 const AttendanceRowOrderPage = lazy(() =>
   import("../pages/attendance/AttendanceRowOrderPage").then((m) => ({
     default: m.AttendanceRowOrderPage,
@@ -337,6 +342,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute route={ROUTES.timesheetGrid}>
             <TimesheetGridPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.approvalInbox,
+        element: (
+          <ProtectedRoute route={ROUTES.approvalInbox}>
+            <ApprovalInboxPage />
           </ProtectedRoute>
         ),
       },

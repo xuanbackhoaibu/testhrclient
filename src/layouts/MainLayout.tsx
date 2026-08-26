@@ -34,6 +34,7 @@ import {
   IconUsers,
   IconArrowsSort,
   IconCalendarStats,
+  IconChecklist,
 } from "@tabler/icons-react";
 import { Suspense } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -76,6 +77,11 @@ const attendanceSections: NavSection[] = [
         icon: IconCalendarTime,
       },
       { label: "Bảng chấm công", path: ROUTES.timesheetGrid, icon: IconTable },
+      {
+        label: "Duyệt công ca phép",
+        path: ROUTES.approvalInbox,
+        icon: IconChecklist,
+      },
       {
         label: "Kỳ chốt công",
         path: ROUTES.timesheetPeriods,
@@ -182,6 +188,7 @@ const routeTitles: Record<string, string> = {
   [ROUTES.attendanceMapping]: "Đối soát dữ liệu",
   [ROUTES.monthlyTimesheetRoster]: "Sắp ca tháng",
   [ROUTES.timesheetGrid]: "Bảng chấm công",
+  [ROUTES.approvalInbox]: "Duyệt công ca phép",
   [ROUTES.annualLeaveBalances]: "Bảng phép năm",
   [ROUTES.timesheetPeriods]: "Kỳ chốt công",
   [ROUTES.attendanceRowOrder]: "Thứ tự nhân sự",

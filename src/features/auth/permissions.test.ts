@@ -116,3 +116,22 @@ test("annual leave balance route requires its dedicated read permission", () => 
     false,
   );
 });
+
+test("approval inbox accepts leave review permission or the complete attendance pair", () => {
+  const leaveReviewer = principal(["hr.leave.approve"]);
+  const attendanceUpdaterOnly = principal(["hr.attendance.update"]);
+  const attendanceReviewer = principal([
+    "hr.attendance.read",
+    "hr.attendance.update",
+  ]);
+
+  assert.equal(canAccessRoute(leaveReviewer as never, ROUTES.approvalInbox), true);
+  assert.equal(
+    canAccessRoute(attendanceUpdaterOnly as never, ROUTES.approvalInbox),
+    false,
+  );
+  assert.equal(
+    canAccessRoute(attendanceReviewer as never, ROUTES.approvalInbox),
+    true,
+  );
+});

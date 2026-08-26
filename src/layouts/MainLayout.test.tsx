@@ -120,4 +120,18 @@ describe("MainLayout attendance navigation", () => {
     expect(screen.queryByText("Máy chấm công")).toBeNull();
     expect(screen.queryByText("Cấu hình")).toBeNull();
   });
+
+  it("places the approval inbox between the timesheet and period close", () => {
+    renderLayout();
+
+    const labels = ["Bảng chấm công", "Duyệt công ca phép", "Kỳ chốt công"].map(
+      (label) => screen.getAllByText(label).at(-1) as HTMLElement,
+    );
+    expect(
+      labels[0].compareDocumentPosition(labels[1]) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      labels[1].compareDocumentPosition(labels[2]) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
 });

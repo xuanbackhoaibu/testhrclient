@@ -16,6 +16,7 @@ export const ROUTES = {
   attendanceMapping: "/attendance/mapping",
   monthlyTimesheetRoster: "/attendance/monthly-roster",
   timesheetGrid: "/attendance/timesheet",
+  approvalInbox: "/attendance/approvals",
   annualLeaveBalances: "/attendance/annual-leave-balances",
   timesheetPeriods: "/attendance/periods",
   attendanceRowOrder: "/attendance/row-order",
