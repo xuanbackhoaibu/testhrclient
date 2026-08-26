@@ -450,10 +450,9 @@ export function MainLayout() {
                       <Fragment key={item.path}>
                         {item.sectionLabel ? (
                           <Text
-                            fz={10}
+                            fz={11}
                             fw={700}
                             c="dimmed"
-                            tt="uppercase"
                             pl="md"
                             pt={8}
                             pb={2}

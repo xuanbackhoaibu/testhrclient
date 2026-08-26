@@ -269,7 +269,7 @@ export function LoginPage() {
           </Stack>
           <Button
             size="md"
-            radius="md"
+            radius="lg"
             loading={submitting}
             onClick={handleMockLogin}
             className="login-submit-btn"
@@ -286,7 +286,7 @@ export function LoginPage() {
               placeholder="Nhập email hoặc mã nhân viên"
               autoComplete="username"
               disabled={submitting}
-              radius="md"
+              radius="lg"
               size="md"
               classNames={{ input: "login-input", label: "login-input-label" }}
               {...form.getInputProps("loginIdentifier")}
@@ -296,7 +296,7 @@ export function LoginPage() {
               placeholder="Nhập mật khẩu"
               autoComplete="current-password"
               disabled={submitting}
-              radius="md"
+              radius="lg"
               size="md"
               classNames={{ input: "login-input", label: "login-input-label" }}
               {...form.getInputProps("password")}
@@ -314,7 +314,7 @@ export function LoginPage() {
             <Button
               type="submit"
               size="md"
-              radius="md"
+              radius="lg"
               loading={submitting}
               className="login-submit-btn"
               fullWidth

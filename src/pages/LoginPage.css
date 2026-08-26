@@ -118,7 +118,7 @@
   width: 100%;
   padding: 10px 12px;
   border: 1px solid #e5ebf3;
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-lg);
   background: #ffffff;
   text-align: left;
   transition:

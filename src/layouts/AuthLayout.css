@@ -106,25 +106,50 @@
 }
 
 .auth-shell-dots {
-  display: flex;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
   margin-top: 28px;
 }
 
 .auth-shell-dot {
+  min-width: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.68);
+  cursor: pointer;
+  padding: 8px 0;
+  text-align: left;
+  transition: color 0.2s ease;
+}
+
+.auth-shell-dot:hover,
+.auth-shell-dot.is-active {
+  color: #fff;
+}
+
+.auth-shell-dot-label {
+  display: block;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auth-shell-dot-track {
   position: relative;
-  flex: 1;
+  display: block;
   height: 4px;
+  margin-top: 8px;
+  overflow: hidden;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.25);
-  border: none;
-  cursor: pointer;
-  overflow: hidden;
-  padding: 0;
   transition: background-color 0.2s ease;
 }
 
-.auth-shell-dot:hover {
+.auth-shell-dot:hover .auth-shell-dot-track {
   background: rgba(255, 255, 255, 0.4);
 }
 
@@ -160,7 +185,7 @@
   width: 100%;
   max-width: clamp(320px, 90vw, 500px);
   background: #ffffff;
-  border-radius: 24px;
+  border-radius: 20px;
   border: 1px solid #edf0f5;
   box-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
   padding: clamp(20px, 3.5dvh, 36px) clamp(16px, 4vw, 36px);
