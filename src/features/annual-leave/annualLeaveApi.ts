@@ -1,4 +1,5 @@
 import { api } from "../../shared/api/httpClient";
+import { normalizePaginatedResponse } from "../../shared/api/response";
 import { mockEmployees } from "../../shared/mocks/mockEmployees";
 import type {
   AnnualLeaveImportPreview,
@@ -134,7 +135,11 @@ export async function listAnnualLeaveBalances(
       },
     };
   }
-  return api.get<AnnualLeaveListResult>(BASE, { params: queryParams(query) });
+  const response = await api.get<AnnualLeaveListResult>(BASE, {
+    params: queryParams(query),
+  });
+  const normalized = normalizePaginatedResponse<AnnualLeaveRow>(response, query);
+  return { data: normalized.items, pagination: normalized.pagination };
 }
 
 export function downloadAnnualLeaveTemplate(year: number) {

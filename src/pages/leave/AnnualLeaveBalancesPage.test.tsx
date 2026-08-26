@@ -270,12 +270,26 @@ describe("AnnualLeaveBalancesPage", () => {
       name: "Thông tin nhân sự",
     });
     const nameHeader = screen.getByRole("columnheader", { name: "Họ và tên" });
+    const identityColumns = ["TT", "Họ và tên", "MCB", "Phòng ban"].map(
+      (header) => screen.getByRole("columnheader", { name: header }),
+    );
     const employeeRow = screen
       .getByRole("button", { name: "Mở sổ phép của Nguyễn Văn Một" })
       .closest("tr");
 
     expect(identityGroup.style.background).toBe("rgb(217, 210, 233)");
     expect(nameHeader.style.background).toBe("rgb(230, 242, 223)");
+    expect(
+      identityColumns.map(({ style }) => ({
+        left: style.left,
+        width: style.width,
+      })),
+    ).toEqual([
+      { left: "0px", width: "32px" },
+      { left: "32px", width: "160px" },
+      { left: "192px", width: "62px" },
+      { left: "254px", width: "170px" },
+    ]);
     expect(employeeRow).not.toBeNull();
     expect((employeeRow?.children[9] as HTMLElement).style.background).toBe(
       "rgb(255, 245, 157)",

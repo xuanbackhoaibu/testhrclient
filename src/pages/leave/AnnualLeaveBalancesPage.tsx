@@ -85,11 +85,11 @@ const reconciliationOptions: Array<{
 ];
 
 const fixedColumns = [
-  { key: "sequence", width: 46, left: 0 },
-  { key: "name", width: 190, left: 46 },
-  { key: "code", width: 84, left: 236 },
-  { key: "department", width: 170, left: 320 },
-  { key: "hireDate", width: 136, left: 490 },
+  { key: "sequence", width: 32, left: 0 },
+  { key: "name", width: 160, left: 32 },
+  { key: "code", width: 62, left: 192 },
+  { key: "department", width: 170, left: 254 },
+  { key: "hireDate", width: 136, left: 424 },
 ] as const;
 
 function fixedCellStyle(
@@ -578,10 +578,15 @@ export function AnnualLeaveBalancesPage() {
                       <Table.Td style={fixedCellStyle(fixedColumns[1])}>
                         <UnstyledButton
                           onClick={() => setSelectedRow(row)}
-                          style={{ width: "100%" }}
+                          style={{
+                            display: "block",
+                            minWidth: 0,
+                            textAlign: "left",
+                            width: "100%",
+                          }}
                           aria-label={`Mở sổ phép của ${row.fullName}`}
                         >
-                          <Text size="sm" fw={700} truncate>
+                          <Text size="xs" fw={600} truncate="end" td="underline">
                             {row.fullName}
                           </Text>
                           <Group gap={5} mt={3} wrap="nowrap">
@@ -603,7 +608,8 @@ export function AnnualLeaveBalancesPage() {
                         }}
                       >
                         <Text
-                          size="sm"
+                          size="xs"
+                          fw={600}
                           c={row.attendanceCode ? undefined : "red"}
                         >
                           {row.attendanceCode ?? "Thiếu"}
@@ -611,7 +617,7 @@ export function AnnualLeaveBalancesPage() {
                       </Table.Td>
                       <Table.Td style={fixedCellStyle(fixedColumns[3])}>
                         <Text
-                          size="sm"
+                          size="xs"
                           truncate
                           title={row.department?.name ?? ""}
                         >

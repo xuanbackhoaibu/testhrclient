@@ -56,6 +56,23 @@ describe("annual leave balance API contract", () => {
     );
   });
 
+  it("normalizes the deployed items collection so employee rows render", async () => {
+    const row = { employeeId: "employee-1" };
+    const pagination = {
+      page: 1,
+      pageSize: 20,
+      total: 1,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
+    };
+    get.mockResolvedValue({ items: [row], pagination });
+
+    await expect(
+      listAnnualLeaveBalances({ year: 2026, page: 1, pageSize: 20 }),
+    ).resolves.toEqual({ data: [row], pagination });
+  });
+
   it("uses a two-step preview and commit flow with downloadable errors", async () => {
     const file = new File(["xlsx"], "bang-phep.xlsx");
     upload.mockResolvedValue({ batchId: "batch-1" });
