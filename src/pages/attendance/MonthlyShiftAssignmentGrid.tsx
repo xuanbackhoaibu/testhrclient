@@ -461,7 +461,7 @@ function Legend() {
               width: 11,
             }}
           />
-          <Text fz={10} lh={1.2} c="dimmed">
+          <Text size="xs" lh={1.2} c="dimmed">
             {item.label}
           </Text>
         </Group>
@@ -479,7 +479,7 @@ function Legend() {
             width: 11,
           }}
         />
-        <Text fz={10} lh={1.2} c="dimmed">
+        <Text size="xs" lh={1.2} c="dimmed">
           Ca qua ngày (lặp lại mã ca ở ngày kết thúc)
         </Text>
       </Group>
@@ -1286,18 +1286,6 @@ export function MonthlyShiftAssignmentGrid({
 
   return (
     <Stack gap="md">
-      <InfoBanner title="Cách phân ca và quan hệ với BCC" collapsible>
-        Phân ca ở đây tạo <b>ca cá nhân</b> cho các CBNV được tích chọn; ca cá
-        nhân ưu tiên hơn ca phòng ban và đơn vị. Nhấn ô <b>—</b> để chọn ca trực
-        tiếp cho đúng CBNV/ngày; thao tác này luôn đưa CBNV vào BCC. Chủ nhật
-        mặc định nghỉ; HR chỉ có thể phân ca ngày này khi chủ động chọn ca tại ô
-        hoặc chọn Chủ nhật trong phần Ngày áp dụng. Ngày lễ vẫn không áp ca tại
-        đây. Mặc định, <b>Áp dụng ca</b> cũng đưa đúng các CBNV đó vào BCC. Bỏ
-        chọn “Đưa vào BCC cùng ca” khi chỉ muốn lập kế hoạch ca. Với CBNV đã có
-        ca, dùng <b>Đưa vào BCC</b> để bổ sung bảng công mà không tạo lại ca.
-        Sau đó mở đúng kỳ, bấm <b>Cập nhật bảng công</b> rồi mới xuất Excel.
-      </InfoBanner>
-
       <FilterBar>
         <Select
           aria-label="Kỳ công"
@@ -1568,16 +1556,6 @@ export function MonthlyShiftAssignmentGrid({
             </div>
           </div>
 
-          <div className={toolbarStyles.footer}>
-            <Legend />
-            <Text size="xs" c="dimmed">
-              Ca mới thay phần ca cũ chồng ngày; phần lịch nằm ngoài khoảng áp
-              dụng vẫn được giữ nguyên. Cột (1)–(6) quy số công theo danh mục
-              ca (ca 12 giờ 1.5 công, ca 24 giờ 3 công) và tính trên lịch đã
-              phân — công chốt cuối kỳ vẫn lấy ở Bảng công tháng sau khi có dữ
-              liệu chấm công.
-            </Text>
-          </div>
         </div>
       </Paper>
 
@@ -2455,6 +2433,40 @@ export function MonthlyShiftAssignmentGrid({
           </Group>
         </Stack>
       ) : null}
+
+      <InfoBanner
+        title="Cách phân ca và quan hệ với BCC"
+        tone="neutral"
+        collapsible
+      >
+        <Stack gap="sm">
+          <Text size="sm" inherit>
+            Phân ca ở đây tạo <b>ca cá nhân</b> cho các CBNV được tích chọn; ca
+            cá nhân ưu tiên hơn ca phòng ban và đơn vị. Nhấn ô <b>—</b> để chọn
+            ca trực tiếp cho đúng CBNV/ngày; thao tác này luôn đưa CBNV vào BCC.
+            Chủ nhật mặc định nghỉ; HR chỉ có thể phân ca ngày này khi chủ động
+            chọn ca tại ô hoặc chọn Chủ nhật trong phần Ngày áp dụng. Ngày lễ
+            vẫn không áp ca tại đây. Mặc định, <b>Áp dụng ca</b> cũng đưa đúng
+            các CBNV đó vào BCC. Bỏ chọn “Đưa vào BCC cùng ca” khi chỉ muốn lập
+            kế hoạch ca. Với CBNV đã có ca, dùng <b>Đưa vào BCC</b> để bổ sung
+            bảng công mà không tạo lại ca. Sau đó mở đúng kỳ, bấm <b>Cập nhật
+            bảng công</b> rồi mới xuất Excel.
+          </Text>
+          <Stack gap={6}>
+            <Text size="xs" fw={700} c="dimmed">
+              Chú giải bảng
+            </Text>
+            <Legend />
+            <Text size="xs" c="dimmed">
+              Ca mới thay phần ca cũ chồng ngày; phần lịch nằm ngoài khoảng áp
+              dụng vẫn được giữ nguyên. Cột (1)–(6) quy số công theo danh mục ca
+              (ca 12 giờ 1.5 công, ca 24 giờ 3 công) và tính trên lịch đã phân —
+              công chốt cuối kỳ vẫn lấy ở Bảng công tháng sau khi có dữ liệu
+              chấm công.
+            </Text>
+          </Stack>
+        </Stack>
+      </InfoBanner>
 
       <ConfirmActionModal
         opened={bulkCancelConfirmOpen}
