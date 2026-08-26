@@ -649,8 +649,7 @@ export function AnnualLeaveBalancesPage() {
                           style={{
                             ...numberCellStyle,
                             minWidth: 54,
-                            background:
-                              value > 0 ? "#fff59d" : undefined,
+                            background: value > 0 ? "#fff59d" : undefined,
                           }}
                         >
                           {value ? day(value) : "—"}
@@ -864,6 +863,22 @@ function AnnualLeaveImportModal({
                 {preview.data.failedRows} lỗi
               </Badge>
             </Group>
+            {preview.data.alreadyProcessed ? (
+              <Alert
+                color="blue"
+                variant="light"
+                title={
+                  preview.data.status === "COMMITTED"
+                    ? "File này đã được import"
+                    : "Đã dùng lại kết quả kiểm tra file"
+                }
+              >
+                <Text size="sm">
+                  Hệ thống nhận diện đúng file, năm phép và người thao tác nên
+                  không tạo batch trùng hoặc ghi sổ phép lần thứ hai.
+                </Text>
+              </Alert>
+            ) : null}
             {preview.data.failedRows > 0 ? (
               <Alert
                 color="red"

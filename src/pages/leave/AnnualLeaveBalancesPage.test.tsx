@@ -19,6 +19,8 @@ type PreviewData = {
   failedRows: number;
   canCommit: boolean;
   requiresNote: boolean;
+  alreadyProcessed?: boolean;
+  status?: string;
   rows: Array<{
     rowNumber: number;
     status: "VALID" | "WARNING" | "ERROR";
@@ -281,6 +283,42 @@ describe("AnnualLeaveBalancesPage", () => {
     expect(
       (employeeRow?.lastElementChild as HTMLElement).style.background,
     ).toBe("rgb(219, 234, 254)");
+  });
+  it("exports the filtered workbook exactly once for each click", async () => {
+    const user = userEvent.setup();
+    mocks.permissions = ["hr.leave_balance.read", "hr.leave_balance.export"];
+    mocks.downloadExport.mockResolvedValue(undefined);
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: "Xuất Excel" }));
+
+    await waitFor(() => expect(mocks.downloadExport).toHaveBeenCalledTimes(1));
+    expect(mocks.downloadExport).toHaveBeenCalledWith(
+      expect.objectContaining({ year: 2026, page: 1, pageSize: 20 }),
+    );
+  });
+
+  it("explains when the same import batch is reused and prevents a committed replay", async () => {
+    const user = userEvent.setup();
+    mocks.permissions = ["hr.leave_balance.read", "hr.leave_balance.import"];
+    mocks.previewData = preview({
+      canCommit: false,
+      alreadyProcessed: true,
+      status: "COMMITTED",
+    });
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: "Import Excel" }));
+
+    const modal = await screen.findByRole("dialog");
+    expect(within(modal).getByText("File này đã được import")).toBeDefined();
+    expect(
+      (
+        within(modal).getByRole("button", {
+          name: "Xác nhận import",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
   });
 
   it("requires a note in the modal before committing rows with other leave", async () => {

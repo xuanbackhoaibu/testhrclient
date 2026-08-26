@@ -13,6 +13,15 @@ export interface LeaveRequest {
   startHalfDaySession?: LeaveHalfDaySession;
   endHalfDaySession?: LeaveHalfDaySession;
   totalDays: number;
+  annualPaidDays?: number;
+  unpaidDays?: number;
+  replacementEmployeeId?: string | null;
+  replacementEmployee?: {
+    id: string;
+    employeeCode?: string | null;
+    attendanceCode?: string | null;
+    fullName?: string | null;
+  } | null;
   reason: string;
   attachmentUrl?: string | null;
   noticeRequiredDays?: number | null;
@@ -22,7 +31,7 @@ export interface LeaveRequest {
   approvalSteps?: LeaveApprovalStep[];
 }
 
-export type LeaveHalfDaySession = 'FULL_DAY' | 'MORNING' | 'AFTERNOON';
+export type LeaveHalfDaySession = "FULL_DAY" | "MORNING" | "AFTERNOON";
 
 export interface LeaveApprovalStep {
   id: string;
@@ -54,12 +63,12 @@ export interface LeavePolicyType {
 }
 
 export type LeaveQuotaMode =
-  | 'NONE'
-  | 'ANNUAL_BALANCE'
-  | 'COMPENSATORY_BALANCE'
-  | 'PER_EVENT'
-  | 'INSURANCE'
-  | 'PENDING_HR_RULE';
+  | "NONE"
+  | "ANNUAL_BALANCE"
+  | "COMPENSATORY_BALANCE"
+  | "PER_EVENT"
+  | "INSURANCE"
+  | "PENDING_HR_RULE";
 
 export interface LeavePolicyTypePayload {
   name: string;
@@ -71,7 +80,7 @@ export interface LeavePolicyTypePayload {
   attachmentMinDays: number | null;
   quotaMode: LeaveQuotaMode;
   maxDaysPerEvent: number | null;
-  hrRuleStatus: 'CONFIRMED' | 'PENDING_HR_RULE';
+  hrRuleStatus: "CONFIRMED" | "PENDING_HR_RULE";
   note: string | null;
 }
 
@@ -86,4 +95,3 @@ export interface LeaveRequestPayload {
   reason: string;
   attachmentUrl?: string;
 }
-
