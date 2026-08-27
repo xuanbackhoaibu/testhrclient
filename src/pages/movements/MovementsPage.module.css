@@ -1,0 +1,160 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Filter Card - Zalo Web Flat Style */
+.filterPanel {
+  background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+/* User cell in table */
+.userCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.userAvatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: light-dark(#eff6ff, rgba(0, 104, 255, 0.15));
+  color: #0068ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.userName {
+  font-size: 13px;
+  font-weight: 600;
+  color: light-dark(var(--mantine-color-gray-9), var(--mantine-color-dark-0));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userSub {
+  font-size: 11px;
+  color: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-3));
+}
+
+/* Movement Change Diff Pill */
+.movementDiffPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-5));
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: light-dark(var(--mantine-color-gray-8), var(--mantine-color-dark-1));
+}
+
+.diffArrow {
+  color: #0068ff;
+  flex-shrink: 0;
+}
+
+/* Movement Type Badges */
+.typeBadge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.typeTransfer {
+  background: light-dark(#eff6ff, rgba(0, 104, 255, 0.15));
+  color: light-dark(#0068ff, #60a5fa);
+}
+
+.typePromotion {
+  background: light-dark(#faf5ff, rgba(168, 85, 247, 0.15));
+  color: light-dark(#8b5cf6, #c084fc);
+}
+
+.typeStatusChange {
+  background: light-dark(#ecfdf5, rgba(16, 185, 129, 0.15));
+  color: light-dark(#059669, #34d399);
+}
+
+.typeTermination {
+  background: light-dark(#fff1f2, rgba(244, 63, 94, 0.15));
+  color: light-dark(#e11d48, #f87171);
+}
+
+/* Detail Modal Styles */
+.detailContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.comparisonGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.comparisonBox {
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+  border: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5));
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.comparisonBoxHeader {
+  font-size: 11px;
+  font-weight: 700;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-3));
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.comparisonItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.comparisonItemLabel {
+  font-size: 11px;
+  color: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-3));
+}
+
+.comparisonItemValue {
+  font-size: 13px;
+  font-weight: 600;
+  color: light-dark(var(--mantine-color-gray-9), var(--mantine-color-dark-0));
+}
+
+@media (max-width: 768px) {
+  .comparisonGrid {
+    grid-template-columns: 1fr;
+  }
+}
