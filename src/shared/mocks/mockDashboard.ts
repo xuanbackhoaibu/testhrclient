@@ -25,6 +25,26 @@ export function getMockDashboardSummary(): DashboardSummary {
     attendanceThisMonth: {
       month: new Date().getMonth() + 1,
       year: new Date().getFullYear(),
+      topLateEmployees: [
+        {
+          employeeId: 'emp-1',
+          employeeCode: 'HC001',
+          fullName: 'Nguyen Van An',
+          unitName: 'Van phong',
+          departmentName: 'HCNS',
+          lateCount: 3,
+          totalLateMinutes: 42,
+        },
+        {
+          employeeId: 'emp-2',
+          employeeCode: 'KD002',
+          fullName: 'Tran Thi Binh',
+          unitName: 'Kinh doanh',
+          departmentName: 'Sales',
+          lateCount: 2,
+          totalLateMinutes: 25,
+        },
+      ],
       byUnit: [
         { unitName: 'Van phong', workDays: 120, attendedDays: 116, attendanceRate: 96.7 },
         { unitName: 'Kinh doanh', workDays: 90, attendedDays: 84, attendanceRate: 93.3 },

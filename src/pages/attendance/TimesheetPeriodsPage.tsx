@@ -1,12 +1,10 @@
 import { useMemo, useState } from "react";
 import {
-  ActionIcon,
   Alert,
   Badge,
   Button,
   Card,
   Group,
-  Menu,
   Modal,
   ScrollArea,
   Select,
@@ -19,27 +17,21 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconCalendarPlus,
-  IconDotsVertical,
   IconDownload,
   IconLock,
   IconLockOpen,
-  IconPencil,
   IconRefresh,
-  IconTrash,
 } from "@tabler/icons-react";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
-import { showAttendanceError } from "../../features/attendance/attendanceErrorNotification";
 import { downloadTimesheetPeriodExport } from "../../features/attendance/timesheetApi";
 import {
   useCloseTimesheetPeriod,
-  useDeleteTimesheetPeriod,
   useOpenTimesheetPeriod,
   useReopenTimesheetPeriod,
   useTimesheetConfirmations,
   useTimesheetPeriods,
-  useUpdateTimesheetPeriod,
 } from "../../features/attendance/useTimesheet";
 import type {
   TimesheetConfirmationStatus,
@@ -113,9 +105,6 @@ export function TimesheetPeriodsPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<TimesheetPeriod | null>(null);
   const [closeTarget, setCloseTarget] = useState<TimesheetPeriod | null>(null);
   const [reopenTarget, setReopenTarget] = useState<TimesheetPeriod | null>(null);
-  const [editTarget, setEditTarget] = useState<TimesheetPeriod | null>(null);
-  const [editDeadline, setEditDeadline] = useState("");
-  const [deleteTarget, setDeleteTarget] = useState<TimesheetPeriod | null>(null);
   const [newMonth, setNewMonth] = useState(now.getMonth() + 1);
   const [newYear, setNewYear] = useState(now.getFullYear());
   const [newUnitId, setNewUnitId] = useState<string | null>(null);
@@ -129,8 +118,6 @@ export function TimesheetPeriodsPage() {
   const openPeriod = useOpenTimesheetPeriod();
   const closePeriod = useCloseTimesheetPeriod();
   const reopenPeriod = useReopenTimesheetPeriod();
-  const updatePeriod = useUpdateTimesheetPeriod();
-  const deletePeriod = useDeleteTimesheetPeriod();
 
   const unitOptions = useMemo(
     () =>
@@ -156,12 +143,12 @@ export function TimesheetPeriodsPage() {
       });
       setOpenModal(false);
       setYear(newYear);
-    } catch (error) {
-      showAttendanceError(
-        error,
-        "Không mở được kỳ công",
-        "Kiểm tra kỳ, phạm vi nhân viên rồi thử lại.",
-      );
+    } catch {
+      notifications.show({
+        color: "red",
+        title: "Không mở được kỳ công",
+        message: "Kỳ có thể đã được mở hoặc phạm vi không có nhân viên.",
+      });
     }
   }
 
@@ -208,12 +195,12 @@ export function TimesheetPeriodsPage() {
       });
       setReopenTarget(null);
       setReopenReason("");
-    } catch (error) {
-      showAttendanceError(
-        error,
-        "Không mở khóa được kỳ công",
-        "Tải lại trạng thái kỳ rồi thử mở khóa lần nữa.",
-      );
+    } catch {
+      notifications.show({
+        color: "red",
+        title: "Không mở khóa được kỳ công",
+        message: "Chỉ kỳ đã chốt mới được mở khóa.",
+      });
     }
   }
 
@@ -221,12 +208,12 @@ export function TimesheetPeriodsPage() {
     setExportingPeriodId(period.id);
     try {
       await downloadTimesheetPeriodExport(period);
-    } catch (error) {
-      showAttendanceError(
-        error,
-        "Không xuất được Excel",
-        "Kiểm tra kết nối rồi thử tải lại file.",
-      );
+    } catch {
+      notifications.show({
+        color: "red",
+        title: "Không xuất được Excel",
+        message: "Kiểm tra quyền xuất dữ liệu chấm công hoặc thử tải lại trang.",
+      });
     } finally {
       setExportingPeriodId(null);
     }
@@ -239,7 +226,7 @@ export function TimesheetPeriodsPage() {
   return (
     <>
       <PageHeader
-        title="Kỳ chốt công"
+        title="Quản lý kỳ công"
         subtitle="Mở kỳ để nhân viên xác nhận, theo dõi ai chưa xác nhận, chốt kỳ và mở khóa khi HR cần sửa lại."
         actions={
           canEdit ? (
@@ -277,21 +264,6 @@ export function TimesheetPeriodsPage() {
             Tải lại
           </Button>
         </Group>
-
-        {periodsQuery.isError ? (
-          <Alert color="red" variant="light" title="Không tải được danh sách kỳ công">
-            <Stack gap="xs" align="flex-start">
-              <Text size="sm">Không thể lấy trạng thái các kỳ công của năm đang chọn.</Text>
-              <Button
-                size="compact-sm"
-                variant="light"
-                onClick={() => void periodsQuery.refetch()}
-              >
-                Thử lại
-              </Button>
-            </Stack>
-          </Alert>
-        ) : null}
 
         <ScrollArea type="auto">
           <Table striped highlightOnHover withTableBorder miw={760}>
@@ -375,49 +347,11 @@ export function TimesheetPeriodsPage() {
                           Mở khóa
                         </Button>
                       ) : null}
-                      {/*
-                        Sửa và xóa nằm trong menu phụ: hai việc này hiếm khi
-                        dùng so với Xác nhận/Chốt, và để lẫn vào hàng nút chính
-                        thì nút Xóa đứng ngay cạnh nút Chốt — quá dễ bấm nhầm.
-                      */}
-                      {canEdit ? (
-                        <Menu position="bottom-end" withinPortal shadow="md">
-                          <Menu.Target>
-                            <ActionIcon
-                              variant="subtle"
-                              color="gray"
-                              aria-label={`Thao tác khác cho kỳ ${period.month}/${period.year}`}
-                            >
-                              <IconDotsVertical size={16} />
-                            </ActionIcon>
-                          </Menu.Target>
-                          <Menu.Dropdown>
-                            <Menu.Item
-                              leftSection={<IconPencil size={14} />}
-                              disabled={period.status === "CLOSED"}
-                              onClick={() => startEditPeriod(period)}
-                            >
-                              Sửa hạn xác nhận
-                            </Menu.Item>
-                            <Menu.Divider />
-                            <Menu.Item
-                              color="red"
-                              leftSection={<IconTrash size={14} />}
-                              disabled={period.status === "CLOSED"}
-                              onClick={() => setDeleteTarget(period)}
-                            >
-                              Xóa kỳ công
-                            </Menu.Item>
-                          </Menu.Dropdown>
-                        </Menu>
-                      ) : null}
                     </Group>
                   </Table.Td>
                 </Table.Tr>
               ))}
-              {!periodsQuery.isLoading &&
-              !periodsQuery.isError &&
-              periods.length === 0 ? (
+              {!periodsQuery.isLoading && periods.length === 0 ? (
                 <Table.Tr>
                   <Table.Td colSpan={6}>
                     <Text c="dimmed" ta="center" py="xl">
@@ -461,22 +395,7 @@ export function TimesheetPeriodsPage() {
             data={unitOptions}
             value={newUnitId}
             onChange={setNewUnitId}
-            disabled={unitsQuery.isLoading}
           />
-          {unitsQuery.isError ? (
-            <Alert color="red" variant="light" title="Không tải được danh sách đơn vị">
-              <Group justify="space-between" align="center" wrap="wrap">
-                <Text size="sm">Bạn vẫn có thể mở kỳ toàn công ty hoặc tải lại danh sách.</Text>
-                <Button
-                  size="compact-sm"
-                  variant="light"
-                  onClick={() => void unitsQuery.refetch()}
-                >
-                  Thử lại
-                </Button>
-              </Group>
-            </Alert>
-          ) : null}
           <HrmDateInput
             label="Hạn xác nhận"
             description="HR nhập theo lịch vận hành thực tế. Không tự suy ngày mở kỳ trong phần mềm."
@@ -511,20 +430,6 @@ export function TimesheetPeriodsPage() {
             <Badge color="green">Đã xác nhận: {counts.CONFIRMED}</Badge>
             <Badge color="orange">Khiếu nại: {counts.DISPUTED}</Badge>
           </Group>
-          {confirmationsQuery.isError ? (
-            <Alert color="red" variant="light" title="Không tải được danh sách xác nhận">
-              <Group justify="space-between" align="center" wrap="wrap">
-                <Text size="sm">Không thể lấy trạng thái xác nhận của nhân viên trong kỳ này.</Text>
-                <Button
-                  size="compact-sm"
-                  variant="light"
-                  onClick={() => void confirmationsQuery.refetch()}
-                >
-                  Thử lại
-                </Button>
-              </Group>
-            </Alert>
-          ) : null}
           <ScrollArea type="auto">
             <Table striped withTableBorder miw={560}>
               <Table.Thead>
@@ -558,9 +463,7 @@ export function TimesheetPeriodsPage() {
                     </Table.Td>
                   </Table.Tr>
                 ))}
-                {!confirmationsQuery.isLoading &&
-                !confirmationsQuery.isError &&
-                confirmations.length === 0 ? (
+                {!confirmationsQuery.isLoading && confirmations.length === 0 ? (
                   <Table.Tr>
                     <Table.Td colSpan={3}>
                       <Text c="dimmed" ta="center" py="md">
@@ -654,74 +557,6 @@ export function TimesheetPeriodsPage() {
               onClick={() => void handleReopenPeriod()}
             >
               Mở khóa
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
-
-      <Modal
-        opened={editTarget !== null}
-        onClose={() => setEditTarget(null)}
-        title={
-          editTarget
-            ? `Sửa hạn xác nhận kỳ ${editTarget.month}/${editTarget.year}`
-            : "Sửa hạn xác nhận"
-        }
-        centered
-      >
-        <Stack gap="sm">
-          <Text size="sm" c="dimmed">
-            Chỉ đổi được hạn nhân viên bấm xác nhận. Muốn đổi tháng hoặc phạm
-            vi thì xóa kỳ rồi mở lại, vì các xác nhận đã có gắn với kỳ hiện tại.
-          </Text>
-          <HrmDateInput
-            label="Hạn xác nhận"
-            withAsterisk
-            value={editDeadline || null}
-            onChange={(value) => setEditDeadline(value ?? "")}
-          />
-          <Group justify="flex-end" mt="md">
-            <Button variant="default" onClick={() => setEditTarget(null)}>
-              Hủy
-            </Button>
-            <Button
-              loading={updatePeriod.isPending}
-              disabled={!editDeadline}
-              onClick={() => void handleUpdatePeriod()}
-            >
-              Lưu hạn mới
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
-
-      <Modal
-        opened={deleteTarget !== null}
-        onClose={() => setDeleteTarget(null)}
-        title="Xóa kỳ công"
-        centered
-      >
-        <Stack gap="sm">
-          <Alert color="red" variant="light">
-            Xóa kỳ {deleteTarget?.month}/{deleteTarget?.year} (
-            {deleteTarget?.unit?.name ?? "Toàn công ty"}) sẽ gỡ luôn danh sách
-            chờ xác nhận của kỳ. Không hoàn tác được — muốn dùng lại thì phải mở
-            kỳ mới.
-          </Alert>
-          <Text size="sm">
-            Kỳ đã có người xác nhận hoặc đã chốt sẽ không xóa được; hệ thống báo
-            lại nếu rơi vào trường hợp đó.
-          </Text>
-          <Group justify="flex-end" mt="md">
-            <Button variant="default" onClick={() => setDeleteTarget(null)}>
-              Hủy
-            </Button>
-            <Button
-              color="red"
-              loading={deletePeriod.isPending}
-              onClick={() => void handleDeletePeriod()}
-            >
-              Xóa kỳ công
             </Button>
           </Group>
         </Stack>

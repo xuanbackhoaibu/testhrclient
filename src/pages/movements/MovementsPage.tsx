@@ -1,11 +1,13 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   Button,
+  Card,
+  Col,
   Drawer,
-  Grid,
-  Group,
+  Form,
+  Input,
   Modal,
-  Paper,
+  Row,
   Select,
   Space,
   Steps,
@@ -29,7 +31,6 @@ import type {
 } from "../../features/movements/movementTypes";
 import { useMovements } from "../../features/movements/useMovements";
 import { mockEmployees } from "../../shared/mocks/mockEmployees";
-import { DataTable, type DataTableColumn } from "../../shared/components/DataTable";
 import { ErrorState } from "../../shared/components/ErrorState";
 import { LoadingState } from "../../shared/components/LoadingState";
 import { HrmDateInput } from '../../shared/components/HrmDateInput';
@@ -37,37 +38,13 @@ import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { MOVEMENT_TYPE_OPTIONS } from "../../shared/constants/statuses";
 import { formatDate } from "../../shared/utils/date";
-import { toast } from "../../shared/utils/toast";
 import { useAuth } from "../../features/auth/useAuth";
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 
 export function MovementsPage() {
   const queryClient = useQueryClient();
   const { can } = useAuth();
-  const form = useForm<MovementPayload>({
-    initialValues: {
-      employeeId: "",
-      movementType: "",
-      effectiveDate: "",
-      reason: "",
-      afterJson: '{\n  "departmentId": "ou-sales"\n}',
-    } as unknown as MovementPayload,
-    validate: {
-      employeeId: (value: string) => (value ? null : "Chọn nhân viên."),
-      movementType: (value: string) => (value ? null : "Chọn loại điều chuyển."),
-      effectiveDate: (value: string) => (value ? null : "Chọn ngày hiệu lực."),
-      reason: (value: string) => (value?.trim() ? null : "Nhập lý do."),
-      afterJson: (value: string) => {
-        if (!value?.trim()) return "Nhập afterJson.";
-        try {
-          JSON.parse(value);
-          return null;
-        } catch {
-          return "afterJson phải là JSON hợp lệ.";
-        }
-      },
-    },
-  });
+  const [form] = Form.useForm<MovementPayload>();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Movement | null>(null);
   const [params, setParams] = useState({
@@ -89,9 +66,9 @@ export function MovementsPage() {
   const createMutation = useMutation({
     mutationFn: createMovement,
     onSuccess: async () => {
-      toast.success("Đã tạo điều chuyển.");
+      message.success("Đã tạo điều chuyển.");
       setOpen(false);
-      form.reset();
+      form.resetFields();
       await queryClient.invalidateQueries({ queryKey: ["movements"] });
     },
   });
@@ -120,69 +97,6 @@ export function MovementsPage() {
     },
   });
 
-  const columns = useMemo<DataTableColumn<Movement>[]>(
-    () => [
-      { key: "employeeName", header: "Nhân viên", render: (record) => record.employeeName },
-      { key: "movementType", header: "Loại", render: (record) => record.movementType },
-      {
-        key: "effectiveDate",
-        header: "Ngày hiệu lực",
-        render: (record) => formatDate(record.effectiveDate),
-      },
-      { key: "reason", header: "Lý do", render: (record) => record.reason },
-      { key: "status", header: "Trạng thái", render: (record) => <StatusTag status={record.status} /> },
-      {
-        key: "actions",
-        header: "Thao tác",
-        render: (record) => (
-          <Group gap="xs" wrap="wrap">
-            <Button size="xs" variant="light" onClick={() => setSelected(record)}>
-              Chi tiết
-            </Button>
-            {record.status === "DRAFT" && can(HR_PERMISSIONS.MOVEMENT_SUBMIT) ? (
-              <Button
-                size="xs"
-                variant="light"
-                onClick={() => statusMutation.mutate({ id: record.id, action: "submit" })}
-              >
-                Gửi duyệt
-              </Button>
-            ) : null}
-            {record.status === "SUBMITTED" && can(HR_PERMISSIONS.MOVEMENT_APPROVE) ? (
-              <Button
-                size="xs"
-                variant="light"
-                onClick={() => statusMutation.mutate({ id: record.id, action: "approve" })}
-              >
-                Duyệt
-              </Button>
-            ) : null}
-            {record.status === "SUBMITTED" && can(HR_PERMISSIONS.MOVEMENT_REJECT) ? (
-              <Button
-                size="xs"
-                variant="light"
-                color="red"
-                onClick={() => statusMutation.mutate({ id: record.id, action: "reject" })}
-              >
-                Từ chối
-              </Button>
-            ) : null}
-            {["DRAFT", "SUBMITTED"].includes(record.status) && can(HR_PERMISSIONS.MOVEMENT_CANCEL) ? (
-              <Button
-                size="xs"
-                variant="default"
-                onClick={() => statusMutation.mutate({ id: record.id, action: "cancel" })}
-              >
-                Hủy
-              </Button>
-            ) : null}
-          </Group>
-        ),
-      },
-    ],
-    [can, statusMutation],
-  );
-
   if (isLoading) {
     return <LoadingState />;
   }
@@ -198,133 +112,239 @@ export function MovementsPage() {
         subtitle="Quy trình điều chuyển với các trạng thái gửi duyệt, duyệt, từ chối và hủy."
         actions={can(HR_PERMISSIONS.MOVEMENT_CREATE) ? (
           <Button
-            leftSection={<IconPlus size={16} />}
+            type="primary"
+            icon={<PlusOutlined />}
             onClick={() => setOpen(true)}
           >
             Tạo mới
           </Button>
         ) : undefined}
       />
-      <Paper className="page-card" p="lg" radius="md">
-        <Stack gap="md">
-          <Grid gap="sm">
-            <Grid.Col span={{ base: 12, md: 4 }}>
+      <Card className="page-card">
+        <Space orientation="vertical" size={16} style={{ width: "100%" }}>
+          <Row gutter={12}>
+            <Col xs={24} md={8}>
               <Select
-                clearable
+                allowClear
                 placeholder="Nhân viên"
-                aria-label="Lọc theo nhân viên"
-                searchable
-                data={mockEmployees.map((item) => ({
+                style={{ width: "100%" }}
+                options={mockEmployees.map((item) => ({
                   value: item.id,
                   label: item.fullName,
                 }))}
-                value={params.employeeId ?? null}
                 onChange={(value) =>
-                  setParams((current) => ({ ...current, page: 1, employeeId: value ?? undefined }))
+                  setParams((current) => ({ ...current, employeeId: value }))
                 }
               />
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, md: 4 }}>
+            </Col>
+            <Col xs={24} md={8}>
               <Select
-                clearable
+                allowClear
                 placeholder="Loại điều chuyển"
-                aria-label="Lọc theo loại điều chuyển"
-                data={[...MOVEMENT_TYPE_OPTIONS]}
-                value={params.movementType ?? null}
+                style={{ width: "100%" }}
+                options={MOVEMENT_TYPE_OPTIONS.map((item) => ({
+                  value: item,
+                  label: item,
+                }))}
                 onChange={(value) =>
-                  setParams((current) => ({ ...current, page: 1, movementType: value ?? undefined }))
+                  setParams((current) => ({ ...current, movementType: value }))
                 }
               />
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, md: 4 }}>
+            </Col>
+            <Col xs={24} md={8}>
               <Select
-                clearable
+                allowClear
                 placeholder="Trạng thái"
-                aria-label="Lọc theo trạng thái"
-                data={["DRAFT", "SUBMITTED", "APPROVED", "REJECTED", "CANCELLED"]}
-                value={params.status ?? null}
+                style={{ width: "100%" }}
+                options={[
+                  "DRAFT",
+                  "SUBMITTED",
+                  "APPROVED",
+                  "REJECTED",
+                  "CANCELLED",
+                ].map((item) => ({ value: item, label: item }))}
                 onChange={(value) =>
-                  setParams((current) => ({ ...current, page: 1, status: value ?? undefined }))
+                  setParams((current) => ({ ...current, status: value }))
                 }
               />
-            </Grid.Col>
-          </Grid>
+            </Col>
+          </Row>
 
-          <DataTable
-            data={data.items}
-            columns={columns}
-            rowKey={(record) => record.id}
-            meta={data.pagination}
-            onPageChange={(page, pageSize) =>
-              setParams((current) => ({ ...current, page, pageSize }))
-            }
-            emptyTitle="Chưa có điều chuyển"
-            emptyDescription="Không có bản ghi điều chuyển phù hợp với bộ lọc hiện tại."
+          <Table
+            rowKey="id"
+            dataSource={data.items}
+            pagination={{
+              current: data.pagination.page,
+              pageSize: data.pagination.pageSize,
+              total: data.pagination.total,
+              onChange: (page, pageSize) =>
+                setParams((current) => ({ ...current, page, pageSize })),
+            }}
+            columns={[
+              { title: "Nhân viên", dataIndex: "employeeName" },
+              { title: "Loại", dataIndex: "movementType" },
+              {
+                title: "Ngày hiệu lực",
+                render: (_, record) => formatDate(record.effectiveDate),
+              },
+              { title: "Lý do", dataIndex: "reason" },
+              {
+                title: "Trạng thái",
+                render: (_, record) => <StatusTag status={record.status} />,
+              },
+              {
+                title: "Thao tác",
+                render: (_, record) => (
+                  <Space wrap>
+                    <Button onClick={() => setSelected(record)}>
+                      Chi tiết
+                    </Button>
+                    {record.status === "DRAFT" && can(HR_PERMISSIONS.MOVEMENT_SUBMIT) ? (
+                      <Button
+                        onClick={() =>
+                          statusMutation.mutate({
+                            id: record.id,
+                            action: "submit",
+                          })
+                        }
+                      >
+                        Gửi duyệt
+                      </Button>
+                    ) : null}
+                    {record.status === "SUBMITTED" && can(HR_PERMISSIONS.MOVEMENT_APPROVE) ? (
+                      <Button
+                        onClick={() =>
+                          statusMutation.mutate({
+                            id: record.id,
+                            action: "approve",
+                          })
+                        }
+                      >
+                        Duyệt
+                      </Button>
+                    ) : null}
+                    {record.status === "SUBMITTED" && can(HR_PERMISSIONS.MOVEMENT_REJECT) ? (
+                      <Button
+                        danger
+                        onClick={() =>
+                          statusMutation.mutate({
+                            id: record.id,
+                            action: "reject",
+                          })
+                        }
+                      >
+                        Từ chối
+                      </Button>
+                    ) : null}
+                    {["DRAFT", "SUBMITTED"].includes(record.status) && can(HR_PERMISSIONS.MOVEMENT_CANCEL) ? (
+                      <Button
+                        onClick={() =>
+                          statusMutation.mutate({
+                            id: record.id,
+                            action: "cancel",
+                          })
+                        }
+                      >
+                        Hủy
+                      </Button>
+                    ) : null}
+                  </Space>
+                ),
+              },
+            ]}
           />
-        </Stack>
-      </Paper>
+        </Space>
+      </Card>
 
       <Drawer
         title="Tạo điều chuyển"
-        opened={open}
-        position="right"
-        size={520}
+        open={open}
+        width={520}
+        destroyOnClose
         onClose={() => {
           setOpen(false);
-          form.reset();
+          form.resetFields();
         }}
+        extra={
+          <Button
+            type="primary"
+            loading={createMutation.isPending}
+            onClick={() => void form.submit()}
+          >
+            Lưu
+          </Button>
+        }
       >
-        <form onSubmit={form.onSubmit((values) => createMutation.mutate(values))}>
-          <Stack gap="md">
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={(values) => createMutation.mutate(values)}
+          initialValues={{ afterJson: '{\n  "departmentId": "ou-sales"\n}' }}
+        >
+          <Form.Item
+            name="employeeId"
+            label="Nhân viên"
+            rules={[{ required: true }]}
+          >
             <Select
-              label="Nhân viên"
-              withAsterisk
-              searchable
-              data={mockEmployees.map((item) => ({
+              options={mockEmployees.map((item) => ({
                 value: item.id,
                 label: item.fullName,
               }))}
-              {...form.getInputProps("employeeId")}
             />
+          </Form.Item>
+          <Form.Item
+            name="movementType"
+            label="Loại điều chuyển"
+            rules={[{ required: true }]}
+          >
             <Select
-              label="Loại điều chuyển"
-              withAsterisk
-              data={[...MOVEMENT_TYPE_OPTIONS]}
-              {...form.getInputProps("movementType")}
+              options={MOVEMENT_TYPE_OPTIONS.map((item) => ({
+                value: item,
+                label: item,
+              }))}
             />
-            <HrmDateInput
-              label="Ngày hiệu lực"
-              withAsterisk
-              {...form.getInputProps("effectiveDate")}
-            />
-            <Textarea label="Lý do" withAsterisk rows={3} {...form.getInputProps("reason")} />
-            <Textarea
-              label="afterJson"
-              withAsterisk
-              rows={8}
-              description={'TRANSFER: {"departmentId":"ou-sales"} | STATUS_CHANGE: {"employmentStatus":"ACTIVE"} | TERMINATION: {"employmentStatus":"TERMINATED"}'}
-              {...form.getInputProps("afterJson")}
-            />
-            <Group justify="flex-end">
-              <Button
-                variant="default"
-                onClick={() => {
-                  setOpen(false);
-                  form.reset();
-                }}
-              >
-                Hủy
-              </Button>
-              <Button type="submit" loading={createMutation.isPending}>
-                Lưu
-              </Button>
-            </Group>
-          </Stack>
-        </form>
+          </Form.Item>
+          <Form.Item
+            name="effectiveDate"
+            label="Ngày hiệu lực"
+            rules={[{ required: true }]}
+            getValueFromEvent={(value: string | null) => value ?? undefined}
+          >
+            <HrmDateInput style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item name="reason" label="Lý do" rules={[{ required: true }]}>
+            <Input.TextArea rows={3} />
+          </Form.Item>
+          <Form.Item
+            name="afterJson"
+            label="afterJson"
+            extra={
+              'TRANSFER: {"departmentId":"ou-sales"} | STATUS_CHANGE: {"employmentStatus":"ACTIVE"} | TERMINATION: {"employmentStatus":"TERMINATED"}'
+            }
+            rules={[
+              { required: true },
+              {
+                validator: async (_, value) => {
+                  try {
+                    JSON.parse(value);
+                    return Promise.resolve();
+                  } catch {
+                    return Promise.reject(
+                      new Error("afterJson phải là JSON hợp lệ."),
+                    );
+                  }
+                },
+              },
+            ]}
+          >
+            <Input.TextArea rows={8} />
+          </Form.Item>
+        </Form>
       </Drawer>
 
       <Modal
-        opened={Boolean(selected)}
+        open={Boolean(selected)}
         title="Chi tiết điều chuyển"
         footer={null}
         width={680}

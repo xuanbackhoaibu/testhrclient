@@ -3,6 +3,7 @@ import { getMockDashboardSummary } from "../../shared/mocks/mockDashboard";
 import { mockDelay } from "../../shared/mocks/mockHelpers";
 import type {
   DashboardAttendanceRate,
+  DashboardLateEmployee,
   DashboardLeaveExpiryRisks,
   DashboardMetric,
   DashboardPayrollHandoff,
@@ -33,6 +34,7 @@ interface DashboardSummaryApiResponse {
   attendanceThisMonth?: {
     month?: number;
     year?: number;
+    topLateEmployees?: DashboardLateEmployee[];
     byUnit?: DashboardAttendanceRate[];
     byDepartment?: DashboardAttendanceRate[];
     annualLeaveDaysUsed?: number;
@@ -98,6 +100,7 @@ export async function getDashboardSummary(params: DashboardSummaryParams = {}): 
     attendanceThisMonth: {
       month: toCount(response.attendanceThisMonth?.month),
       year: toCount(response.attendanceThisMonth?.year),
+      topLateEmployees: response.attendanceThisMonth?.topLateEmployees ?? [],
       byUnit: response.attendanceThisMonth?.byUnit ?? [],
       byDepartment: response.attendanceThisMonth?.byDepartment ?? [],
       annualLeaveDaysUsed: toCount(

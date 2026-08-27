@@ -130,32 +130,6 @@ function formatDataScopes(scopes: AuthUser['dataScopes'] | undefined) {
   );
 }
 
-function DescriptionCard({ title, rows }: { title: string; rows: [string, ReactNode][] }) {
-  return (
-    <Paper className="page-card" p="lg" radius="md">
-      <Stack gap="sm">
-        <Title order={4}>{title}</Title>
-        <Table variant="vertical" withRowBorders={false}>
-          <Table.Tbody>
-            {rows.map(([label, value]) => (
-              <Table.Tr key={label}>
-                <Table.Th w={220}>
-                  <Text size="sm" c="dimmed" fw={500}>
-                    {label}
-                  </Text>
-                </Table.Th>
-                <Table.Td>
-                  <Text size="sm">{value || '-'}</Text>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      </Stack>
-    </Paper>
-  );
-}
-
 export function SettingsPage() {
   const { user, roles } = useAuth();
   const { colorScheme, setColorScheme } = useMantineColorScheme();

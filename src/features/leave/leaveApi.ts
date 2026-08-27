@@ -19,14 +19,14 @@ const mockLeavePolicyTypes: LeavePolicyType[] = [
   { id: 'lpt-work-full', code: 'WORK_FULL', name: 'Lam viec ca ngay', displaySymbol: '+', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
   { id: 'lpt-work-half', code: 'WORK_HALF', name: 'Lam viec nua ngay', displaySymbol: '-', deductsAnnualLeave: false, paid: true, dayValue: 0.5, requiresAttachment: false, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
   { id: 'lpt-annual', code: 'ANNUAL', name: 'Nghi phep nam', displaySymbol: 'P', deductsAnnualLeave: true, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'ANNUAL_BALANCE', hrRuleStatus: 'CONFIRMED', note: 'Chi ky hieu P tru quy phep nam.', status: 'ACTIVE' },
-  { id: 'lpt-paid-personal', code: 'PAID_PERSONAL', name: 'Nghi viec rieng co luong ca ngay', displaySymbol: 'VR', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'PER_EVENT', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+  { id: 'lpt-paid-personal', code: 'PAID_PERSONAL', name: 'Nghi viec rieng co luong', displaySymbol: 'CL', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'PER_EVENT', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
   { id: 'lpt-unpaid', code: 'UNPAID', name: 'Nghi khong luong', displaySymbol: 'KL', deductsAnnualLeave: false, paid: false, dayValue: 0, requiresAttachment: false, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
-  { id: 'lpt-sick', code: 'SICK', name: 'Nghi om', displaySymbol: 'OM', deductsAnnualLeave: false, paid: null, dayValue: null, requiresAttachment: true, attachmentMinDays: 3, quotaMode: 'INSURANCE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
-  { id: 'lpt-child-sick', code: 'CHILD_SICK', name: 'Nghi con om', displaySymbol: 'CO', deductsAnnualLeave: false, paid: null, dayValue: null, requiresAttachment: true, quotaMode: 'INSURANCE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
-  { id: 'lpt-maternity', code: 'MATERNITY', name: 'Nghi thai san', displaySymbol: 'TS', deductsAnnualLeave: false, paid: null, dayValue: null, requiresAttachment: true, quotaMode: 'INSURANCE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+  { id: 'lpt-sick', code: 'SICK', name: 'Nghi om', displaySymbol: 'Ô', deductsAnnualLeave: false, paid: null, dayValue: null, requiresAttachment: true, attachmentMinDays: 3, quotaMode: 'INSURANCE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+  { id: 'lpt-child-sick', code: 'CHILD_SICK', name: 'Nghi con om', displaySymbol: 'Cô', deductsAnnualLeave: false, paid: null, dayValue: null, requiresAttachment: true, quotaMode: 'INSURANCE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+  { id: 'lpt-maternity', code: 'MATERNITY', name: 'Thai san', displaySymbol: 'TS', deductsAnnualLeave: false, paid: null, dayValue: null, requiresAttachment: true, quotaMode: 'INSURANCE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
   { id: 'lpt-work-accident', code: 'WORK_ACCIDENT', name: 'Tai nan lao dong', displaySymbol: 'TN', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: true, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
   { id: 'lpt-compensatory', code: 'COMPENSATORY', name: 'Nghi bu', displaySymbol: 'NB', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'COMPENSATORY_BALANCE', hrRuleStatus: 'PENDING_HR_RULE', note: 'Ty le quy doi va han su dung con treo D3.', status: 'ACTIVE' },
-  { id: 'lpt-holiday', code: 'HOLIDAY', name: 'Nghi Le ca ngay', displaySymbol: 'L1', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
+  { id: 'lpt-holiday', code: 'HOLIDAY', name: 'Le Tet', displaySymbol: 'L', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
   { id: 'lpt-company-trip', code: 'COMPANY_TRIP', name: 'Du lich', displaySymbol: 'DL', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
   { id: 'lpt-work-stop', code: 'WORK_STOP', name: 'Nghi ngung viec', displaySymbol: 'N', deductsAnnualLeave: false, paid: null, dayValue: 0, requiresAttachment: false, quotaMode: 'PENDING_HR_RULE', hrRuleStatus: 'PENDING_HR_RULE', status: 'ACTIVE' },
   { id: 'lpt-business-trip', code: 'BUSINESS_TRIP', name: 'Cong tac', displaySymbol: 'CT', deductsAnnualLeave: false, paid: true, dayValue: 1, requiresAttachment: false, quotaMode: 'NONE', hrRuleStatus: 'CONFIRMED', status: 'ACTIVE' },
@@ -72,9 +72,19 @@ function buildMockNotice(startDate: string, totalDays: number) {
   };
 }
 
+function ensureMockNotice(leave: LeaveRequest) {
+  if (leave.noticeRequiredDays === undefined || leave.noticeActualDays === undefined) {
+    Object.assign(leave, buildMockNotice(leave.startDate, leave.totalDays));
+  }
+}
+
 export async function listLeaveRequests(params: ListQueryParams = {}): Promise<PaginatedResponse<LeaveRequest>> {
   if (isMockMode) {
     await mockDelay();
+    mockLeaveRequests.forEach((item) => {
+      ensureMockApprovalSteps(item);
+      ensureMockNotice(item);
+    });
     const filtered = mockLeaveRequests
       .filter((item) => (params.employeeId ? item.employeeId === params.employeeId : true))
       .filter((item) => (params.leaveType ? item.leaveType === params.leaveType : true))
@@ -93,39 +103,34 @@ export async function listLeaveRequests(params: ListQueryParams = {}): Promise<P
   return normalizePaginatedResponse<LeaveRequest>(response, params);
 }
 
-export async function listPendingLeaveApprovals(
-  params: Pick<ListQueryParams, "page" | "pageSize"> = {},
-): Promise<PaginatedResponse<LeaveRequest>> {
-  if (isMockMode) {
-    await mockDelay();
-    const pending = mockLeaveRequests.filter((item) => item.status === "SUBMITTED");
-    pending.forEach((item) => {
-      const steps = ensureMockApprovalSteps(item);
-      item.currentApprovalStep = steps.find((step) => step.status === "SUBMITTED") ?? null;
-      ensureMockNotice(item);
-    });
-    return paginate(pending, params);
-  }
-
-  const response = await api.get<PaginatedData<LeaveRequest>>(
-    "/leave/requests/pending-approval",
-    { params },
-  );
-  return normalizePaginatedResponse<LeaveRequest>(response, params);
-}
-
 export async function listLeaveTypes(): Promise<LeavePolicyType[]> {
   if (isMockMode) {
     await mockDelay();
-    return mockLeavePolicyTypes.filter((item) => item.status === 'ACTIVE');
+    return mockLeavePolicyTypes;
   }
 
   return api.get<LeavePolicyType[]>('/leave/types');
 }
 
-export async function createLeaveType(
-  payload: LeavePolicyTypePayload,
-): Promise<LeavePolicyType> {
+export async function listPendingLeaveApprovals(
+  params: Pick<ListQueryParams, 'page' | 'pageSize'> = {},
+): Promise<PaginatedResponse<LeaveRequest>> {
+  if (isMockMode) {
+    await mockDelay();
+    const pending = mockLeaveRequests.filter((item) => item.status === 'SUBMITTED');
+    pending.forEach((item) => {
+      const steps = ensureMockApprovalSteps(item);
+      item.currentApprovalStep = steps.find((step) => step.status === 'SUBMITTED') ?? null;
+      ensureMockNotice(item);
+    });
+    return paginate(pending, params);
+  }
+
+  const response = await api.get<PaginatedData<LeaveRequest>>('/leave/requests/pending-approval', { params });
+  return normalizePaginatedResponse<LeaveRequest>(response, params);
+}
+
+export async function createLeaveType(payload: LeavePolicyTypePayload): Promise<LeavePolicyType> {
   if (isMockMode) {
     await mockDelay();
     const item: LeavePolicyType = {
@@ -143,6 +148,7 @@ export async function createLeaveType(
     });
     return item;
   }
+
   return api.post<LeavePolicyType>('/leave/types', payload);
 }
 
@@ -167,6 +173,7 @@ export async function updateLeaveType(
     });
     return item;
   }
+
   return api.patch<LeavePolicyType>(`/leave/types/${id}`, payload);
 }
 
@@ -180,6 +187,7 @@ export async function deleteLeaveType(id: string): Promise<{ id: string }> {
     item.status = 'INACTIVE';
     return { id };
   }
+
   return api.delete<{ id: string }>(`/leave/types/${id}`);
 }
 
@@ -258,12 +266,9 @@ async function updateLeaveStatus(
     return leave;
   }
 
-  const path = "/leave/requests/" + id + "/" + action.toLowerCase();
-  if (action === "APPROVE" || action === "REJECT") {
-    return api.post<LeaveRequest>(
-      path,
-      note?.trim() ? { note: note.trim() } : {},
-    );
+  const path = `/leave/requests/${id}/${action.toLowerCase()}`;
+  if (action === 'APPROVE' || action === 'REJECT') {
+    return api.post<LeaveRequest>(path, note?.trim() ? { note: note.trim() } : {});
   }
   return api.post<LeaveRequest>(path);
 }
@@ -273,11 +278,11 @@ export function submitLeaveRequest(id: string) {
 }
 
 export function approveLeaveRequest(id: string, note?: string) {
-  return updateLeaveStatus(id, "APPROVED", "APPROVE", note);
+  return updateLeaveStatus(id, 'APPROVED', 'APPROVE', note);
 }
 
 export function rejectLeaveRequest(id: string, note?: string) {
-  return updateLeaveStatus(id, "REJECTED", "REJECT", note);
+  return updateLeaveStatus(id, 'REJECTED', 'REJECT', note);
 }
 
 export function cancelLeaveRequest(id: string) {

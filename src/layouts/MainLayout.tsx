@@ -27,7 +27,6 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../features/auth/useAuth";
 import { canAccessRoute } from "../features/auth/routePolicies";
 import { NotificationBell } from "../features/notifications/NotificationBell";
-import { LoadingState } from "../shared/components/LoadingState";
 import { BrandLogo } from "../shared/components/BrandLogo";
 import {
   appLanguageChangedEvent,
@@ -263,7 +262,7 @@ export function MainLayout() {
             <BrandLogo />
           </Group>
 
-          <ScrollArea flex={1} type="never">
+          <ScrollArea flex={1}>
             <Stack gap={4}>
               {visibleTopLevelItems.map((item) => (
                 <NavItemLink key={item.path} item={item} pathname={location.pathname} goTo={goTo} languageMode={languageMode} />

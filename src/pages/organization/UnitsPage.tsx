@@ -80,9 +80,11 @@ export function UnitsPage() {
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [codeManuallyEdited, setCodeManuallyEdited] = useState(false);
-  const { data: unitsResponse, isLoading, error, refetch } = useUnits({
-    ...params,
+  // Lấy toàn bộ đơn vị theo bộ lọc, sắp theo mã trên toàn danh sách rồi
+  // phân trang ở client để trang 1 luôn bắt đầu từ mã nhỏ nhất.
+  const { data: allUnits, isLoading, error, refetch } = useAllUnits({
     search: params.search || undefined,
+    status: params.status,
   });
   const { data: allDepartments = [] } = useAllDepartments({});
   const { data: employees = [] } = useAllEmployees({});

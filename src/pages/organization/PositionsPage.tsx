@@ -66,9 +66,11 @@ export function PositionsPage() {
     search: "",
     status: undefined as string | undefined,
   });
-  const { data: positionsResponse, isLoading, error, refetch } = usePositions({
-    ...params,
+  // Lấy toàn bộ vị trí theo bộ lọc, sắp theo tên trên toàn danh sách rồi
+  // phân trang ở client để trang 1 luôn bắt đầu từ tên nhỏ nhất.
+  const { data: allPositions, isLoading, error, refetch } = useAllPositions({
     search: params.search || undefined,
+    status: params.status,
   });
   const { data: employees = [] } = useAllEmployees({});
   const templateDownload = useHrmCoreTemplateDownload("positions");
