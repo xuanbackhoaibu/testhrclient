@@ -205,3 +205,899 @@ table th {
 .tileValue {
   font-variant-numeric: tabular-nums;
 }
+
+/* Employee Detail Page styles */
+.employee-detail-hero,
+.employee-detail-section,
+.employee-detail-stat-card,
+.employee-detail-quota-card {
+  background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+  border-color: light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+}
+
+.employee-detail-hero {
+  overflow: hidden;
+  position: relative;
+}
+
+.employee-detail-hero::before {
+  background: linear-gradient(135deg, var(--mantine-color-blue-6), var(--mantine-color-indigo-6));
+  content: '';
+  inset: 0 0 auto;
+  height: 4px;
+  position: absolute;
+}
+
+.employee-detail-hero-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 20px;
+}
+
+.employee-detail-hero-main {
+  min-width: 0;
+}
+
+.employee-detail-name {
+  line-height: 1.12;
+}
+
+.employee-detail-actions {
+  flex-wrap: nowrap;
+  gap: 6px;
+  justify-content: flex-end;
+  max-width: none;
+  min-width: 330px;
+}
+
+.employee-detail-actions .mantine-Button-root {
+  flex: 0 0 auto;
+  min-width: auto;
+  padding-inline: 10px;
+  white-space: nowrap;
+}
+
+.employee-detail-tabs-list,
+.employee-detail-tabs .mantine-Tabs-list {
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.employee-detail-tabs .mantine-Tabs-tab {
+  flex: 0 0 auto;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  min-height: 32px;
+  padding-inline: 9px;
+  white-space: nowrap;
+}
+
+.employee-detail-tabs .mantine-Tabs-tabSection {
+  margin-inline-end: 4px;
+}
+
+.employee-detail-info-row {
+  min-width: 0;
+}
+
+.employee-detail-info-label {
+  flex: 0 0 148px;
+}
+
+.employee-detail-info-value {
+  color: light-dark(var(--mantine-color-dark-8), var(--mantine-color-gray-1));
+  min-width: 0;
+}
+
+.employee-detail-sensitive {
+  min-width: 0;
+}
+
+.employee-detail-mini-calendar {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(7, minmax(34px, 1fr));
+}
+
+.employee-detail-calendar-head {
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.employee-detail-calendar-cell {
+  align-items: center;
+  aspect-ratio: 1;
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  border-radius: 8px;
+  color: light-dark(var(--mantine-color-dark-8), var(--mantine-color-gray-1));
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 36px;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.employee-detail-calendar-cell:not(.is-blank):hover {
+  border-color: var(--mantine-color-blue-6);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+  transform: translateY(-1px);
+}
+
+.employee-detail-calendar-cell.is-blank {
+  background: transparent;
+  border-color: transparent;
+}
+
+.employee-detail-calendar-cell.is-empty {
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+  color: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-2));
+}
+
+.employee-detail-calendar-cell.is-ok {
+  background: light-dark(color-mix(in srgb, var(--mantine-color-green-1), transparent 24%), color-mix(in srgb, var(--mantine-color-teal-3), transparent 84%));
+  border-color: light-dark(color-mix(in srgb, var(--mantine-color-green-3), transparent 20%), color-mix(in srgb, var(--mantine-color-teal-3), transparent 58%));
+}
+
+.employee-detail-calendar-cell.is-late {
+  background: light-dark(color-mix(in srgb, var(--mantine-color-yellow-1), transparent 8%), color-mix(in srgb, var(--mantine-color-yellow-3), transparent 80%));
+  border-color: light-dark(color-mix(in srgb, var(--mantine-color-yellow-4), transparent 18%), color-mix(in srgb, var(--mantine-color-yellow-3), transparent 56%));
+}
+
+.employee-detail-calendar-cell.is-absent {
+  background: light-dark(color-mix(in srgb, var(--mantine-color-red-1), transparent 12%), color-mix(in srgb, var(--mantine-color-red-3), transparent 80%));
+  border-color: light-dark(color-mix(in srgb, var(--mantine-color-red-3), transparent 10%), color-mix(in srgb, var(--mantine-color-red-3), transparent 56%));
+}
+
+.employee-detail-calendar-cell.is-leave {
+  background: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-5));
+  border-color: light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+}
+
+.employee-detail-table-scroll {
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  border-radius: 8px;
+}
+
+.employee-detail-table .mantine-Table-th {
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.employee-detail-table .mantine-Table-td {
+  color: light-dark(var(--mantine-color-dark-8), var(--mantine-color-gray-1));
+  vertical-align: middle;
+}
+
+.employee-detail-table .mantine-Table-th,
+.employee-detail-table .mantine-Table-td {
+  border-bottom-color: light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-4));
+  padding-bottom: 10px;
+  padding-top: 10px;
+}
+
+.employee-detail-table .mantine-Table-tr:hover .mantine-Table-td {
+  background: light-dark(#f8fbff, var(--mantine-color-dark-6));
+}
+
+.employee-detail-empty {
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+  border: 1px dashed light-dark(#dbe3ee, var(--mantine-color-dark-4));
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+@media (max-width: 900px) {
+  .employee-detail-hero-content {
+    grid-template-columns: 1fr;
+  }
+
+  .employee-detail-hero-main,
+  .employee-detail-actions {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .employee-detail-actions .mantine-Button-root {
+    flex: 1 1 180px;
+  }
+
+  .employee-detail-info-label {
+    flex-basis: 126px;
+  }
+
+  .employee-detail-mini-calendar {
+    gap: 6px;
+  }
+}
+
+/* ==========================================================================
+   Zalo Web Style Settings Modal / Page
+   ========================================================================== */
+
+.settings-zalo-stage {
+  align-items: center;
+  background: rgba(15, 15, 18, 0.58);
+  display: flex;
+  justify-content: center;
+  inset: 0;
+  padding: 18px 20px;
+  position: fixed;
+  z-index: 1000;
+}
+
+.settings-zalo-window {
+  background: light-dark(#eef0f5, var(--mantine-color-dark-8));
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-5));
+  border-radius: 8px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.28);
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  height: min(700px, calc(100vh - 36px));
+  overflow: hidden;
+  width: min(860px, calc(100vw - 40px));
+}
+
+.settings-zalo-nav {
+  background: light-dark(#ffffff, var(--mantine-color-dark-7));
+  border-right: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-5));
+  padding: 24px 8px 14px;
+}
+
+.settings-zalo-title {
+  color: light-dark(var(--mantine-color-dark-8), var(--mantine-color-gray-0));
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.2;
+  margin: 0 14px 18px;
+}
+
+.settings-zalo-nav-list {
+  gap: 4px;
+}
+
+.settings-zalo-nav-item {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: light-dark(var(--mantine-color-dark-8), var(--mantine-color-gray-1));
+  cursor: pointer;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  min-height: 42px;
+  padding: 6px 12px;
+  text-align: left;
+  transition: background-color 150ms ease, color 150ms ease;
+  width: 100%;
+}
+
+.settings-zalo-nav-item:hover {
+  background: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-6));
+}
+
+.settings-zalo-nav-item.is-active {
+  background: light-dark(#e8f3ff, color-mix(in srgb, #339af0, transparent 82%));
+  color: light-dark(#0b64d8, #93c5fd);
+}
+
+.settings-zalo-nav-icon {
+  align-items: center;
+  background: transparent;
+  border-radius: 8px;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.settings-zalo-nav-item.is-active .settings-zalo-nav-icon {
+  background: transparent;
+  color: light-dark(#0b64d8, #93c5fd);
+}
+
+.settings-zalo-nav-copy {
+  min-width: 0;
+}
+
+.settings-zalo-nav-copy .mantine-Text-root {
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.settings-zalo-content {
+  background: light-dark(#eef0f5, var(--mantine-color-dark-8));
+  min-width: 0;
+  overflow-y: auto;
+  padding: 72px 24px 28px 28px;
+  position: relative;
+}
+
+.settings-zalo-content > .mantine-Stack-root {
+  max-width: 100%;
+}
+
+.settings-zalo-content-title {
+  color: light-dark(#172033, var(--mantine-color-gray-0));
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.settings-zalo-subtitle {
+  color: light-dark(#66748a, var(--mantine-color-dark-2));
+  font-size: 14px;
+  line-height: 1.35;
+  margin-top: 8px;
+}
+
+.settings-zalo-section-title {
+  color: light-dark(#172033, var(--mantine-color-gray-0));
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.25;
+  margin: 0 0 14px;
+}
+
+.settings-zalo-badge {
+  font-weight: 400;
+  text-transform: none;
+}
+
+.settings-zalo-close {
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-gray-2));
+  position: absolute;
+  right: 20px;
+  top: 20px;
+}
+
+.settings-zalo-section-card {
+  background: light-dark(#ffffff, var(--mantine-color-dark-7));
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-5));
+  border-radius: 11px;
+  overflow: hidden;
+}
+
+.settings-zalo-row {
+  min-height: 48px;
+  padding: 11px 18px;
+}
+
+.settings-zalo-row .mantine-Text-root {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.settings-zalo-row + .settings-zalo-row {
+  border-top: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5));
+}
+
+.settings-zalo-account-summary {
+  align-items: center;
+  background: light-dark(#ffffff, var(--mantine-color-dark-7));
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-5));
+  border-radius: 11px;
+  display: grid;
+  gap: 10px 12px;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  padding: 14px 16px;
+}
+
+.settings-zalo-account-avatar {
+  align-items: center;
+  background: light-dark(#e8f3ff, color-mix(in srgb, #339af0, transparent 82%));
+  border-radius: 999px;
+  color: light-dark(#0b64d8, #bfdbfe);
+  display: inline-flex;
+  font-size: 16px;
+  font-weight: 500;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.settings-zalo-account-copy {
+  min-width: 0;
+}
+
+.settings-zalo-account-name {
+  color: light-dark(var(--mantine-color-dark-8), var(--mantine-color-gray-0));
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.settings-zalo-account-email {
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
+.settings-zalo-account-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  grid-column: 2 / -1;
+  min-width: 0;
+}
+
+.settings-zalo-account-meta span {
+  background: light-dark(#f7f9fc, var(--mantine-color-dark-6));
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-5));
+  border-radius: 999px;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
+  font-size: 12px;
+  line-height: 1.3;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 5px 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-zalo-account-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-zalo-account-card {
+  background: light-dark(#ffffff, var(--mantine-color-dark-7));
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-5));
+  border-radius: 11px;
+  display: grid;
+  gap: 6px;
+  min-height: 116px;
+  padding: 14px;
+}
+
+.settings-zalo-account-card-icon {
+  align-items: center;
+  background: light-dark(#e8f3ff, color-mix(in srgb, #339af0, transparent 82%));
+  border-radius: 8px;
+  color: light-dark(#0b64d8, #bfdbfe);
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.settings-zalo-account-card-label {
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.settings-zalo-account-card-value {
+  color: light-dark(var(--mantine-color-dark-8), var(--mantine-color-gray-0));
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.settings-zalo-account-card-meta {
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.3;
+  min-width: 0;
+}
+
+.settings-zalo-language-panel {
+  background: light-dark(#ffffff, var(--mantine-color-dark-7));
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-5));
+  border-radius: 11px;
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.settings-zalo-language-current,
+.settings-zalo-language-browser {
+  background: light-dark(#f7f9fc, var(--mantine-color-dark-6));
+  border-radius: 9px;
+  min-height: 48px;
+  padding: 10px 14px;
+}
+
+.settings-zalo-language-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-zalo-language-card {
+  align-items: center;
+  background: light-dark(#ffffff, var(--mantine-color-dark-7));
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-5));
+  border-radius: 10px;
+  color: light-dark(var(--mantine-color-dark-8), var(--mantine-color-gray-0));
+  cursor: pointer;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 46px minmax(0, 1fr) 18px;
+  min-height: 72px;
+  padding: 12px 14px;
+  text-align: left;
+  transition: background-color 150ms ease, border-color 150ms ease;
+  width: 100%;
+}
+
+.settings-zalo-language-card:hover,
+.settings-zalo-language-card.is-selected {
+  background: light-dark(#f5f9ff, color-mix(in srgb, #339af0, transparent 82%));
+  border-color: #0b64d8;
+}
+
+.settings-zalo-language-locale {
+  align-items: center;
+  background: light-dark(#e8f3ff, color-mix(in srgb, #339af0, transparent 82%));
+  border-radius: 8px;
+  color: light-dark(#0b64d8, #bfdbfe);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 500;
+  height: 34px;
+  justify-content: center;
+  width: 46px;
+}
+
+.settings-zalo-language-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.settings-zalo-language-copy .mantine-Text-root {
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.settings-zalo-theme-section {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(3, 140px);
+  justify-content: space-between;
+  padding: 24px 30px 24px;
+}
+
+.settings-zalo-theme-choice {
+  background: transparent;
+  border: 0;
+  color: light-dark(var(--mantine-color-dark-8), var(--mantine-color-gray-0));
+  cursor: pointer;
+  display: block;
+  min-width: 0;
+  padding: 0;
+  text-align: center;
+}
+
+.settings-zalo-theme-choice .settings-theme-preview {
+  aspect-ratio: 1.58;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  display: block;
+  height: auto;
+  margin: 0;
+  overflow: hidden;
+  padding: 0;
+  position: relative;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  width: 140px;
+}
+
+.settings-zalo-theme-choice.is-selected .settings-theme-preview {
+  border-color: #0068ff;
+  box-shadow: 0 0 0 2px #0068ff;
+}
+
+.settings-zalo-theme-choice.is-light .settings-theme-preview {
+  background: linear-gradient(135deg, #e8f4ff 0%, #d8ecff 100%);
+}
+
+.settings-zalo-theme-choice.is-dark .settings-theme-preview {
+  background: #171a1f;
+}
+
+.settings-zalo-theme-choice.is-auto .settings-theme-preview {
+  background: linear-gradient(90deg, #e8f4ff 0 50%, #171a1f 50% 100%);
+}
+
+.settings-zalo-theme-choice .mantine-Text-root {
+  color: light-dark(#27334a, var(--mantine-color-gray-1));
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.settings-zalo-theme-choice .mantine-Group-root {
+  margin-top: 12px !important;
+}
+
+.settings-zalo-radio {
+  border: 2px solid light-dark(#d6dbe4, var(--mantine-color-dark-4));
+  border-radius: 999px;
+  display: inline-flex;
+  height: 16px;
+  position: relative;
+  width: 16px;
+}
+
+.settings-zalo-radio.is-selected {
+  border-color: #0068ff;
+}
+
+.settings-zalo-radio.is-selected::after {
+  background: #0068ff;
+  border-radius: 999px;
+  content: '';
+  inset: 3px;
+  position: absolute;
+}
+
+.settings-zalo-theme-choice .settings-theme-preview .settings-theme-dot,
+.settings-zalo-theme-choice .settings-theme-preview .settings-theme-bubble {
+  position: absolute;
+}
+
+.settings-zalo-theme-choice .settings-theme-preview .settings-theme-dot {
+  background: #b9dcff;
+  border-radius: 999px;
+  height: 12px;
+  left: 14px;
+  top: 18px;
+  width: 12px;
+}
+
+.settings-zalo-theme-choice .settings-theme-preview .settings-theme-bubble {
+  border-radius: 4px;
+}
+
+.settings-zalo-theme-choice .settings-theme-preview .settings-theme-bubble.is-primary {
+  background: #ffffff;
+  height: 25px;
+  left: 39px;
+  top: 16px;
+  width: 64px;
+}
+
+.settings-zalo-theme-choice .settings-theme-preview .settings-theme-bubble.is-secondary {
+  background: #8fc2ff;
+  height: 24px;
+  right: 18px;
+  top: 48px;
+  width: 43px;
+}
+
+.settings-zalo-theme-choice.is-dark .settings-theme-preview .settings-theme-dot {
+  background: #62a5ff;
+}
+
+.settings-zalo-theme-choice.is-dark .settings-theme-preview .settings-theme-bubble.is-primary {
+  background: #555b61;
+}
+
+.settings-zalo-theme-choice.is-dark .settings-theme-preview .settings-theme-bubble.is-secondary {
+  background: #62a5ff;
+}
+
+.settings-zalo-theme-choice.is-auto .settings-theme-preview .settings-theme-dot {
+  background: #b9dcff;
+}
+
+.settings-zalo-theme-choice.is-auto .settings-theme-preview .settings-theme-dot::after {
+  background: #62a5ff;
+  content: '';
+  height: 12px;
+  left: 85px;
+  position: absolute;
+  top: 0;
+  width: 6px;
+}
+
+.settings-zalo-theme-choice.is-auto .settings-theme-preview .settings-theme-bubble.is-primary {
+  background: linear-gradient(90deg, #ffffff 0 50%, #555b61 50% 100%);
+}
+
+.settings-zalo-theme-choice.is-auto .settings-theme-preview .settings-theme-bubble.is-secondary {
+  background: #62a5ff;
+}
+
+.settings-zalo-font-size {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 16px;
+}
+
+.settings-zalo-font-choice {
+  align-items: center;
+  background: light-dark(#ffffff, var(--mantine-color-dark-7));
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-5));
+  border-radius: 10px;
+  color: light-dark(#27334a, var(--mantine-color-gray-1));
+  cursor: pointer;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  min-height: 86px;
+  padding: 12px 8px;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.settings-zalo-font-choice:hover {
+  background: light-dark(#f5f9ff, var(--mantine-color-dark-6));
+}
+
+.settings-zalo-font-choice.is-selected {
+  background: light-dark(#e8f3ff, color-mix(in srgb, #339af0, transparent 82%));
+  border-color: #0b64d8;
+}
+
+.settings-zalo-font-sample {
+  color: light-dark(#172033, var(--mantine-color-gray-0));
+  display: inline-flex;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.settings-zalo-font-choice.is-small .settings-zalo-font-sample {
+  font-size: 18px;
+}
+
+.settings-zalo-font-choice.is-medium .settings-zalo-font-sample {
+  font-size: 23px;
+}
+
+.settings-zalo-font-choice.is-large .settings-zalo-font-sample {
+  font-size: 28px;
+}
+
+.settings-zalo-font-choice .mantine-Text-root {
+  color: light-dark(#27334a, var(--mantine-color-gray-1));
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.settings-zalo-notification-mode {
+  align-items: center;
+  display: flex;
+  gap: 42px;
+  min-height: 170px;
+  padding: 22px 44px;
+}
+
+.settings-zalo-notification-choice {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: light-dark(#27334a, var(--mantine-color-gray-1));
+  cursor: pointer;
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+  min-width: 124px;
+  padding: 0;
+}
+
+.settings-zalo-notification-choice .mantine-Text-root {
+  color: light-dark(#27334a, var(--mantine-color-gray-1));
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.settings-zalo-laptop {
+  display: block;
+  height: 80px;
+  opacity: 0.42;
+  position: relative;
+  width: 124px;
+}
+
+.settings-zalo-notification-choice.is-selected .settings-zalo-laptop {
+  opacity: 1;
+}
+
+.settings-zalo-laptop-screen {
+  background: #eef0f5;
+  border: 3px solid #d6dbe4;
+  border-radius: 7px 7px 2px 2px;
+  height: 64px;
+  left: 13px;
+  position: absolute;
+  top: 0;
+  width: 98px;
+}
+
+.settings-zalo-notification-choice.is-selected .settings-zalo-laptop-screen {
+  border-color: #0068ff;
+}
+
+.settings-zalo-laptop-message {
+  background: #0068ff;
+  border-radius: 3px;
+  height: 22px;
+  position: absolute;
+  right: 7px;
+  top: 8px;
+  width: 54px;
+}
+
+.settings-zalo-laptop-message::before,
+.settings-zalo-laptop-message::after {
+  background: #ffffff;
+  border-radius: 999px;
+  content: '';
+  height: 5px;
+  left: 9px;
+  position: absolute;
+}
+
+.settings-zalo-laptop-message::before {
+  top: 7px;
+  width: 16px;
+}
+
+.settings-zalo-laptop-message::after {
+  bottom: 7px;
+  width: 37px;
+}
+
+.settings-zalo-laptop-base {
+  background: #eef0f5;
+  border: 3px solid #d6dbe4;
+  border-radius: 0 0 10px 10px;
+  bottom: 0;
+  height: 14px;
+  left: 6px;
+  position: absolute;
+  width: 112px;
+}
+
+.settings-zalo-notification-choice.is-selected .settings-zalo-laptop-base {
+  border-color: #0068ff;
+}
+
+@media (max-width: 860px) {
+  .settings-zalo-stage {
+    padding: 0;
+  }
+
+  .settings-zalo-window {
+    border-radius: 0;
+    grid-template-columns: 1fr;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  .settings-zalo-nav {
+    border-bottom: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-5));
+    border-right: 0;
+    overflow-x: auto;
+    padding: 12px 14px;
+  }
+
+  .settings-zalo-nav-list {
+    flex-direction: row;
+  }
+
+  .settings-zalo-theme-section {
+    grid-template-columns: 1fr;
+  }
+}
+
