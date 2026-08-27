@@ -31,7 +31,7 @@ export function ImportExportToolbar({
   const showExport = canExport && Boolean(onExport);
 
   return (
-    <Group gap="xs" wrap="wrap" aria-label={title ?? 'Thao tác Excel'}>
+    <Group gap="xs" wrap="nowrap" aria-label={title ?? 'Thao tác Excel'}>
       {showTemplate ? (
         <Button
           variant="default"

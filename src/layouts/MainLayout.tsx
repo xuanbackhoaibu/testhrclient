@@ -1,17 +1,20 @@
 import {
+  ActionIcon,
   AppShell,
   Avatar,
   Burger,
   Group,
+  Image,
   Menu,
   NavLink,
   ScrollArea,
   Stack,
   Text,
   Title,
+  Tooltip,
   UnstyledButton,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+import { useDisclosure, useLocalStorage } from "@mantine/hooks";
 import {
   IconBriefcase,
   IconBuildingBank,
@@ -22,6 +25,8 @@ import {
   IconClock,
   IconDashboard,
   IconKey,
+  IconLayoutSidebarLeftCollapse,
+  IconLayoutSidebarLeftExpand,
   IconLink,
   IconLogout,
   IconSettings,
@@ -220,6 +225,10 @@ function isActive(pathname: string, path: string) {
 
 export function MainLayout() {
   const [opened, { toggle, close }] = useDisclosure();
+  const [desktopCollapsed, setDesktopCollapsed] = useLocalStorage({
+    key: "hr-web-client.sidebar-collapsed",
+    defaultValue: false,
+  });
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -267,6 +276,9 @@ export function MainLayout() {
 
   const showOrganizationMenu = visibleOrgItems.length > 0;
   const showIamMenu = visibleIamItems.length > 0;
+  const isOrgActive = visibleOrgItems.some((item) =>
+    isActive(location.pathname, item.path),
+  );
   const isIamRoute = visibleIamItems.some((item) =>
     isActive(location.pathname, item.path),
   );
@@ -284,8 +296,13 @@ export function MainLayout() {
 
   return (
     <AppShell
+      layout="alt"
       header={{ height: 56 }}
-      navbar={{ width: 256, breakpoint: "md", collapsed: { mobile: !opened } }}
+      navbar={{
+        width: desktopCollapsed ? 64 : 256,
+        breakpoint: "md",
+        collapsed: { mobile: !opened },
+      }}
       padding="md"
       bg="#f6f8fb"
     >
@@ -348,22 +365,73 @@ export function MainLayout() {
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar p="md">
-        <Stack gap="sm" h="100%">
-          <Group px="xs">
-            <BrandLogo compact />
-          </Group>
+      <AppShell.Navbar p={desktopCollapsed ? "xs" : "md"}>
+        <Stack gap="sm" h="100%" align={desktopCollapsed ? "center" : "stretch"}>
+          {desktopCollapsed ? (
+            <Stack align="center" gap={10} w="100%" pt={4}>
+              <Image src="/logo.png" w={28} h={28} fit="contain" alt="HACOM" />
+              <Tooltip label="Mở rộng thanh bên" withArrow position="right" openDelay={200}>
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  size="lg"
+                  radius="md"
+                  aria-label="Mở rộng thanh bên"
+                  className="gemini-sidebar-toggle-btn"
+                  onClick={() => setDesktopCollapsed(false)}
+                >
+                  <IconLayoutSidebarLeftExpand size={20} stroke={1.75} />
+                </ActionIcon>
+              </Tooltip>
+            </Stack>
+          ) : (
+            <Group px="xs" justify="space-between" wrap="nowrap">
+              <BrandLogo compact />
+              <Tooltip label="Đóng thanh bên" withArrow position="right" openDelay={200}>
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  size="lg"
+                  radius="md"
+                  aria-label="Đóng thanh bên"
+                  className="gemini-sidebar-toggle-btn"
+                  onClick={() => {
+                    setDesktopCollapsed(true);
+                    close();
+                  }}
+                >
+                  <IconLayoutSidebarLeftCollapse size={20} stroke={1.75} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
+          )}
 
-          <ScrollArea flex={1} type="never">
-            <Stack gap={4}>
+          <ScrollArea flex={1} type="never" style={{ width: "100%" }}>
+            <Stack gap={4} align={desktopCollapsed ? "center" : "stretch"}>
               {visiblePrimaryItems.map((item) => {
                 const Icon = item.icon;
+                const active = isActive(location.pathname, item.path);
+                if (desktopCollapsed) {
+                  return (
+                    <Tooltip key={item.path} label={item.label} position="right" withArrow openDelay={150}>
+                      <ActionIcon
+                        variant={active ? "light" : "subtle"}
+                        color={active ? "blue" : "gray"}
+                        size={38}
+                        radius="md"
+                        onClick={() => goTo(item.path)}
+                      >
+                        <Icon size={20} />
+                      </ActionIcon>
+                    </Tooltip>
+                  );
+                }
                 return (
                   <NavLink
                     key={item.path}
                     label={item.label}
                     leftSection={<Icon size={18} />}
-                    active={isActive(location.pathname, item.path)}
+                    active={active}
                     onClick={() => goTo(item.path)}
                     className="app-nav-link"
                   />
@@ -371,124 +439,103 @@ export function MainLayout() {
               })}
 
               {showOrganizationMenu ? (
-                <NavLink
-                  label="Tổ chức"
-                  leftSection={<IconBuildingBank size={18} />}
-                  defaultOpened
-                  className="app-nav-link"
-                >
-                  {visibleOrgItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <NavLink
-                        key={item.path}
-                        label={item.label}
-                        leftSection={<Icon size={17} />}
-                        active={isActive(location.pathname, item.path)}
-                        onClick={() => goTo(item.path)}
-                        className="app-nav-link"
-                      />
-                    );
-                  })}
-                </NavLink>
+                desktopCollapsed ? (
+                  <Menu position="right-start" withArrow shadow="md" width={200} trigger="hover" openDelay={100}>
+                    <Menu.Target>
+                      <ActionIcon
+                        variant={isOrgActive ? "light" : "subtle"}
+                        color={isOrgActive ? "blue" : "gray"}
+                        size={38}
+                        radius="md"
+                      >
+                        <IconBuildingBank size={20} />
+                      </ActionIcon>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Label>Tổ chức</Menu.Label>
+                      {visibleOrgItems.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <Menu.Item
+                            key={item.path}
+                            leftSection={<Icon size={16} />}
+                            onClick={() => goTo(item.path)}
+                            color={isActive(location.pathname, item.path) ? "blue" : undefined}
+                          >
+                            {item.label}
+                          </Menu.Item>
+                        );
+                      })}
+                    </Menu.Dropdown>
+                  </Menu>
+                ) : (
+                  <NavLink
+                    label="Tổ chức"
+                    leftSection={<IconBuildingBank size={18} />}
+                    defaultOpened={isOrgActive}
+                    className="app-nav-link"
+                  >
+                    {visibleOrgItems.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <NavLink
+                          key={item.path}
+                          label={item.label}
+                          leftSection={<Icon size={17} />}
+                          active={isActive(location.pathname, item.path)}
+                          onClick={() => goTo(item.path)}
+                          className="app-nav-link"
+                        />
+                      );
+                    })}
+                  </NavLink>
+                )
               ) : null}
 
               {showIamMenu ? (
-                <NavLink
-                  label="Phân quyền"
-                  leftSection={<IconShield size={18} />}
-                  defaultOpened={isIamRoute}
-                  className="app-nav-link"
-                >
+                desktopCollapsed ? (
+                  <Menu position="right-start" withArrow shadow="md" width={220} trigger="hover" openDelay={100}>
+                    <Menu.Target>
+                      <ActionIcon
+                        variant={isIamRoute ? "light" : "subtle"}
+                        color={isIamRoute ? "blue" : "gray"}
+                        size={38}
+                        radius="md"
+                      >
+                        <IconShield size={20} />
+                      </ActionIcon>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Label>Phân quyền</Menu.Label>
+                      {visibleIamItems.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <Menu.Item
+                            key={item.path}
+                            leftSection={<Icon size={16} />}
+                            onClick={() => goTo(item.path)}
+                            color={isActive(location.pathname, item.path) ? "blue" : undefined}
+                          >
+                            {item.label}
+                          </Menu.Item>
+                        );
+                      })}
+                    </Menu.Dropdown>
+                  </Menu>
+                ) : (
                   <NavLink
-                    label="Người dùng và tài khoản"
-                    defaultOpened={visibleIamAccountItems.some((item) =>
-                      isActive(location.pathname, item.path),
-                    )}
-                  >
-                    {visibleIamAccountItems.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <NavLink
-                          key={item.path}
-                          label={item.label}
-                          leftSection={<Icon size={17} />}
-                          active={isActive(location.pathname, item.path)}
-                          onClick={() => goTo(item.path)}
-                          className="app-nav-link"
-                        />
-                      );
-                    })}
-                  </NavLink>
-                  <NavLink
-                    label="Vai trò và quyền"
-                    defaultOpened={visibleIamCatalogItems.some((item) =>
-                      isActive(location.pathname, item.path),
-                    )}
-                  >
-                    {visibleIamCatalogItems.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <NavLink
-                          key={item.path}
-                          label={item.label}
-                          leftSection={<Icon size={17} />}
-                          active={isActive(location.pathname, item.path)}
-                          onClick={() => goTo(item.path)}
-                          className="app-nav-link"
-                        />
-                      );
-                    })}
-                  </NavLink>
-                  {visibleIamAuthorizationItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <NavLink
-                        key={item.path}
-                        label={
-                          item.path === ROUTES.workReportAuthorizations
-                            ? "Báo cáo công việc"
-                            : item.label
-                        }
-                        leftSection={<Icon size={17} />}
-                        active={isActive(location.pathname, item.path)}
-                        onClick={() => goTo(item.path)}
-                        className="app-nav-link"
-                      />
-                    );
-                  })}
-                </NavLink>
-              ) : null}
-
-              {visiblePreAttendanceItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <NavLink
-                    key={item.path}
-                    label={item.label}
-                    leftSection={<Icon size={18} />}
-                    active={isActive(location.pathname, item.path)}
-                    onClick={() => goTo(item.path)}
+                    label="Phân quyền"
+                    leftSection={<IconShield size={18} />}
+                    defaultOpened={isIamRoute}
                     className="app-nav-link"
-                  />
-                );
-              })}
-
-              {visibleAttendanceItems.length ? (
-                <NavLink
-                  label="Chấm công"
-                  leftSection={<IconClipboardList size={18} />}
-                  defaultOpened={isAttendanceRoute}
-                  className="app-nav-link"
-                >
-                  {visibleAttendanceSections.map((section) => (
+                  >
                     <NavLink
-                      key={section.label}
-                      label={section.label}
-                      defaultOpened
-                      className="app-nav-link"
+                      label="Người dùng và tài khoản"
+                      defaultOpened={visibleIamAccountItems.some((item) =>
+                        isActive(location.pathname, item.path),
+                      )}
                     >
-                      {section.items.map((item) => {
+                      {visibleIamAccountItems.map((item) => {
                         const Icon = item.icon;
                         return (
                           <NavLink
@@ -502,18 +549,164 @@ export function MainLayout() {
                         );
                       })}
                     </NavLink>
-                  ))}
-                </NavLink>
+                    <NavLink
+                      label="Vai trò và quyền"
+                      defaultOpened={visibleIamCatalogItems.some((item) =>
+                        isActive(location.pathname, item.path),
+                      )}
+                    >
+                      {visibleIamCatalogItems.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <NavLink
+                            key={item.path}
+                            label={item.label}
+                            leftSection={<Icon size={17} />}
+                            active={isActive(location.pathname, item.path)}
+                            onClick={() => goTo(item.path)}
+                            className="app-nav-link"
+                          />
+                        );
+                      })}
+                    </NavLink>
+                    {visibleIamAuthorizationItems.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <NavLink
+                          key={item.path}
+                          label={
+                            item.path === ROUTES.workReportAuthorizations
+                              ? "Báo cáo công việc"
+                              : item.label
+                          }
+                          leftSection={<Icon size={17} />}
+                          active={isActive(location.pathname, item.path)}
+                          onClick={() => goTo(item.path)}
+                          className="app-nav-link"
+                        />
+                      );
+                    })}
+                  </NavLink>
+                )
               ) : null}
 
-              {visibleFinalItems.map((item) => {
+              {visiblePreAttendanceItems.map((item) => {
                 const Icon = item.icon;
+                const active = isActive(location.pathname, item.path);
+                if (desktopCollapsed) {
+                  return (
+                    <Tooltip key={item.path} label={item.label} position="right" withArrow openDelay={150}>
+                      <ActionIcon
+                        variant={active ? "light" : "subtle"}
+                        color={active ? "blue" : "gray"}
+                        size={38}
+                        radius="md"
+                        onClick={() => goTo(item.path)}
+                      >
+                        <Icon size={20} />
+                      </ActionIcon>
+                    </Tooltip>
+                  );
+                }
                 return (
                   <NavLink
                     key={item.path}
                     label={item.label}
                     leftSection={<Icon size={18} />}
-                    active={isActive(location.pathname, item.path)}
+                    active={active}
+                    onClick={() => goTo(item.path)}
+                    className="app-nav-link"
+                  />
+                );
+              })}
+
+              {visibleAttendanceItems.length ? (
+                desktopCollapsed ? (
+                  <Menu position="right-start" withArrow shadow="md" width={220} trigger="hover" openDelay={100}>
+                    <Menu.Target>
+                      <ActionIcon
+                        variant={isAttendanceRoute ? "light" : "subtle"}
+                        color={isAttendanceRoute ? "blue" : "gray"}
+                        size={38}
+                        radius="md"
+                      >
+                        <IconClipboardList size={20} />
+                      </ActionIcon>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Label>Chấm công & Ca</Menu.Label>
+                      {visibleAttendanceItems.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <Menu.Item
+                            key={item.path}
+                            leftSection={<Icon size={16} />}
+                            onClick={() => goTo(item.path)}
+                            color={isActive(location.pathname, item.path) ? "blue" : undefined}
+                          >
+                            {item.label}
+                          </Menu.Item>
+                        );
+                      })}
+                    </Menu.Dropdown>
+                  </Menu>
+                ) : (
+                  <NavLink
+                    label="Chấm công"
+                    leftSection={<IconClipboardList size={18} />}
+                    defaultOpened={isAttendanceRoute}
+                    className="app-nav-link"
+                  >
+                    {visibleAttendanceSections.map((section) => (
+                      <NavLink
+                        key={section.label}
+                        label={section.label}
+                        defaultOpened
+                        className="app-nav-link"
+                      >
+                        {section.items.map((item) => {
+                          const Icon = item.icon;
+                          return (
+                            <NavLink
+                              key={item.path}
+                              label={item.label}
+                              leftSection={<Icon size={17} />}
+                              active={isActive(location.pathname, item.path)}
+                              onClick={() => goTo(item.path)}
+                              className="app-nav-link"
+                            />
+                          );
+                        })}
+                      </NavLink>
+                    ))}
+                  </NavLink>
+                )
+              ) : null}
+
+              {visibleFinalItems.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(location.pathname, item.path);
+                if (desktopCollapsed) {
+                  return (
+                    <Tooltip key={item.path} label={item.label} position="right" withArrow openDelay={150}>
+                      <ActionIcon
+                        variant={active ? "light" : "subtle"}
+                        color={active ? "blue" : "gray"}
+                        size={38}
+                        radius="md"
+                        onClick={() => goTo(item.path)}
+                      >
+                        <Icon size={20} />
+                      </ActionIcon>
+                    </Tooltip>
+                  );
+                }
+                return (
+                  <NavLink
+                    key={item.path}
+                    label={item.label}
+                    leftSection={<Icon size={18} />}
+                    active={active}
                     onClick={() => goTo(item.path)}
                     className="app-nav-link"
                   />

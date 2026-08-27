@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import {
-  Badge,
   Button,
   Drawer,
   Group,

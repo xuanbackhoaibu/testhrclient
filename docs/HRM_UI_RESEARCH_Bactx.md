@@ -2,7 +2,7 @@
 
 > **Người thực hiện:** Bactx (`Bxuan964@gmail.com`)  
 > **Nhánh phát triển:** `Bactx` — Dự án `hr-web-client`  
-> **Phạm vi hoàn thiện:** Tập trung tái cấu trúc và chuẩn hóa giao diện (UI/UX) cho **5 phân hệ nghiệp vụ cốt lõi** trên nền tảng Mantine UI và định hướng Zalo Web Flat UI, giải quyết trực tiếp các bài toán thao tác hàng ngày của chuyên viên nhân sự (HR).
+> **Phạm vi hoàn thiện:** Tập trung tái cấu trúc và chuẩn hóa giao diện (UI/UX) cho **6 phân hệ và cấu trúc giao diện cốt lõi** trên nền tảng Mantine UI và định hướng Zalo Web Flat UI, giải quyết trực tiếp các bài toán thao tác hàng ngày của chuyên viên nhân sự (HR).
 
 ---
 
@@ -15,6 +15,7 @@
 | **3** | **Hồ sơ Chi tiết Nhân sự (Employee Detail 360°)** | `src/pages/employees/EmployeeDetailPage.tsx` | Hero Header 360° tổng quan, hệ thống 8 tabs nghiệp vụ chuyên sâu, mini lịch chấm công tháng, thẻ tiến độ quỹ phép năm (quota), chỉnh sửa nhanh qua Drawer, ẩn/hiện & copy an toàn CCCD/SĐT, cập nhật mã BioTime inline. |
 | **4** | **Trung tâm Cài đặt Hệ thống (Settings Center)** | `src/pages/settings/SettingsPage.tsx` | Cửa sổ cài đặt Modal 2 cột phong cách Zalo Web, lựa chọn theme Sáng/Tối/Tự động có card preview mô phỏng, bộ chọn cỡ chữ linh hoạt, đa ngôn ngữ (i18n), cấu hình ma trận thông báo, hiển thị thông tin phiên tài khoản & runtime. |
 | **5** | **Điều chuyển Công tác (Movements)** | `src/pages/movements/MovementsPage.tsx` | Giao diện phẳng tinh gọn chuẩn Zalo Web, bộ lọc 3 trường (Nhân viên, Loại, Trạng thái), cột Thao tác hiển thị duy nhất nút "Chi tiết" chống lộn xộn, Drawer tạo quyết định trực quan (tự động xử lý Đơn vị/Phòng ban/Chức danh đích không cần JSON thô), Modal xét duyệt hồ sơ tích hợp các nút hành động (Gửi duyệt, Duyệt, Từ chối, Hủy). |
+| **6** | **Bố cục Toàn hệ thống & Sidebar Full-Height** | `src/layouts/MainLayout.tsx` | Thanh bên chạy dài hết chiều cao (`100vh`), nút thu gọn/mở rộng Gemini toggle button, chế độ thu nhỏ Compact Icon Rail (64px) giữ icon module + popover menu con khi hover, loại bỏ tiêu đề trùng lặp trên PageHeader và ghim thanh thao tác góc trên bên phải. |
 
 ---
 
@@ -93,7 +94,7 @@
 ---
 
 ### 5. Điều chuyển Công tác (`MovementsPage.tsx`)
-- **Bảng Dữ liệu Tinh gọn & Phẳng **
+- **Bảng Dữ liệu Tinh gọn & Phẳng:**
   - Giữ cấu trúc các cột chuẩn nghiệp vụ: `NHÂN VIÊN`, `LOẠI`, `NGÀY HIỆU LỰC`, `LÝ DO`, `TRẠNG THÁI`, `THAO TÁC`.
   - Hiển thị văn bản sạch sẽ, không dùng avatar/hình tròn và màu chữ rườm rà tại cột Loại.
   - Cột **THAO TÁC** hiển thị duy nhất nút bấm `Chi tiết` (`size="xs"`, `variant="light"`), giữ hàng dữ liệu luôn ngay ngắn trên 1 dòng, loại bỏ tình trạng nhiều nút bấm chen chúc gây lộn xộn.
@@ -110,6 +111,27 @@
 
 ---
 
+### 6. Khung Bố cục Toàn hệ thống & Thanh Điều hướng Trái (`MainLayout.tsx`)
+- **Bố cục Thanh bên Toàn chiều cao (Full-Height Sidebar Layout):**
+  - Cấu hình `layout="alt"` trên nền Mantine AppShell, giúp thanh bên (Navbar) chạy suốt chiều cao viewport (`100vh`) từ đỉnh đến đáy màn hình, tách biệt với Header chính như phong cách Zalo Web / Google Workspace.
+  - Tích hợp Logo thương hiệu HACOM compact ngay trên đỉnh thanh bên.
+- **Nút Thu gọn / Mở rộng Thanh bên Phong cách Google Gemini (`gemini-sidebar-toggle-btn`):**
+  - Đặt nút bấm dạng icon `IconLayoutSidebarLeftCollapse` ngay cạnh Logo HACOM.
+  - Khi rê chuột vào nút, hiển thị Tooltip *"Đóng thanh bên"* mượt mà (`openDelay={200}`).
+- **Chế độ Thanh bên Thu nhỏ (Compact Icon Rail — Mini Sidebar 64px):**
+  - Khi đóng thanh bên, hệ thống không ẩn biến mất mà tự động chuyển sang chế độ **Icon Rail 64px** tinh gọn.
+  - Hiển thị đầy đủ icon nhận diện của tất cả các phân hệ nghiệp vụ (*Dashboard, Nhân sự, Tổ chức, Phân quyền, Chấm công, v.v.*) kèm Tooltip tên module khi hover.
+  - Các nhóm menu đa cấp (*Tổ chức, Phân quyền, Chấm công & Ca*) tự động chuyển sang dạng **Floating Popover Menu** (`position="right-start"`), giúp người dùng truy cập ngay vào menu con chỉ bằng 1 thao tác di chuột mà không cần mở rộng thanh bên.
+  - Đặt nút mở rộng `IconLayoutSidebarLeftExpand` phong cách Gemini cùng biểu tượng HACOM trên đỉnh thanh mini sidebar với Tooltip *"Mở rộng thanh bên"*.
+- **Chuẩn hóa Header Trang & Loại bỏ Trùng lặp Tiêu đề (`PageHeader.tsx`):**
+  - Loại bỏ thẻ tiêu đề lớn (`Title order={2}`) trong nội dung trang vì thanh Header trên cùng (`AppShell.Header`) đã hiển thị tên trang chữ to nổi bật.
+  - Tiêu đề phụ (subtitle) được chuẩn hóa thành văn bản nhỏ tinh tế (`size="xs"`, `c="dimmed"`), mang lại không gian làm việc rộng rãi, hiện đại.
+  - Ví dụ trang Nhân sự: Hiển thị dòng mô tả nhỏ gọn *"Quản lý hồ sơ nhân sự, trạng thái làm việc và phân công hiện tại."*.
+- **Ghim Thanh Công cụ Hành động lên Góc Trên Bên Phải (Top-Right Action Toolbar):**
+  - Tại trang Nhân sự và các trang danh mục, nhóm nút hành động (*Tải mẫu Excel*, *Import Excel*, *Xuất Excel*, *Cột hiển thị*, *Tạo nhân sự*) được cố định trên cùng một hàng ngang (`wrap="nowrap"`, `flexShrink: 0`) ở góc trên bên phải, ngang hàng với dòng mô tả, giải quyết triệt để lỗi bị rớt dòng.
+
+---
+
 ## III. CHUẨN HÓA HỆ THỐNG THIẾT KẾ (DESIGN SYSTEM) & DARK MODE
 
 1. **Bảng màu Nhận diện Thương hiệu HACOM:**
@@ -117,8 +139,10 @@
    - Token màu bề mặt: Phân tách rõ ràng giữa màu nền trang (`var(--bg-app)`), màu thẻ (`var(--hrm-surface)`) và màu nền phụ (`var(--hrm-surface-subtle)`).
 2. **Chuẩn hóa Chế độ Nền tối (Dark Mode 100%):**
    - Ứng dụng hàm `light-dark()` của Mantine kết hợp biến CSS theme chuẩn.
-   - Toàn bộ các bảng biểu dữ liệu, thanh cuộn, modal, drawer và tooltip của 5 trang trên đều hiển thị sắc nét, tương phản cao, không bị chói mắt.
+   - Toàn bộ các bảng biểu dữ liệu, thanh cuộn, modal, drawer, thanh sidebar thu nhỏ (Icon rail) và tooltip đều hiển thị sắc nét, tương phản cao, không bị chói mắt.
 3. **Bộ Thành phần Giao diện Dùng chung (Shared UI Kit):**
+   - `PageHeader`: Thanh đầu trang tinh gọn, không trùng lặp tiêu đề, tự căn phải các nút thao tác.
+   - `ImportExportToolbar`: Nhóm nút thao tác Excel đồng bộ, chống vỡ dòng.
    - `EmptyState`: Trạng thái rỗng với icon minh họa và nút gợi ý hành động.
    - `LoadingState` & `LayoutSkeletons`: Khung chờ tải dữ liệu đồng bộ theo từng loại layout.
    - `ConfirmActionModal`: Hộp thoại xác nhận thao tác quan trọng/nguy hiểm.
@@ -128,5 +152,5 @@
 
 ## IV. TỔNG KẾT & KẾ HOẠCH TIẾP THEO
 
-- **Trạng thái Kỹ thuật:** Mã nguồn đã vượt qua kiểm thử kiểu dữ liệu TypeScript (`npm run typecheck`) và đóng gói sản phẩm Vite build hoàn toàn sạch lỗi (`0 errors`).
+- **Trạng thái Kỹ thuật:** Mã nguồn đã vượt qua kiểm thử kiểu dữ liệu TypeScript (`npm run typecheck`) và Vite build hoàn toàn sạch lỗi (`0 errors`).
 - **Kế hoạch tiếp theo:** Các phân hệ còn lại (Quản lý Nghỉ phép nâng cao, Chấm công, Cơ cấu Tổ chức, Hợp đồng, Phân quyền ma trận, Imports...) sẽ tiếp tục được triển khai theo chuẩn thiết kế module mới.
