@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useLocalStorage } from "@mantine/hooks";
 import {
-  Badge,
   Button,
   Checkbox,
   Drawer,
@@ -67,6 +66,8 @@ import { sortByCode } from "../../shared/utils/sort";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
 
+import { formatDate } from "../../shared/utils/date";
+
 const employmentStatusOptions = [
   { value: "ACTIVE", label: "Đang làm việc" },
   { value: "PROBATION", label: "Thử việc" },
@@ -82,8 +83,10 @@ type EmployeeColumnKey =
   | "fullName"
   | "companyEmail"
   | "phone"
+  | "hireDate"
   | "employmentStatus"
   | "accountStatus"
+  | "unit"
   | "department"
   | "jobTitle"
   | "account_actions"
@@ -99,8 +102,10 @@ const defaultVisibleEmployeeColumns: EmployeeColumnKey[] = [
   "biotimeEmployeeCode",
   "companyEmail",
   "phone",
+  "hireDate",
   "employmentStatus",
   "accountStatus",
+  "unit",
   "department",
   "jobTitle",
   "account_actions",
@@ -110,27 +115,15 @@ const employeeColumnOptions: Array<{ key: EmployeeColumnKey; label: string }> = 
   { key: "biotimeEmployeeCode", label: "Mã chấm công" },
   { key: "companyEmail", label: "Email" },
   { key: "phone", label: "SĐT" },
+  { key: "hireDate", label: "Ngày bắt đầu làm việc" },
   { key: "employmentStatus", label: "TT nhân sự" },
   { key: "accountStatus", label: "TT tài khoản" },
+  { key: "unit", label: "Đơn vị" },
   { key: "department", label: "Phòng ban" },
   { key: "jobTitle", label: "Chức danh" },
   { key: "account_actions", label: "Tài khoản" },
 ];
 
-
-// Canonical account-status vocabulary returned by the HR API. Kept separate
-// from the shared StatusTag (whose ACTIVE label means "Đang làm việc") so the
-// account column never mislabels an active account as an employment status.
-const ACCOUNT_STATUS_COLORS: Record<string, string> = {
-  NOT_CREATED: "gray",
-  ACTIVE: "green",
-  PENDING_ACTIVATION: "yellow",
-  LOCKED: "orange",
-  DISABLED: "red",
-  DEACTIVATED: "red",
-  TOMBSTONED: "dark",
-  UNKNOWN: "gray",
-};
 
 const ACCOUNT_STATUS_FALLBACK_LABELS: Record<string, string> = {
   NOT_CREATED: "Chưa tạo",
@@ -147,21 +140,13 @@ function employeeHasAccount(record: Employee): boolean {
   return record.hasAccount ?? Boolean(record.authUserId);
 }
 
-function AccountStatusBadge({ record }: { record: Employee }) {
+function AccountStatusCell({ record }: { record: Employee }) {
   const status = record.accountStatus ?? "NOT_CREATED";
   const label =
     record.accountDisplayStatus ??
     ACCOUNT_STATUS_FALLBACK_LABELS[status] ??
     status;
-  return (
-    <Badge
-      color={ACCOUNT_STATUS_COLORS[status] ?? "gray"}
-      variant="light"
-      radius="sm"
-    >
-      {label}
-    </Badge>
-  );
+  return <Text size="sm">{label}</Text>;
 }
 const employeePayloadFields = new Set<keyof EmployeePayload>([
   "employeeCode",
@@ -717,9 +702,15 @@ export function EmployeesPage() {
       },
       {
         key: "phone",
-        header: "SDT",
+        header: "SĐT",
         width: 130,
         render: (record) => record.phone || "-",
+      },
+      {
+        key: "hireDate",
+        header: "Ngày bắt đầu làm việc",
+        width: 160,
+        render: (record) => formatDate(record.hireDate),
       },
       {
         key: "employmentStatus",
@@ -731,7 +722,16 @@ export function EmployeesPage() {
         key: "accountStatus",
         header: "TT tài khoản",
         width: 150,
-        render: (record) => <AccountStatusBadge record={record} />,
+        render: (record) => <AccountStatusCell record={record} />,
+      },
+      {
+        key: "unit",
+        header: "Đơn vị",
+        render: (record) => (
+          <TruncatedCell
+            value={record.currentEmployeeAssignment?.unitName}
+          />
+        ),
       },
       {
         key: "department",

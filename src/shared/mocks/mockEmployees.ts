@@ -12,6 +12,9 @@ export const mockEmployees: Employee[] = [
     dateOfBirth: '1991-05-12',
     hireDate: '2023-01-15',
     employmentStatus: 'ACTIVE',
+    accountStatus: 'ACTIVE',
+    accountDisplayStatus: 'Đã cấp',
+    citizenIdMasked: '001191001234',
     currentEmployeeAssignment: {
       unitId: 'le-01',
       unitName: 'HACOM Holdings',
@@ -32,6 +35,9 @@ export const mockEmployees: Employee[] = [
     gender: 'MALE',
     hireDate: '2022-03-20',
     employmentStatus: 'ACTIVE',
+    accountStatus: 'ACTIVE',
+    accountDisplayStatus: 'Đã cấp',
+    citizenIdMasked: '001192002345',
     currentEmployeeAssignment: {
       unitId: 'le-01',
       unitName: 'HACOM Holdings',
@@ -52,6 +58,9 @@ export const mockEmployees: Employee[] = [
     gender: 'FEMALE',
     hireDate: '2024-01-05',
     employmentStatus: 'PROBATION',
+    accountStatus: 'PENDING_ACTIVATION',
+    accountDisplayStatus: 'Chờ kích hoạt',
+    citizenIdMasked: '001195003456',
     currentEmployeeAssignment: {
       unitId: 'le-02',
       unitName: 'HACOM Retail',
@@ -72,6 +81,9 @@ export const mockEmployees: Employee[] = [
     gender: 'MALE',
     hireDate: '2021-07-10',
     employmentStatus: 'ACTIVE',
+    accountStatus: 'ACTIVE',
+    accountDisplayStatus: 'Đã cấp',
+    citizenIdMasked: '001193004567',
     currentEmployeeAssignment: {
       unitId: 'le-01',
       unitName: 'HACOM Holdings',
@@ -92,6 +104,9 @@ export const mockEmployees: Employee[] = [
     gender: 'FEMALE',
     hireDate: '2020-11-18',
     employmentStatus: 'ACTIVE',
+    accountStatus: 'NOT_CREATED',
+    accountDisplayStatus: 'Chưa tạo',
+    citizenIdMasked: '001194005678',
     currentEmployeeAssignment: {
       unitId: 'le-01',
       unitName: 'HACOM Holdings',
@@ -112,6 +127,9 @@ export const mockEmployees: Employee[] = [
     gender: 'MALE',
     hireDate: '2023-05-02',
     employmentStatus: 'ACTIVE',
+    accountStatus: 'ACTIVE',
+    accountDisplayStatus: 'Đã cấp',
+    citizenIdMasked: '001196006789',
     currentEmployeeAssignment: {
       unitId: 'le-02',
       unitName: 'HACOM Retail',
@@ -132,6 +150,9 @@ export const mockEmployees: Employee[] = [
     gender: 'FEMALE',
     hireDate: '2019-09-09',
     employmentStatus: 'TERMINATED',
+    accountStatus: 'DEACTIVATED',
+    accountDisplayStatus: 'Đã vô hiệu hóa',
+    citizenIdMasked: '001190007890',
     currentEmployeeAssignment: {
       unitId: 'le-03',
       unitName: 'HACOM Services',
@@ -152,6 +173,9 @@ export const mockEmployees: Employee[] = [
     gender: 'MALE',
     hireDate: '2022-08-12',
     employmentStatus: 'ACTIVE',
+    accountStatus: 'ACTIVE',
+    accountDisplayStatus: 'Đã cấp',
+    citizenIdMasked: '001197008901',
     currentEmployeeAssignment: {
       unitId: 'le-01',
       unitName: 'HACOM Holdings',
@@ -172,6 +196,9 @@ export const mockEmployees: Employee[] = [
     gender: 'MALE',
     hireDate: '2024-03-18',
     employmentStatus: 'PROBATION',
+    accountStatus: 'NOT_CREATED',
+    accountDisplayStatus: 'Chưa tạo',
+    citizenIdMasked: '001198009012',
     currentEmployeeAssignment: {
       unitId: 'le-02',
       unitName: 'HACOM Retail',
@@ -191,7 +218,10 @@ export const mockEmployees: Employee[] = [
     phone: '0901000010',
     gender: 'FEMALE',
     hireDate: '2021-12-01',
-    employmentStatus: 'INACTIVE',
+    employmentStatus: 'SUSPENDED',
+    accountStatus: 'LOCKED',
+    accountDisplayStatus: 'Bị khóa',
+    citizenIdMasked: '001193000123',
     currentEmployeeAssignment: {
       unitId: 'le-01',
       unitName: 'HACOM Holdings',

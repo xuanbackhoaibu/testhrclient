@@ -46,7 +46,8 @@
   - Tìm kiếm an toàn với bộ gõ tiếng Việt IME (`NormalizedSearchInput`) theo mã nhân sự, họ tên, email công ty, số điện thoại.
   - Lọc theo *Trạng thái nhân sự* (Đang làm việc, Thử việc, Tạm dừng, Nghỉ việc).
   - Lọc theo *Đơn vị* và *Phòng ban* trực thuộc (tự động load danh sách phòng ban tương ứng khi chọn đơn vị).
-  - Tùy chọn **Ẩn / Hiện cột hiển thị** linh hoạt (Mã chấm công, Email, SĐT, TT nhân sự, TT tài khoản, Phòng ban, Chức danh, Hành động tài khoản).
+  - Tùy chọn **Ẩn / Hiện cột hiển thị** linh hoạt (*Mã chấm công, Email, SĐT, Ngày bắt đầu làm việc, TT nhân sự, TT tài khoản, Đơn vị, Phòng ban, Chức danh, Hành động tài khoản*).
+  - Chuẩn hóa hiển thị cột **TT tài khoản** dạng chữ thường sạch sẽ, không màu sắc rườm rà.
   - Tự động **Sắp xếp tăng dần theo Mã chấm công BioTime** (`sortByCode`) giúp HR đối soát dễ dàng với máy chấm công vật lý.
 - **Thanh Thao tác Hàng loạt (Bulk Action Bar):**
   - Tự động xuất hiện khi tick chọn 1 hoặc nhiều nhân sự:
