@@ -116,9 +116,8 @@ export function useSetAutoFullAttendance() {
       employeeId: string;
       payload: SetAutoFullAttendancePayload;
     }) => setAutoFullAttendance(employeeId, payload),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: timesheetKeys.all });
-    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: timesheetKeys.all }),
   });
 }
 

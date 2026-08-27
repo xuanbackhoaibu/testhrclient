@@ -5,7 +5,6 @@ import {
   Badge,
   Box,
   Button,
-  Card,
   Checkbox,
   CopyButton,
   Drawer,
@@ -14,8 +13,6 @@ import {
   Menu,
   Modal,
   PasswordInput,
-  Progress,
-  SimpleGrid,
   Select,
   Stack,
   Text,
@@ -119,31 +116,6 @@ function firstLoginStatus(account: AuthAdminUser) {
 
 function disabledTooltip(disabled: boolean) {
   return disabled ? "Bạn không có quyền thực hiện thao tác này" : "";
-}
-
-function formatRelativeTime(value?: string | null) {
-  if (!value) return "Chưa đăng nhập";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  const diffMinutes = Math.max(0, Math.round((Date.now() - date.getTime()) / 60_000));
-  if (diffMinutes < 1) return "Vừa xong";
-  if (diffMinutes < 60) return `${diffMinutes} phút trước`;
-  const diffHours = Math.round(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} giờ trước`;
-  const diffDays = Math.round(diffHours / 24);
-  return `${diffDays} ngày trước`;
-}
-
-function passwordAge(account: AuthAdminUser) {
-  const changedAt = account.updatedAt ?? account.createdAt;
-  if (!changedAt) return { days: 0, max: 90, percent: 0, color: "gray" };
-  const date = new Date(changedAt);
-  if (Number.isNaN(date.getTime())) return { days: 0, max: 90, percent: 0, color: "gray" };
-  const days = Math.max(0, Math.floor((Date.now() - date.getTime()) / 86_400_000));
-  const max = 90;
-  const percent = Math.min(100, Math.round((days / max) * 100));
-  const color = percent >= 90 ? "red" : percent >= 75 ? "orange" : "green";
-  return { days, max, percent, color };
 }
 
 interface ResetPasswordFormState {
@@ -453,7 +425,7 @@ export function AccountsPage() {
             </Text>
           ) : (
             row.roles.slice(0, 2).map((role) => (
-              <Badge key={role.code} size="sm" variant="light" color="hacomRed">
+              <Badge key={role.code} size="sm" variant="light" color="blue">
                 {role.code}
               </Badge>
             ))
@@ -682,13 +654,13 @@ export function AccountsPage() {
         breadcrumbs={["Hệ thống", "Tài khoản"]}
       />
 
-      <Group gap="sm" align="end" className="list-filter-panel">
+      <Group gap="sm" align="end">
         <NormalizedSearchInput
           label="Tìm kiếm"
           placeholder="Tên, email, username hoặc mã nhân sự..."
           value={search}
           onChange={(value) => updateListQuery({ q: value || null, page: null })}
-          className="list-filter-search"
+          w={360}
         />
         <Select
           label="Trạng thái"
@@ -697,7 +669,7 @@ export function AccountsPage() {
           onChange={(value) => {
             updateListQuery({ status: value || null, page: null });
           }}
-          className="list-filter-control"
+          w={220}
           clearable={false}
         />
         {(search || status) ? (
@@ -706,88 +678,6 @@ export function AccountsPage() {
           </Button>
         ) : null}
       </Group>
-
-      <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }} spacing="md">
-        {(accountsQuery.data?.data ?? []).map((row) => {
-          const age = passwordAge(row.account);
-          const statusColor = ACCOUNT_STATE_COLOR[row.account.accountState] ?? "gray";
-          const canLock = row.account.accountState === "ACTIVE";
-          const canUnlock = row.account.accountState === "LOCKED";
-          return (
-            <Card key={row.account.authUserId} withBorder className="account-card">
-              <Stack gap="sm">
-                <Group justify="space-between" align="flex-start" wrap="nowrap">
-                  <Box>
-                    <Text fw={800}>{accountDisplayName(row)}</Text>
-                    <Text size="sm" c="dimmed">{row.account.email}</Text>
-                    <Text size="xs" c="dimmed" ff="monospace">
-                      {row.account.employeeCode ?? row.account.username ?? "-"}
-                    </Text>
-                  </Box>
-                  <Badge color={statusColor} variant="light">
-                    {ACCOUNT_STATUS_LABELS[row.account.accountState] ?? row.account.accountState}
-                  </Badge>
-                </Group>
-
-                <Box>
-                  <Group justify="space-between" mb={4}>
-                    <Text size="xs" c="dimmed" fw={700}>Tuổi mật khẩu</Text>
-                    <Text size="xs" fw={700}>{age.days}/{age.max} ngày</Text>
-                  </Group>
-                  <Progress value={age.percent} color={age.color} radius="xl" />
-                </Box>
-
-                <Text size="sm">
-                  Đăng nhập cuối: <Text span fw={700}>{formatRelativeTime(row.account.lastLoginAt ?? row.account.lastSeen)}</Text>
-                </Text>
-
-                <Group gap={6}>
-                  {row.roles.slice(0, 3).map((role) => (
-                    <Badge key={role.code} size="xs" variant="light">{role.code}</Badge>
-                  ))}
-                  {row.roles.length > 3 ? <Badge size="xs" variant="light" color="gray">+{row.roles.length - 3}</Badge> : null}
-                </Group>
-
-                <Group gap="xs" mt="xs">
-                  <Button
-                    size="xs"
-                    variant="light"
-                    leftSection={<IconKey size={14} />}
-                    disabled={!canResetPassword}
-                    onClick={() => handleAction("reset-password", row, "Đặt lại mật khẩu", "blue")}
-                  >
-                    Đặt lại mật khẩu
-                  </Button>
-                  <Button
-                    size="xs"
-                    variant="light"
-                    color={canUnlock ? "green" : "orange"}
-                    leftSection={canUnlock ? <IconLockOpen size={14} /> : <IconLock size={14} />}
-                    disabled={!canUpdateStatus || (!canLock && !canUnlock)}
-                    onClick={() =>
-                      handleAction(
-                        canUnlock ? "unlock" : "lock",
-                        row,
-                        canUnlock ? "Mở khóa tài khoản" : "Khóa tài khoản",
-                        canUnlock ? "green" : "orange",
-                      )
-                    }
-                  >
-                    {canUnlock ? "Mở khóa" : "Khóa"}
-                  </Button>
-                  <Button
-                    size="xs"
-                    variant="subtle"
-                    onClick={() => navigate(`${ROUTES.auditLogs}?actorUserId=${encodeURIComponent(row.account.authUserId)}`)}
-                  >
-                    Xem nhật ký
-                  </Button>
-                </Group>
-              </Stack>
-            </Card>
-          );
-        })}
-      </SimpleGrid>
 
       <DataTable
         data={accountsQuery.data?.data ?? []}
@@ -952,7 +842,7 @@ export function AccountsPage() {
               {({ copied, copy }) => (
                 <Button
                   variant={copied ? "filled" : "light"}
-                  color={copied ? "teal" : "hacomRed"}
+                  color={copied ? "teal" : "blue"}
                   onClick={copy}
                 >
                   {copied ? "Đã copy" : "Copy mật khẩu"}
@@ -1030,7 +920,7 @@ export function AccountsPage() {
                   </Text>
                 ) : (
                   detailRoles.map((role) => (
-                    <Badge key={role.code} color="hacomRed" variant="light">
+                    <Badge key={role.code} color="blue" variant="light">
                       {role.code}
                     </Badge>
                   ))

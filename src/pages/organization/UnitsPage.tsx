@@ -6,17 +6,18 @@ import {
   Select,
   SimpleGrid,
   Stack,
+  Text,
   TextInput,
   Textarea,
+  Tooltip,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconPlus } from "@tabler/icons-react";
+import { IconEdit, IconPlus, IconX } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
-import { useAllEmployees } from "../../features/employees/useEmployees";
 import { DomainExcelImportModal } from "../../features/import-export/DomainExcelImportModal";
 import { downloadUnitsExport } from "../../features/import-export/excelFilesApi";
 import { ImportExportToolbar } from "../../features/import-export/ImportExportToolbar";
@@ -30,16 +31,19 @@ import {
   updateUnit,
 } from "../../features/organization/unitsApi";
 import type { Unit } from "../../features/organization/organizationTypes";
-import { useAllUnits } from "../../features/organization/useUnits";
-import { useAllDepartments } from "../../features/organization/useDepartments";
+import { useUnits } from "../../features/organization/useUnits";
 import { ApiError } from "../../shared/api/api.types";
-import { sortByCode } from "../../shared/utils/sort";
 import { ConfirmActionModal } from "../../shared/components/ConfirmActionModal";
+import {
+  DataTable,
+  type DataTableColumn,
+} from "../../shared/components/DataTable";
 import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
 import { PageHeader } from "../../shared/components/PageHeader";
+import { StatusTag } from "../../shared/components/StatusTag";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
-import { OrganizationHierarchyList, type OrganizationHierarchyRow } from "./OrganizationHierarchyList";
+import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 
 type UnitFormValues = {
   code: string;
@@ -52,14 +56,21 @@ type UnitFormValues = {
   status: string;
 };
 
-type UnitTreeRecord =
-  | { kind: "unit"; unit: Unit }
-  | { kind: "department"; id: string; code: string; name: string; status: string; note?: string | null };
-
 const statusOptions = [
   { value: "ACTIVE", label: "Đang hoạt động" },
   { value: "INACTIVE", label: "Tạm ngưng" },
 ];
+
+function TruncatedCell({ value }: { value?: string | null }) {
+  const display = value || "-";
+  return (
+    <Tooltip label={display} disabled={!value || display.length < 24}>
+      <Text span className="truncate-cell">
+        {display}
+      </Text>
+    </Tooltip>
+  );
+}
 
 export function UnitsPage() {
   const selectSearch = useImeSafeSelectFilter();
@@ -80,14 +91,10 @@ export function UnitsPage() {
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [codeManuallyEdited, setCodeManuallyEdited] = useState(false);
-  // Lấy toàn bộ đơn vị theo bộ lọc, sắp theo mã trên toàn danh sách rồi
-  // phân trang ở client để trang 1 luôn bắt đầu từ mã nhỏ nhất.
-  const { data: allUnits, isLoading, error, refetch } = useAllUnits({
+  const { data: unitsResponse, isLoading, error, refetch } = useUnits({
+    ...params,
     search: params.search || undefined,
-    status: params.status,
   });
-  const { data: allDepartments = [] } = useAllDepartments({});
-  const { data: employees = [] } = useAllEmployees({});
   const sectorsQuery = useBusinessSectorsSelect();
   const templateDownload = useHrmCoreTemplateDownload("organization-units");
 
@@ -309,46 +316,90 @@ export function UnitsPage() {
     },
   });
 
-  // Sắp xếp toàn bộ đơn vị theo mã tăng dần rồi phân trang ở client.
-  const sortedUnits = useMemo(() => sortByCode(allUnits), [allUnits]);
-  const treeRows = useMemo<OrganizationHierarchyRow<UnitTreeRecord>[]>(() => {
-    return sortedUnits.flatMap((unit) => {
-      const departments = sortByCode(allDepartments.filter((department) => department.unitId === unit.id));
-      const unitEmployees = employees.filter((employee) => employee.currentEmployeeAssignment?.unitId === unit.id);
-      const parent: OrganizationHierarchyRow<UnitTreeRecord> = {
-        id: unit.id,
-        code: unit.code,
-        name: unit.name,
-        status: unit.status,
-        description: unit.note,
-        level: 0,
-        employeeCount: unitEmployees.length,
-        employees: unitEmployees,
-        record: { kind: "unit", unit },
-        meta: `${departments.length} phòng ban · ${unit.businessSector?.name ?? unit.sector?.name ?? "Chưa gắn lĩnh vực"}`,
-        detailFields: [
-          { label: "Lĩnh vực", value: unit.businessSector?.name ?? unit.sector?.name ?? "-" },
-          { label: "KH đơn vị", value: unit.shortName || "-" },
-          { label: "Mã số thuế", value: unit.taxCode || "-" },
-          { label: "Địa chỉ", value: unit.address || "-" },
-        ],
-      };
-      const children: OrganizationHierarchyRow<UnitTreeRecord>[] = departments.map((department) => ({
-        id: `${unit.id}-${department.id}`,
-        code: department.code,
-        name: department.name,
-        status: department.status,
-        description: department.note,
-        level: 1,
-        parentId: unit.id,
-        employeeCount: employees.filter((employee) => employee.currentEmployeeAssignment?.departmentId === department.id).length,
-        employees: employees.filter((employee) => employee.currentEmployeeAssignment?.departmentId === department.id),
-        record: { kind: "department", id: department.id, code: department.code, name: department.name, status: department.status, note: department.note },
-        meta: "Phòng ban trực thuộc",
-      }));
-      return [parent, ...children];
-    });
-  }, [allDepartments, employees, sortedUnits]);
+  const units = unitsResponse?.items ?? [];
+  const unitsMeta = unitsResponse?.meta;
+
+  const columns = useMemo<DataTableColumn<Unit>[]>(
+    () => [
+      {
+        key: "code",
+        header: "Mã",
+        width: 120,
+        render: (record) => <Text fw={600}>{record.code}</Text>,
+      },
+      {
+        key: "name",
+        header: "Tên đơn vị",
+        render: (record) => <TruncatedCell value={record.name} />,
+      },
+      {
+        key: "sector",
+        header: "Lĩnh vực",
+        render: (record) => (
+          <TruncatedCell
+            value={record.businessSector?.name ?? record.sector?.name}
+          />
+        ),
+      },
+      {
+        key: "shortName",
+        header: "KH đơn vị",
+        render: (record) => record.shortName || "-",
+      },
+      {
+        key: "taxCode",
+        header: "Mã số thuế",
+        render: (record) => <TruncatedCell value={record.taxCode} />,
+      },
+      {
+        key: "status",
+        header: "Trạng thái",
+        width: 140,
+        render: (record) => <StatusTag status={record.status} />,
+      },
+      {
+        key: "actions",
+        header: "",
+        width: 108,
+        align: "right",
+        render: (record) => (
+          <TableActionsMenu
+            actions={[
+              ...(canEditUnit
+                ? [
+                    {
+                      label: "Chỉnh sửa",
+                      icon: <IconEdit size={16} />,
+                      onClick: () => openEditDrawer(record),
+                    },
+                    {
+                      label: "Tạm ngưng",
+                      icon: <IconX size={16} />,
+                      color: "red" as const,
+                      disabled: record.status === "INACTIVE" || !canEditUnit,
+                      onClick: () => {
+                        debugPermissionCheck({
+                          action: "unit.update",
+                          required: HR_PERMISSIONS.UNIT_UPDATE,
+                          permissions,
+                          roles,
+                          allowed: canEditUnit,
+                        });
+                        if (!canEditUnit) {
+                          return;
+                        }
+                        setConfirmInactive(record);
+                      },
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        ),
+      },
+    ],
+    [canEditUnit, openEditDrawer, permissions, roles],
+  );
 
   return (
     <>
@@ -406,22 +457,19 @@ export function UnitsPage() {
           />
         </SimpleGrid>
 
-        <OrganizationHierarchyList
-          rows={treeRows}
-          employees={employees}
+        <DataTable
+          data={units}
+          columns={columns}
+          rowKey={(record) => record.id}
+          meta={unitsMeta}
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}
+          onPageChange={(page, pageSize) =>
+            setParams((current) => ({ ...current, page, pageSize }))
+          }
           emptyTitle="Chưa có đơn vị"
           emptyDescription="Không có đơn vị phù hợp với bộ lọc hiện tại."
-          canEdit={(row) => canEditUnit && row.record.kind === "unit"}
-          canDeactivate={(row) => canEditUnit && row.record.kind === "unit"}
-          onEdit={(row) => {
-            if (row.record.kind === "unit") openEditDrawer(row.record.unit);
-          }}
-          onDeactivate={(row) => {
-            if (row.record.kind === "unit") setConfirmInactive(row.record.unit);
-          }}
         />
       </Stack>
 
@@ -512,7 +560,7 @@ export function UnitsPage() {
       <ConfirmActionModal
         opened={Boolean(confirmInactive)}
         title="Tạm ngưng đơn vị?"
-        message={`Có ${confirmInactive ? treeRows.find((row) => row.id === confirmInactive.id)?.employeeCount ?? 0 : 0} nhân sự đang gắn với đơn vị này. Đơn vị sẽ được chuyển sang trạng thái tạm ngưng, dữ liệu lịch sử không bị xóa.`}
+        message="Đơn vị sẽ được chuyển sang trạng thái tạm ngưng. Dữ liệu lịch sử không bị xóa."
         confirmLabel="Tạm ngưng"
         loading={inactiveMutation.isPending}
         onClose={() => setConfirmInactive(null)}

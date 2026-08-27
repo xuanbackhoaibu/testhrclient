@@ -203,7 +203,7 @@ export function AccountTab({ employee }: Props) {
 
   if (!canRead) {
     return (
-      <Alert color="hacomRed" title="Không có quyền">
+      <Alert color="blue" title="Không có quyền">
         Bạn không có quyền xem thông tin tài khoản nhân sự.
       </Alert>
     );
@@ -230,7 +230,7 @@ export function AccountTab({ employee }: Props) {
                 <CopyButton value={provisionedPassword}>
                   {({ copied, copy }) => (
                     <Tooltip label={copied ? 'Đã copy' : 'Copy mật khẩu'}>
-                      <Button variant={copied ? 'filled' : 'light'} color={copied ? 'teal' : 'hacomRed'} onClick={copy} leftSection={copied ? <IconCheck size={16} /> : <IconCopy size={16} />}>
+                      <Button variant={copied ? 'filled' : 'light'} color={copied ? 'teal' : 'blue'} onClick={copy} leftSection={copied ? <IconCheck size={16} /> : <IconCopy size={16} />}>
                         {copied ? 'Đã copy' : 'Copy'}
                       </Button>
                     </Tooltip>
@@ -300,7 +300,7 @@ export function AccountTab({ employee }: Props) {
   if (error || !authUser) {
     return (
       <Stack gap="md">
-        <Alert color="hacomRed" title="Auth User ID">
+        <Alert color="blue" title="Auth User ID">
           <Group gap="xs">
             <Code>{employee.authUserId}</Code>
             <CopyButton value={employee.authUserId ?? ''}>

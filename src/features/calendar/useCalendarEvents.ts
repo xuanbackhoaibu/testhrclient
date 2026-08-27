@@ -37,7 +37,6 @@ export function useCalendarEvents(params?: ListCalendarEventsParams) {
   });
 }
 
-
 export function useCalendarEvent(id: string | null) {
   return useQuery({
     queryKey: calendarKeys.event(id ?? ''),
@@ -84,25 +83,6 @@ export function useCalendarOwnerEvents(
         to,
         includeParticipantEvents: isViewingOthers ? true : undefined,
       }),
-    staleTime: 30_000,
-  });
-}
-
-export function useMyCalendarEvents(year: number, month: number) {
-  return useCalendarOwnerEvents(null, year, month);
-}
-
-/**
- * Lịch đơn vị (scope='unit') — không cần chọn nhân viên, backend tự resolve
- * đơn vị của người dùng hiện tại và trả về các sự kiện có visibility UNIT.
- */
-export function useCalendarUnitEvents(year: number, month: number) {
-  const from = useMemo(() => dayjs().year(year).month(month).startOf('month').toISOString(), [year, month]);
-  const to = useMemo(() => dayjs().year(year).month(month).endOf('month').toISOString(), [year, month]);
-
-  return useQuery({
-    queryKey: calendarKeys.events('unit', 'unit', from, to),
-    queryFn: () => calendarApi.listEvents({ scope: 'unit', from, to }),
     staleTime: 30_000,
   });
 }

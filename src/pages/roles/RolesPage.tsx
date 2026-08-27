@@ -4,13 +4,11 @@ import {
   Badge,
   Box,
   Button,
-  Card,
   Drawer,
   Group,
   Loader,
   Modal,
   Select,
-  SimpleGrid,
   Stack,
   Switch,
   Tabs,
@@ -198,26 +196,22 @@ export function RolesPage() {
 
   return (
     <Box>
-      <PageHeader
-        title="Vai trò"
-        subtitle="Quản lý nhóm quyền dùng chung cho nhiều nhân viên."
-        breadcrumbs={['Phân quyền', 'Vai trò']}
-        actions={
-          canManage ? (
+      <Group justify="space-between" mb="md" align="flex-end">
+        <PageHeader title="Vai trò" subtitle="Quản lý nhóm quyền dùng chung cho nhiều nhân viên." breadcrumbs={['Phân quyền', 'Vai trò']} />
+        {canManage && (
           <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>
             Tạo role
           </Button>
-          ) : undefined
-        }
-      />
+        )}
+      </Group>
 
-      <Group align="end" gap="sm" mb="md" className="list-filter-panel">
+      <Group align="end" gap="sm" mb="md">
       <NormalizedSearchInput
         label="Tìm kiếm"
         placeholder="Tên vai trò, mã vai trò hoặc mô tả..."
         value={search}
         onChange={setSearch}
-        className="list-filter-search"
+        w={320}
       />
       <Select
         label="Trạng thái"
@@ -225,7 +219,7 @@ export function RolesPage() {
         data={[{ value: 'all', label: 'Tất cả trạng thái' }, { value: 'active', label: 'Đang dùng' }, { value: 'disabled', label: 'Vô hiệu' }]}
         onChange={(value) => setStatus(value ?? 'all')}
         allowDeselect={false}
-        className="list-filter-control"
+        w={180}
       />
       {(search || status !== 'all') && <Button variant="subtle" color="gray" onClick={() => { setSearch(''); setStatus('all'); }}>Xóa bộ lọc</Button>}
       </Group>
@@ -233,76 +227,44 @@ export function RolesPage() {
       {isLoading ? (
         <Group justify="center" py="xl"><Loader /></Group>
       ) : (
-        <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }} spacing="md" className="roles-card-grid">
+        <Stack gap="xs">
           {visibleRoles.map((role) => (
-            <Card
+            <Group
               key={role.id ?? role.key}
-              withBorder
-              className="role-card"
+              p="md"
+              style={{ border: '1px solid #e9ecef', borderRadius: 8, cursor: 'pointer' }}
               onClick={() => handleOpenDetail(role)}
+              justify="space-between"
             >
-              <Stack gap="sm">
-                <Group justify="space-between" align="flex-start">
-                  <Group gap="sm">
-                    <Box className={role.isSensitive ? "role-card-icon is-sensitive" : "role-card-icon"}>
-                      <IconShield size={20} />
-                    </Box>
-                    <Box>
-                      <Text fw={800}>{role.name}</Text>
-                      <Text size="xs" ff="monospace" c="dimmed">{role.key}</Text>
-                    </Box>
-                  </Group>
-                  <Badge color={STATUS_COLOR[role.status ?? 'active']} variant="light" size="sm">
-                    {STATUS_LABEL[role.status ?? 'active']}
-                  </Badge>
-                </Group>
-                <Text size="sm" c="dimmed" lineClamp={2}>
-                  {role.description || "Chưa có mô tả vai trò."}
-                </Text>
-                <Group gap={6}>
-                  <Badge variant="light" color="hacomRed">User: chưa có số liệu</Badge>
-                  {role.isSensitive && <Badge color="red" variant="light">Nhạy cảm</Badge>}
-                  {role.isSystem && <Badge color="hacomRed" variant="light">System</Badge>}
-                  {(role as RoleDefinition & { inheritedFrom?: string }).inheritedFrom ? (
-                    <Badge color="grape" variant="light">Kế thừa từ {(role as RoleDefinition & { inheritedFrom?: string }).inheritedFrom}</Badge>
-                  ) : null}
-                </Group>
-                <Group justify="space-between" mt="xs">
-                  <Group gap={4}>
-                    <Badge size="xs" variant="dot">Nhóm quyền</Badge>
-                    <Badge size="xs" variant="dot" color="gray">Quyền trực tiếp</Badge>
-                  </Group>
+              <Group gap="md">
+                <IconShield
+                  size={20}
+                  color={role.isSensitive ? '#fa5252' : '#228be6'}
+                />
+                <Stack gap={2}>
                   <Group gap="xs">
-                    {canManage ? (
-                      <Button
-                        size="xs"
-                        variant="light"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setCreateForm({
-                            key: `${role.key ?? "role"}_copy`,
-                            name: `${role.name} copy`,
-                            description: role.description ?? "",
-                            isSensitive: role.isSensitive ?? false,
-                          });
-                          openCreate();
-                        }}
-                      >
-                        Nhân bản
-                      </Button>
-                    ) : null}
-                    <Tooltip label="Xem chi tiết">
-                      <ActionIcon variant="subtle" size="sm" onClick={(e) => { e.stopPropagation(); handleOpenDetail(role); }}>
-                        <IconEye size={16} />
-                      </ActionIcon>
-                    </Tooltip>
+                    <Text fw={600} size="sm">{role.name}</Text>
+                    {role.isSensitive && <Badge color="red" variant="light" size="xs">Nhạy cảm</Badge>}
+                    {role.isSystem && <Badge color="blue" variant="light" size="xs">System</Badge>}
                   </Group>
-                </Group>
-              </Stack>
-            </Card>
+                  <Text size="xs" ff="monospace" c="dimmed">{role.key}</Text>
+                  {role.description && <Text size="xs" c="dimmed">{role.description}</Text>}
+                </Stack>
+              </Group>
+              <Group gap="xs">
+                <Badge color={STATUS_COLOR[role.status ?? 'active']} variant="light" size="sm">
+                  {STATUS_LABEL[role.status ?? 'active']}
+                </Badge>
+                <Tooltip label="Xem chi tiết">
+                  <ActionIcon variant="subtle" size="sm" aria-label="Xem chi tiết vai trò" onClick={(e) => { e.stopPropagation(); handleOpenDetail(role); }}>
+                    <IconEye size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
+            </Group>
           ))}
           {visibleRoles.length === 0 && <Text c="dimmed" ta="center" py="lg">Không tìm thấy vai trò phù hợp.</Text>}
-        </SimpleGrid>
+        </Stack>
       )}
 
       {/* Create modal */}
@@ -365,7 +327,6 @@ export function RolesPage() {
         title={detail ? `Role: ${detail.name}` : 'Chi tiết role'}
         position="right"
         size="xl"
-        className="entity-drawer"
       >
         {detailLoading || !detail ? (
           <Group justify="center" py="xl"><Loader /></Group>
@@ -385,7 +346,7 @@ export function RolesPage() {
                 </Box>
                 <Group gap="xs">
                   {detail.isSensitive && <Badge color="red" variant="light">Nhạy cảm</Badge>}
-                  {detail.isSystem && <Badge color="hacomRed" variant="light">System</Badge>}
+                  {detail.isSystem && <Badge color="blue" variant="light">System</Badge>}
                   <Badge color={STATUS_COLOR[detail.status ?? 'active']} variant="light">
                     {STATUS_LABEL[detail.status ?? 'active']}
                   </Badge>
@@ -444,10 +405,10 @@ export function RolesPage() {
                   </Group>
                 )}
                 {(detail.permissionGroups ?? []).map((g) => (
-                  <Group key={g.id} justify="space-between" p="xs" className="resource-list-row">
+                  <Group key={g.id} justify="space-between" p="xs" style={{ border: '1px solid #eee', borderRadius: 6 }}>
                     <Stack gap={2}>
                       <Text size="sm" fw={500}>{g.name}</Text>
-                      <Text size="xs" ff="monospace" c="var(--hacom-primary)">{g.key}</Text>
+                      <Text size="xs" ff="monospace" c="blue">{g.key}</Text>
                     </Stack>
                     {canManage && (
                       <ActionIcon variant="subtle" color="red" size="sm" aria-label={`Gỡ nhóm quyền ${g.name ?? ''}`.trim()} loading={removeGroupMutation.isPending}
@@ -484,12 +445,12 @@ export function RolesPage() {
                   </Group>
                 )}
                 {(detail.permissions ?? []).map((p) => (
-                  <Group key={p.id} justify="space-between" p="xs" className="resource-list-row">
+                  <Group key={p.id} justify="space-between" p="xs" style={{ border: '1px solid #eee', borderRadius: 6 }}>
                     <Stack gap={2}>
                       <Text size="sm" fw={500}>{getPermissionBusinessLabel(p.key).label}</Text>
                       {p.description && <Text size="xs" c="dimmed">{p.description}</Text>}
                       <Text size="xs" c="dimmed">{getPermissionBusinessLabel(p.key).moduleLabel}</Text>
-                      {canReadTechnicalCatalog && <Text size="xs" ff="monospace" c="var(--hacom-primary)">{p.key}</Text>}
+                      {canReadTechnicalCatalog && <Text size="xs" ff="monospace" c="blue">{p.key}</Text>}
                     </Stack>
                     {canManage && (
                       <ActionIcon variant="subtle" color="red" size="sm" aria-label={`Gỡ quyền ${p.key ?? ''}`.trim()} loading={removePermMutation.isPending}

@@ -1,4 +1,4 @@
-import { Alert, Button, Paper, Stack } from '@mantine/core';
+import { Alert, Button, Stack } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';
 
 interface ErrorStateProps {
@@ -13,17 +13,15 @@ export function ErrorState({
   onRetry,
 }: ErrorStateProps) {
   return (
-    <Paper p="md" radius="md" className="error-state-surface">
-      <Stack align="flex-start" gap="sm">
-      <Alert color="yellow" title={title} icon={<IconAlertTriangle size={18} />} className="error-state-alert">
+    <Stack align="flex-start" gap="sm">
+      <Alert color="red" title={title} icon={<IconAlertTriangle size={18} />}>
         {description}
       </Alert>
       {onRetry ? (
-        <Button color="yellow" variant="light" onClick={onRetry}>
+        <Button variant="light" onClick={onRetry}>
           Thử lại
         </Button>
       ) : null}
-      </Stack>
-    </Paper>
+    </Stack>
   );
 }

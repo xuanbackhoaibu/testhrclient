@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { message } from 'antd';
 import { useMutation } from '@tanstack/react-query';
 
-import { BaseTable } from '../../shared/ui';
+import { StagingRowsTable, type StagingRowColumn } from './StagingRowsTable';
+import { toast } from '../../shared/utils/toast';
+
 import { showDownloadError } from './downloadError';
 import {
   downloadImportErrorReport,
@@ -19,6 +20,7 @@ import {
   previewDomainImport,
 } from '../imports/importsApi';
 import type { HrmCoreStagingRow } from '../imports/importTypes';
+import { renderMessages } from './importMessages';
 
 interface DomainExcelImportModalProps {
   open: boolean;
@@ -33,23 +35,6 @@ interface DomainExcelImportModalProps {
   }) => void;
 }
 
-function renderMessages(value: unknown): string {
-  if (!Array.isArray(value)) {
-    return '-';
-  }
-
-  return (
-    value
-      .map((item) => {
-        if (typeof item === 'object' && item !== null && 'message' in item) {
-          return String((item as { message?: unknown }).message ?? '');
-        }
-        return String(item);
-      })
-      .filter(Boolean)
-      .join('; ') || '-'
-  );
-}
 
 function readNormalizedString(row: HrmCoreStagingRow, key: string): string {
   const value = row.normalizedDataJson?.[key];
@@ -92,10 +77,10 @@ export function DomainExcelImportModal({
         { label: 'Lỗi', value: result.invalidRows },
         { label: 'Cảnh báo', value: result.warnings },
       ]);
-      message.success('Đã kiểm tra file import.');
+      toast.success('Đã kiểm tra file import.');
     },
     onError: (error) => {
-      message.error(
+      toast.error(
         (error as { message?: string })?.message ??
           'Kiểm tra file import thất bại.',
       );
@@ -108,13 +93,13 @@ export function DomainExcelImportModal({
       return commitDomainImport(module, batchId, true);
     },
     onSuccess: async (result) => {
-      message.success('Import Excel thành công.');
+      toast.success('Import Excel thành công.');
       await onSuccess?.();
       onAfterCommit?.(result);
       handleClose();
     },
     onError: (error) => {
-      message.error(
+      toast.error(
         (error as { message?: string })?.message ?? 'Import Excel thất bại.',
       );
     },
@@ -130,17 +115,13 @@ export function DomainExcelImportModal({
   });
 
   function handleClose() {
-    handleResetPreview();
-    onOpenChange(false);
-  }
-
-  function handleResetPreview() {
     setBatchId(null);
     setRows([]);
     setSummary([]);
     previewMutation.reset();
     commitMutation.reset();
     errorReportMutation.reset();
+    onOpenChange(false);
   }
 
   const preview = previewMutation.data;
@@ -156,39 +137,27 @@ export function DomainExcelImportModal({
     return { errorRows, warningRows };
   }, [rows]);
 
-  const rowColumns = useMemo(
+  const rowColumns = useMemo<StagingRowColumn[]>(
     () => [
-      { title: 'Dòng', dataIndex: 'rowNumber', width: 80 },
-      { title: 'Trạng thái', dataIndex: 'validationStatus', width: 120 },
+      { key: 'rowNumber', header: 'Dòng', width: 80, render: (row) => row.rowNumber },
+      { key: 'validationStatus', header: 'Trạng thái', width: 120, render: (row) => row.validationStatus },
       ...(module === 'employees'
         ? [
             {
-              title: 'Lĩnh vực',
-              render: (_: unknown, row: HrmCoreStagingRow) =>
-                readNormalizedString(row, 'businessSectorCode'),
+              key: 'businessSectorCode',
+              header: 'Lĩnh vực',
+              render: (row: HrmCoreStagingRow) => readNormalizedString(row, 'businessSectorCode'),
             },
             {
-              title: 'Mã nhân sự chuẩn hóa',
-              render: (_: unknown, row: HrmCoreStagingRow) =>
-                readNormalizedString(row, 'employeeCodePreview'),
+              key: 'employeeCodePreview',
+              header: 'Mã nhân sự chuẩn hóa',
+              render: (row: HrmCoreStagingRow) => readNormalizedString(row, 'employeeCodePreview'),
             },
           ]
         : []),
-      {
-        title: 'Dữ liệu',
-        render: (_: unknown, row: HrmCoreStagingRow) =>
-          JSON.stringify(row.rawDataJson),
-      },
-      {
-        title: 'Lỗi',
-        render: (_: unknown, row: HrmCoreStagingRow) =>
-          renderMessages(row.validationErrorsJson),
-      },
-      {
-        title: 'Cảnh báo',
-        render: (_: unknown, row: HrmCoreStagingRow) =>
-          renderMessages(row.validationWarningsJson),
-      },
+      { key: 'rawData', header: 'Dữ liệu', render: (row) => JSON.stringify(row.rawDataJson) },
+      { key: 'errors', header: 'Lỗi', render: (row) => renderMessages(row.validationErrorsJson) },
+      { key: 'warnings', header: 'Cảnh báo', render: (row) => renderMessages(row.validationWarningsJson) },
     ],
     [module],
   );
@@ -213,34 +182,15 @@ export function DomainExcelImportModal({
           ? () => errorReportMutation.mutateAsync().then(() => undefined)
           : undefined
       }
-      onResetPreview={hasPreview ? handleResetPreview : undefined}
       summary={summary}
       previewContent={
-        <BaseTable
-          rowKey="id"
-          size="small"
-          pagination={{ pageSize: 8 }}
-          dataSource={rows}
-          columns={rowColumns}
-        />
+        <StagingRowsTable rows={rows} columns={rowColumns} />
       }
       errorsContent={
-        <BaseTable
-          rowKey="id"
-          size="small"
-          pagination={{ pageSize: 8 }}
-          dataSource={categorizedRows.errorRows}
-          columns={rowColumns}
-        />
+        <StagingRowsTable rows={categorizedRows.errorRows} columns={rowColumns} />
       }
       warningsContent={
-        <BaseTable
-          rowKey="id"
-          size="small"
-          pagination={{ pageSize: 8 }}
-          dataSource={categorizedRows.warningRows}
-          columns={rowColumns}
-        />
+        <StagingRowsTable rows={categorizedRows.warningRows} columns={rowColumns} />
       }
       hasPreview={hasPreview}
       hasErrors={hasErrors}

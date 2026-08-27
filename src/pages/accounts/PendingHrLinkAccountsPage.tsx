@@ -4,12 +4,10 @@ import {
   Badge,
   Box,
   Button,
-  Card,
   Checkbox,
   Group,
   Modal,
   Select,
-  SimpleGrid,
   Stack,
   Text,
   TextInput,
@@ -473,7 +471,6 @@ export function PendingHrLinkAccountsPage() {
         title="Tài khoản chờ liên kết nhân sự"
         subtitle="Xác minh claim và liên kết tài khoản PENDING_HR_LINK với hồ sơ HRM chính thức"
         breadcrumbs={["Phân quyền", "Tài khoản chờ liên kết nhân sự"]}
-        actions={<Badge variant="light" color="orange">{pendingQuery.data?.total ?? 0} yêu cầu chờ</Badge>}
       />
 
       <Alert color="yellow" variant="light" icon={<IconAlertTriangle size={18} />}>
@@ -496,62 +493,6 @@ export function PendingHrLinkAccountsPage() {
           Tải lại
         </Button>
       </Group>
-
-      <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
-        {(pendingQuery.data?.data ?? []).map((user) => (
-          <Card key={user.authUserId} withBorder className="pending-link-card">
-            <Stack gap="sm">
-              <Group justify="space-between" align="flex-start">
-                <Box>
-                  <Text fw={800}>{displayName(user)}</Text>
-                  <Text size="sm" c="dimmed">{emailValue(user)}</Text>
-                  <Text size="xs" ff="monospace" c="dimmed">{shortId(user.authUserId)}</Text>
-                </Box>
-                <Badge color={ACCOUNT_STATE_COLOR[user.accountState] ?? "yellow"} variant="light">
-                  {ACCOUNT_STATUS_LABELS[user.accountState] ?? user.accountState}
-                </Badge>
-              </Group>
-
-              <Alert color="hacomRed" variant="light" className="pending-link-suggestion">
-                <Text size="sm" fw={700}>Nhân viên đề xuất</Text>
-                <Text size="sm">Mã claim: {codeValue(user)}</Text>
-                <Text size="sm">Email claim: {emailValue(user)}</Text>
-                <Text size="xs" c="dimmed">Tạo: {formatDateTime(user.createdAt)}</Text>
-              </Alert>
-
-              <Group gap="xs">
-                <Button
-                  size="xs"
-                  leftSection={<IconLink size={14} />}
-                  disabled={!canLink}
-                  onClick={() => openLinkModal(user)}
-                >
-                  Duyệt liên kết
-                </Button>
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="red"
-                  leftSection={<IconUserOff size={14} />}
-                  disabled={!canDisable}
-                  onClick={() => openDisableModal(user)}
-                >
-                  Từ chối
-                </Button>
-                <Button
-                  size="xs"
-                  variant="subtle"
-                  leftSection={<IconEdit size={14} />}
-                  disabled={!canUpdateClaim}
-                  onClick={() => openClaimModal(user)}
-                >
-                  Sửa claim
-                </Button>
-              </Group>
-            </Stack>
-          </Card>
-        ))}
-      </SimpleGrid>
 
       <DataTable
         data={pendingQuery.data?.data ?? []}
@@ -622,7 +563,7 @@ export function PendingHrLinkAccountsPage() {
                 }))
               }
             />
-            <Alert color="hacomRed" variant="light">
+            <Alert color="blue" variant="light">
               Xác nhận lưu sẽ thay đổi claim dùng để admin đối chiếu trước khi
               link. Tài khoản vẫn ở trạng thái PENDING_HR_LINK.
             </Alert>

@@ -9,7 +9,6 @@ import {
   getEmployeeAttendance,
   getEmployeeLeave,
 } from './employeesApi';
-import { listMovements } from '../movements/movementsApi';
 
 export function useEmployeeDetail(
   employeeId?: string,
@@ -25,7 +24,7 @@ export function useEmployeeDetail(
         throw new Error('Missing employee id');
       }
 
-      const [employee, account, assignments, contracts, leaveRequests, attendanceRecords, auditLogs, movementResponse] = await Promise.all([
+      const [employee, account, assignments, contracts, leaveRequests, attendanceRecords, auditLogs] = await Promise.all([
         getEmployeeById(employeeId, { source: 'useEmployeeDetail' }),
         includeAccount ? getEmployeeAccount(employeeId) : Promise.resolve(null),
         getEmployeeAssignments(employeeId),
@@ -33,19 +32,9 @@ export function useEmployeeDetail(
         getEmployeeLeave(employeeId),
         getEmployeeAttendance(employeeId),
         getEmployeeAuditLogs(employeeId),
-        listMovements({ employeeId, page: 1, pageSize: 100 }),
       ]);
 
-      return {
-        employee,
-        account,
-        assignments,
-        contracts,
-        leaveRequests,
-        attendanceRecords,
-        auditLogs,
-        movements: movementResponse.items,
-      };
+      return { employee, account, assignments, contracts, leaveRequests, attendanceRecords, auditLogs };
     },
   });
 }

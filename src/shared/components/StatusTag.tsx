@@ -10,7 +10,7 @@ const STATUS_COLOR_MAP: Record<string, string> = {
   RESIGNED: 'orange',
   SUSPENDED: 'orange',
   DRAFT: 'gray',
-  SUBMITTED: 'hacomRed',
+  SUBMITTED: 'blue',
   APPROVED: 'green',
   REJECTED: 'red',
   CANCELLED: 'orange',
@@ -20,7 +20,7 @@ const STATUS_COLOR_MAP: Record<string, string> = {
   COMPLETED: 'green',
   FAILED: 'red',
   PARTIAL_SUCCESS: 'yellow',
-  IN_PROGRESS: 'hacomRed',
+  IN_PROGRESS: 'blue',
   LINKED: 'green',
   UNLINKED: 'gray',
   // Account statuses

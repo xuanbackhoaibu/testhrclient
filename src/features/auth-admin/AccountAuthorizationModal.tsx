@@ -72,7 +72,7 @@ const PERMISSION_SOURCE_LABELS: Record<string, string> = {
 function badgeColorForSource(sourceType: string) {
   switch (sourceType) {
     case "ROLE":
-      return "hacomRed";
+      return "blue";
     case "ROLE_PERMISSION_GROUP":
       return "violet";
     case "DIRECT_ALLOW":
@@ -272,7 +272,7 @@ export function AccountAuthorizationPanel({
     try {
       await refreshCurrentUser();
       notifications.show({
-        color: "hacomRed",
+        color: "blue",
         message: "Đã tải lại session hiện tại sau khi cập nhật quyền.",
       });
     } catch {
@@ -538,8 +538,8 @@ export function AccountAuthorizationPanel({
         </Alert>
       ) : authzQuery.data ? (
         <Stack gap="md">
-          <Alert color="hacomRed" title="Thong tin chung">
-            <Text size="sm">Account: {authzQuery.data.account.email}</Text>
+          <Alert color="blue" title="Thông tin tài khoản">
+            <Text size="sm">Email: {authzQuery.data.account.email}</Text>
             <Text size="sm">
               Tên đăng nhập: {authzQuery.data.account.username ?? "-"}
             </Text>
@@ -654,7 +654,7 @@ export function AccountAuthorizationPanel({
                 </ScrollArea>
 
                 {hasRoleChanges ? (
-                  <Alert color="hacomRed" title="Thay đổi trước khi lưu">
+                  <Alert color="blue" title="Thay đổi trước khi lưu">
                     <Text size="sm">Vai trò thêm: {roleDiff.added.join(", ") || "Không có"}</Text>
                     <Text size="sm">Vai trò thu hồi: {roleDiff.removed.join(", ") || "Không có"}</Text>
                   </Alert>
@@ -824,7 +824,7 @@ export function AccountAuthorizationPanel({
                               <Text size="sm" fw={500}>{permissionLabel(permission)}</Text>
                               {permission.description ? <Text size="xs" c="dimmed">{permission.description}</Text> : null}
                               <Group gap="xs" mt={4}>
-                                {inherited ? <Badge color="hacomRed" variant="light">Đã có từ vai trò/nhóm</Badge> : null}
+                                {inherited ? <Badge color="blue" variant="light">Đã có từ vai trò/nhóm</Badge> : null}
                                 {permission.isSensitive ? <Badge color="red" variant="light">Nhạy cảm</Badge> : null}
                                 {managedByHrm ? <Badge color="grape" variant="light">HRM quản lý</Badge> : null}
                                 {!isDirectlyAssignablePermission(permission) ? <Badge color="gray" variant="light">Không thể gán trực tiếp</Badge> : null}
@@ -876,11 +876,11 @@ export function AccountAuthorizationPanel({
                 </ScrollArea>
 
                 {hasDirectPermissionChanges ? (
-                  <Alert color="hacomRed" title="Thay đổi direct override trước khi lưu">
-                    <Text size="sm">Allow thêm: {overrideDiff.allowAdded.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
-                    <Text size="sm">Allow thu hồi: {overrideDiff.allowRemoved.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
-                    <Text size="sm">Deny thêm: {overrideDiff.denyAdded.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
-                    <Text size="sm">Deny thu hồi: {overrideDiff.denyRemoved.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
+                  <Alert color="blue" title="Thay đổi quyền ghi đè trước khi lưu">
+                    <Text size="sm">Cho phép thêm: {overrideDiff.allowAdded.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
+                    <Text size="sm">Cho phép thu hồi: {overrideDiff.allowRemoved.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
+                    <Text size="sm">Từ chối thêm: {overrideDiff.denyAdded.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
+                    <Text size="sm">Từ chối thu hồi: {overrideDiff.denyRemoved.map((id) => permissionById.get(id)?.code ?? id).join(", ") || "Không có"}</Text>
                   </Alert>
                 ) : null}
 

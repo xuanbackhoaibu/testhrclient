@@ -1,14 +1,14 @@
 import { useMemo, useState } from "react";
 import {
+  ActionIcon,
   Alert,
   Badge,
   Button,
-  Card,
   Group,
+  Menu,
   Modal,
   ScrollArea,
   Select,
-  SimpleGrid,
   Stack,
   Table,
   Text,
@@ -17,21 +17,27 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconCalendarPlus,
+  IconDotsVertical,
   IconDownload,
   IconLock,
   IconLockOpen,
+  IconPencil,
   IconRefresh,
+  IconTrash,
 } from "@tabler/icons-react";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
+import { showAttendanceError } from "../../features/attendance/attendanceErrorNotification";
 import { downloadTimesheetPeriodExport } from "../../features/attendance/timesheetApi";
 import {
   useCloseTimesheetPeriod,
+  useDeleteTimesheetPeriod,
   useOpenTimesheetPeriod,
   useReopenTimesheetPeriod,
   useTimesheetConfirmations,
   useTimesheetPeriods,
+  useUpdateTimesheetPeriod,
 } from "../../features/attendance/useTimesheet";
 import type {
   TimesheetConfirmationStatus,
@@ -62,7 +68,7 @@ const periodStatusLabel: Record<TimesheetPeriodStatus, string> = {
 
 const periodStatusColor: Record<TimesheetPeriodStatus, string> = {
   DRAFT: "gray",
-  PENDING_EMPLOYEE: "hacomRed",
+  PENDING_EMPLOYEE: "blue",
   PENDING_HR: "orange",
   CLOSED: "green",
 };
@@ -103,8 +109,10 @@ export function TimesheetPeriodsPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [openModal, setOpenModal] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<TimesheetPeriod | null>(null);
-  const [closeTarget, setCloseTarget] = useState<TimesheetPeriod | null>(null);
   const [reopenTarget, setReopenTarget] = useState<TimesheetPeriod | null>(null);
+  const [editTarget, setEditTarget] = useState<TimesheetPeriod | null>(null);
+  const [editDeadline, setEditDeadline] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<TimesheetPeriod | null>(null);
   const [newMonth, setNewMonth] = useState(now.getMonth() + 1);
   const [newYear, setNewYear] = useState(now.getFullYear());
   const [newUnitId, setNewUnitId] = useState<string | null>(null);
@@ -113,11 +121,13 @@ export function TimesheetPeriodsPage() {
   const [exportingPeriodId, setExportingPeriodId] = useState<string | null>(null);
 
   const periodsQuery = useTimesheetPeriods(year);
-  const confirmationsQuery = useTimesheetConfirmations(selectedPeriod?.id ?? closeTarget?.id ?? null);
+  const confirmationsQuery = useTimesheetConfirmations(selectedPeriod?.id ?? null);
   const unitsQuery = useUnitsSelect();
   const openPeriod = useOpenTimesheetPeriod();
   const closePeriod = useCloseTimesheetPeriod();
   const reopenPeriod = useReopenTimesheetPeriod();
+  const updatePeriod = useUpdateTimesheetPeriod();
+  const deletePeriod = useDeleteTimesheetPeriod();
 
   const unitOptions = useMemo(
     () =>
@@ -143,12 +153,12 @@ export function TimesheetPeriodsPage() {
       });
       setOpenModal(false);
       setYear(newYear);
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Không mở được kỳ công",
-        message: "Kỳ có thể đã được mở hoặc phạm vi không có nhân viên.",
-      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không mở được kỳ công",
+        "Kiểm tra kỳ, phạm vi nhân viên rồi thử lại.",
+      );
     }
   }
 
@@ -160,14 +170,63 @@ export function TimesheetPeriodsPage() {
         title: "Đã chốt kỳ công",
         message: "Toàn bộ ngày công trong kỳ đã bị khóa.",
       });
-      return true;
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Không chốt được kỳ công",
-        message: "Kiểm tra lại trạng thái kỳ trước khi chốt.",
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không chốt được kỳ công",
+        "Tải lại trạng thái kỳ rồi thử chốt lần nữa.",
+      );
+    }
+  }
+
+  function startEditPeriod(period: TimesheetPeriod) {
+    setEditTarget(period);
+    // HrmDateInput làm việc với chuỗi ISO, không phải chuỗi đã format hiển thị.
+    setEditDeadline(period.confirmDeadline?.slice(0, 10) ?? "");
+  }
+
+  async function handleUpdatePeriod() {
+    if (!editTarget || !editDeadline) {
+      return;
+    }
+    try {
+      await updatePeriod.mutateAsync({
+        id: editTarget.id,
+        payload: { confirmDeadline: editDeadline },
       });
-      return false;
+      notifications.show({
+        color: "green",
+        title: "Đã đổi hạn xác nhận",
+        message: `Kỳ ${editTarget.month}/${editTarget.year} có hạn mới là ${editDeadline}.`,
+      });
+      setEditTarget(null);
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không đổi được hạn xác nhận",
+        "Kiểm tra trạng thái kỳ và hạn vừa nhập.",
+      );
+    }
+  }
+
+  async function handleDeletePeriod() {
+    if (!deleteTarget) {
+      return;
+    }
+    try {
+      await deletePeriod.mutateAsync(deleteTarget.id);
+      notifications.show({
+        color: "green",
+        title: "Đã xóa kỳ công",
+        message: `Kỳ ${deleteTarget.month}/${deleteTarget.year} đã được xóa.`,
+      });
+      setDeleteTarget(null);
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không xóa được kỳ công",
+        "Kỳ đã chốt hoặc đã có người xác nhận thì không xóa được.",
+      );
     }
   }
 
@@ -195,12 +254,12 @@ export function TimesheetPeriodsPage() {
       });
       setReopenTarget(null);
       setReopenReason("");
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Không mở khóa được kỳ công",
-        message: "Chỉ kỳ đã chốt mới được mở khóa.",
-      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không mở khóa được kỳ công",
+        "Tải lại trạng thái kỳ rồi thử mở khóa lần nữa.",
+      );
     }
   }
 
@@ -208,12 +267,12 @@ export function TimesheetPeriodsPage() {
     setExportingPeriodId(period.id);
     try {
       await downloadTimesheetPeriodExport(period);
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Không xuất được Excel",
-        message: "Kiểm tra quyền xuất dữ liệu chấm công hoặc thử tải lại trang.",
-      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không xuất được Excel",
+        "Kiểm tra kết nối rồi thử tải lại file.",
+      );
     } finally {
       setExportingPeriodId(null);
     }
@@ -226,7 +285,7 @@ export function TimesheetPeriodsPage() {
   return (
     <>
       <PageHeader
-        title="Quản lý kỳ công"
+        title="Kỳ chốt công"
         subtitle="Mở kỳ để nhân viên xác nhận, theo dõi ai chưa xác nhận, chốt kỳ và mở khóa khi HR cần sửa lại."
         actions={
           canEdit ? (
@@ -241,7 +300,7 @@ export function TimesheetPeriodsPage() {
       />
 
       <Stack gap="md">
-        <Alert color="hacomRed" variant="light">
+        <Alert color="blue" variant="light">
           Nhánh quá hạn chưa xác nhận vẫn đang chờ HR trả lời. Màn này chỉ liệt
           kê trạng thái hiện tại để HR tự xử lý, không tự chuyển trạng thái hay
           tự xác nhận thay nhân viên.
@@ -264,6 +323,21 @@ export function TimesheetPeriodsPage() {
             Tải lại
           </Button>
         </Group>
+
+        {periodsQuery.isError ? (
+          <Alert color="red" variant="light" title="Không tải được danh sách kỳ công">
+            <Stack gap="xs" align="flex-start">
+              <Text size="sm">Không thể lấy trạng thái các kỳ công của năm đang chọn.</Text>
+              <Button
+                size="compact-sm"
+                variant="light"
+                onClick={() => void periodsQuery.refetch()}
+              >
+                Thử lại
+              </Button>
+            </Stack>
+          </Alert>
+        ) : null}
 
         <ScrollArea type="auto">
           <Table striped highlightOnHover withTableBorder miw={760}>
@@ -292,17 +366,9 @@ export function TimesheetPeriodsPage() {
                   </Table.Td>
                   <Table.Td>{period.unit?.name ?? "Toàn công ty"}</Table.Td>
                   <Table.Td>
-                    <Group gap="xs">
-                      {period.status === "CLOSED" ? <IconLock size={15} /> : <IconLockOpen size={15} />}
-                      <Badge color={periodStatusColor[period.status]} variant="light">
-                        {period.status === "CLOSED" ? "Đã chốt" : periodStatusLabel[period.status]}
-                      </Badge>
-                    </Group>
-                    {period.closedAt ? (
-                      <Text size="xs" c="dimmed">
-                        {period.closedBy ?? "Hệ thống"} · {toDateOnly(period.closedAt)}
-                      </Text>
-                    ) : null}
+                    <Badge color={periodStatusColor[period.status]} variant="light">
+                      {periodStatusLabel[period.status]}
+                    </Badge>
                   </Table.Td>
                   <Table.Td>{toDateOnly(period.confirmDeadline)}</Table.Td>
                   <Table.Td>{period._count?.confirmations ?? 0}</Table.Td>
@@ -331,7 +397,8 @@ export function TimesheetPeriodsPage() {
                           size="xs"
                           color="green"
                           leftSection={<IconLock size={14} />}
-                          onClick={() => setCloseTarget(period)}
+                          loading={closePeriod.isPending}
+                          onClick={() => void handleClosePeriod(period)}
                         >
                           Chốt
                         </Button>
@@ -347,11 +414,49 @@ export function TimesheetPeriodsPage() {
                           Mở khóa
                         </Button>
                       ) : null}
+                      {/*
+                        Sửa và xóa nằm trong menu phụ: hai việc này hiếm khi
+                        dùng so với Xác nhận/Chốt, và để lẫn vào hàng nút chính
+                        thì nút Xóa đứng ngay cạnh nút Chốt — quá dễ bấm nhầm.
+                      */}
+                      {canEdit ? (
+                        <Menu position="bottom-end" withinPortal shadow="md">
+                          <Menu.Target>
+                            <ActionIcon
+                              variant="subtle"
+                              color="gray"
+                              aria-label={`Thao tác khác cho kỳ ${period.month}/${period.year}`}
+                            >
+                              <IconDotsVertical size={16} />
+                            </ActionIcon>
+                          </Menu.Target>
+                          <Menu.Dropdown>
+                            <Menu.Item
+                              leftSection={<IconPencil size={14} />}
+                              disabled={period.status === "CLOSED"}
+                              onClick={() => startEditPeriod(period)}
+                            >
+                              Sửa hạn xác nhận
+                            </Menu.Item>
+                            <Menu.Divider />
+                            <Menu.Item
+                              color="red"
+                              leftSection={<IconTrash size={14} />}
+                              disabled={period.status === "CLOSED"}
+                              onClick={() => setDeleteTarget(period)}
+                            >
+                              Xóa kỳ công
+                            </Menu.Item>
+                          </Menu.Dropdown>
+                        </Menu>
+                      ) : null}
                     </Group>
                   </Table.Td>
                 </Table.Tr>
               ))}
-              {!periodsQuery.isLoading && periods.length === 0 ? (
+              {!periodsQuery.isLoading &&
+              !periodsQuery.isError &&
+              periods.length === 0 ? (
                 <Table.Tr>
                   <Table.Td colSpan={6}>
                     <Text c="dimmed" ta="center" py="xl">
@@ -395,7 +500,22 @@ export function TimesheetPeriodsPage() {
             data={unitOptions}
             value={newUnitId}
             onChange={setNewUnitId}
+            disabled={unitsQuery.isLoading}
           />
+          {unitsQuery.isError ? (
+            <Alert color="red" variant="light" title="Không tải được danh sách đơn vị">
+              <Group justify="space-between" align="center" wrap="wrap">
+                <Text size="sm">Bạn vẫn có thể mở kỳ toàn công ty hoặc tải lại danh sách.</Text>
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void unitsQuery.refetch()}
+                >
+                  Thử lại
+                </Button>
+              </Group>
+            </Alert>
+          ) : null}
           <HrmDateInput
             label="Hạn xác nhận"
             description="HR nhập theo lịch vận hành thực tế. Không tự suy ngày mở kỳ trong phần mềm."
@@ -430,6 +550,20 @@ export function TimesheetPeriodsPage() {
             <Badge color="green">Đã xác nhận: {counts.CONFIRMED}</Badge>
             <Badge color="orange">Khiếu nại: {counts.DISPUTED}</Badge>
           </Group>
+          {confirmationsQuery.isError ? (
+            <Alert color="red" variant="light" title="Không tải được danh sách xác nhận">
+              <Group justify="space-between" align="center" wrap="wrap">
+                <Text size="sm">Không thể lấy trạng thái xác nhận của nhân viên trong kỳ này.</Text>
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void confirmationsQuery.refetch()}
+                >
+                  Thử lại
+                </Button>
+              </Group>
+            </Alert>
+          ) : null}
           <ScrollArea type="auto">
             <Table striped withTableBorder miw={560}>
               <Table.Thead>
@@ -463,7 +597,9 @@ export function TimesheetPeriodsPage() {
                     </Table.Td>
                   </Table.Tr>
                 ))}
-                {!confirmationsQuery.isLoading && confirmations.length === 0 ? (
+                {!confirmationsQuery.isLoading &&
+                !confirmationsQuery.isError &&
+                confirmations.length === 0 ? (
                   <Table.Tr>
                     <Table.Td colSpan={3}>
                       <Text c="dimmed" ta="center" py="md">
@@ -475,57 +611,6 @@ export function TimesheetPeriodsPage() {
               </Table.Tbody>
             </Table>
           </ScrollArea>
-        </Stack>
-      </Modal>
-
-      <Modal
-        opened={closeTarget !== null}
-        onClose={() => setCloseTarget(null)}
-        title={closeTarget ? `Chốt kỳ công ${closeTarget.month}/${closeTarget.year}` : "Chốt kỳ công"}
-        centered
-        size="lg"
-      >
-        <Stack gap="md">
-          <Alert color="orange" variant="light" icon={<IconLock size={18} />}>
-            Sau khi chốt, các ô bảng công trong kỳ sẽ bị khóa. HR chỉ nên chốt khi đã xử lý xong các dòng chờ xác nhận/khiếu nại.
-          </Alert>
-          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
-            <Card withBorder padding="sm">
-              <Text size="xs" c="dimmed" fw={700}>Tổng nhân sự</Text>
-              <Text size="xl" fw={800}>{closeTarget?._count?.confirmations ?? confirmations.length}</Text>
-            </Card>
-            <Card withBorder padding="sm">
-              <Text size="xs" c="dimmed" fw={700}>Ô đã sửa tay</Text>
-              <Text size="xl" fw={800}>0</Text>
-              <Text size="xs" c="dimmed">Chưa có API tổng hợp trên kỳ.</Text>
-            </Card>
-            <Card withBorder padding="sm">
-              <Text size="xs" c="dimmed" fw={700}>Chờ giải trình/khiếu nại</Text>
-              <Text size="xl" fw={800} c={counts.DISPUTED > 0 ? "orange" : undefined}>{counts.DISPUTED}</Text>
-            </Card>
-          </SimpleGrid>
-          <Group>
-            <Badge color="gray">Chưa xác nhận: {counts.PENDING}</Badge>
-            <Badge color="green">Đã xác nhận: {counts.CONFIRMED}</Badge>
-            <Badge color="orange">Khiếu nại: {counts.DISPUTED}</Badge>
-          </Group>
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setCloseTarget(null)}>Hủy</Button>
-            <Button
-              color="green"
-              leftSection={<IconLock size={16} />}
-              loading={closePeriod.isPending}
-              onClick={() => {
-                if (closeTarget) {
-                  void handleClosePeriod(closeTarget).then((success) => {
-                    if (success) setCloseTarget(null);
-                  });
-                }
-              }}
-            >
-              Xác nhận chốt kỳ
-            </Button>
-          </Group>
         </Stack>
       </Modal>
 
@@ -557,6 +642,74 @@ export function TimesheetPeriodsPage() {
               onClick={() => void handleReopenPeriod()}
             >
               Mở khóa
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={editTarget !== null}
+        onClose={() => setEditTarget(null)}
+        title={
+          editTarget
+            ? `Sửa hạn xác nhận kỳ ${editTarget.month}/${editTarget.year}`
+            : "Sửa hạn xác nhận"
+        }
+        centered
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Chỉ đổi được hạn nhân viên bấm xác nhận. Muốn đổi tháng hoặc phạm
+            vi thì xóa kỳ rồi mở lại, vì các xác nhận đã có gắn với kỳ hiện tại.
+          </Text>
+          <HrmDateInput
+            label="Hạn xác nhận"
+            withAsterisk
+            value={editDeadline || null}
+            onChange={(value) => setEditDeadline(value ?? "")}
+          />
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={() => setEditTarget(null)}>
+              Hủy
+            </Button>
+            <Button
+              loading={updatePeriod.isPending}
+              disabled={!editDeadline}
+              onClick={() => void handleUpdatePeriod()}
+            >
+              Lưu hạn mới
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        title="Xóa kỳ công"
+        centered
+      >
+        <Stack gap="sm">
+          <Alert color="red" variant="light">
+            Xóa kỳ {deleteTarget?.month}/{deleteTarget?.year} (
+            {deleteTarget?.unit?.name ?? "Toàn công ty"}) sẽ gỡ luôn danh sách
+            chờ xác nhận của kỳ. Không hoàn tác được — muốn dùng lại thì phải mở
+            kỳ mới.
+          </Alert>
+          <Text size="sm">
+            Kỳ đã có người xác nhận hoặc đã chốt sẽ không xóa được; hệ thống báo
+            lại nếu rơi vào trường hợp đó.
+          </Text>
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={() => setDeleteTarget(null)}>
+              Hủy
+            </Button>
+            <Button
+              color="red"
+              loading={deletePeriod.isPending}
+              onClick={() => void handleDeletePeriod()}
+            >
+              Xóa kỳ công
             </Button>
           </Group>
         </Stack>

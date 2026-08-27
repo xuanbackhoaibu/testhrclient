@@ -77,7 +77,7 @@ function MappingStatsSection({
       <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="xs">
         <Card withBorder padding="sm">
           <Group gap="xs">
-            <IconUsers size={18} color="hacomRed" />
+            <IconUsers size={18} color="blue" />
             <Text size="xs" c="dimmed">Tổng bản ghi</Text>
             <Text size="lg" fw={700}>{stats.total.toLocaleString('vi-VN')}</Text>
           </Group>
@@ -165,8 +165,9 @@ function UnmappedTable({
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th>Ký hiệu máy chấm công</Table.Th>
-            <Table.Th>Ký hiệu nội bộ HRM</Table.Th>
+            <Table.Th>Mã chấm công</Table.Th>
+            <Table.Th>Họ tên BioTime</Table.Th>
+            <Table.Th>Phòng ban BioTime</Table.Th>
             <Table.Th ta="center">Số bản ghi</Table.Th>
             <Table.Th>Ngày đầu</Table.Th>
             <Table.Th>Ngày cuối</Table.Th>
@@ -177,13 +178,13 @@ function UnmappedTable({
         <Table.Tbody>
           {isLoading ? (
             <Table.Tr>
-              <Table.Td colSpan={7}>
+              <Table.Td colSpan={8}>
                 <Text size="sm" c="dimmed" ta="center">Đang tải...</Text>
               </Table.Td>
             </Table.Tr>
           ) : items.length === 0 ? (
             <Table.Tr>
-              <Table.Td colSpan={7}>
+              <Table.Td colSpan={8}>
                 <Text size="sm" c="dimmed" ta="center">
                   Không có bản ghi nào cần xử lý.
                 </Text>
@@ -191,17 +192,15 @@ function UnmappedTable({
             </Table.Tr>
           ) : (
             items.map((item) => (
-              <Table.Tr key={item.empCode} className="attendance-mapping-unmapped-row">
+              <Table.Tr key={item.empCode}>
                 <Table.Td>
-                  <Text size="sm" fw={750} ff="monospace">{item.empCode}</Text>
-                  <Text size="xs" c="dimmed">{item.fullName ?? 'Không có tên máy'}</Text>
-                  <Text size="xs" c="dimmed">{item.deptName ?? 'Không có phòng ban máy'}</Text>
+                  <Text size="sm" fw={600}>{item.empCode}</Text>
                 </Table.Td>
                 <Table.Td>
-                  <Badge color="red" variant="light" size="sm">
-                    Chưa ánh xạ
-                  </Badge>
-                  <Text size="xs" c="dimmed" mt={4}>Chọn nhân sự HRM để gắn mã nội bộ.</Text>
+                  <Text size="sm">{item.fullName ?? '-'}</Text>
+                </Table.Td>
+                <Table.Td>
+                  <Text size="sm" c="dimmed">{item.deptName ?? '-'}</Text>
                 </Table.Td>
                 <Table.Td ta="center">
                   <Badge variant="light" size="sm">
@@ -223,7 +222,7 @@ function UnmappedTable({
                   <Button
                     size="xs"
                     variant="light"
-                    color="hacomRed"
+                    color="blue"
                     leftSection={<IconLink size={14} />}
                     onClick={() => onMap(item)}
                   >
@@ -317,7 +316,7 @@ function MapEmployeeModal({
 
   const scoreColor = (score: number) => {
     if (score >= 0.95) return 'green';
-    if (score >= 0.7) return 'hacomRed';
+    if (score >= 0.7) return 'blue';
     return 'gray';
   };
 
@@ -391,11 +390,11 @@ function MapEmployeeModal({
                     cursor: 'pointer',
                     borderColor:
                       selectedEmployeeId === s.employeeId
-                        ? 'var(--hacom-primary)'
+                        ? 'var(--mantine-color-blue-5)'
                         : undefined,
                     background:
                       selectedEmployeeId === s.employeeId
-                        ? 'var(--hacom-primary-tint)'
+                        ? 'var(--mantine-color-blue-0)'
                         : undefined,
                   }}
                 >
@@ -419,7 +418,7 @@ function MapEmployeeModal({
                         {scoreLabel(s.score)} {Math.round(s.score * 100)}%
                       </Badge>
                       {selectedEmployeeId === s.employeeId && (
-                        <IconCheck size={16} color="var(--hacom-primary)" />
+                        <IconCheck size={16} color="var(--mantine-color-blue-6)" />
                       )}
                     </Stack>
                   </Group>
@@ -441,7 +440,7 @@ function MapEmployeeModal({
               Hủy
             </Button>
             <Button
-              color="hacomRed"
+              color="blue"
               leftSection={<IconLink size={16} />}
               disabled={!selectedEmployeeId}
               loading={mapMutation.isPending}

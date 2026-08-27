@@ -383,14 +383,3 @@ export const SYMBOL_OPTIONS: {
 ];
 
 /** Màu ô theo ký hiệu — bám cách HR đang tô màu trên Excel. */
-export function symbolColor(displaySymbol: string): string | undefined {
-  if (!displaySymbol) return undefined;
-  const first = displaySymbol.split(";")[0];
-  if (first === "+") return "green";
-  if (first === "-") return "teal";
-  if (first === "P") return "hacomRed";
-  if (first === "L") return "grape";
-  if (first === "KL" || first === "N") return "gray";
-  if (first === "Ô" || first === "Cô" || first === "TS") return "orange";
-  return "cyan";
-}

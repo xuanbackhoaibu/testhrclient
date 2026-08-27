@@ -84,13 +84,19 @@ export function DataTable<T>({
     );
   }
 
-  if (loading && !data.length) {
+  if (loading) {
     return (
-      <Paper p="md" radius="md" className="data-table-shell">
-        <Stack gap="xs">
-          <Skeleton height={18} width={180} radius="sm" />
+      <Paper
+        p="md"
+        radius="md"
+        role="status"
+        aria-live="polite"
+        aria-label="Đang tải dữ liệu"
+        aria-busy="true"
+      >
+        <Stack gap="sm" aria-hidden>
           {Array.from({ length: 6 }).map((_, index) => (
-            <Skeleton key={index} height={38} radius="sm" />
+            <Skeleton key={index} height={34} radius="sm" />
           ))}
         </Stack>
       </Paper>
@@ -107,14 +113,7 @@ export function DataTable<T>({
     selectable && data.some((r) => selectedIds?.has(rowKey(r)));
 
   return (
-    <Paper radius="md" p={0} className="data-table-shell" withBorder data-loading={loading ? 'true' : undefined}>
-      {loading ? (
-        <Group px="md" py={6} className="data-table-refreshing" justify="space-between">
-          <Text size="xs" c="var(--hacom-primary)" fw={650}>
-            Đang cập nhật dữ liệu...
-          </Text>
-        </Group>
-      ) : null}
+    <Paper radius="md" p={0} className="data-table-shell" withBorder>
       <ScrollArea type="auto" mah={maxHeight}>
         <Table
           miw={860}
@@ -122,14 +121,12 @@ export function DataTable<T>({
           highlightOnHover
           withColumnBorders={false}
           stickyHeader={Boolean(maxHeight)}
-          className="data-table"
         >
           <Table.Thead>
             <Table.Tr>
               {selectable && (
                 <Table.Th w={40}>
                   <Checkbox
-                    color="blue"
                     checked={allOnPageSelected}
                     indeterminate={!allOnPageSelected && someOnPageSelected}
                     onChange={toggleAll}
@@ -159,12 +156,11 @@ export function DataTable<T>({
                   key={id}
                   className={onRowClick ? 'data-table-row-clickable' : undefined}
                   onClick={onRowClick ? () => onRowClick(record) : undefined}
-                  bg={isSelected ? 'light-dark(#eff6ff, var(--mantine-color-dark-6))' : undefined}
+                  bg={isSelected ? 'var(--mantine-color-blue-light)' : undefined}
                 >
                   {selectable && (
                     <Table.Td onClick={(e) => e.stopPropagation()}>
                       <Checkbox
-                        color="blue"
                         checked={isSelected}
                         onChange={() => toggleRow(id)}
                         aria-label="Chọn dòng"
@@ -188,7 +184,7 @@ export function DataTable<T>({
           <Text size="sm" c="dimmed" role="status" aria-live="polite" aria-atomic="true">
             {meta.total} bản ghi
           </Text>
-          <Group gap="xs" className="data-table-pagination-controls">
+          <Group gap="xs" wrap="nowrap">
             <Select
               aria-label="Số dòng mỗi trang"
               value={String(meta.pageSize)}
@@ -198,13 +194,12 @@ export function DataTable<T>({
               allowDeselect={false}
               onChange={(value) => onPageChange(1, Number(value ?? meta.pageSize))}
             />
-            <Box className="data-table-pagination">
+            <Box>
               <Pagination
                 total={Math.max(1, meta.totalPages)}
                 value={meta.page}
                 onChange={(page) => onPageChange(page, meta.pageSize)}
                 size="sm"
-                color="blue"
               />
             </Box>
           </Group>

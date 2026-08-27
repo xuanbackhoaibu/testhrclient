@@ -21,7 +21,7 @@ export const mockContracts: Contract[] = [
 
 export const mockLeaveRequests: LeaveRequest[] = [
   { id: 'lv-01', employeeId: 'emp-05', employeeName: 'Do Thu Trang', leaveType: 'ANNUAL', startDate: '2026-04-29', endDate: '2026-04-30', totalDays: 2, reason: 'Family trip', status: 'SUBMITTED' },
-  { id: 'lv-02', employeeId: 'emp-04', employeeName: 'Pham Duc Anh', leaveType: 'SICK', startDate: '2026-04-21', endDate: '2026-04-21', totalDays: 1, reason: 'Medical appointment', status: 'APPROVED', attachmentUrl: 'https://hacom.vn/docs/giay-kham-benh-emp04.pdf' },
+  { id: 'lv-02', employeeId: 'emp-04', employeeName: 'Pham Duc Anh', leaveType: 'SICK', startDate: '2026-04-21', endDate: '2026-04-21', totalDays: 1, reason: 'Medical appointment', status: 'APPROVED' },
   { id: 'lv-03', employeeId: 'emp-09', employeeName: 'Hoang Lam', leaveType: 'UNPAID', startDate: '2026-05-10', endDate: '2026-05-12', totalDays: 3, reason: 'Personal matter', status: 'DRAFT' },
 ];
 

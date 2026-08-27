@@ -170,19 +170,6 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .auth-shell-image-layer,
-  .auth-shell-image-title,
-  .auth-shell-image-subtitle,
-  .auth-shell-dot-fill {
-    animation: none !important;
-    transition: none !important;
-  }
-
-  .auth-shell-image-layer {
-    transform: none;
-  }
-}
 /* ---------- Right: form ---------- */
 
 .auth-shell-form-side {

@@ -3,7 +3,7 @@ import { IconInfoCircle } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 
 export function AuthorizationUnavailableState({ children }: { children: ReactNode }) {
-  return <Alert icon={<IconInfoCircle size={16} />} color="hacomRed" title="Chức năng đang được hoàn thiện">{children}</Alert>;
+  return <Alert icon={<IconInfoCircle size={16} />} color="blue" title="Chức năng đang được hoàn thiện">{children}</Alert>;
 }
 
 export function AuthorizationServerValidationNotice() {

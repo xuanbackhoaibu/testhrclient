@@ -1,35 +1,34 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Avatar,
   Button,
-  Checkbox,
   Divider,
   Group,
+  Loader,
   Stack,
   Text,
+  TextInput,
+  ScrollArea,
 } from '@mantine/core';
-import { Calendar } from '@mantine/dates';
-import { IconX, IconCalendar, IconUsers, IconBuilding } from '@tabler/icons-react';
-import type { Dayjs } from 'dayjs';
+import { IconSearch, IconX, IconCalendar } from '@tabler/icons-react';
+import { useEmployees } from '../../../features/employees/useEmployees';
 import type { SelectedOwner } from '../../../features/calendar/useCalendarView';
 import { useCalendarOwner } from '../../../features/calendar/CalendarContext';
-import { EVENT_TYPE_COLORS, EVENT_TYPE_LABELS, EVENT_TYPE_ORDER } from '../../../features/calendar/eventTypeMeta';
-import { PersonSearchModal } from './PersonSearchModal';
+import { useImeSafeSearch } from '../../../shared/hooks/useImeSafeSearch';
 import styles from './CalendarSidebar.module.css';
 
-interface CalendarSidebarProps {
-  /** Tháng/ngày đang hiển thị trên lưới lịch chính, để mini calendar đồng bộ theo. */
-  currentDate: Dayjs;
-  /** Gọi khi bấm chọn 1 ngày trên mini calendar — nhảy lưới chính tới tháng đó. */
-  onSelectDate: (date: Date) => void;
-  /** Các loại sự kiện đang bị ẩn khỏi lưới (điều khiển bởi checklist bên dưới). */
-  hiddenTypes: Set<string>;
-  onToggleType: (type: string) => void;
-}
+export function CalendarSidebar() {
+  const { selectedOwner, selectOwner, isViewingOthers } = useCalendarOwner();
+  const [search, setSearch] = useState('');
+  const searchInput = useImeSafeSearch({ value: search, onSearch: setSearch });
 
-export function CalendarSidebar({ currentDate, onSelectDate, hiddenTypes, onToggleType }: CalendarSidebarProps) {
-  const { selectedOwner, selectOwner, selectUnit, viewMode } = useCalendarOwner();
-  const [isPersonSearchOpen, setIsPersonSearchOpen] = useState(false);
+  const { data: employeesData, isLoading } = useEmployees({
+    search: search || undefined,
+    page: 1,
+    pageSize: 100,
+  });
+
+  const employees = useMemo(() => employeesData?.data ?? [], [employeesData]);
 
   const handleSelectUser = (owner: SelectedOwner | null) => {
     selectOwner(owner);
@@ -40,134 +39,128 @@ export function CalendarSidebar({ currentDate, onSelectDate, hiddenTypes, onTogg
   return (
     <aside className={styles.sidebar}>
       <Stack gap="sm" h="100%">
-        {/* Mini calendar điều hướng nhanh theo ngày/tháng — tham khảo bố cục
-            sidebar của chat-web-client (mini calendar phía trên danh sách),
-            dựng lại bằng component Calendar sẵn có của Mantine thay vì viết
-            lại lưới ngày thủ công. */}
-        <Calendar
-          className={styles.miniCalendar}
-          size="xs"
-          date={currentDate.format('YYYY-MM-DD')}
-          onDateChange={(value) => onSelectDate(new Date(value))}
-          highlightToday
-          getDayProps={(value) => ({
-            selected: value === currentDate.format('YYYY-MM-DD'),
-            onClick: () => onSelectDate(new Date(value)),
-          })}
-        />
-
-        {/* Chế độ xem — tham khảo bố cục chat-web-client: 3 lựa chọn phạm vi
-            lịch. "Lịch đơn vị" dùng scope='unit' đã có sẵn ở tầng API (backend
-            tự resolve đơn vị theo người dùng đăng nhập, không cần chọn ai). */}
-        <Text size="xs" fw={700} c="dimmed" tt="uppercase">
-          Chế độ xem
-        </Text>
-        <Stack gap={4}>
-          <Button
-            variant={viewMode === 'mine' ? 'filled' : 'subtle'}
-            color={viewMode === 'mine' ? 'blue' : 'gray'}
-            fullWidth
-            justify="flex-start"
-            size="xs"
-            leftSection={<IconCalendar size={16} />}
-            onClick={() => handleSelectUser(null)}
-          >
-            Lịch của tôi
-          </Button>
-          <Button
-            variant={viewMode === 'person' ? 'filled' : 'subtle'}
-            color={viewMode === 'person' ? 'blue' : 'gray'}
-            fullWidth
-            justify="flex-start"
-            size="xs"
-            leftSection={<IconUsers size={16} />}
-            onClick={() => setIsPersonSearchOpen(true)}
-          >
-            Xem lịch người khác
-          </Button>
-          <Button
-            variant={viewMode === 'unit' ? 'filled' : 'subtle'}
-            color={viewMode === 'unit' ? 'blue' : 'gray'}
-            fullWidth
-            justify="flex-start"
-            size="xs"
-            leftSection={<IconBuilding size={16} />}
-            onClick={selectUnit}
-          >
-            Lịch đơn vị
-          </Button>
-        </Stack>
+        {/* My Calendar button — always visible; active only when not viewing others */}
+        <Button
+          variant={!isViewingOthers ? 'filled' : 'subtle'}
+          color={!isViewingOthers ? 'blue' : 'gray'}
+          fullWidth
+          justify="flex-start"
+          leftSection={<IconCalendar size={16} />}
+          onClick={() => handleSelectUser(null)}
+        >
+          Lịch của tôi
+        </Button>
 
         {/* "Currently viewing" card — shown only when viewing another person */}
-        {viewMode === 'person' && selectedOwner && (
-          <div className={styles.viewingCard}>
-            <Avatar size="sm" radius="xl" color="blue" style={{ flexShrink: 0 }}>
-              {displayName.charAt(0).toUpperCase()}
-            </Avatar>
-            <div className={styles.viewingCardInfo}>
-              <div className={styles.viewingCardLabel}>Lịch đang xem</div>
-              <div className={styles.viewingCardName} title={displayName}>
-                {displayName}
-              </div>
-              {selectedOwner.employeeCode && (
-                <div className={styles.viewingCardSub} title={selectedOwner.employeeCode}>
-                  {selectedOwner.employeeCode}
-                </div>
-              )}
-            </div>
-            <button
-              type="button"
-              className={styles.viewingCardClose}
-              title="Về lịch của tôi"
-              onClick={() => handleSelectUser(null)}
-            >
-              <IconX size={14} />
-            </button>
-          </div>
-        )}
-
-        {/* Checklist loại sự kiện — ẩn/hiện theo loại ngay trên lưới, tham
-            khảo mục "Lịch của tôi" (Lịch họp/Cá nhân/Chấm công...) của
-            chat-web-client, dùng đúng CalendarEventType của HRM thay vì bịa
-            loại không tồn tại trong dữ liệu thật. */}
-        {viewMode !== 'person' && (
+        {isViewingOthers && selectedOwner && (
           <>
-            <Divider label={viewMode === 'unit' ? 'Loại sự kiện' : 'Lịch của tôi'} labelPosition="left" />
-            <Stack gap={6}>
-              {EVENT_TYPE_ORDER.map((type) => (
-                <Checkbox
-                  key={type}
-                  size="xs"
-                  checked={!hiddenTypes.has(type)}
-                  onChange={() => onToggleType(type)}
-                  color={EVENT_TYPE_COLORS[type]}
-                  label={
-                    <Group gap={6} wrap="nowrap">
-                      <span
-                        style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          background: `var(--mantine-color-${EVENT_TYPE_COLORS[type]}-6)`,
-                          flexShrink: 0,
-                        }}
-                      />
-                      <Text size="xs">{EVENT_TYPE_LABELS[type]}</Text>
-                    </Group>
-                  }
-                />
-              ))}
-            </Stack>
+            <Divider label="Đang xem" labelPosition="left" />
+            <div className={styles.viewingCard}>
+              <Avatar size="sm" radius="xl" color="blue" style={{ flexShrink: 0 }}>
+                {displayName.charAt(0).toUpperCase()}
+              </Avatar>
+              <div className={styles.viewingCardInfo}>
+                <div className={styles.viewingCardLabel}>Lịch đang xem</div>
+                <div className={styles.viewingCardName} title={displayName}>
+                  {displayName}
+                </div>
+                {selectedOwner.employeeCode && (
+                  <div className={styles.viewingCardSub} title={selectedOwner.employeeCode}>
+                    {selectedOwner.employeeCode}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                className={styles.viewingCardClose}
+                title="Về lịch của tôi"
+                onClick={() => handleSelectUser(null)}
+              >
+                <IconX size={14} />
+              </button>
+            </div>
           </>
         )}
-      </Stack>
 
-      <PersonSearchModal
-        opened={isPersonSearchOpen}
-        onClose={() => setIsPersonSearchOpen(false)}
-        selectedOwner={selectedOwner}
-        onSelect={handleSelectUser}
-      />
+        <Divider
+          label={isViewingOthers ? 'Chọn người khác' : 'Nhân viên'}
+          labelPosition="left"
+        />
+
+        {/* Search */}
+        <TextInput
+          placeholder="Tìm kiếm nhân viên..."
+          leftSection={<IconSearch size={14} />}
+          rightSection={
+            searchInput.inputValue ? (
+              <IconX
+                size={14}
+                style={{ cursor: 'pointer' }}
+                onClick={() => searchInput.clear()}
+              />
+            ) : null
+          }
+          {...searchInput.inputProps}
+          size="xs"
+        />
+
+        {/* Employee List with scroll */}
+        <ScrollArea className={styles.employeeScroll} type="hover">
+          <Stack gap={4}>
+            {isLoading ? (
+              <Stack align="center" py="md">
+                <Loader size="sm" />
+                <Text size="xs" c="dimmed">Đang tải...</Text>
+              </Stack>
+            ) : employees.length === 0 ? (
+              <Text size="xs" c="dimmed" ta="center" py="md">
+                {searchInput.inputValue ? 'Không tìm thấy nhân viên' : 'Không có nhân viên'}
+              </Text>
+            ) : (
+              employees.map((emp) => {
+                const isSelected = selectedOwner?.id === emp.id;
+                return (
+                  <Button
+                    key={emp.id}
+                    variant={isSelected ? 'filled' : 'subtle'}
+                    color={isSelected ? 'blue' : 'gray'}
+                    fullWidth
+                    justify="flex-start"
+                    onClick={() =>
+                      handleSelectUser({
+                        id: emp.id,
+                        fullName: emp.fullName,
+                        employeeCode: emp.employeeCode,
+                      })
+                    }
+                    className={styles.employeeButton}
+                    leftSection={
+                      <Avatar size="xs" radius="xl" color={isSelected ? 'white' : 'blue'} style={{ flexShrink: 0 }}>
+                        {emp.fullName?.charAt(0).toUpperCase()}
+                      </Avatar>
+                    }
+                  >
+                    <Group gap={0} wrap="nowrap" className={styles.employeeRow}>
+                      <Stack gap={0} style={{ minWidth: 0, flex: 1 }}>
+                        <span
+                          className={styles.employeeName}
+                          title={emp.fullName}
+                          style={{ fontWeight: isSelected ? 600 : 400 }}
+                        >
+                          {emp.fullName}
+                        </span>
+                        <span className={styles.employeeSub} title={emp.employeeCode}>
+                          {emp.employeeCode}
+                        </span>
+                      </Stack>
+                    </Group>
+                  </Button>
+                );
+              })
+            )}
+          </Stack>
+        </ScrollArea>
+      </Stack>
     </aside>
   );
 }

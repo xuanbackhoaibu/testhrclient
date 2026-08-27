@@ -36,7 +36,7 @@ function statusBadge(status: BulkProvisionItemStatus) {
   const map: Record<BulkProvisionItemStatus, { color: string; label: string }> = {
     CREATED: { color: 'green', label: 'Đã tạo' },
     UPDATED: { color: 'teal', label: 'Đã đồng bộ' },
-    SKIPPED: { color: 'hacomRed', label: 'Đã có tài khoản' },
+    SKIPPED: { color: 'blue', label: 'Đã có tài khoản' },
     FAILED: { color: 'red', label: 'Thất bại' },
     INVALID: { color: 'orange', label: 'Không hợp lệ' },
   };
@@ -138,7 +138,7 @@ export function BulkProvisionModal({ employees, opened, onClose, onSuccess }: Pr
               <Text size="xs" c="dimmed">Đã tạo</Text>
             </Stack>
             <Stack gap={2} align="center">
-              <Text size="xl" fw={700} c="var(--hacom-primary)">{result.alreadyExists ?? result.skipped}</Text>
+              <Text size="xl" fw={700} c="blue">{result.alreadyExists ?? result.skipped}</Text>
               <Text size="xs" c="dimmed">Đã có tài khoản</Text>
             </Stack>
             {(result.updated ?? 0) > 0 && (
@@ -260,7 +260,7 @@ export function BulkProvisionModal({ employees, opened, onClose, onSuccess }: Pr
         )}
 
         {invalid.length > 0 && (
-          <Alert color="hacomRed" title={`${invalid.length} nhân sự sẽ bị bỏ qua`}>
+          <Alert color="blue" title={`${invalid.length} nhân sự sẽ bị bỏ qua`}>
             <Stack gap={2}>
               {invalid.slice(0, 5).map(({ employee: emp, reason }) => (
                 <Text size="xs" key={emp.id}>
@@ -285,7 +285,7 @@ export function BulkProvisionModal({ employees, opened, onClose, onSuccess }: Pr
           onChange={(e) => setSendOtp(e.currentTarget.checked)}
         />
 
-        <Alert color="hacomRed" variant="light">
+        <Alert color="blue" variant="light">
           Tài khoản đăng nhập là <strong>mã nhân viên</strong>; email không bắt buộc — nhân sự chưa có email vẫn được cấp tài khoản.
           Tài khoản mới ở trạng thái <strong>Hoạt động</strong> với mật khẩu khởi tạo riêng cho từng nhân sự; dùng provision từng nhân sự khi cần bàn giao credential một lần.{' '}
           Nhân sự đã có tài khoản sẽ được bỏ qua tự động (không tạo trùng, không đặt lại mật khẩu).

@@ -6,17 +6,17 @@ import {
   Select,
   SimpleGrid,
   Stack,
+  Text,
   TextInput,
   Textarea,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconPlus } from "@tabler/icons-react";
+import { IconEdit, IconPlus, IconX } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
-import { useAllEmployees } from "../../features/employees/useEmployees";
 import {
   createBusinessSector,
   deactivateBusinessSector,
@@ -24,14 +24,17 @@ import {
   updateBusinessSector,
 } from "../../features/organization/businessSectorsApi";
 import type { BusinessSector } from "../../features/organization/organizationTypes";
-import { sortByCode } from "../../shared/utils/sort";
-import { useAllBusinessSectors } from "../../features/organization/useBusinessSectors";
-import { useAllUnits } from "../../features/organization/useUnits";
+import { useBusinessSectors } from "../../features/organization/useBusinessSectors";
 import { ConfirmActionModal } from "../../shared/components/ConfirmActionModal";
+import {
+  DataTable,
+  type DataTableColumn,
+} from "../../shared/components/DataTable";
 import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
 import { PageHeader } from "../../shared/components/PageHeader";
+import { StatusTag } from "../../shared/components/StatusTag";
+import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
-import { OrganizationHierarchyList, type OrganizationHierarchyRow } from "./OrganizationHierarchyList";
 
 type BusinessSectorFormValues = {
   code: string;
@@ -39,10 +42,6 @@ type BusinessSectorFormValues = {
   note: string;
   status: string;
 };
-
-type SectorTreeRecord =
-  | { kind: "sector"; sector: BusinessSector }
-  | { kind: "unit"; unitId: string; code: string; name: string; status: string; note?: string | null };
 
 const statusOptions = [
   { value: "ACTIVE", label: "Đang hoạt động" },
@@ -66,14 +65,10 @@ export function BusinessSectorsPage() {
     null,
   );
   const [open, setOpen] = useState(false);
-  // Lấy toàn bộ lĩnh vực theo bộ lọc, sắp theo mã trên toàn danh sách rồi
-  // phân trang ở client để trang 1 luôn bắt đầu từ mã nhỏ nhất.
-  const { data: allSectors, isLoading, error, refetch } = useAllBusinessSectors({
+  const { data: sectorsResponse, isLoading, error, refetch } = useBusinessSectors({
+    ...params,
     search: params.search || undefined,
-    status: params.status,
   });
-  const { data: allUnits = [] } = useAllUnits({});
-  const { data: employees = [] } = useAllEmployees({});
 
   const form = useForm<BusinessSectorFormValues>({
     initialValues: {
@@ -175,61 +170,98 @@ export function BusinessSectorsPage() {
     },
   });
 
-  // Sắp xếp toàn bộ lĩnh vực theo mã tăng dần rồi phân trang ở client.
-  const sortedSectors = useMemo(() => sortByCode(allSectors), [allSectors]);
-  const treeRows = useMemo<OrganizationHierarchyRow<SectorTreeRecord>[]>(() => {
-    return sortedSectors.flatMap((sector) => {
-      const sectorUnits = allUnits.filter((unit) => {
-        const sectorId = unit.sectorId ?? unit.businessSectorId ?? unit.sector?.id ?? unit.businessSector?.id;
-        return sectorId === sector.id;
-      });
-      const sectorEmployees = employees.filter((employee) =>
-        sectorUnits.some((unit) => employee.currentEmployeeAssignment?.unitId === unit.id),
-      );
-      const parent: OrganizationHierarchyRow<SectorTreeRecord> = {
-        id: sector.id,
-        code: sector.code,
-        name: sector.name,
-        status: sector.status,
-        description: sector.note,
-        level: 0,
-        employeeCount: sectorEmployees.length,
-        employees: sectorEmployees,
-        record: { kind: "sector", sector },
-        meta: `${sectorUnits.length} đơn vị trực thuộc`,
-        detailFields: [{ label: "Số đơn vị", value: sectorUnits.length }],
-      };
-      const children = sortByCode(sectorUnits).map((unit) => ({
-        id: `${sector.id}-${unit.id}`,
-        code: unit.code,
-        name: unit.name,
-        status: unit.status,
-        description: unit.note,
-        level: 1,
-        parentId: sector.id,
-        employeeCount: employees.filter((employee) => employee.currentEmployeeAssignment?.unitId === unit.id).length,
-        employees: employees.filter((employee) => employee.currentEmployeeAssignment?.unitId === unit.id),
-        record: { kind: "unit" as const, unitId: unit.id, code: unit.code, name: unit.name, status: unit.status, note: unit.note },
-        meta: unit.shortName || unit.taxCode || "Đơn vị trực thuộc",
-        detailFields: [
-          { label: "KH đơn vị", value: unit.shortName || "-" },
-          { label: "Mã số thuế", value: unit.taxCode || "-" },
-        ],
-      }));
-      return [parent, ...children];
-    });
-  }, [allUnits, employees, sortedSectors]);
+  const sectors = sectorsResponse?.items ?? [];
+  const sectorsMeta = sectorsResponse?.meta;
 
-  function openEditSector(record: BusinessSector) {
-    setEditing(record);
-    form.setValues({
-      code: record.code,
-      name: record.name,
-      note: record.note ?? "",
-      status: record.status,
-    });
-    setOpen(true);
-  }
+  const columns = useMemo<DataTableColumn<BusinessSector>[]>(
+    () => [
+      {
+        key: "code",
+        header: "Mã",
+        width: 140,
+        render: (record) => <Text fw={600}>{record.code}</Text>,
+      },
+      {
+        key: "name",
+        header: "Tên lĩnh vực",
+        render: (record) => record.name,
+      },
+      {
+        key: "note",
+        header: "Ghi chú",
+        render: (record) => record.note || "-",
+      },
+      {
+        key: "status",
+        header: "Trạng thái",
+        width: 140,
+        render: (record) => <StatusTag status={record.status} />,
+      },
+      {
+        key: "actions",
+        header: "",
+        width: 108,
+        align: "right",
+        render: (record) => (
+          <TableActionsMenu
+            actions={
+              canEditBusinessSector || canDeleteBusinessSector
+                ? [
+                    {
+                      label: "Chỉnh sửa",
+                      icon: <IconEdit size={16} />,
+                      disabled: !canEditBusinessSector,
+                      onClick: () => {
+                        debugPermissionCheck({
+                          action: "business-sector.update",
+                          required: HR_PERMISSIONS.BUSINESS_SECTOR_UPDATE,
+                          permissions,
+                          roles,
+                          allowed: canEditBusinessSector,
+                        });
+                        if (!canEditBusinessSector) {
+                          return;
+                        }
+                        setEditing(record);
+                        form.setValues({
+                          code: record.code,
+                          name: record.name,
+                          note: record.note ?? "",
+                          status: record.status,
+                        });
+                        setOpen(true);
+                      },
+                    },
+                    {
+                      label: "Tạm ngừng",
+                      icon: <IconX size={16} />,
+                      color: "red" as const,
+                      disabled:
+                        record.status === "INACTIVE" ||
+                        !canDeleteBusinessSector,
+                      onClick: () => {
+                        debugPermissionCheck({
+                          action: "business-sector.delete",
+                          required: HR_PERMISSIONS.BUSINESS_SECTOR_DELETE,
+                          permissions,
+                          roles,
+                          allowed: canDeleteBusinessSector,
+                        });
+                        if (!canDeleteBusinessSector) {
+                          return;
+                        }
+                        setConfirmInactive(record);
+                      },
+                    },
+                  ]
+                : []
+            }
+          />
+        ),
+      },
+    ],
+    [canDeleteBusinessSector, canEditBusinessSector, form, permissions, roles],
+  );
 
   return (
     <>
@@ -237,27 +269,25 @@ export function BusinessSectorsPage() {
         title="Lĩnh vực"
         subtitle="Danh mục lĩnh vực dùng cho đơn vị và import Excel. Cột linh_vuc trong file import phải khớp mã lĩnh vực tại đây."
         actions={
-          <>
-            {canCreateBusinessSector ? (
-              <Button
-                leftSection={<IconPlus size={18} />}
-                onClick={() => {
-                  debugPermissionCheck({
-                    action: "business-sector.create",
-                    required: HR_PERMISSIONS.BUSINESS_SECTOR_CREATE,
-                    permissions,
-                    roles,
-                    allowed: canCreateBusinessSector,
-                  });
-                  setEditing(null);
-                  form.reset();
-                  setOpen(true);
-                }}
-              >
-                Tạo lĩnh vực
-              </Button>
-            ) : null}
-          </>
+          canCreateBusinessSector ? (
+            <Button
+              leftSection={<IconPlus size={18} />}
+              onClick={() => {
+                debugPermissionCheck({
+                  action: "business-sector.create",
+                  required: HR_PERMISSIONS.BUSINESS_SECTOR_CREATE,
+                  permissions,
+                  roles,
+                  allowed: canCreateBusinessSector,
+                });
+                setEditing(null);
+                form.reset();
+                setOpen(true);
+              }}
+            >
+              Tạo lĩnh vực
+            </Button>
+          ) : null
         }
       />
 
@@ -289,22 +319,19 @@ export function BusinessSectorsPage() {
           />
         </SimpleGrid>
 
-        <OrganizationHierarchyList
-          rows={treeRows}
-          employees={employees}
+        <DataTable
+          data={sectors}
+          columns={columns}
+          rowKey={(record) => record.id}
+          meta={sectorsMeta}
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}
+          onPageChange={(page, pageSize) =>
+            setParams((current) => ({ ...current, page, pageSize }))
+          }
           emptyTitle="Chưa có lĩnh vực"
           emptyDescription="Tạo danh mục lĩnh vực trước khi import hoặc gán đơn vị."
-          canEdit={(row) => canEditBusinessSector && row.record.kind === "sector"}
-          canDeactivate={(row) => canDeleteBusinessSector && row.record.kind === "sector"}
-          onEdit={(row) => {
-            if (row.record.kind === "sector") openEditSector(row.record.sector);
-          }}
-          onDeactivate={(row) => {
-            if (row.record.kind === "sector") setConfirmInactive(row.record.sector);
-          }}
         />
       </Stack>
 
@@ -377,7 +404,7 @@ export function BusinessSectorsPage() {
       <ConfirmActionModal
         opened={Boolean(confirmInactive)}
         title="Tạm ngừng lĩnh vực?"
-        message={`Có ${confirmInactive ? treeRows.find((row) => row.id === confirmInactive.id)?.employeeCount ?? 0 : 0} nhân sự đang gắn với lĩnh vực này. Lĩnh vực sẽ được chuyển sang trạng thái tạm ngừng để HR cân nhắc trước khi tắt.`}
+        message="Lĩnh vực sẽ được chuyển sang trạng thái tạm ngừng. Nếu vẫn còn đơn vị đang sử dụng, backend sẽ từ chối thao tác này."
         confirmLabel="Tạm ngừng"
         loading={inactiveMutation.isPending}
         onClose={() => setConfirmInactive(null)}

@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
-import { Alert, Button, Modal, Space, Statistic, Tabs, Upload, message } from 'antd';
-import { DownloadOutlined, UploadOutlined } from '@ant-design/icons';
+import { Alert, Button, FileButton, Group, Modal, Stack, Tabs, Text } from '@mantine/core';
+import { IconDownload, IconUpload } from '@tabler/icons-react';
 
 import { isExcelFile } from '../../shared/utils/excel';
+import { toast } from '../../shared/utils/toast';
 
 export interface ImportPreviewStat {
   label: string;
@@ -16,7 +17,6 @@ interface ExcelImportModalProps {
   onUpload: (file: File) => Promise<void>;
   onCommit?: () => Promise<void>;
   onDownloadErrors?: () => Promise<void>;
-  onResetPreview?: () => void;
   title?: string;
   description?: string;
   summary?: ImportPreviewStat[];
@@ -33,6 +33,9 @@ interface ExcelImportModalProps {
   isDownloadingErrors?: boolean;
 }
 
+const EXCEL_ACCEPT =
+  '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
 export function ExcelImportModal({
   open,
   onClose,
@@ -40,7 +43,6 @@ export function ExcelImportModal({
   onUpload,
   onCommit,
   onDownloadErrors,
-  onResetPreview,
   title = 'Import dữ liệu từ Excel',
   description = 'Vui lòng tải mẫu Excel, điền dữ liệu và upload lại file đã hoàn thiện.',
   summary = [],
@@ -56,112 +58,111 @@ export function ExcelImportModal({
   isCommitting = false,
   isDownloadingErrors = false,
 }: ExcelImportModalProps) {
+  function handleFile(file: File | null) {
+    if (!file) {
+      return;
+    }
+    if (!isExcelFile(file) || !file.name.toLowerCase().endsWith('.xlsx')) {
+      toast.error('Chỉ chấp nhận file Excel .xlsx.');
+      return;
+    }
+    void onUpload(file);
+  }
+
   return (
-    <Modal
-      open={open}
-      title={title}
-      width={1080}
-      onCancel={onClose}
-      footer={[
-        <Button key="close" onClick={onClose}>
-          Đóng
-        </Button>,
-        onDownloadErrors ? (
+    <Modal opened={open} title={title} size={1080} onClose={onClose}>
+      <Stack gap="md">
+        <Alert color="blue" title="Quy trình import">
+          {description}
+        </Alert>
+
+        <Group gap="xs" wrap="wrap">
           <Button
-            key="errors"
-            icon={<DownloadOutlined />}
-            disabled={!hasPreview || !hasErrors}
-            loading={isDownloadingErrors}
-            onClick={() => void onDownloadErrors()}
-          >
-            Tải file lỗi
-          </Button>
-        ) : null,
-        onResetPreview ? (
-          <Button key="reset" onClick={onResetPreview}>
-            Chọn file khác
-          </Button>
-        ) : null,
-        onCommit ? (
-          <Button
-            key="commit"
-            type="primary"
-            disabled={!canCommit || hasErrors}
-            loading={isCommitting}
-            onClick={() => void onCommit()}
-          >
-            Xác nhận import
-          </Button>
-        ) : null,
-      ]}
-    >
-      <Space orientation="vertical" size={16} style={{ width: '100%' }}>
-        <Alert
-          type="info"
-          showIcon
-          message="Quy trình import"
-          description={description}
-        />
-        <Space wrap>
-          <Button
-            icon={<DownloadOutlined />}
+            variant="default"
+            leftSection={<IconDownload size={16} />}
             loading={isDownloadingTemplate}
-            disabled={isDownloadingTemplate}
             onClick={() => void onDownloadTemplate()}
           >
             Tải mẫu Excel
           </Button>
-          <Upload
-            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            showUploadList={false}
-            beforeUpload={(file) => {
-              if (!isExcelFile(file) || !file.name.toLowerCase().endsWith('.xlsx')) {
-                message.error('Chỉ chấp nhận file Excel .xlsx.');
-                return Upload.LIST_IGNORE;
-              }
-              void onUpload(file);
-              return false;
-            }}
-          >
-            <Button icon={<UploadOutlined />} loading={isUploading}>
-              Chọn file Excel
-            </Button>
-          </Upload>
-        </Space>
+          <FileButton onChange={handleFile} accept={EXCEL_ACCEPT}>
+            {(props) => (
+              <Button {...props} variant="default" leftSection={<IconUpload size={16} />} loading={isUploading}>
+                Chọn file Excel
+              </Button>
+            )}
+          </FileButton>
+        </Group>
 
         {hasPreview ? (
           <Alert
-            type={hasErrors ? 'error' : hasWarnings ? 'warning' : 'success'}
-            showIcon
-            message={hasErrors ? 'Có lỗi cần xử lý' : 'Dữ liệu hợp lệ'}
-            description={
-              hasErrors
-                ? 'Vui lòng tải file lỗi, sửa dữ liệu và upload lại trước khi import.'
-                : hasWarnings
-                  ? 'Dữ liệu có cảnh báo. Hãy kiểm tra trước khi xác nhận import.'
-                  : 'Bạn có thể xác nhận import sau khi đã kiểm tra preview.'
-            }
-          />
+            color={hasErrors ? 'red' : hasWarnings ? 'yellow' : 'green'}
+            title={hasErrors ? 'Có lỗi cần xử lý' : 'Dữ liệu hợp lệ'}
+          >
+            {hasErrors
+              ? 'Vui lòng tải file lỗi, sửa dữ liệu và upload lại trước khi import.'
+              : hasWarnings
+                ? 'Dữ liệu có cảnh báo. Hãy kiểm tra trước khi xác nhận import.'
+                : 'Bạn có thể xác nhận import sau khi đã kiểm tra preview.'}
+          </Alert>
         ) : null}
 
         {summary.length ? (
-          <Space wrap>
+          <Group gap="xl" wrap="wrap">
             {summary.map((item) => (
-              <Statistic key={item.label} title={item.label} value={item.value} />
+              <Stack key={item.label} gap={2}>
+                <Text size="xs" c="dimmed">
+                  {item.label}
+                </Text>
+                <Text fw={600} size="lg">
+                  {item.value}
+                </Text>
+              </Stack>
             ))}
-          </Space>
+          </Group>
         ) : null}
 
         {hasPreview ? (
-          <Tabs
-            items={[
-              { key: 'preview', label: 'Preview', children: previewContent },
-              { key: 'errors', label: 'Lỗi', children: errorsContent },
-              { key: 'warnings', label: 'Cảnh báo', children: warningsContent },
-            ]}
-          />
+          <Tabs defaultValue="preview">
+            <Tabs.List>
+              <Tabs.Tab value="preview">Preview</Tabs.Tab>
+              <Tabs.Tab value="errors">Lỗi</Tabs.Tab>
+              <Tabs.Tab value="warnings">Cảnh báo</Tabs.Tab>
+            </Tabs.List>
+            <Tabs.Panel value="preview" pt="md">
+              {previewContent}
+            </Tabs.Panel>
+            <Tabs.Panel value="errors" pt="md">
+              {errorsContent}
+            </Tabs.Panel>
+            <Tabs.Panel value="warnings" pt="md">
+              {warningsContent}
+            </Tabs.Panel>
+          </Tabs>
         ) : null}
-      </Space>
+
+        <Group justify="flex-end">
+          <Button variant="default" onClick={onClose}>
+            Đóng
+          </Button>
+          {onDownloadErrors ? (
+            <Button
+              variant="default"
+              leftSection={<IconDownload size={16} />}
+              disabled={!hasPreview || !hasErrors}
+              loading={isDownloadingErrors}
+              onClick={() => void onDownloadErrors()}
+            >
+              Tải file lỗi
+            </Button>
+          ) : null}
+          {onCommit ? (
+            <Button disabled={!canCommit || hasErrors} loading={isCommitting} onClick={() => void onCommit()}>
+              Xác nhận import
+            </Button>
+          ) : null}
+        </Group>
+      </Stack>
     </Modal>
   );
 }

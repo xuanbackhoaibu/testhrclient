@@ -1,44 +1,58 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState } from "react";
 import {
   ActionIcon,
-  Avatar,
-  Box,
+  Badge,
   Button,
   Drawer,
   Group,
-  Modal,
+  NumberInput,
   Paper,
-  SegmentedControl,
   Select,
   SimpleGrid,
   Stack,
+  Switch,
   Text,
-  Tooltip,
-} from '@mantine/core';
-import { notifications } from '@mantine/notifications';
-import { IconTrash } from '@tabler/icons-react';
+  Textarea,
+  TextInput,
+} from "@mantine/core";
+import { useForm } from "@mantine/form";
+import { notifications } from "@mantine/notifications";
+import { IconEdit, IconPlus, IconTrash } from "@tabler/icons-react";
 
-import { HR_PERMISSIONS } from '../../features/auth/permissions';
-import { useAuth } from '../../features/auth/useAuth';
+import { HR_PERMISSIONS } from "../../features/auth/permissions";
+import { useAuth } from "../../features/auth/useAuth";
+
 import type {
   LeaveApprovalStep,
   LeavePolicyType,
+  LeavePolicyTypePayload,
+  LeaveQuotaMode,
   LeaveRequest,
-} from '../../features/leave/leaveTypes';
+} from "../../features/leave/leaveTypes";
 import {
+  useCreateLeaveType,
   useDeleteCancelledLeaveRequest,
+  useDeleteLeaveType,
   useLeaveRequests,
   useLeaveTypes,
-} from '../../features/leave/useLeaveRequests';
-import { useEmployees } from '../../features/employees/useEmployees';
-import { LEAVE_TYPE_OPTIONS } from '../../shared/constants/statuses';
-import { DataTable, type DataTableColumn } from '../../shared/components/DataTable';
-import { ConfirmActionModal } from '../../shared/components/ConfirmActionModal';
-import { ErrorState } from '../../shared/components/ErrorState';
-import { LoadingState } from '../../shared/components/LoadingState';
-import { StatusTag } from '../../shared/components/StatusTag';
-import { formatDate } from '../../shared/utils/date';
-
+  useUpdateLeaveType,
+} from "../../features/leave/useLeaveRequests";
+import { useEmployees } from "../../features/employees/useEmployees";
+import { LEAVE_TYPE_OPTIONS } from "../../shared/constants/statuses";
+import {
+  DataTable,
+  type DataTableColumn,
+} from "../../shared/components/DataTable";
+import { ConfirmActionModal } from "../../shared/components/ConfirmActionModal";
+import { ErrorState } from "../../shared/components/ErrorState";
+import { FilterBar } from "../../shared/components/FilterBar";
+import filterStyles from "../../shared/components/FilterBar.module.css";
+import { LoadingState } from "../../shared/components/LoadingState";
+import { PageHeader } from "../../shared/components/PageHeader";
+import { SectionCard } from "../../shared/components/SectionCard";
+import { StatusTag } from "../../shared/components/StatusTag";
+import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
+import { formatDate } from "../../shared/utils/date";
 const EMPLOYEE_SELECT_PAGE_SIZE = 20;
 const CATALOG_PAGE_SIZE = 10;
 
@@ -47,68 +61,130 @@ type EmployeeSelectOption = {
   label: string;
 };
 
+type LeaveTypeFormValues = {
+  name: string;
+  displaySymbol: string;
+  deductsAnnualLeave: boolean;
+  paid: "PAID" | "UNPAID" | "UNSET";
+  dayValue: number | string;
+  requiresAttachment: boolean;
+  attachmentMinDays: number | string;
+  quotaMode: LeaveQuotaMode;
+  maxDaysPerEvent: number | string;
+  hrRuleStatus: "CONFIRMED" | "PENDING_HR_RULE";
+  note: string;
+};
+
+const EMPTY_LEAVE_TYPE_FORM: LeaveTypeFormValues = {
+  name: "",
+  displaySymbol: "",
+  deductsAnnualLeave: false,
+  paid: "UNSET",
+  dayValue: "",
+  requiresAttachment: false,
+  attachmentMinDays: "",
+  quotaMode: "NONE",
+  maxDaysPerEvent: "",
+  hrRuleStatus: "CONFIRMED",
+  note: "",
+};
+
+const PAID_OPTIONS = [
+  { value: "PAID", label: "Có lương" },
+  { value: "UNPAID", label: "Không lương" },
+  { value: "UNSET", label: "Chưa chốt" },
+];
+
+const HR_RULE_OPTIONS = [
+  { value: "CONFIRMED", label: "Đã xác nhận" },
+  { value: "PENDING_HR_RULE", label: "Chờ HR chốt" },
+];
+
+function nullableNumber(value: number | string): number | null {
+  return typeof value === "number" ? value : null;
+}
+
+function optionalRangeError(value: number | string, max: number) {
+  return typeof value === "number" && (value < 0 || value > max)
+    ? `Giá trị phải từ 0 đến ${max}.`
+    : null;
+}
+
 const HALF_DAY_SESSION_OPTIONS = [
-  { value: 'FULL_DAY', label: 'Cả ngày' },
-  { value: 'MORNING', label: 'Buổi sáng' },
-  { value: 'AFTERNOON', label: 'Buổi chiều' },
+  { value: "FULL_DAY", label: "Cả ngày" },
+  { value: "MORNING", label: "Buổi sáng" },
+  { value: "AFTERNOON", label: "Buổi chiều" },
 ] as const;
 
 const LEAVE_TYPE_LABELS: Record<string, string> = {
-  ANNUAL: 'Nghỉ phép năm',
-  SICK: 'Nghỉ ốm',
-  UNPAID: 'Nghỉ không lương',
-  MARRIAGE: 'Nghỉ kết hôn',
-  MATERNITY: 'Thai sản',
-  OTHER: 'Nghỉ khác',
-  WORK_FULL: 'Làm việc cả ngày',
-  WORK_HALF: 'Làm việc nửa ngày',
-  PAID_PERSONAL: 'Nghỉ việc riêng có lương',
-  CHILD_SICK: 'Nghỉ con ốm',
-  WORK_ACCIDENT: 'Tai nạn lao động',
-  COMPENSATORY: 'Nghỉ bù',
-  HOLIDAY: 'Lễ Tết',
-  COMPANY_TRIP: 'Du lịch',
-  WORK_STOP: 'Nghỉ ngừng việc',
-  BUSINESS_TRIP: 'Công tác',
-  SECONDMENT: 'Công tác biệt phái',
-  OFFICE_DUTY: 'Trực văn phòng',
-  MEETING: 'Hội họp',
-  COMPULSORY_LABOR: 'Lao động nghĩa vụ',
-  ONLINE_WORK: 'Làm việc online',
+  ANNUAL: "Nghỉ phép năm",
+  SICK: "Nghỉ ốm",
+  UNPAID: "Nghỉ không lương",
+  MARRIAGE: "Nghỉ kết hôn",
+  MATERNITY: "Thai sản",
+  OTHER: "Nghỉ khác",
+  WORK_FULL: "Làm việc cả ngày",
+  WORK_HALF: "Làm việc nửa ngày",
+  PAID_PERSONAL: "Nghỉ việc riêng có lương",
+  CHILD_SICK: "Nghỉ con ốm",
+  WORK_ACCIDENT: "Tai nạn lao động",
+  COMPENSATORY: "Nghỉ bù",
+  HOLIDAY: "Lễ Tết",
+  COMPANY_TRIP: "Du lịch",
+  WORK_STOP: "Nghỉ ngừng việc",
+  BUSINESS_TRIP: "Công tác",
+  SECONDMENT: "Công tác biệt phái",
+  OFFICE_DUTY: "Trực văn phòng",
+  MEETING: "Hội họp",
+  COMPULSORY_LABOR: "Lao động nghĩa vụ",
+  ONLINE_WORK: "Làm việc online",
 };
 
-const REQUEST_STATUS_OPTIONS = ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'CANCELLED'] as const;
+const REQUEST_STATUS_OPTIONS = [
+  "DRAFT",
+  "SUBMITTED",
+  "APPROVED",
+  "REJECTED",
+  "CANCELLED",
+] as const;
 
 const REQUEST_STATUS_LABELS: Record<string, string> = {
-  DRAFT: 'Nháp',
-  SUBMITTED: 'Đang trình duyệt',
-  APPROVED: 'Đã duyệt',
-  REJECTED: 'Từ chối',
-  CANCELLED: 'Đã hủy',
+  DRAFT: "Nháp",
+  SUBMITTED: "Đang trình duyệt",
+  APPROVED: "Đã duyệt",
+  REJECTED: "Từ chối",
+  CANCELLED: "Đã hủy",
 };
 
 const QUOTA_MODE_LABELS: Record<string, string> = {
-  NONE: 'Không trừ quỹ',
-  ANNUAL_BALANCE: 'Trừ phép năm',
-  PER_EVENT: 'Theo từng sự kiện',
-  INSURANCE: 'Chế độ BHXH',
-  COMPENSATORY_BALANCE: 'Quỹ nghỉ bù',
-  PENDING_HR_RULE: 'Chờ HR chốt quy tắc',
+  NONE: "Không trừ quỹ",
+  ANNUAL_BALANCE: "Trừ phép năm",
+  PER_EVENT: "Theo từng sự kiện",
+  INSURANCE: "Chế độ BHXH",
+  COMPENSATORY_BALANCE: "Quỹ nghỉ bù",
+  PENDING_HR_RULE: "Chờ HR chốt quy tắc",
 };
 
+const QUOTA_MODE_OPTIONS = Object.entries(QUOTA_MODE_LABELS).map(
+  ([value, label]) => ({ value, label }),
+);
+
 const APPROVAL_STEP_LABELS: Record<string, string> = {
-  ATTENDANCE_TRACKER: 'Người theo dõi chấm công',
-  DEPARTMENT_MANAGER: 'Trưởng bộ phận',
-  OFFICE_CHIEF: 'Chánh văn phòng',
-  BOARD: 'Ban Tổng giám đốc',
+  ATTENDANCE_TRACKER: "Người theo dõi chấm công",
+  DEPARTMENT_MANAGER: "Trưởng bộ phận",
+  OFFICE_CHIEF: "Chánh văn phòng",
+  BOARD: "Ban Tổng giám đốc",
 };
 
 function labelFrom(map: Record<string, string>, value?: string | null) {
-  return value ? map[value] ?? value : '-';
+  return value ? (map[value] ?? value) : "-";
 }
 
 function sessionLabel(value?: string | null) {
-  return HALF_DAY_SESSION_OPTIONS.find((item) => item.value === value)?.label ?? 'Cả ngày';
+  return (
+    HALF_DAY_SESSION_OPTIONS.find((item) => item.value === value)?.label ??
+    "Cả ngày"
+  );
 }
 
 function sessionRangeLabel(record: LeaveRequest) {
@@ -118,31 +194,71 @@ function sessionRangeLabel(record: LeaveRequest) {
 }
 
 function noticeLabel(record: LeaveRequest) {
-  if (record.noticeActualDays == null && record.noticeRequiredDays == null) {
-    return '-';
-  }
-  const actual = record.noticeActualDays ?? '-';
-  const required = record.noticeRequiredDays ?? '-';
-  return record.lateSubmission ? `Trễ hạn (${actual}/${required})` : `Đúng hạn (${actual}/${required})`;
+  const actual = record.noticeActualDays ?? "-";
+  const required = record.noticeRequiredDays ?? "-";
+  return record.lateSubmission
+    ? `Trễ hạn (${actual}/${required})`
+    : `${actual}/${required}`;
+}
+
+function leaveDays(value: number) {
+  return new Intl.NumberFormat("vi-VN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
 function approvalLabel(step: LeaveApprovalStep | null) {
   if (!step) {
-    return '-';
+    return "-";
   }
 
   return `Cấp ${step.stepOrder}: ${labelFrom(APPROVAL_STEP_LABELS, step.stepCode) || step.stepName}`;
 }
 
 function policyName(record: LeavePolicyType) {
-  return labelFrom(LEAVE_TYPE_LABELS, record.code) || record.name;
+  return record.name || labelFrom(LEAVE_TYPE_LABELS, record.code);
 }
 
-function getInitials(name?: string | null): string {
-  if (!name) return 'HR';
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+function leaveTypeFormValues(record: LeavePolicyType): LeaveTypeFormValues {
+  return {
+    name: record.name,
+    displaySymbol: record.displaySymbol,
+    deductsAnnualLeave: record.deductsAnnualLeave,
+    paid:
+      record.paid === true
+        ? "PAID"
+        : record.paid === false
+          ? "UNPAID"
+          : "UNSET",
+    dayValue: record.dayValue ?? "",
+    requiresAttachment: record.requiresAttachment,
+    attachmentMinDays: record.attachmentMinDays ?? "",
+    quotaMode: record.quotaMode as LeaveQuotaMode,
+    maxDaysPerEvent: record.maxDaysPerEvent ?? "",
+    hrRuleStatus:
+      record.hrRuleStatus === "PENDING_HR_RULE"
+        ? "PENDING_HR_RULE"
+        : "CONFIRMED",
+    note: record.note ?? "",
+  };
+}
+
+function leaveTypeErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("LEAVE_POLICY_TYPE_SYMBOL_ALREADY_EXISTS")) {
+    return "Ký hiệu này đã tồn tại. Hãy chọn ký hiệu khác.";
+  }
+  if (message.includes("LEAVE_POLICY_TYPE_CODE_ALREADY_EXISTS")) {
+    return "Không thể tạo ký hiệu lúc này. Hãy thử lại.";
+  }
+  if (message.includes("LEAVE_APPROVAL_CONFIGURATION_SCOPE_DENIED")) {
+    return "Tài khoản không có phạm vi toàn hệ thống để sửa danh mục này.";
+  }
+  if (message.includes("LEAVE_POLICY_TYPE_NOT_FOUND")) {
+    return "Ký hiệu không còn tồn tại hoặc đã được người khác xóa.";
+  }
+  return "Không thể lưu thay đổi. Kiểm tra dữ liệu và thử lại.";
 }
 
 const leaveTypeOptions = LEAVE_TYPE_OPTIONS.map((item) => ({
@@ -158,17 +274,22 @@ const statusOptions = REQUEST_STATUS_OPTIONS.map((item) => ({
 export function LeavePage() {
   const { can } = useAuth();
   const canDeleteCancelled = can(HR_PERMISSIONS.LEAVE_CANCEL);
-
-  const [activeTab, setActiveTab] = useState<'requests' | 'catalog'>('requests');
-  const [employeeSearch, setEmployeeSearch] = useState('');
-  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeSelectOption | null>(null);
-  const [deletingRequest, setDeletingRequest] = useState<LeaveRequest | null>(null);
-  const [selectedLeave, setSelectedLeave] = useState<LeaveRequest | null>(null);
-  const [previewAttachment, setPreviewAttachment] = useState<{
-    url: string;
-    title: string;
-    employeeName?: string;
-  } | null>(null);
+  const canManageCatalog = can(HR_PERMISSIONS.LEAVE_UPDATE);
+  const [employeeSearch, setEmployeeSearch] = useState("");
+  const [selectedEmployee, setSelectedEmployee] =
+    useState<EmployeeSelectOption | null>(null);
+  const [deletingRequest, setDeletingRequest] = useState<LeaveRequest | null>(
+    null,
+  );
+  const [editingLeaveType, setEditingLeaveType] =
+    useState<LeavePolicyType | null>(null);
+  const [selectedLeaveTypeIds, setSelectedLeaveTypeIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [deletingLeaveTypes, setDeletingLeaveTypes] = useState<
+    LeavePolicyType[]
+  >([]);
+  const [leaveTypeDrawerOpened, setLeaveTypeDrawerOpened] = useState(false);
   const [catalogPage, setCatalogPage] = useState(1);
   const [params, setParams] = useState({
     page: 1,
@@ -177,69 +298,50 @@ export function LeavePage() {
     leaveType: undefined as string | undefined,
     status: undefined as string | undefined,
   });
-
-  const { data, isLoading, error, refetch, isFetching } = useLeaveRequests(params);
-  const { data: leaveTypes = [], isLoading: isLeaveTypesLoading } = useLeaveTypes();
+  const { data, isLoading, error, refetch } = useLeaveRequests(params);
+  const leaveTypesQuery = useLeaveTypes();
+  const leaveTypes = leaveTypesQuery.data ?? [];
   const deleteCancelledLeaveRequest = useDeleteCancelledLeaveRequest();
-
+  const createLeaveType = useCreateLeaveType();
+  const updateLeaveType = useUpdateLeaveType();
+  const deleteLeaveType = useDeleteLeaveType();
+  const leaveTypeForm = useForm<LeaveTypeFormValues>({
+    initialValues: EMPTY_LEAVE_TYPE_FORM,
+    validateInputOnBlur: true,
+    validate: {
+      name: (value) =>
+        value.trim() && value.trim().length <= 120
+          ? null
+          : "Nhập tên ký hiệu, tối đa 120 ký tự.",
+      displaySymbol: (value) =>
+        value.trim() && !/[;\s]/u.test(value) && value.length <= 12
+          ? null
+          : "Ký hiệu không có khoảng trắng hoặc dấu chấm phẩy.",
+      dayValue: (value) => optionalRangeError(value, 1),
+      attachmentMinDays: (value) => optionalRangeError(value, 365),
+      maxDaysPerEvent: (value) => optionalRangeError(value, 365),
+    },
+  });
   const employeesQuery = useEmployees({
     search: employeeSearch.trim() || undefined,
     page: 1,
     pageSize: EMPLOYEE_SELECT_PAGE_SIZE,
   });
-
   const employeeOptions = useMemo<EmployeeSelectOption[]>(() => {
     const options = (employeesQuery.data?.items ?? []).map((employee) => ({
       value: employee.id,
       label: employee.fullName,
     }));
 
-    if (selectedEmployee && !options.some((option) => option.value === selectedEmployee.value)) {
+    if (
+      selectedEmployee &&
+      !options.some((option) => option.value === selectedEmployee.value)
+    ) {
       return [selectedEmployee, ...options];
     }
 
     return options;
   }, [employeesQuery.data?.items, selectedEmployee]);
-
-  const activeFilterCount =
-    (params.employeeId ? 1 : 0) + (params.leaveType ? 1 : 0) + (params.status ? 1 : 0);
-
-  const currentApprovalStep = (record: LeaveRequest) =>
-    record.status === 'SUBMITTED'
-      ? (record.approvalSteps?.find((step) => step.status === 'SUBMITTED') ?? null)
-      : null;
-
-  async function handleDeleteCancelledRequest(record: LeaveRequest) {
-    try {
-      await deleteCancelledLeaveRequest.mutateAsync(record.id);
-      setDeletingRequest(null);
-      if (selectedLeave?.id === record.id) {
-        setSelectedLeave(null);
-      }
-      notifications.show({
-        title: 'Đã xóa đơn',
-        message: 'Đơn nghỉ phép đã hủy được xóa khỏi danh sách.',
-        color: 'green',
-      });
-    } catch {
-      notifications.show({
-        title: 'Không xóa được đơn',
-        message: 'Đơn chỉ được xóa khi đã ở trạng thái hủy.',
-        color: 'red',
-      });
-    }
-  }
-
-  function handleClearFilters() {
-    setSelectedEmployee(null);
-    setParams({
-      page: 1,
-      pageSize: params.pageSize,
-      employeeId: undefined,
-      leaveType: undefined,
-      status: undefined,
-    });
-  }
 
   if (isLoading) {
     return <LoadingState />;
@@ -249,132 +351,309 @@ export function LeavePage() {
     return <ErrorState onRetry={() => void refetch()} />;
   }
 
+  const currentApprovalStep = (record: LeaveRequest) =>
+    record.status === "SUBMITTED"
+      ? (record.approvalSteps?.find((step) => step.status === "SUBMITTED") ??
+        null)
+      : null;
+
+  async function handleDeleteCancelledRequest(record: LeaveRequest) {
+    try {
+      await deleteCancelledLeaveRequest.mutateAsync(record.id);
+      setDeletingRequest(null);
+      notifications.show({
+        title: "Đã xóa đơn",
+        message: "Đơn nghỉ phép đã hủy được xóa khỏi danh sách.",
+        color: "green",
+      });
+    } catch {
+      notifications.show({
+        title: "Không xóa được đơn",
+        message: "Đơn chỉ được xóa khi đã ở trạng thái hủy.",
+        color: "red",
+      });
+    }
+  }
+  function closeLeaveTypeDrawer() {
+    setLeaveTypeDrawerOpened(false);
+    setEditingLeaveType(null);
+    leaveTypeForm.reset();
+  }
+
+  function openCreateLeaveType() {
+    setEditingLeaveType(null);
+    leaveTypeForm.setValues(EMPTY_LEAVE_TYPE_FORM);
+    leaveTypeForm.resetDirty();
+    setLeaveTypeDrawerOpened(true);
+  }
+
+  function openEditLeaveType(record: LeavePolicyType) {
+    setEditingLeaveType(record);
+    leaveTypeForm.setValues(leaveTypeFormValues(record));
+    leaveTypeForm.resetDirty();
+    setLeaveTypeDrawerOpened(true);
+  }
+
+  async function handleSaveLeaveType(values: LeaveTypeFormValues) {
+    const payload: LeavePolicyTypePayload = {
+      name: values.name.trim(),
+      displaySymbol: values.displaySymbol.trim(),
+      deductsAnnualLeave: values.deductsAnnualLeave,
+      paid:
+        values.paid === "PAID" ? true : values.paid === "UNPAID" ? false : null,
+      dayValue: nullableNumber(values.dayValue),
+      requiresAttachment: values.requiresAttachment,
+      attachmentMinDays: values.requiresAttachment
+        ? nullableNumber(values.attachmentMinDays)
+        : null,
+      quotaMode: values.quotaMode,
+      maxDaysPerEvent:
+        values.quotaMode === "PER_EVENT"
+          ? nullableNumber(values.maxDaysPerEvent)
+          : null,
+      hrRuleStatus: values.hrRuleStatus,
+      note: values.note.trim() || null,
+    };
+
+    try {
+      if (editingLeaveType) {
+        await updateLeaveType.mutateAsync({
+          id: editingLeaveType.id,
+          payload,
+        });
+      } else {
+        await createLeaveType.mutateAsync(payload);
+        setCatalogPage(1);
+      }
+      notifications.show({
+        color: "green",
+        title: editingLeaveType ? "Đã cập nhật ký hiệu" : "Đã thêm ký hiệu",
+        message: `${payload.displaySymbol} · ${payload.name} đã được lưu.`,
+      });
+      closeLeaveTypeDrawer();
+    } catch (saveError) {
+      notifications.show({
+        color: "red",
+        title: "Không lưu được ký hiệu",
+        message: leaveTypeErrorMessage(saveError),
+      });
+    }
+  }
+
+  async function handleDeleteLeaveType() {
+    if (!deletingLeaveTypes.length) return;
+
+    const targets = [...deletingLeaveTypes];
+    const results = await Promise.allSettled(
+      targets.map((record) => deleteLeaveType.mutateAsync(record.id)),
+    );
+    const deletedIds = targets
+      .filter((_, index) => results[index]?.status === "fulfilled")
+      .map((record) => record.id);
+    const failed = targets.filter(
+      (_, index) => results[index]?.status === "rejected",
+    );
+
+    setSelectedLeaveTypeIds((current) => {
+      const next = new Set(current);
+      deletedIds.forEach((id) => next.delete(id));
+      return next;
+    });
+    setDeletingLeaveTypes([]);
+
+    if (failed.length) {
+      const firstError = results.find(
+        (result) => result.status === "rejected",
+      );
+      notifications.show({
+        color: "red",
+        title:
+          deletedIds.length > 0
+            ? "Một số ký hiệu chưa xóa được"
+            : "Không xóa được ký hiệu",
+        message:
+          deletedIds.length > 0
+            ? `Đã xóa ${deletedIds.length} ký hiệu; ${failed.length} ký hiệu chưa xóa được. Hãy thử lại.`
+            : leaveTypeErrorMessage(
+                firstError?.status === "rejected" ? firstError.reason : null,
+              ),
+      });
+      return;
+    }
+
+    notifications.show({
+      color: "green",
+      title:
+        targets.length === 1 ? "Đã xóa ký hiệu" : "Đã xóa ký hiệu đã chọn",
+      message:
+        targets.length === 1
+          ? `${targets[0]?.displaySymbol} đã được ngừng sử dụng và ẩn khỏi danh mục.`
+          : `${targets.length} ký hiệu đã được ngừng sử dụng và ẩn khỏi danh mục.`,
+    });
+  }
+
   const requestColumns: DataTableColumn<LeaveRequest>[] = [
     {
-      key: 'employee',
-      header: 'Nhân viên',
-      minWidth: 200,
-      render: (record) => {
-        const name = record.employeeName ?? record.employee?.fullName ?? record.employeeId;
-        const code = record.employee?.employeeCode ?? record.employeeId;
-        return (
-          <Group gap="xs" wrap="nowrap">
-            <Avatar radius="xl" size={32} color="blue">
-              {getInitials(name)}
-            </Avatar>
-            <Stack gap={1}>
-              <Text size="sm" fw={600} lineClamp={1}>
-                {name}
-              </Text>
-              <Text size="xs" c="dimmed">
-                {code}
-              </Text>
-            </Stack>
-          </Group>
-        );
-      },
+      key: "employee",
+      header: "Nhân viên",
+      minWidth: 190,
+      render: (record) => (
+        <Stack gap={0}>
+          <Text size="sm" fw={500}>
+            {record.employeeName ??
+              record.employee?.fullName ??
+              record.employeeId}
+          </Text>
+          <Text size="xs" c="dimmed">
+            {record.employee?.employeeCode ?? record.employeeId}
+          </Text>
+        </Stack>
+      ),
     },
     {
-      key: 'leaveType',
-      header: 'Loại nghỉ',
+      key: "leaveType",
+      header: "Loại nghỉ",
       minWidth: 150,
       render: (record) => (
         <Text size="sm">{labelFrom(LEAVE_TYPE_LABELS, record.leaveType)}</Text>
       ),
     },
     {
-      key: 'startDate',
-      header: 'Từ ngày',
-      width: 110,
+      key: "startDate",
+      header: "Từ ngày",
+      width: 108,
+      align: "center",
       render: (record) => (
-        <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
+        <Text size="sm" style={{ fontVariantNumeric: "tabular-nums" }}>
           {formatDate(record.startDate)}
         </Text>
       ),
     },
     {
-      key: 'endDate',
-      header: 'Đến ngày',
-      width: 110,
+      key: "endDate",
+      header: "Đến ngày",
+      width: 108,
+      align: "center",
       render: (record) => (
-        <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
+        <Text size="sm" style={{ fontVariantNumeric: "tabular-nums" }}>
           {formatDate(record.endDate)}
         </Text>
       ),
     },
     {
-      key: 'session',
-      header: 'Buổi nghỉ',
-      width: 120,
-      render: (record) => (
-        <Text size="sm">{sessionRangeLabel(record)}</Text>
-      ),
+      key: "session",
+      header: "Buổi nghỉ",
+      minWidth: 130,
+      render: (record) => <Text size="sm">{sessionRangeLabel(record)}</Text>,
     },
     {
-      key: 'totalDays',
-      header: 'Số ngày',
-      width: 90,
-      align: 'right',
+      key: "totalDays",
+      header: "Số ngày",
+      width: 84,
+      align: "right",
       render: (record) => (
-        <Text size="sm" fw={700} style={{ fontVariantNumeric: 'tabular-nums' }}>
-          {record.totalDays ?? '-'}
+        <Text size="sm" style={{ fontVariantNumeric: "tabular-nums" }}>
+          {record.totalDays ?? "-"}
         </Text>
       ),
     },
     {
-      key: 'notice',
-      header: 'Báo trước',
-      width: 130,
+      key: "attendanceAllocation",
+      header: "Phân bổ P/KL",
+      minWidth: 140,
+      render: (record) =>
+        record.leaveType === "ANNUAL" ? (
+          <Group gap={4} wrap="nowrap">
+            <Badge color="green" variant="light" size="sm">
+              {leaveDays(record.annualPaidDays ?? record.totalDays)} P
+            </Badge>
+            <Badge color="gray" variant="light" size="sm">
+              {leaveDays(record.unpaidDays ?? 0)} KL
+            </Badge>
+          </Group>
+        ) : (
+          <Text size="sm" c="dimmed">
+            —
+          </Text>
+        ),
+    },
+    {
+      key: "replacementEmployee",
+      header: "Người nhận bàn giao",
+      minWidth: 180,
+      render: (record) =>
+        record.replacementEmployee ? (
+          <Stack gap={0}>
+            <Text size="sm" fw={500}>
+              {record.replacementEmployee.fullName ?? "Chưa có họ tên"}
+            </Text>
+            <Text size="xs" c="dimmed">
+              {record.replacementEmployee.employeeCode ??
+                record.replacementEmployee.attendanceCode ??
+                "Chưa có mã"}
+            </Text>
+          </Stack>
+        ) : (
+          <Text size="sm" c="dimmed">
+            Không khai báo
+          </Text>
+        ),
+    },
+    {
+      key: "notice",
+      header: "Báo trước",
+      width: 116,
+      align: "center",
       render: (record) => (
-        <Text
-          size="sm"
-          c={record.lateSubmission ? 'orange.7' : undefined}
-          style={{ fontVariantNumeric: 'tabular-nums' }}
-        >
+        <Text size="sm" c={record.lateSubmission ? "orange.7" : undefined}>
           {noticeLabel(record)}
         </Text>
       ),
     },
     {
-      key: 'status',
-      header: 'Trạng thái',
-      width: 160,
+      key: "status",
+      header: "Trạng thái",
+      width: 168,
       render: (record) => (
-        <Group gap={6} wrap="nowrap" onClick={(e) => e.stopPropagation()}>
+        <Group gap={4} wrap="nowrap">
           <StatusTag status={record.status} />
-          {record.status === 'CANCELLED' && canDeleteCancelled ? (
-            <Tooltip label="Xóa đơn đã hủy" withArrow>
-              <ActionIcon
-                variant="subtle"
-                color="red"
-                size="sm"
-                aria-label={
-                  'Xóa đơn nghỉ phép đã hủy của ' +
-                  (record.employeeName ?? record.employee?.fullName ?? record.employeeId)
-                }
-                disabled={deleteCancelledLeaveRequest.isPending}
-                onClick={() => setDeletingRequest(record)}
-              >
-                <IconTrash size={14} />
-              </ActionIcon>
-            </Tooltip>
+          {record.status === "CANCELLED" && canDeleteCancelled ? (
+            <ActionIcon
+              variant="subtle"
+              color="red"
+              size="sm"
+              aria-label={
+                "Xóa đơn nghỉ phép đã hủy của " +
+                (record.employeeName ??
+                  record.employee?.fullName ??
+                  record.employeeId)
+              }
+              disabled={deleteCancelledLeaveRequest.isPending}
+              onClick={() => setDeletingRequest(record)}
+            >
+              <IconTrash size={15} />
+            </ActionIcon>
           ) : null}
         </Group>
       ),
     },
     {
-      key: 'approval',
-      header: 'Luồng duyệt',
+      key: "approval",
+      header: "Luồng duyệt",
       minWidth: 180,
       render: (record) => (
-        <Text size="xs" c="dimmed">
+        <Text size="sm" c="dimmed">
           {approvalLabel(currentApprovalStep(record))}
         </Text>
       ),
     },
   ];
 
-  const catalogTotalPages = Math.max(1, Math.ceil(leaveTypes.length / CATALOG_PAGE_SIZE));
+  // The catalog endpoint returns every symbol at once, so page it here.
+  const catalogTotalPages = Math.max(
+    1,
+    Math.ceil(leaveTypes.length / CATALOG_PAGE_SIZE),
+  );
   const catalogCurrentPage = Math.min(catalogPage, catalogTotalPages);
   const pagedLeaveTypes = leaveTypes.slice(
     (catalogCurrentPage - 1) * CATALOG_PAGE_SIZE,
@@ -388,38 +667,29 @@ export function LeavePage() {
     hasNextPage: catalogCurrentPage < catalogTotalPages,
     hasPreviousPage: catalogCurrentPage > 1,
   };
+  const selectedLeaveTypes = leaveTypes.filter((record) =>
+    selectedLeaveTypeIds.has(record.id),
+  );
 
   const catalogColumns: DataTableColumn<LeavePolicyType>[] = [
     {
-      key: 'symbol',
-      header: 'Ký hiệu',
-      width: 90,
-      align: 'center',
+      key: "symbol",
+      header: "Ký hiệu",
+      width: 84,
+      align: "center",
       render: (record) => (
-        <Text size="sm" fw={700}>
+        <Text size="sm" fw={600}>
           {record.displaySymbol}
         </Text>
       ),
     },
     {
-      key: 'code',
-      header: 'Mã',
-      minWidth: 140,
+      key: "name",
+      header: "Tên ký hiệu",
+      minWidth: 200,
       render: (record) => (
-        <Text size="sm" c="dimmed">
-          {record.code}
-        </Text>
-      ),
-    },
-    {
-      key: 'name',
-      header: 'Tên ký hiệu',
-      minWidth: 220,
-      render: (record) => (
-        <Stack gap={2}>
-          <Text size="sm" fw={600}>
-            {policyName(record)}
-          </Text>
+        <Stack gap={0}>
+          <Text size="sm">{policyName(record)}</Text>
           {record.note ? (
             <Text size="xs" c="dimmed">
               {record.note}
@@ -429,110 +699,112 @@ export function LeavePage() {
       ),
     },
     {
-      key: 'dayValue',
-      header: 'Giá trị ngày',
-      width: 110,
-      align: 'right',
+      key: "dayValue",
+      header: "Giá trị ngày",
+      width: 106,
+      align: "right",
       render: (record) => (
-        <Text size="sm" fw={600} style={{ fontVariantNumeric: 'tabular-nums' }}>
-          {record.dayValue ?? '-'}
+        <Text size="sm" style={{ fontVariantNumeric: "tabular-nums" }}>
+          {record.dayValue ?? "-"}
         </Text>
       ),
     },
     {
-      key: 'quotaMode',
-      header: 'Quỹ phép',
-      minWidth: 170,
+      key: "quotaMode",
+      header: "Quỹ phép",
+      minWidth: 160,
       render: (record) => (
         <Text size="sm">{labelFrom(QUOTA_MODE_LABELS, record.quotaMode)}</Text>
       ),
     },
     {
-      key: 'hrRule',
-      header: 'Quy tắc HR',
+      key: "hrRule",
+      header: "Quy tắc HR",
       width: 150,
       render: (record) => <StatusTag status={record.hrRuleStatus} />,
     },
     {
-      key: 'annual',
-      header: 'Trừ phép năm',
-      width: 125,
-      align: 'center',
+      key: "annual",
+      header: "Trừ phép năm",
+      width: 122,
+      align: "center",
       render: (record) => (
-        <Text size="sm">{record.deductsAnnualLeave ? 'Có' : 'Không'}</Text>
+        <Text size="sm">{record.deductsAnnualLeave ? "Có" : "Không"}</Text>
       ),
     },
     {
-      key: 'attachment',
-      header: 'Chứng từ',
-      minWidth: 130,
-      align: 'center',
-      render: (record) => {
-        if (!record.requiresAttachment) {
-          return <Text size="sm" c="dimmed">Không</Text>;
-        }
-        return (
-          <Text size="sm" c="blue.7" fw={500}>
-            {record.attachmentMinDays ? `Bắt buộc (≥ ${record.attachmentMinDays} ngày)` : 'Bắt buộc'}
-          </Text>
-        );
-      },
+      key: "attachment",
+      header: "Chứng từ",
+      width: 112,
+      align: "center",
+      render: (record) => (
+        <Text size="sm">
+          {record.requiresAttachment ? "Bắt buộc" : "Không"}
+        </Text>
+      ),
     },
   ];
-
-  return (
-    <Stack gap="sm">
-      <Group justify="space-between" align="center" wrap="wrap" gap="xs">
-        <Text size="xs" c="dimmed">
-          Theo dõi trạng thái đơn và quy tắc ký hiệu nghỉ phép trước khi đối chiếu bảng công. Tạo và xử lý đơn thực hiện trên Hacom Chat.
-        </Text>
-
-        <SegmentedControl
-          size="xs"
-          value={activeTab}
-          onChange={(val) => setActiveTab(val as 'requests' | 'catalog')}
-          data={[
+  if (canManageCatalog) {
+    catalogColumns.push({
+      key: "actions",
+      header: "",
+      width: 96,
+      align: "right",
+      render: (record) => (
+        <TableActionsMenu
+          label={`Thao tác ký hiệu ${record.displaySymbol}`}
+          actions={[
             {
-              value: 'requests',
-              label: `Đơn nghỉ phép (${data.pagination.total})`,
+              label: `Chỉnh sửa ${record.displaySymbol}`,
+              icon: <IconEdit size={16} />,
+              onClick: () => openEditLeaveType(record),
             },
             {
-              value: 'catalog',
-              label: `Bảng ký hiệu (${leaveTypes.length})`,
+              label: `Xóa ${record.displaySymbol}`,
+              icon: <IconTrash size={16} />,
+              color: "red",
+              onClick: () => setDeletingLeaveTypes([record]),
             },
           ]}
         />
-      </Group>
+      ),
+    });
+  }
 
-      <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
-        <Group justify="flex-start" align="baseline" gap="xs" px="md" py="xs" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
-          <Text size="sm" fw={500}>
-            {activeTab === 'requests' ? 'Danh sách đơn nghỉ phép' : 'Danh mục ký hiệu nghỉ phép'}
-          </Text>
-          <Text size="xs" c="dimmed">
-            {activeTab === 'requests' ? `${data.pagination.total} đơn` : `${leaveTypes.length} ký hiệu`}
-          </Text>
-        </Group>
+  return (
+    <>
+      <PageHeader
+        title="Loại nghỉ phép"
+        subtitle="Theo dõi trạng thái đơn và quy tắc ký hiệu nghỉ phép trước khi đối chiếu bảng công. Tạo và xử lý đơn thực hiện trên Hacom Chat."
+      />
 
-        {activeTab === 'requests' && (
-          <Group justify="space-between" px="md" py="xs" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
-            <Group gap="xs" wrap="wrap" style={{ flex: 1 }}>
+      <Stack gap="sm">
+        <SectionCard
+          title="Danh sách đơn nghỉ phép"
+          count={`${data.pagination.total} đơn`}
+          flushHeader
+        >
+          <Stack gap="xs" px="sm" pb="sm">
+            <FilterBar>
               <Select
                 aria-label="Nhân viên"
-                placeholder="Chọn nhân viên"
+                placeholder="Nhân viên"
                 data={employeeOptions}
                 value={selectedEmployee?.value ?? null}
                 clearable
                 searchable
-                size="xs"
-                w={240}
+                size="sm"
+                className={filterStyles.fieldWide}
                 nothingFoundMessage={
-                  employeesQuery.isFetching ? 'Đang tải nhân viên...' : 'Không tìm thấy nhân viên'
+                  employeesQuery.isFetching
+                    ? "Đang tải nhân viên..."
+                    : "Không tìm thấy nhân viên"
                 }
                 onSearchChange={setEmployeeSearch}
                 onChange={(value) => {
                   setSelectedEmployee(
-                    employeeOptions.find((option) => option.value === value) ?? null,
+                    employeeOptions.find((option) => option.value === value) ??
+                      null,
                   );
                   setParams((current) => ({
                     ...current,
@@ -541,15 +813,14 @@ export function LeavePage() {
                   }));
                 }}
               />
-
               <Select
                 aria-label="Loại nghỉ"
-                placeholder="Loại nghỉ phép"
+                placeholder="Loại nghỉ"
                 data={leaveTypeOptions}
                 value={params.leaveType ?? null}
                 clearable
-                size="xs"
-                w={180}
+                size="sm"
+                className={filterStyles.fieldWide}
                 onChange={(value) =>
                   setParams((current) => ({
                     ...current,
@@ -558,15 +829,14 @@ export function LeavePage() {
                   }))
                 }
               />
-
               <Select
                 aria-label="Trạng thái"
-                placeholder="Trạng thái duyệt"
+                placeholder="Trạng thái"
                 data={statusOptions}
                 value={params.status ?? null}
                 clearable
-                size="xs"
-                w={150}
+                size="sm"
+                className={filterStyles.field}
                 onChange={(value) =>
                   setParams((current) => ({
                     ...current,
@@ -575,260 +845,288 @@ export function LeavePage() {
                   }))
                 }
               />
-            </Group>
+            </FilterBar>
 
-            <Group gap="xs">
-              {activeFilterCount > 0 && (
-                <Button
-                  size="xs"
-                  variant="subtle"
-                  color="gray"
-                  onClick={handleClearFilters}
-                >
-                  Xóa lọc ({activeFilterCount})
-                </Button>
-              )}
+            <DataTable
+              data={data.items}
+              columns={requestColumns}
+              rowKey={(record) => record.id}
+              meta={data.pagination}
+              onPageChange={(page, pageSize) =>
+                setParams((current) => ({ ...current, page, pageSize }))
+              }
+              emptyTitle="Chưa có đơn nghỉ phép"
+              emptyDescription="Đơn được tạo và xử lý trên Hacom Chat, sau đó hiển thị tại đây."
+            />
+          </Stack>
+        </SectionCard>
 
+        <SectionCard
+          title="Danh mục ký hiệu nghỉ phép"
+          count={`${leaveTypes.length} ký hiệu`}
+          description="Ký hiệu dùng khi đối chiếu bảng công tháng."
+          actions={
+            canManageCatalog ? (
               <Button
-                size="xs"
-                variant="default"
-                loading={isFetching}
-                onClick={() => void refetch()}
+                size="sm"
+                leftSection={<IconPlus size={16} />}
+                onClick={openCreateLeaveType}
               >
-                Làm mới
+                Thêm ký hiệu
               </Button>
-            </Group>
-          </Group>
-        )}
-
-        {activeTab === 'requests' ? (
-          <DataTable
-            data={data.items}
-            columns={requestColumns}
-            rowKey={(record) => record.id}
-            meta={data.pagination}
-            onRowClick={(record) => setSelectedLeave(record)}
-            onPageChange={(page, pageSize) =>
-              setParams((current) => ({ ...current, page, pageSize }))
-            }
-            emptyTitle="Chưa có đơn nghỉ phép"
-            emptyDescription="Đơn được tạo và xử lý trên Hacom Chat, sau đó tự động đồng bộ tại đây."
-          />
-        ) : (
-          <DataTable
-            data={pagedLeaveTypes}
-            columns={catalogColumns}
-            rowKey={(record) => record.id}
-            loading={isLeaveTypesLoading}
-            meta={catalogMeta}
-            onPageChange={(page) => setCatalogPage(page)}
-            emptyTitle="Chưa có ký hiệu nghỉ phép"
-          />
-        )}
-      </Paper>
-
-      <Drawer
-        opened={selectedLeave !== null}
-        onClose={() => setSelectedLeave(null)}
-        position="right"
-        size="md"
-        title={<Text fw={700} size="sm">Chi tiết đơn nghỉ phép</Text>}
-      >
-        {selectedLeave && (
-          <Stack gap="md">
-            <Paper withBorder p="sm" radius="md">
-              <Group justify="space-between" align="center">
-                <Group gap="xs">
-                  <Avatar radius="xl" size={40} color="blue">
-                    {getInitials(selectedLeave.employeeName ?? selectedLeave.employee?.fullName)}
-                  </Avatar>
-                  <Stack gap={1}>
-                    <Text fw={700} size="sm">
-                      {selectedLeave.employeeName ?? selectedLeave.employee?.fullName ?? selectedLeave.employeeId}
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      Mã nhân sự: {selectedLeave.employee?.employeeCode ?? selectedLeave.employeeId}
-                    </Text>
-                  </Stack>
-                </Group>
-                <StatusTag status={selectedLeave.status} />
-              </Group>
-            </Paper>
-
-            <Paper withBorder p="sm" radius="md">
-              <Text fw={700} size="xs" mb="xs">
-                Thông tin nghỉ phép
-              </Text>
-              <SimpleGrid cols={2} spacing="xs">
-                <Stack gap={1}>
-                  <Text size="xs" c="dimmed">Loại nghỉ</Text>
-                  <Text size="xs" fw={600}>
-                    {labelFrom(LEAVE_TYPE_LABELS, selectedLeave.leaveType)}
-                  </Text>
-                </Stack>
-
-                <Stack gap={1}>
-                  <Text size="xs" c="dimmed">Tổng số ngày</Text>
-                  <Text size="xs" fw={600}>
-                    {selectedLeave.totalDays != null ? `${selectedLeave.totalDays} ngày` : '-'}
-                  </Text>
-                </Stack>
-
-                <Stack gap={1}>
-                  <Text size="xs" c="dimmed">Thời gian nghỉ</Text>
-                  <Text size="xs" fw={600}>
-                    {formatDate(selectedLeave.startDate)} → {formatDate(selectedLeave.endDate)}
-                  </Text>
-                </Stack>
-
-                <Stack gap={1}>
-                  <Text size="xs" c="dimmed">Buổi nghỉ</Text>
-                  <Text size="xs" fw={600}>
-                    {sessionRangeLabel(selectedLeave)}
-                  </Text>
-                </Stack>
-
-                <Stack gap={1}>
-                  <Text size="xs" c="dimmed">Hạn báo trước</Text>
-                  <Text size="xs" fw={600}>
-                    {noticeLabel(selectedLeave)}
-                  </Text>
-                </Stack>
-              </SimpleGrid>
-            </Paper>
-
-            <Paper withBorder p="sm" radius="md">
-              <Text fw={700} size="xs" mb="xs">
-                Lý do xin nghỉ
-              </Text>
-              <Paper p="xs" radius="sm" bg="gray.0">
-                <Text size="xs" c="gray.8">
-                  {selectedLeave.reason ? selectedLeave.reason : 'Không có ghi chú lý do.'}
-                </Text>
-              </Paper>
-            </Paper>
-
-            <Paper withBorder p="sm" radius="md">
-              <Text fw={700} size="xs" mb="xs">
-                Chứng từ đính kèm
-              </Text>
-              {selectedLeave.attachmentUrl ? (
-                <Paper p="xs" radius="sm" bg="gray.0">
-                  <Group justify="space-between" wrap="nowrap">
-                    <Text size="xs" fw={500} lineClamp={1} style={{ flex: 1 }}>
-                      {selectedLeave.attachmentUrl.split('/').pop() || 'Tệp chứng từ đính kèm'}
+            ) : null
+          }
+          flushHeader
+        >
+          <Stack gap="xs" px="sm" pb="sm">
+            {canManageCatalog ? (
+              <Paper
+                withBorder
+                radius="md"
+                px="md"
+                py={8}
+                style={{
+                  minHeight: 52,
+                  visibility: selectedLeaveTypes.length ? undefined : "hidden",
+                }}
+                aria-hidden={!selectedLeaveTypes.length}
+                inert={!selectedLeaveTypes.length}
+              >
+                <Group justify="space-between" gap="sm" wrap="wrap">
+                  <Group gap="sm" wrap="nowrap">
+                    <Text size="sm" fw={600}>
+                      Đã chọn {selectedLeaveTypes.length} ký hiệu
                     </Text>
                     <Button
-                      size="xs"
-                      variant="filled"
-                      color="blue"
-                      onClick={() =>
-                        setPreviewAttachment({
-                          url: selectedLeave.attachmentUrl!,
-                          title: `Chứng từ: ${labelFrom(LEAVE_TYPE_LABELS, selectedLeave.leaveType)}`,
-                          employeeName:
-                            selectedLeave.employeeName ??
-                            selectedLeave.employee?.fullName ??
-                            selectedLeave.employeeId,
-                        })
-                      }
+                      size="compact-xs"
+                      variant="subtle"
+                      color="gray"
+                      onClick={() => setSelectedLeaveTypeIds(new Set())}
                     >
-                      Xem
+                      Bỏ chọn
                     </Button>
                   </Group>
-                </Paper>
-              ) : (
-                <Text size="xs" c="dimmed">
-                  Không có tệp chứng từ đính kèm.
-                </Text>
-              )}
-            </Paper>
-
-            <Paper withBorder p="sm" radius="md">
-              <Text fw={700} size="xs" mb="xs">
-                Tiến trình phê duyệt
-              </Text>
-              {selectedLeave.approvalSteps && selectedLeave.approvalSteps.length > 0 ? (
-                <Stack gap="xs">
-                  {selectedLeave.approvalSteps.map((step) => (
-                    <Paper key={step.id || step.stepOrder} p="xs" radius="sm" withBorder bg="gray.0">
-                      <Group justify="space-between" wrap="nowrap" mb={2}>
-                        <Text size="xs" fw={600}>
-                          Cấp {step.stepOrder}: {labelFrom(APPROVAL_STEP_LABELS, step.stepCode) || step.stepName}
-                        </Text>
-                        <StatusTag status={step.status} />
-                      </Group>
-                      {step.note ? (
-                        <Text size="xs" c="dimmed">Ghi chú: {step.note}</Text>
-                      ) : null}
-                      {step.reviewedAt ? (
-                        <Text size="xs" c="dimmed">
-                          Duyệt lúc: {formatDate(step.reviewedAt)}
-                        </Text>
-                      ) : null}
-                    </Paper>
-                  ))}
-                </Stack>
-              ) : (
-                <Text size="xs" c="dimmed">
-                  Chưa có thông tin các cấp phê duyệt.
-                </Text>
-              )}
-            </Paper>
+                  <Group gap="xs" wrap="wrap">
+                    <Button
+                      size="xs"
+                      variant="light"
+                      leftSection={<IconEdit size={16} />}
+                      disabled={selectedLeaveTypes.length !== 1}
+                      onClick={() => openEditLeaveType(selectedLeaveTypes[0]!)}
+                    >
+                      Sửa
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="red"
+                      leftSection={<IconTrash size={16} />}
+                      onClick={() => setDeletingLeaveTypes(selectedLeaveTypes)}
+                    >
+                      Xóa
+                    </Button>
+                  </Group>
+                </Group>
+              </Paper>
+            ) : null}
+            <DataTable
+              data={pagedLeaveTypes}
+              columns={catalogColumns}
+              rowKey={(record) => record.id}
+              loading={leaveTypesQuery.isLoading}
+              error={leaveTypesQuery.error}
+              onRetry={() => void leaveTypesQuery.refetch()}
+              meta={catalogMeta}
+              onPageChange={(page) => setCatalogPage(page)}
+              selectedIds={
+                canManageCatalog ? selectedLeaveTypeIds : undefined
+              }
+              onSelectionChange={
+                canManageCatalog ? setSelectedLeaveTypeIds : undefined
+              }
+              emptyTitle="Chưa có ký hiệu nghỉ phép"
+            />
           </Stack>
-        )}
+        </SectionCard>
+      </Stack>
+
+      <Drawer
+        opened={leaveTypeDrawerOpened}
+        onClose={closeLeaveTypeDrawer}
+        title={
+          editingLeaveType
+            ? `Chỉnh sửa ký hiệu ${editingLeaveType.displaySymbol}`
+            : "Thêm ký hiệu nghỉ phép"
+        }
+        position="right"
+        size="lg"
+      >
+        <form
+          onSubmit={leaveTypeForm.onSubmit(
+            (values) => void handleSaveLeaveType(values),
+          )}
+        >
+          <Stack gap="md">
+            <Text size="sm" c="dimmed">
+              Ký hiệu được dùng khi đối chiếu và giải thích bảng công. Hãy chọn
+              ký hiệu ngắn gọn và dễ nhận biết.
+            </Text>
+
+            <TextInput
+              label="Ký hiệu"
+              placeholder="P"
+              description="Tối đa 12 ký tự, không có khoảng trắng hoặc dấu ;"
+              withAsterisk
+              maxLength={12}
+              {...leaveTypeForm.getInputProps("displaySymbol")}
+            />
+
+            <TextInput
+              label="Tên ký hiệu"
+              placeholder="Nghỉ phép năm"
+              withAsterisk
+              maxLength={120}
+              {...leaveTypeForm.getInputProps("name")}
+            />
+
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+              <Select
+                label="Tính lương"
+                data={PAID_OPTIONS}
+                allowDeselect={false}
+                value={leaveTypeForm.values.paid}
+                onChange={(value) =>
+                  leaveTypeForm.setFieldValue(
+                    "paid",
+                    (value ?? "UNSET") as LeaveTypeFormValues["paid"],
+                  )
+                }
+              />
+              <NumberInput
+                label="Giá trị ngày"
+                placeholder="Chưa chốt"
+                min={0}
+                max={1}
+                step={0.5}
+                decimalScale={2}
+                {...leaveTypeForm.getInputProps("dayValue")}
+              />
+            </SimpleGrid>
+
+            <Select
+              label="Quỹ phép"
+              data={QUOTA_MODE_OPTIONS}
+              allowDeselect={false}
+              value={leaveTypeForm.values.quotaMode}
+              onChange={(value) =>
+                leaveTypeForm.setFieldValue(
+                  "quotaMode",
+                  (value ?? "NONE") as LeaveQuotaMode,
+                )
+              }
+            />
+
+            {leaveTypeForm.values.quotaMode === "PER_EVENT" ? (
+              <NumberInput
+                label="Số ngày tối đa mỗi sự kiện"
+                placeholder="Không giới hạn"
+                min={0}
+                max={365}
+                step={0.5}
+                decimalScale={2}
+                {...leaveTypeForm.getInputProps("maxDaysPerEvent")}
+              />
+            ) : null}
+
+            <Switch
+              label="Trừ vào quỹ phép năm"
+              description="Bật khi ký hiệu làm giảm số ngày phép năm còn lại."
+              {...leaveTypeForm.getInputProps("deductsAnnualLeave", {
+                type: "checkbox",
+              })}
+            />
+
+            <Switch
+              label="Bắt buộc có chứng từ"
+              description="Áp dụng cho nghỉ ốm, thai sản hoặc chính sách cần hồ sơ."
+              {...leaveTypeForm.getInputProps("requiresAttachment", {
+                type: "checkbox",
+              })}
+            />
+
+            {leaveTypeForm.values.requiresAttachment ? (
+              <NumberInput
+                label="Bắt buộc chứng từ từ số ngày"
+                placeholder="Áp dụng cho mọi thời lượng"
+                min={0}
+                max={365}
+                step={0.5}
+                decimalScale={2}
+                {...leaveTypeForm.getInputProps("attachmentMinDays")}
+              />
+            ) : null}
+
+            <Select
+              label="Quy tắc HR"
+              data={HR_RULE_OPTIONS}
+              allowDeselect={false}
+              value={leaveTypeForm.values.hrRuleStatus}
+              onChange={(value) =>
+                leaveTypeForm.setFieldValue(
+                  "hrRuleStatus",
+                  (value ?? "CONFIRMED") as LeaveTypeFormValues["hrRuleStatus"],
+                )
+              }
+            />
+
+            <Textarea
+              label="Ghi chú"
+              placeholder="Mô tả điều kiện áp dụng hoặc nội dung HR cần chốt"
+              minRows={3}
+              autosize
+              maxLength={500}
+              {...leaveTypeForm.getInputProps("note")}
+            />
+
+            <Group justify="flex-end" mt="xs">
+              <Button
+                type="button"
+                variant="default"
+                onClick={closeLeaveTypeDrawer}
+                disabled={
+                  createLeaveType.isPending || updateLeaveType.isPending
+                }
+              >
+                Hủy
+              </Button>
+              <Button
+                type="submit"
+                loading={createLeaveType.isPending || updateLeaveType.isPending}
+              >
+                {editingLeaveType ? "Lưu thay đổi" : "Thêm ký hiệu"}
+              </Button>
+            </Group>
+          </Stack>
+        </form>
       </Drawer>
 
-      <Modal
-        opened={previewAttachment !== null}
-        onClose={() => setPreviewAttachment(null)}
+      <ConfirmActionModal
+        opened={deletingLeaveTypes.length > 0}
         title={
-          <Text fw={700} size="sm">
-            {previewAttachment?.title ?? 'Chi tiết chứng từ đính kèm'}
-          </Text>
+          deletingLeaveTypes.length === 1
+            ? `Xóa ký hiệu ${deletingLeaveTypes[0]?.displaySymbol ?? ""}?`
+            : `Xóa ${deletingLeaveTypes.length} ký hiệu đã chọn?`
         }
-        size="lg"
-        centered
-      >
-        {previewAttachment && (
-          <Stack gap="sm">
-            <Group justify="space-between" wrap="nowrap">
-              <Text size="xs" c="dimmed">
-                Nhân sự: <strong>{previewAttachment.employeeName ?? '-'}</strong>
-              </Text>
-              <a
-                href={previewAttachment.url}
-                target="_blank"
-                rel="noreferrer"
-                style={{ fontSize: '11px', color: 'var(--mantine-color-blue-6)', textDecoration: 'none', fontWeight: 600 }}
-              >
-                Mở file gốc ↗
-              </a>
-            </Group>
-            <Box
-              style={{
-                background: 'var(--mantine-color-gray-0)',
-                borderRadius: '8px',
-                padding: '12px',
-                textAlign: 'center',
-                border: '1px solid var(--mantine-color-gray-3)',
-              }}
-            >
-              <img
-                src={previewAttachment.url}
-                alt="Chứng từ đính kèm"
-                style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain', borderRadius: '4px' }}
-                onError={(e) => {
-                  (e.currentTarget as HTMLElement).style.display = 'none';
-                }}
-              />
-              <Text size="xs" c="dimmed" mt={6} style={{ wordBreak: 'break-all' }}>
-                {previewAttachment.url}
-              </Text>
-            </Box>
-          </Stack>
-        )}
-      </Modal>
+        message="Ký hiệu đã chọn sẽ ngừng sử dụng và biến mất khỏi danh mục. Dữ liệu quỹ phép và lịch sử liên quan vẫn được giữ nguyên."
+        confirmLabel={
+          deletingLeaveTypes.length === 1
+            ? "Xóa khỏi danh mục"
+            : `Xóa ${deletingLeaveTypes.length} ký hiệu`
+        }
+        loading={deleteLeaveType.isPending}
+        onClose={() => setDeletingLeaveTypes([])}
+        onConfirm={() => void handleDeleteLeaveType()}
+      />
 
       <ConfirmActionModal
         opened={deletingRequest !== null}
@@ -843,6 +1141,6 @@ export function LeavePage() {
           }
         }}
       />
-    </Stack>
+    </>
   );
 }

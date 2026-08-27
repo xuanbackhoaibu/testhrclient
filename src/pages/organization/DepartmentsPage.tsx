@@ -6,17 +6,17 @@ import {
   Select,
   SimpleGrid,
   Stack,
+  Text,
   TextInput,
   Textarea,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconPlus } from "@tabler/icons-react";
+import { IconEdit, IconPlus, IconX } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
-import { useAllEmployees } from "../../features/employees/useEmployees";
 import { DomainExcelImportModal } from "../../features/import-export/DomainExcelImportModal";
 import { downloadDepartmentsExport } from "../../features/import-export/excelFilesApi";
 import { ImportExportToolbar } from "../../features/import-export/ImportExportToolbar";
@@ -25,17 +25,21 @@ import {
   createDepartment,
   updateDepartment,
 } from "../../features/organization/departmentsApi";
-import type { Department, UnitSelectOption } from "../../features/organization/organizationTypes";
+import type { Department } from "../../features/organization/organizationTypes";
 import { ApiError } from "../../shared/api/api.types";
-import { sortByCode } from "../../shared/utils/sort";
-import { useAllDepartments } from "../../features/organization/useDepartments";
+import { useDepartments } from "../../features/organization/useDepartments";
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { ConfirmActionModal } from "../../shared/components/ConfirmActionModal";
+import {
+  DataTable,
+  type DataTableColumn,
+} from "../../shared/components/DataTable";
 import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
 import { PageHeader } from "../../shared/components/PageHeader";
+import { StatusTag } from "../../shared/components/StatusTag";
+import { TableActionsMenu } from "../../shared/components/TableActionsMenu";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
-import { OrganizationHierarchyList, type OrganizationHierarchyRow } from "./OrganizationHierarchyList";
 
 type DepartmentFormValues = {
   code: string;
@@ -44,10 +48,6 @@ type DepartmentFormValues = {
   note: string;
   status: string;
 };
-
-type DepartmentTreeRecord =
-  | { kind: "unit"; unit: UnitSelectOption }
-  | { kind: "department"; department: Department };
 
 const statusOptions = [
   { value: "ACTIVE", label: "Đang hoạt động" },
@@ -76,15 +76,11 @@ export function DepartmentsPage() {
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
-  // Lấy toàn bộ phòng ban theo bộ lọc, sắp theo mã trên toàn danh sách rồi
-  // phân trang ở client để trang 1 luôn bắt đầu từ mã nhỏ nhất.
-  const { data: allDepartments, isLoading, error, refetch } = useAllDepartments({
+  const { data: departmentsResponse, isLoading, error, refetch } = useDepartments({
+    ...params,
     search: params.search || undefined,
-    unitId: params.unitId,
-    status: params.status,
   });
   const unitsSelect = useUnitsSelect();
-  const { data: employees = [] } = useAllEmployees({});
   const templateDownload = useHrmCoreTemplateDownload("departments");
 
   const exportMutation = useMutation({
@@ -211,60 +207,89 @@ export function DepartmentsPage() {
     label: `${item.name} (${item.code})`,
   }));
 
-  // Sắp xếp toàn bộ phòng ban theo mã tăng dần rồi phân trang ở client.
-  const sortedDepartments = useMemo(
-    () => sortByCode(allDepartments),
-    [allDepartments],
+  const departments = departmentsResponse?.items ?? [];
+  const departmentsMeta = departmentsResponse?.meta;
+
+  const columns = useMemo<DataTableColumn<Department>[]>(
+    () => [
+      {
+        key: "code",
+        header: "Mã",
+        width: 120,
+        render: (record) => <Text fw={600}>{record.code}</Text>,
+      },
+      { key: "name", header: "Tên phòng ban", render: (record) => record.name },
+      {
+        key: "unit",
+        header: "Đơn vị",
+        render: (record) => record.unit?.name ?? "-",
+      },
+      {
+        key: "status",
+        header: "Trạng thái",
+        width: 140,
+        render: (record) => <StatusTag status={record.status} />,
+      },
+      {
+        key: "actions",
+        header: "",
+        width: 108,
+        align: "right",
+        render: (record) => (
+          <TableActionsMenu
+            actions={[
+              {
+                label: "Chỉnh sửa",
+                icon: <IconEdit size={16} />,
+                disabled: !canEditDepartment,
+                onClick: () => {
+                  debugPermissionCheck({
+                    action: "department.update",
+                    required: HR_PERMISSIONS.DEPARTMENT_UPDATE,
+                    permissions,
+                    roles,
+                    allowed: canEditDepartment,
+                  });
+                  if (!canEditDepartment) {
+                    return;
+                  }
+                  setEditing(record);
+                  form.setValues({
+                    code: record.code,
+                    unitId: record.unitId,
+                    name: record.name,
+                    note: record.note ?? "",
+                    status: record.status,
+                  });
+                  setOpen(true);
+                },
+              },
+              {
+                label: "Tạm ngưng",
+                icon: <IconX size={16} />,
+                color: "red",
+                disabled: record.status === "INACTIVE" || !canEditDepartment,
+                onClick: () => {
+                  debugPermissionCheck({
+                    action: "department.update",
+                    required: HR_PERMISSIONS.DEPARTMENT_UPDATE,
+                    permissions,
+                    roles,
+                    allowed: canEditDepartment,
+                  });
+                  if (!canEditDepartment) {
+                    return;
+                  }
+                  setConfirmInactive(record);
+                },
+              },
+            ]}
+          />
+        ),
+      },
+    ],
+    [canEditDepartment, form, permissions, roles],
   );
-  const treeRows = useMemo<OrganizationHierarchyRow<DepartmentTreeRecord>[]>(() => {
-    const units = params.unitId
-      ? (unitsSelect.data ?? []).filter((unit) => unit.id === params.unitId)
-      : (unitsSelect.data ?? []).filter((unit) => sortedDepartments.some((department) => department.unitId === unit.id));
-
-    return sortByCode(units).flatMap((unit) => {
-      const departments = sortedDepartments.filter((department) => department.unitId === unit.id);
-      const unitEmployees = employees.filter((employee) => employee.currentEmployeeAssignment?.unitId === unit.id);
-      const parent: OrganizationHierarchyRow<DepartmentTreeRecord> = {
-        id: `unit-${unit.id}`,
-        code: unit.code,
-        name: unit.name,
-        status: "ACTIVE",
-        description: "Nhóm phòng ban theo đơn vị",
-        level: 0,
-        employeeCount: unitEmployees.length,
-        employees: unitEmployees,
-        record: { kind: "unit", unit },
-        meta: `${departments.length} phòng ban`,
-      };
-      const children: OrganizationHierarchyRow<DepartmentTreeRecord>[] = departments.map((department) => ({
-        id: department.id,
-        code: department.code,
-        name: department.name,
-        status: department.status,
-        description: department.note,
-        level: 1,
-        parentId: `unit-${unit.id}`,
-        employeeCount: employees.filter((employee) => employee.currentEmployeeAssignment?.departmentId === department.id).length,
-        employees: employees.filter((employee) => employee.currentEmployeeAssignment?.departmentId === department.id),
-        record: { kind: "department", department },
-        meta: department.unit?.name ?? unit.name,
-        detailFields: [{ label: "Đơn vị", value: department.unit?.name ?? unit.name }],
-      }));
-      return [parent, ...children];
-    });
-  }, [employees, params.unitId, sortedDepartments, unitsSelect.data]);
-
-  function openEditDepartment(record: Department) {
-    setEditing(record);
-    form.setValues({
-      code: record.code,
-      unitId: record.unitId,
-      name: record.name,
-      note: record.note ?? "",
-      status: record.status,
-    });
-    setOpen(true);
-  }
 
   return (
     <>
@@ -351,22 +376,19 @@ export function DepartmentsPage() {
           />
         </SimpleGrid>
 
-        <OrganizationHierarchyList
-          rows={treeRows}
-          employees={employees}
+        <DataTable
+          data={departments}
+          columns={columns}
+          rowKey={(record) => record.id}
+          meta={departmentsMeta}
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}
+          onPageChange={(page, pageSize) =>
+            setParams((current) => ({ ...current, page, pageSize }))
+          }
           emptyTitle="Chưa có phòng ban"
           emptyDescription="Không có phòng ban phù hợp với bộ lọc hiện tại."
-          canEdit={(row) => canEditDepartment && row.record.kind === "department"}
-          canDeactivate={(row) => canEditDepartment && row.record.kind === "department"}
-          onEdit={(row) => {
-            if (row.record.kind === "department") openEditDepartment(row.record.department);
-          }}
-          onDeactivate={(row) => {
-            if (row.record.kind === "department") setConfirmInactive(row.record.department);
-          }}
         />
       </Stack>
 
@@ -441,7 +463,7 @@ export function DepartmentsPage() {
       <ConfirmActionModal
         opened={Boolean(confirmInactive)}
         title="Tạm ngưng phòng ban?"
-        message={`Có ${confirmInactive ? treeRows.find((row) => row.id === confirmInactive.id)?.employeeCount ?? 0 : 0} nhân sự đang gắn với phòng ban này. Phòng ban sẽ được chuyển sang trạng thái tạm ngưng, dữ liệu lịch sử không bị xóa.`}
+        message="Phòng ban sẽ được chuyển sang trạng thái tạm ngưng. Dữ liệu lịch sử không bị xóa."
         confirmLabel="Tạm ngưng"
         loading={inactiveMutation.isPending}
         onClose={() => setConfirmInactive(null)}

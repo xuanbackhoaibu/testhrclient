@@ -34,27 +34,25 @@ export function ImportExportToolbar({
     <Group gap="xs" wrap="wrap" aria-label={title ?? 'Thao tác Excel'}>
       {showTemplate ? (
         <Button
-          size="xs"
-          leftSection={<IconDownload size={14} />}
+          variant="default"
+          leftSection={<IconDownload size={16} />}
           loading={isDownloadingTemplate}
           onClick={() => void onDownloadTemplate?.()}
-          variant="default"
         >
           Tải mẫu Excel
         </Button>
       ) : null}
       {showImport ? (
-        <Button size="xs" leftSection={<IconUpload size={14} />} onClick={onImport} variant="default">
+        <Button variant="default" leftSection={<IconUpload size={16} />} onClick={onImport}>
           Import Excel
         </Button>
       ) : null}
       {showExport ? (
         <Button
-          size="xs"
-          leftSection={<IconFileSpreadsheet size={14} />}
+          variant="default"
+          leftSection={<IconFileSpreadsheet size={16} />}
           loading={isExporting}
           onClick={() => void onExport?.()}
-          variant="default"
         >
           Xuất Excel
         </Button>
