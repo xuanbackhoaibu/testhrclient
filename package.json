@@ -16,7 +16,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ant-design/icons": "^6.1.1",
+    "@fontsource-variable/inter": "^5.3.0",
     "@hacom/chat-shared-types": "file:../chat-shared-types",
     "@mantine/core": "^9.2.1",
     "@mantine/dates": "^9.2.1",
@@ -25,14 +25,12 @@
     "@mantine/notifications": "^9.2.1",
     "@tabler/icons-react": "^3.41.1",
     "@tanstack/react-query": "^5.100.1",
-    "antd": "^6.3.6",
     "axios": "^1.15.2",
     "dayjs": "^1.11.20",
     "docx-preview": "^0.4.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-router-dom": "^7.14.2",
-    "read-excel-file": "^9.1.1",
     "write-excel-file": "^4.0.3",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^4.3.6",

@@ -66,11 +66,9 @@ export function BusinessSectorsPage() {
     null,
   );
   const [open, setOpen] = useState(false);
-  // Lấy toàn bộ lĩnh vực theo bộ lọc, sắp theo mã trên toàn danh sách rồi
-  // phân trang ở client để trang 1 luôn bắt đầu từ mã nhỏ nhất.
-  const { data: allSectors, isLoading, error, refetch } = useAllBusinessSectors({
+  const { data: sectorsResponse, isLoading, error, refetch } = useBusinessSectors({
+    ...params,
     search: params.search || undefined,
-    status: params.status,
   });
   const { data: allUnits = [] } = useAllUnits({});
   const { data: employees = [] } = useAllEmployees({});

@@ -12,7 +12,13 @@ interface ManualSyncModalProps {
   isLoading: boolean;
 }
 
-const MAX_DAYS = 7;
+/**
+ * Trần khoảng ngày một lần đồng bộ. Phải khớp `MAX_MANUAL_SYNC_DAYS` bên
+ * hr-api-service, nếu không nút vẫn bấm được rồi server mới trả lỗi.
+ *
+ * Đủ để kéo lại trọn một kỳ công khi máy chấm công mất dữ liệu vài tuần.
+ */
+const MAX_DAYS = 30;
 
 export function ManualSyncModal({ opened, onClose, onSync, isLoading }: ManualSyncModalProps) {
   const today = dayjs();

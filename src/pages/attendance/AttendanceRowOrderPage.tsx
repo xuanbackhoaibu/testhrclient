@@ -1,0 +1,369 @@
+import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  Alert,
+  Button,
+  Group,
+  Paper,
+  Select,
+  Skeleton,
+  Stack,
+  Text,
+} from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import { IconGripVertical, IconRestore } from "@tabler/icons-react";
+
+import { HR_PERMISSIONS } from "../../features/auth/permissions";
+import { useAuth } from "../../features/auth/useAuth";
+import {
+  useAttendanceRowOrder,
+  useMoveAttendanceRow,
+  useResetAttendanceRowOrder,
+} from "../../features/attendance/useTimesheet";
+import type { AttendanceRowOrderMember } from "../../features/attendance/timesheetTypes";
+import {
+  resolveDropIndex,
+  type DropSide,
+} from "../../features/attendance/rowOrderDrop";
+import { showAttendanceError } from "../../features/attendance/attendanceErrorNotification";
+import { useDepartmentsSelect } from "../../features/organization/useDepartments";
+import { useUnitsSelect } from "../../features/organization/useUnits";
+import { PageHeader } from "../../shared/components/PageHeader";
+import { InfoBanner } from "../../shared/components/InfoBanner";
+import styles from "./AttendanceRowOrderPage.module.css";
+
+export function AttendanceRowOrderPage() {
+  const { can } = useAuth();
+  const canEdit = can(HR_PERMISSIONS.ATTENDANCE_UPDATE);
+
+  const [unitId, setUnitId] = useState<string | null>(null);
+  const [departmentId, setDepartmentId] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<{
+    employeeId: string;
+    side: DropSide;
+  } | null>(null);
+  /*
+   * dragover bắn liên tục khi rê chuột. Giữ chỗ thả gần nhất trong ref và chỉ
+   * setState khi nó thực sự đổi, nếu không mỗi lần rê là một lần render lại
+   * toàn danh sách — đây chính là chỗ hay sinh giật.
+   */
+  const lastDropRef = useRef<string>("");
+
+  const unitsQuery = useUnitsSelect();
+  const departmentsQuery = useDepartmentsSelect(unitId ?? undefined);
+  const orderQuery = useAttendanceRowOrder(departmentId);
+  const moveRow = useMoveAttendanceRow(departmentId);
+  const resetOrder = useResetAttendanceRowOrder(departmentId);
+
+  const unitOptions = useMemo(
+    () =>
+      (unitsQuery.data ?? []).map((unit) => ({
+        value: unit.id,
+        label: `${unit.code} — ${unit.name}`,
+      })),
+    [unitsQuery.data],
+  );
+  const departmentOptions = useMemo(
+    () =>
+      (departmentsQuery.data ?? []).map((department) => ({
+        value: department.id,
+        label: department.code
+          ? `${department.code} — ${department.name}`
+          : department.name,
+      })),
+    [departmentsQuery.data],
+  );
+
+  // Giữ tham chiếu ổn định: nếu tạo mảng mới mỗi render thì useCallback bên
+  // dưới hết tác dụng và mọi dòng bị gắn lại handler sau từng lần rê chuột.
+  const members = useMemo(
+    () => orderQuery.data?.members ?? [],
+    [orderQuery.data?.members],
+  );
+  const sortedCount = members.filter(
+    (member) => member.sortOrder !== null,
+  ).length;
+
+  const clearDragState = useCallback(() => {
+    setDraggingId(null);
+    setDropTarget(null);
+    lastDropRef.current = "";
+  }, []);
+
+  const handleDragOver = useCallback(
+    (event: React.DragEvent<HTMLDivElement>, member: AttendanceRowOrderMember) => {
+      if (!draggingId || draggingId === member.employeeId) return;
+      event.preventDefault();
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const side: DropSide =
+        event.clientY < bounds.top + bounds.height / 2 ? "above" : "below";
+      const next = `${member.employeeId}:${side}`;
+      if (lastDropRef.current === next) return;
+      lastDropRef.current = next;
+      setDropTarget({ employeeId: member.employeeId, side });
+    },
+    [draggingId],
+  );
+
+  const handleDrop = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      const moved = draggingId;
+      const target = dropTarget;
+      clearDragState();
+      if (!moved || !target || moved === target.employeeId) return;
+
+      const toIndex = resolveDropIndex(
+        members.map((m) => m.employeeId),
+        moved,
+        target.employeeId,
+        target.side,
+      );
+      if (toIndex === null) return;
+
+      moveRow.mutate(
+        { employeeId: moved, toIndex },
+        {
+          onError: (error) => {
+            showAttendanceError(
+              error,
+              "Không lưu được thứ tự",
+              "Thứ tự đã được trả về như cũ. Tải lại rồi thử lần nữa.",
+            );
+          },
+        },
+      );
+    },
+    [clearDragState, draggingId, dropTarget, members, moveRow],
+  );
+
+  async function handleReset() {
+    try {
+      await resetOrder.mutateAsync();
+      notifications.show({
+        color: "green",
+        title: "Đã bỏ thứ tự tay",
+        message: "Phòng ban quay lại sắp theo mã chấm công.",
+      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không bỏ được thứ tự",
+        "Tải lại danh sách rồi thử lần nữa.",
+      );
+    }
+  }
+
+  return (
+    <Stack gap="md">
+      <PageHeader
+        title="Thứ tự nhân sự"
+        subtitle="Sắp thứ tự hiển thị trong từng phòng ban. Bảng công tháng, Phân ca và file Excel đều theo thứ tự này."
+      />
+
+      <InfoBanner title="Thứ tự này dùng ở đâu" collapsible>
+        <Text size="sm" inherit>
+          Mặc định bảng công sắp theo <b>mã chấm công</b>. Kéo thả ở đây để đặt
+          thứ tự riêng cho bản in gửi lãnh đạo — ví dụ trưởng phòng đứng trước.
+          Thứ tự <b>dùng chung cho mọi tháng</b>, sắp một lần là xong. Nhân sự
+          mới vào phòng luôn xếp cuối cho tới khi được kéo lên.
+        </Text>
+      </InfoBanner>
+
+      <Paper withBorder p="md" radius="md">
+        <Group align="flex-end" gap="sm" wrap="wrap">
+          <Select
+            label="Đơn vị"
+            placeholder="Chọn đơn vị"
+            data={unitOptions}
+            value={unitId}
+            searchable
+            w={280}
+            onChange={(value) => {
+              setUnitId(value);
+              setDepartmentId(null);
+            }}
+          />
+          <Select
+            label="Phòng ban"
+            placeholder={unitId ? "Chọn phòng ban" : "Chọn đơn vị trước"}
+            data={departmentOptions}
+            value={departmentId}
+            searchable
+            w={320}
+            disabled={!unitId}
+            onChange={setDepartmentId}
+          />
+          {departmentId && sortedCount > 0 && canEdit ? (
+            <Button
+              variant="light"
+              color="gray"
+              leftSection={<IconRestore size={16} />}
+              loading={resetOrder.isPending}
+              onClick={() => void handleReset()}
+            >
+              Bỏ thứ tự tay
+            </Button>
+          ) : null}
+        </Group>
+      </Paper>
+
+      {unitsQuery.isError || departmentsQuery.isError ? (
+        <Alert color="red" variant="light" title="Không tải được phạm vi nhân sự">
+          <Group gap="xs" wrap="wrap">
+            <Text size="sm">Không thể lấy đầy đủ đơn vị hoặc phòng ban để sắp thứ tự.</Text>
+            {unitsQuery.isError ? (
+              <Button
+                size="compact-sm"
+                variant="light"
+                onClick={() => void unitsQuery.refetch()}
+              >
+                Tải lại đơn vị
+              </Button>
+            ) : null}
+            {departmentsQuery.isError ? (
+              <Button
+                size="compact-sm"
+                variant="light"
+                onClick={() => void departmentsQuery.refetch()}
+              >
+                Tải lại phòng ban
+              </Button>
+            ) : null}
+          </Group>
+        </Alert>
+      ) : null}
+
+      {!departmentId ? (
+        <Alert color="blue" variant="light">
+          Chọn đơn vị và phòng ban để bắt đầu sắp thứ tự.
+        </Alert>
+      ) : null}
+
+      {departmentId && orderQuery.isLoading ? (
+        <Paper withBorder p="md" radius="md">
+          <Stack gap="xs">
+            {Array.from({ length: 6 }, (_value, index) => (
+              <Skeleton key={index} h={40} />
+            ))}
+          </Stack>
+        </Paper>
+      ) : null}
+
+      {departmentId && orderQuery.isError ? (
+        <Alert color="red" variant="light" title="Không tải được danh sách">
+          <Stack gap="xs" align="flex-start">
+            <Text size="sm">
+              Không thể lấy thứ tự nhân sự của phòng ban đang chọn.
+            </Text>
+            <Button
+              size="compact-sm"
+              variant="light"
+              onClick={() => void orderQuery.refetch()}
+            >
+              Thử lại
+            </Button>
+          </Stack>
+        </Alert>
+      ) : null}
+
+      {departmentId && orderQuery.data ? (
+        <Paper withBorder p="md" radius="md">
+          <Stack gap="sm">
+            <Group justify="space-between" align="flex-start" wrap="nowrap">
+              <div>
+                <Text size="sm" fw={700}>
+                  {orderQuery.data.department.name}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {orderQuery.data.department.code} · {members.length} nhân sự
+                  {sortedCount > 0 ? ` · ${sortedCount} đã sắp tay` : ""}
+                </Text>
+              </div>
+              {canEdit && members.length > 1 ? (
+                <Text size="xs" c="dimmed" ta="right">
+                  Kéo tay cầm bên trái để đổi chỗ.
+                  <br />
+                  Thứ tự lưu ngay khi thả.
+                </Text>
+              ) : null}
+            </Group>
+
+            {members.length === 0 ? (
+              <Text size="sm" c="dimmed" py="lg" ta="center">
+                Phòng ban này chưa có nhân sự nào.
+              </Text>
+            ) : (
+              <div className={styles.list}>
+                {members.map((member, index) => {
+                  const isDropTarget = dropTarget?.employeeId === member.employeeId;
+                  return (
+                    <div
+                      key={member.employeeId}
+                      className={styles.row}
+                      data-dragging={
+                        draggingId === member.employeeId ? "true" : undefined
+                      }
+                      data-drop={isDropTarget ? dropTarget.side : undefined}
+                      data-unsorted={member.sortOrder === null ? "true" : undefined}
+                      draggable={canEdit}
+                      onDragStart={() => setDraggingId(member.employeeId)}
+                      onDragEnd={clearDragState}
+                      onDragOver={(event) => handleDragOver(event, member)}
+                      onDrop={handleDrop}
+                    >
+                      <button
+                        type="button"
+                        className={styles.handle}
+                        disabled={!canEdit}
+                        aria-label={`Kéo để đổi chỗ ${member.fullName}`}
+                        title="Kéo để đổi chỗ"
+                      >
+                        <IconGripVertical size={16} />
+                      </button>
+                      <span className={styles.position}>{index + 1}</span>
+                      <span className={styles.identity}>
+                        <span className={styles.name} title={member.fullName}>
+                          {member.fullName}
+                        </span>
+                        <span className={styles.meta}>
+                          <span
+                            className={styles.code}
+                            title="Mã chấm công (MCB)"
+                          >
+                            {member.attendanceCode ?? member.employeeCode}
+                          </span>
+                          {member.jobTitle ? (
+                            <>
+                              <span className={styles.metaDivider}>·</span>
+                              <span
+                                className={styles.jobTitle}
+                                title={member.jobTitle}
+                              >
+                                {member.jobTitle}
+                              </span>
+                            </>
+                          ) : null}
+                        </span>
+                      </span>
+                      {member.sortOrder === null ? (
+                        <span className={styles.badge}>Chưa sắp</span>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {sortedCount < members.length ? (
+              <Text size="xs" c="dimmed">
+                Người gắn nhãn <b>Chưa sắp</b> đang xếp theo mã chấm công như
+                mặc định. Kéo họ tới vị trí mong muốn khi cần.
+              </Text>
+            ) : null}
+          </Stack>
+        </Paper>
+      ) : null}
+    </Stack>
+  );
+}

@@ -1,0 +1,87 @@
+.scopeHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+  border-top: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5));
+  border-bottom: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5));
+}
+
+.scopeHeader:first-child {
+  border-top: 0;
+}
+
+.departmentSelect {
+  width: min(100%, 420px);
+  flex: none;
+}
+
+.stage {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(320px, 520px);
+  align-items: center;
+  gap: 20px;
+  padding: 16px;
+  border-bottom: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5));
+}
+
+.stageInfo {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.stepNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 700;
+  color: var(--mantine-color-blue-7);
+  background: var(--mantine-color-blue-0);
+}
+
+.stageControl {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.reviewerSelect {
+  flex: 1;
+  min-width: 0;
+}
+
+.removeButton {
+  flex: none;
+  margin-bottom: 3px;
+}
+
+.empty {
+  padding: 24px 16px;
+  border-bottom: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5));
+}
+
+@media (max-width: 760px) {
+  .scopeHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .departmentSelect {
+    width: 100%;
+  }
+
+  .stage {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}

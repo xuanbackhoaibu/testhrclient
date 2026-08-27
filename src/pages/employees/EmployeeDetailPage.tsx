@@ -394,19 +394,19 @@ export function EmployeeDetailPage() {
       updateEmployeeBioTimeCode(employeeId!, code),
     onSuccess: () => {
       closeBioTimeEdit();
-      setBioTimeInput('');
-      void queryClient.invalidateQueries({ queryKey: ['employee-detail'] });
+      setBioTimeInput("");
+      void queryClient.invalidateQueries({ queryKey: ["employee-detail"] });
       notifications.show({
-        color: 'green',
-        title: 'Đã cập nhật mã chấm công',
-        message: 'Mã chấm công BioTime đã được cập nhật.',
+        color: "green",
+        title: "Đã cập nhật mã chấm công",
+        message: "Mã chấm công BioTime đã được cập nhật.",
       });
     },
     onError: (err) => {
       notifications.show({
-        color: 'red',
-        title: 'Không cập nhật được mã chấm công',
-        message: err instanceof Error ? err.message : 'Lỗi không xác định.',
+        color: "red",
+        title: "Không cập nhật được mã chấm công",
+        message: err instanceof Error ? err.message : "Lỗi không xác định.",
       });
     },
   });

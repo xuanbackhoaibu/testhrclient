@@ -91,6 +91,7 @@ export const MOCK_AUTH_USERS: Record<DemoRole, AuthUser> = {
       'hr.department.read', 'hr.department.create', 'hr.department.update',
       'hr.position.read', 'hr.position.create', 'hr.position.update',
       'hr.business_sector.read', 'hr.business_sector.create', 'hr.business_sector.update',
+      'hr.leave_balance.read', 'hr.leave_balance.export', 'hr.leave_balance.import', 'hr.leave_balance.update',
       'hr.account.read', 'hr.account.create', 'hr.account.update', 'hr.account.lock', 'hr.account.reset_password', 'hr.account.assign_role',
       'auth.user.read', 'auth.user.update_status', 'auth.user.send_activation', 'auth.user.provision', 'auth.user.assign_role',
       'auth.role.read',

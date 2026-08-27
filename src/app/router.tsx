@@ -1,46 +1,193 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { lazy } from "react";
+import { createBrowserRouter } from "react-router-dom";
 
-import { AuthorizationLanding } from '../features/auth/AuthorizationLanding';
-import { ProtectedRoute } from '../features/auth/ProtectedRoute';
-import { AuthLayout } from '../layouts/AuthLayout';
-import { MainLayout } from '../layouts/MainLayout';
-import { AttendancePage } from '../pages/attendance/AttendancePage';
-import { AttendanceMappingPage } from '../pages/attendance/AttendanceMappingPage';
-import { MonthlyTimesheetRosterPage } from '../pages/attendance/MonthlyTimesheetRosterPage';
-import { TimesheetGridPage } from '../pages/attendance/TimesheetGridPage';
-import { TimesheetPeriodsPage } from '../pages/attendance/TimesheetPeriodsPage';
-import { WorkShiftsPage } from '../pages/attendance/WorkShiftsPage';
-import { WeeklyShiftTemplatesPage } from '../pages/attendance/WeeklyShiftTemplatesPage';
-import { HolidaysPage } from '../pages/attendance/HolidaysPage';
-import { ShiftAssignmentsPage } from '../pages/attendance/ShiftAssignmentsPage';
-import { AuditLogsPage } from '../pages/audit/AuditLogsPage';
-import { AuthCallbackPage } from '../pages/AuthCallbackPage';
-import { CalendarPage } from '../pages/calendar/CalendarPage';
-import { ContractsPage } from '../pages/contracts/ContractsPage';
-import { DashboardPage } from '../pages/DashboardPage';
-import { EmployeeDetailPage } from '../pages/employees/EmployeeDetailPage';
-import { EmployeesPage } from '../pages/employees/EmployeesPage';
-import { ImportsPage } from '../pages/imports/ImportsPage';
-import { LeavePage } from '../pages/leave/LeavePage';
-import { LeaveApprovalAssignmentsPage } from '../pages/leave/LeaveApprovalAssignmentsPage';
-import { LoginPage } from '../pages/LoginPage';
-import { MovementsPage } from '../pages/movements/MovementsPage';
-import { OffboardingPage } from '../pages/offboarding/OffboardingPage';
-import { OnboardingPage } from '../pages/onboarding/OnboardingPage';
-import { AccountsPage } from '../pages/accounts/AccountsPage';
-import { PendingHrLinkAccountsPage } from '../pages/accounts/PendingHrLinkAccountsPage';
-import { RolesPage } from '../pages/roles/RolesPage';
-import { PermissionsPage } from '../pages/permissions/PermissionsPage';
-import { PermissionGroupsPage } from '../pages/permission-groups/PermissionGroupsPage';
-import { WorkReportAuthorizationsPage } from '../pages/work-report-authorizations/WorkReportAuthorizationsPage';
-import { BusinessSectorsPage } from '../pages/organization/BusinessSectorsPage';
-import { UnitsPage } from '../pages/organization/UnitsPage';
-import { DepartmentsPage } from '../pages/organization/DepartmentsPage';
-import { PositionsPage } from '../pages/organization/PositionsPage';
-import { ChangePasswordPage } from '../pages/ChangePasswordPage';
-import { RouteErrorPage } from '../pages/RouteErrorPage';
-import { SettingsPage } from '../pages/settings/SettingsPage';
-import { ROUTES } from '../shared/constants/routes';
+import { AuthorizationLanding } from "../features/auth/AuthorizationLanding";
+import { ProtectedRoute } from "../features/auth/ProtectedRoute";
+import { AuthLayout } from "../layouts/AuthLayout";
+import { MainLayout } from "../layouts/MainLayout";
+import { AuthCallbackPage } from "../pages/AuthCallbackPage";
+import { LoginPage } from "../pages/LoginPage";
+import { ChangePasswordPage } from "../pages/ChangePasswordPage";
+import { RouteErrorPage } from "../pages/RouteErrorPage";
+import { ROUTES } from "../shared/constants/routes";
+
+const AttendancePage = lazy(() =>
+  import("../pages/attendance/AttendancePage").then((m) => ({
+    default: m.AttendancePage,
+  })),
+);
+const AttendanceMappingPage = lazy(() =>
+  import("../pages/attendance/AttendanceMappingPage").then((m) => ({
+    default: m.AttendanceMappingPage,
+  })),
+);
+const MonthlyTimesheetRosterPage = lazy(() =>
+  import("../pages/attendance/MonthlyTimesheetRosterPage").then((m) => ({
+    default: m.MonthlyTimesheetRosterPage,
+  })),
+);
+const TimesheetGridPage = lazy(() =>
+  import("../pages/attendance/TimesheetGridPage").then((m) => ({
+    default: m.TimesheetGridPage,
+  })),
+);
+const ApprovalInboxPage = lazy(() =>
+  import("../pages/attendance/ApprovalInboxPage").then((m) => ({
+    default: m.ApprovalInboxPage,
+  })),
+);
+const AttendanceRowOrderPage = lazy(() =>
+  import("../pages/attendance/AttendanceRowOrderPage").then((m) => ({
+    default: m.AttendanceRowOrderPage,
+  })),
+);
+const TimesheetPeriodsPage = lazy(() =>
+  import("../pages/attendance/TimesheetPeriodsPage").then((m) => ({
+    default: m.TimesheetPeriodsPage,
+  })),
+);
+const WorkShiftsPage = lazy(() =>
+  import("../pages/attendance/WorkShiftsPage").then((m) => ({
+    default: m.WorkShiftsPage,
+  })),
+);
+const WeeklyShiftTemplatesPage = lazy(() =>
+  import("../pages/attendance/WeeklyShiftTemplatesPage").then((m) => ({
+    default: m.WeeklyShiftTemplatesPage,
+  })),
+);
+const HolidaysPage = lazy(() =>
+  import("../pages/attendance/HolidaysPage").then((m) => ({
+    default: m.HolidaysPage,
+  })),
+);
+const ShiftAssignmentsPage = lazy(() =>
+  import("../pages/attendance/ShiftAssignmentsPage").then((m) => ({
+    default: m.ShiftAssignmentsPage,
+  })),
+);
+const AuditLogsPage = lazy(() =>
+  import("../pages/audit/AuditLogsPage").then((m) => ({
+    default: m.AuditLogsPage,
+  })),
+);
+const CalendarPage = lazy(() =>
+  import("../pages/calendar/CalendarPage").then((m) => ({
+    default: m.CalendarPage,
+  })),
+);
+const ContractsPage = lazy(() =>
+  import("../pages/contracts/ContractsPage").then((m) => ({
+    default: m.ContractsPage,
+  })),
+);
+const DashboardPage = lazy(() =>
+  import("../pages/DashboardPage").then((m) => ({ default: m.DashboardPage })),
+);
+const EmployeeDetailPage = lazy(() =>
+  import("../pages/employees/EmployeeDetailPage").then((m) => ({
+    default: m.EmployeeDetailPage,
+  })),
+);
+const EmployeesPage = lazy(() =>
+  import("../pages/employees/EmployeesPage").then((m) => ({
+    default: m.EmployeesPage,
+  })),
+);
+const ImportsPage = lazy(() =>
+  import("../pages/imports/ImportsPage").then((m) => ({
+    default: m.ImportsPage,
+  })),
+);
+const LeavePage = lazy(() =>
+  import("../pages/leave/LeavePage").then((m) => ({ default: m.LeavePage })),
+);
+const LeaveApprovalAssignmentsPage = lazy(() =>
+  import("../pages/leave/LeaveApprovalAssignmentsPage").then((m) => ({
+    default: m.LeaveApprovalAssignmentsPage,
+  })),
+);
+const AnnualLeaveBalancesPage = lazy(() =>
+  import("../pages/leave/AnnualLeaveBalancesPage").then((m) => ({
+    default: m.AnnualLeaveBalancesPage,
+  })),
+);
+const MovementsPage = lazy(() =>
+  import("../pages/movements/MovementsPage").then((m) => ({
+    default: m.MovementsPage,
+  })),
+);
+const OffboardingPage = lazy(() =>
+  import("../pages/offboarding/OffboardingPage").then((m) => ({
+    default: m.OffboardingPage,
+  })),
+);
+const OnboardingPage = lazy(() =>
+  import("../pages/onboarding/OnboardingPage").then((m) => ({
+    default: m.OnboardingPage,
+  })),
+);
+const AccountsPage = lazy(() =>
+  import("../pages/accounts/AccountsPage").then((m) => ({
+    default: m.AccountsPage,
+  })),
+);
+const AccountAuthorizationsPage = lazy(() =>
+  import("../pages/account-authorizations/AccountAuthorizationsPage").then(
+    (m) => ({ default: m.AccountAuthorizationsPage }),
+  ),
+);
+const PendingHrLinkAccountsPage = lazy(() =>
+  import("../pages/accounts/PendingHrLinkAccountsPage").then((m) => ({
+    default: m.PendingHrLinkAccountsPage,
+  })),
+);
+const RolesPage = lazy(() =>
+  import("../pages/roles/RolesPage").then((m) => ({ default: m.RolesPage })),
+);
+const PermissionsPage = lazy(() =>
+  import("../pages/permissions/PermissionsPage").then((m) => ({
+    default: m.PermissionsPage,
+  })),
+);
+const PermissionGroupsPage = lazy(() =>
+  import("../pages/permission-groups/PermissionGroupsPage").then((m) => ({
+    default: m.PermissionGroupsPage,
+  })),
+);
+const WorkReportAuthorizationsPage = lazy(() =>
+  import("../pages/work-report-authorizations/WorkReportAuthorizationsPage").then(
+    (m) => ({ default: m.WorkReportAuthorizationsPage }),
+  ),
+);
+const BusinessSectorsPage = lazy(() =>
+  import("../pages/organization/BusinessSectorsPage").then((m) => ({
+    default: m.BusinessSectorsPage,
+  })),
+);
+const UnitsPage = lazy(() =>
+  import("../pages/organization/UnitsPage").then((m) => ({
+    default: m.UnitsPage,
+  })),
+);
+const DepartmentsPage = lazy(() =>
+  import("../pages/organization/DepartmentsPage").then((m) => ({
+    default: m.DepartmentsPage,
+  })),
+);
+const PositionsPage = lazy(() =>
+  import("../pages/organization/PositionsPage").then((m) => ({
+    default: m.PositionsPage,
+  })),
+);
+const SettingsPage = lazy(() =>
+  import("../pages/settings/SettingsPage").then((m) => ({
+    default: m.SettingsPage,
+  })),
+);
+const MyAccessPage = lazy(() =>
+  import("../pages/MyAccessPage").then((m) => ({ default: m.MyAccessPage })),
+);
 
 export const router = createBrowserRouter([
   {
@@ -62,7 +209,14 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <AuthorizationLanding /> },
-      { path: ROUTES.dashboard, element: <ProtectedRoute route={ROUTES.dashboard}><DashboardPage /></ProtectedRoute> },
+      {
+        path: ROUTES.dashboard,
+        element: (
+          <ProtectedRoute route={ROUTES.dashboard}>
+            <DashboardPage />
+          </ProtectedRoute>
+        ),
+      },
       {
         path: ROUTES.employees,
         element: (
@@ -72,7 +226,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/employees/:id',
+        path: "/employees/:id",
         element: (
           <ProtectedRoute route="/employees/:id">
             <EmployeeDetailPage />
@@ -111,10 +265,46 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      { path: ROUTES.movements, element: <ProtectedRoute route={ROUTES.movements}><MovementsPage /></ProtectedRoute> },
-      { path: ROUTES.contracts, element: <ProtectedRoute route={ROUTES.contracts}><ContractsPage /></ProtectedRoute> },
-      { path: ROUTES.leave, element: <ProtectedRoute route={ROUTES.leave}><LeavePage /></ProtectedRoute> },
-      { path: ROUTES.leaveApprovalAssignments, element: <ProtectedRoute route={ROUTES.leaveApprovalAssignments}><LeaveApprovalAssignmentsPage /></ProtectedRoute> },
+      {
+        path: ROUTES.movements,
+        element: (
+          <ProtectedRoute route={ROUTES.movements}>
+            <MovementsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.contracts,
+        element: (
+          <ProtectedRoute route={ROUTES.contracts}>
+            <ContractsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.leave,
+        element: (
+          <ProtectedRoute route={ROUTES.leave}>
+            <LeavePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.leaveApprovalAssignments,
+        element: (
+          <ProtectedRoute route={ROUTES.leaveApprovalAssignments}>
+            <LeaveApprovalAssignmentsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.annualLeaveBalances,
+        element: (
+          <ProtectedRoute route={ROUTES.annualLeaveBalances}>
+            <AnnualLeaveBalancesPage />
+          </ProtectedRoute>
+        ),
+      },
       {
         path: ROUTES.attendance,
         element: (
@@ -156,10 +346,26 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: ROUTES.approvalInbox,
+        element: (
+          <ProtectedRoute route={ROUTES.approvalInbox}>
+            <ApprovalInboxPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: ROUTES.timesheetPeriods,
         element: (
           <ProtectedRoute route={ROUTES.timesheetPeriods}>
             <TimesheetPeriodsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.attendanceRowOrder,
+        element: (
+          <ProtectedRoute route={ROUTES.attendanceRowOrder}>
+            <AttendanceRowOrderPage />
           </ProtectedRoute>
         ),
       },
@@ -195,8 +401,22 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      { path: ROUTES.onboarding, element: <ProtectedRoute route={ROUTES.onboarding}><OnboardingPage /></ProtectedRoute> },
-      { path: ROUTES.offboarding, element: <ProtectedRoute route={ROUTES.offboarding}><OffboardingPage /></ProtectedRoute> },
+      {
+        path: ROUTES.onboarding,
+        element: (
+          <ProtectedRoute route={ROUTES.onboarding}>
+            <OnboardingPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.offboarding,
+        element: (
+          <ProtectedRoute route={ROUTES.offboarding}>
+            <OffboardingPage />
+          </ProtectedRoute>
+        ),
+      },
       {
         path: ROUTES.imports,
         element: (
@@ -226,6 +446,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute route={ROUTES.accounts}>
             <AccountsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.accountAuthorizations,
+        element: (
+          <ProtectedRoute route={ROUTES.accountAuthorizations}>
+            <AccountAuthorizationsPage />
           </ProtectedRoute>
         ),
       },
@@ -261,8 +489,23 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      { path: ROUTES.workReportAuthorizations, element: <ProtectedRoute route={ROUTES.workReportAuthorizations}><WorkReportAuthorizationsPage /></ProtectedRoute> },
-      { path: '*', element: <AuthorizationLanding /> },
+      {
+        path: ROUTES.workReportAuthorizations,
+        element: (
+          <ProtectedRoute route={ROUTES.workReportAuthorizations}>
+            <WorkReportAuthorizationsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: ROUTES.myAccess,
+        element: (
+          <ProtectedRoute route={ROUTES.myAccess}>
+            <MyAccessPage />
+          </ProtectedRoute>
+        ),
+      },
+      { path: "*", element: <AuthorizationLanding /> },
     ],
   },
 ]);

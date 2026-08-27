@@ -41,6 +41,7 @@ import {
   useWeeklyShiftAssignments,
   useWorkShifts,
 } from "../../features/attendance/useWorkSchedule";
+import { showAttendanceError } from "../../features/attendance/attendanceErrorNotification";
 import {
   getWorkShiftCatalogOrder,
   sortWorkShiftCatalog,
@@ -58,6 +59,7 @@ import { HrmDateInput } from "../../shared/components/HrmDateInput";
 import { PageHeader } from "../../shared/components/PageHeader";
 import { SectionCard } from "../../shared/components/SectionCard";
 import { formatDate } from "../../shared/utils/date";
+import { isoMonthEnd, isoMonthStart } from "../../shared/utils/date";
 
 const WEEKDAY_EDITOR_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
 const WEEKDAY_API_ORDER = [0, 1, 2, 3, 4, 5, 6] as const;
@@ -73,14 +75,6 @@ const yearOptions = Array.from({ length: 7 }, (_, index) => {
   const year = now.getFullYear() - 2 + index;
   return { value: String(year), label: String(year) };
 });
-
-function isoMonthStart(year: number, month: number): string {
-  return `${year}-${String(month).padStart(2, "0")}-01`;
-}
-
-function isoMonthEnd(year: number, month: number): string {
-  return new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
-}
 
 function emptyWeekdays(): Record<number, string | null> {
   return Object.fromEntries(
@@ -307,14 +301,11 @@ function WeeklyShiftAssignmentsPanel({
       });
       setCancelling(null);
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Không thể hủy ca tuần",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Kiểm tra Kỳ công, đơn vị và khoảng hiệu lực rồi thử lại.",
-      });
+      showAttendanceError(
+        error,
+        "Không thể hủy ca tuần",
+        "Kiểm tra kỳ công, đơn vị và khoảng hiệu lực rồi thử lại.",
+      );
     }
   }
 
@@ -550,7 +541,6 @@ export function WeeklyShiftTemplatesPage() {
     isoMonthEnd(now.getFullYear(), now.getMonth() + 1),
   );
   const [includeInTimesheet, setIncludeInTimesheet] = useState(true);
-  const [overwriteExisting, setOverwriteExisting] = useState(false);
   const [applyNote, setApplyNote] = useState("");
 
   const templates = templatesQuery.data ?? EMPTY_TEMPLATES;
@@ -675,14 +665,11 @@ export function WeeklyShiftTemplatesPage() {
       setEditorOpened(false);
       setEditingTemplate(null);
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Không lưu được ca tuần",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Kiểm tra tên mẫu, 7 ngày trong tuần và trạng thái kỳ công rồi thử lại.",
-      });
+      showAttendanceError(
+        error,
+        "Không lưu được ca tuần",
+        "Kiểm tra tên mẫu và đủ 7 ngày trong tuần rồi thử lại.",
+      );
     }
   }
 
@@ -690,7 +677,6 @@ export function WeeklyShiftTemplatesPage() {
     setApplyTemplate(template);
     setApplyEmployeeIds([]);
     setIncludeInTimesheet(true);
-    setOverwriteExisting(false);
     setApplyNote("");
   }
 
@@ -741,7 +727,7 @@ export function WeeklyShiftTemplatesPage() {
         effectiveFrom,
         effectiveTo,
         ...(applyNote.trim() ? { note: applyNote.trim() } : {}),
-        ...(overwriteExisting ? { overwriteExisting: true } : {}),
+        overwriteExisting: true,
         ...(includeInTimesheet ? {} : { includeInTimesheet: false }),
       });
       notifications.show({
@@ -753,14 +739,11 @@ export function WeeklyShiftTemplatesPage() {
       setApplyTemplate(null);
       setApplyEmployeeIds([]);
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Chưa thể áp ca tuần",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Kiểm tra kỳ công, khoảng ngày và ca cá nhân chồng lấn rồi thử lại.",
-      });
+      showAttendanceError(
+        error,
+        "Chưa thể áp ca tuần",
+        "Kiểm tra kỳ công và khoảng ngày rồi thử lại.",
+      );
     }
   }
 
@@ -775,14 +758,11 @@ export function WeeklyShiftTemplatesPage() {
       });
       setDeletingTemplate(null);
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Không xóa được ca tuần",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Mẫu đã từng áp dụng được giữ lại để bảo toàn lịch sử phân ca.",
-      });
+      showAttendanceError(
+        error,
+        "Không xóa được ca tuần",
+        "Mẫu đã áp dụng cần được giữ lại để bảo toàn lịch sử phân ca.",
+      );
     }
   }
 
@@ -796,7 +776,7 @@ export function WeeklyShiftTemplatesPage() {
     },
     {
       key: "name",
-      header: "Tên ca tuần",
+      header: "Lịch tuần",
       minWidth: 230,
       render: (template) => (
         <Stack gap={2}>
@@ -892,7 +872,7 @@ export function WeeklyShiftTemplatesPage() {
   return (
     <>
       <PageHeader
-        title="Ca tuần"
+        title="Mẫu lịch tuần"
         subtitle="Tạo mẫu lịch lặp từ Thứ 2 đến Chủ nhật, rồi áp dụng cho một hoặc nhiều CBNV trong đúng Kỳ công và đơn vị đã chọn."
         actions={
           canEdit ? (
@@ -1033,7 +1013,7 @@ export function WeeklyShiftTemplatesPage() {
       >
         <Stack gap="md">
           <TextInput
-            label="Tên ca tuần"
+            label="Lịch tuần"
             placeholder="Ví dụ: Hành chính T2–T6, sáng Thứ 7"
             withAsterisk
             value={editorName}
@@ -1068,7 +1048,20 @@ export function WeeklyShiftTemplatesPage() {
               />
             ))}
           </SimpleGrid>
-          {!activeShifts.length && !shiftsQuery.isLoading ? (
+          {shiftsQuery.isError ? (
+            <Alert color="red" variant="light" title="Không tải được danh mục ca">
+              <Group justify="space-between" align="center" wrap="wrap">
+                <Text size="sm">Không thể cấu hình các ngày cho tới khi tải lại danh mục ca.</Text>
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void shiftsQuery.refetch()}
+                >
+                  Thử lại
+                </Button>
+              </Group>
+            </Alert>
+          ) : !activeShifts.length && !shiftsQuery.isLoading ? (
             <Alert color="yellow" variant="light">
               Chưa có ca làm việc trong ngày đang áp dụng. Tạo ca ở “Ca làm việc” trước khi lập Ca tuần.
             </Alert>
@@ -1151,6 +1144,34 @@ export function WeeklyShiftTemplatesPage() {
               onChange={(value) => setEffectiveTo(value ?? periodEnd)}
             />
           </SimpleGrid>
+          {unitsQuery.isError ? (
+            <Alert color="red" variant="light" title="Không tải được danh sách đơn vị">
+              <Group justify="space-between" align="center" wrap="wrap">
+                <Text size="sm">Tải lại danh sách trước khi áp ca tuần.</Text>
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void unitsQuery.refetch()}
+                >
+                  Thử lại
+                </Button>
+              </Group>
+            </Alert>
+          ) : null}
+          {employeesQuery.isError ? (
+            <Alert color="red" variant="light" title="Không tải được danh sách CBNV">
+              <Group justify="space-between" align="center" wrap="wrap">
+                <Text size="sm">Không thể chọn CBNV của đơn vị đang áp dụng.</Text>
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void employeesQuery.refetch()}
+                >
+                  Thử lại
+                </Button>
+              </Group>
+            </Alert>
+          ) : null}
           <MultiSelect
             label="Nhân sự"
             description={`Đã chọn ${applyEmployeeIds.length} CBNV trong đơn vị.`}
@@ -1169,17 +1190,6 @@ export function WeeklyShiftTemplatesPage() {
             disabled={applyTemplateMutation.isPending}
             onChange={(event) => setIncludeInTimesheet(event.currentTarget.checked)}
           />
-          <Stack gap={2}>
-            <Checkbox
-              label="Ghi đè ca cá nhân trong thời gian áp dụng"
-              checked={overwriteExisting}
-              disabled={applyTemplateMutation.isPending}
-              onChange={(event) => setOverwriteExisting(event.currentTarget.checked)}
-            />
-            <Text size="xs" c="dimmed" pl={26}>
-              Chỉ thay thế ca cá nhân chồng khoảng khi HR chủ động chọn. Ca phòng ban/đơn vị không bị xóa; chỉnh sửa theo đúng một ngày vẫn được giữ lại.
-            </Text>
-          </Stack>
           <Textarea
             label="Ghi chú áp dụng"
             placeholder="Ví dụ: Áp dụng cho tổ trực tháng này"
@@ -1190,7 +1200,7 @@ export function WeeklyShiftTemplatesPage() {
             onChange={(event) => setApplyNote(event.currentTarget.value)}
           />
           <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-            Chỉ áp dụng trong Kỳ công đã chọn. Nếu ca cá nhân chồng khoảng mà chưa chọn ghi đè, hệ thống sẽ báo để HR quyết định; không tự mất lịch sử ngoài phạm vi này.
+            Chỉ áp dụng trong Kỳ công đã chọn. Ca tuần mới thay phần ca cũ chồng khoảng; ngày nằm ngoài phạm vi vẫn được giữ nguyên.
           </Alert>
           <Group justify="flex-end">
             <Button variant="default" onClick={closeApply}>

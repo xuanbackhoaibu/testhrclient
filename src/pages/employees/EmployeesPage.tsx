@@ -22,28 +22,32 @@ import {
   IconEye,
   IconPlus,
   IconUserCheck,
+  IconUnlink,
   IconUsers,
 } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
-import { AUTH_ADMIN_PERMISSIONS, HR_PERMISSIONS } from "../../features/auth/permissions";
+import {
+  AUTH_ADMIN_PERMISSIONS,
+  HR_PERMISSIONS,
+} from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
 import {
   createEmployee,
   getEmployeeById,
   getNextEmployeeCode,
   updateEmployee,
-  updateEmployeeBioTimeCode,
 } from "../../features/employees/employeesApi";
+import { GENDER_OPTIONS } from "../../features/employees/employeeLabels";
 import type {
   Employee,
   EmployeePayload,
 } from "../../features/employees/employeeTypes";
-import type { PaginationMeta } from "../../shared/types/api";
-import { useAllEmployees } from "../../features/employees/useEmployees";
+import { useEmployees } from "../../features/employees/useEmployees";
 import { AccountDetailDrawer } from "../../features/employees/AccountDetailDrawer";
 import { BulkProvisionModal } from "../../features/employees/BulkProvisionModal";
+import { BulkClearBioTimeCodeModal } from "../../features/employees/BulkClearBioTimeCodeModal";
 import { ProvisionAccountModal } from "../../features/employees/ProvisionAccountModal";
 import { DomainExcelImportModal } from "../../features/import-export/DomainExcelImportModal";
 import { PostImportAccountModal } from "../../features/import-export/PostImportAccountModal";
@@ -63,17 +67,16 @@ import { usePositionsSelect } from "../../features/organization/usePositions";
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { ApiError } from "../../shared/api/api.types";
 import { debugPermissionCheck } from "../../shared/debug/hrmDebug";
-import { sortByCode } from "../../shared/utils/sort";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 import { useImeSafeSelectFilter } from "../../shared/hooks/useImeSafeSelectFilter";
 
 const employmentStatusOptions = [
-  { value: "ACTIVE", label: "Đang làm việc" },
-  { value: "PROBATION", label: "Thử việc" },
-  { value: "SUSPENDED", label: "Tạm dừng" },
-  { value: "TERMINATED", label: "Nghỉ việc" },
-  { value: "RESIGNED", label: "Admin" },
-];
+  "ACTIVE",
+  "PROBATION",
+  "SUSPENDED",
+  "TERMINATED",
+  "RESIGNED",
+].map((value) => ({ value, label: STATUS_LABEL_MAP[value] }));
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type EmployeeColumnKey =
@@ -212,7 +215,8 @@ function normalizeEmployeePayload(values: EmployeePayload): EmployeePayload {
     employeeCode: employeeCode || undefined,
     fullName: values.fullName.trim(),
     companyEmail: trimOptional(values.companyEmail).toLowerCase() || undefined,
-    personalEmail: trimOptional(values.personalEmail).toLowerCase() || undefined,
+    personalEmail:
+      trimOptional(values.personalEmail).toLowerCase() || undefined,
     phone: trimOptional(values.phone) || undefined,
     gender: trimOptional(values.gender),
     dateOfBirth: trimOptional(values.dateOfBirth),
@@ -266,9 +270,18 @@ export function EmployeesPage() {
   } | null>(null);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [provisionTarget, setProvisionTarget] = useState<Employee | null>(null);
-  const [accountDetailTarget, setAccountDetailTarget] = useState<Employee | null>(null);
+  const [accountDetailTarget, setAccountDetailTarget] =
+    useState<Employee | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedEmployeesById, setSelectedEmployeesById] = useState<
+    Map<string, Employee>
+  >(new Map());
   const [bulkProvisionOpen, setBulkProvisionOpen] = useState(false);
+  const [bulkClearBioTimeOpen, setBulkClearBioTimeOpen] = useState(false);
+
+  // Tick chọn dòng chỉ có nghĩa khi có ít nhất một thao tác hàng loạt dùng được.
+  const mayBulkSelect = mayProvisionAccounts || mayEditEmployee;
+  const hasSelection = selectedIds.size > 0;
   const [isLoadingNextCode, setIsLoadingNextCode] = useState(false);
   const [nextCodeError, setNextCodeError] = useState<string | null>(null);
   const [suggestedCode, setSuggestedCode] = useState("");
@@ -295,8 +308,12 @@ export function EmployeesPage() {
       departmentId: (value) => (value ? null : "Vui lòng chọn phòng ban."),
       positionId: (value) => (value ? null : "Vui lòng chọn chức danh."),
       phone: (value) =>
-        trimOptional(value) && !/^0[0-9]{9}$/.test(trimOptional(value))
+        trimOptional(value) && !/^0[3-9][0-9]{8}$/.test(trimOptional(value))
           ? "Số điện thoại không đúng định dạng (VD: 0901234567)."
+          : null,
+      citizenId: (value) =>
+        trimOptional(value) && !/^[0-9]{12}$/.test(trimOptional(value))
+          ? "CCCD phải gồm đúng 12 chữ số."
           : null,
       companyEmail: (value) => {
         const companyEmail = trimOptional(value);
@@ -313,10 +330,13 @@ export function EmployeesPage() {
     },
   });
 
-  // Lấy toàn bộ nhân sự theo bộ lọc (gộp mọi trang từ server) để có thể
-  // sắp xếp theo Mã chấm công trên TOÀN danh sách rồi mới phân trang ở client.
-  // Nhờ vậy trang 1 luôn bắt đầu từ mã chấm công nhỏ nhất.
-  const { data: allEmployees, isLoading, error, refetch } = useAllEmployees({
+  const {
+    data: employeesResponse,
+    isLoading,
+    error,
+    refetch,
+  } = useEmployees({
+    ...params,
     employmentStatus: params.employmentStatus,
     unitId: params.unitId,
     departmentId: params.departmentId,
@@ -352,7 +372,8 @@ export function EmployeesPage() {
   }));
 
   const exportMutation = useMutation({
-    mutationFn: () => downloadEmployeesExport({ ...params, search: searchInput }),
+    mutationFn: () =>
+      downloadEmployeesExport({ ...params, search: searchInput }),
     onError: () => {
       notifications.show({
         color: "red",
@@ -566,7 +587,10 @@ export function EmployeesPage() {
       return;
     }
 
-    const normalizedValues = normalizeEmployeePayload(values);
+    const normalizedValues = {
+      ...normalizeEmployeePayload(values),
+      biotimeEmployeeCode: biotimeEmployeeCode.trim() || null,
+    };
     form.setValues(normalizedValues);
     if (
       isLoadingNextCode ||
@@ -590,80 +614,42 @@ export function EmployeesPage() {
       notifications.show({
         color: "red",
         title: "Không tải được danh mục",
-        message: "Vui lòng tải lại đơn vị, phòng ban và chức danh trước khi lưu.",
+        message:
+          "Vui lòng tải lại đơn vị, phòng ban và chức danh trước khi lưu.",
       });
       return;
     }
 
     if (editing) {
-      updateMutation.mutate(normalizedValues, {
-        onSuccess: async () => {
-          // Also update BioTime code separately
-          const newBioTimeCode = biotimeEmployeeCode.trim() || null;
-          if (newBioTimeCode !== (editing.biotimeEmployeeCode ?? null)) {
-            try {
-              await updateEmployeeBioTimeCode(editing.id, newBioTimeCode);
-              notifications.show({
-                color: "green",
-                title: "Đã cập nhật mã chấm công",
-                message: newBioTimeCode
-                  ? `Mã chấm công BioTime đã được cập nhật thành "${newBioTimeCode}".`
-                  : "Đã xóa mã chấm công BioTime.",
-              });
-            } catch {
-              // BioTime code update failed but main update succeeded
-              notifications.show({
-                color: "yellow",
-                title: "Cập nhật nhân sự thành công nhưng chưa cập nhật được mã chấm công",
-                message: "Vui lòng thử cập nhật mã chấm công lại sau.",
-              });
-            }
-          }
-        },
-      });
+      updateMutation.mutate(normalizedValues);
       return;
     }
-    // Trên form tạo, mã chấm công nằm ở state riêng — phải gửi kèm payload,
-    // nếu không giá trị người dùng nhập sẽ bị bỏ im lặng.
-    createMutation.mutate({
-      ...normalizedValues,
-      biotimeEmployeeCode: biotimeEmployeeCode.trim() || null,
+    createMutation.mutate(normalizedValues);
+  }
+
+  const employees = employeesResponse?.items ?? [];
+  const employeeMeta = employeesResponse?.meta;
+  const selectedEmployees = Array.from(selectedEmployeesById.values()).filter(
+    (employee) => selectedIds.has(employee.id),
+  );
+
+  function handleSelectionChange(nextIds: Set<string>) {
+    setSelectedIds(nextIds);
+    setSelectedEmployeesById((current) => {
+      const next = new Map(
+        Array.from(current).filter(([employeeId]) => nextIds.has(employeeId)),
+      );
+      employees.forEach((employee) => {
+        if (nextIds.has(employee.id)) next.set(employee.id, employee);
+      });
+      return next;
     });
   }
 
-  // Sắp xếp nhân sự theo Mã chấm công (BioTime) tăng dần từ 1 tới lớn nhất.
-  // Nhân sự chưa có mã chấm công sẽ dồn xuống cuối danh sách.
-  const sortedEmployees = useMemo(
-    () => sortByCode(allEmployees, (emp) => emp.biotimeEmployeeCode),
-    [allEmployees],
-  );
-
-  // Phân trang ở client trên danh sách đã sắp xếp.
-  const totalCount = sortedEmployees.length;
-  const totalPages = Math.max(1, Math.ceil(totalCount / params.pageSize));
-  const currentPage = Math.min(params.page, totalPages);
-
-  const pagedEmployees = useMemo(() => {
-    const start = (currentPage - 1) * params.pageSize;
-    return sortedEmployees.slice(start, start + params.pageSize);
-  }, [sortedEmployees, currentPage, params.pageSize]);
-
-  const pagedMeta = useMemo<PaginationMeta>(
-    () => ({
-      page: currentPage,
-      pageSize: params.pageSize,
-      total: totalCount,
-      totalPages,
-      hasNextPage: currentPage < totalPages,
-      hasPreviousPage: currentPage > 1,
-    }),
-    [currentPage, params.pageSize, totalCount, totalPages],
-  );
-
-  const selectedEmployees = useMemo(
-    () => sortedEmployees.filter((emp) => selectedIds.has(emp.id)),
-    [sortedEmployees, selectedIds],
-  );
+  function clearSelection() {
+    setSelectedIds(new Set());
+    setSelectedEmployeesById(new Map());
+  }
 
   const visibleColumnSet = useMemo(
     () => new Set<EmployeeColumnKey>(visibleColumnKeys),
@@ -710,16 +696,22 @@ export function EmployeesPage() {
       },
       {
         key: "companyEmail",
-        header: "Email",
+        header: "Email công ty",
         render: (record) => (
           <TruncatedCell value={record.companyEmail} maxWidth={240} />
         ),
       },
       {
         key: "phone",
-        header: "SDT",
+        header: "Số điện thoại",
         width: 130,
         render: (record) => record.phone || "-",
+      },
+      {
+        key: "hireDate",
+        header: "Ngày bắt đầu làm việc",
+        width: 154,
+        render: (record) => formatDate(record.hireDate),
       },
       {
         key: "employmentStatus",
@@ -732,6 +724,13 @@ export function EmployeesPage() {
         header: "TT tài khoản",
         width: 150,
         render: (record) => <AccountStatusBadge record={record} />,
+      },
+      {
+        key: "unit",
+        header: "Đơn vị",
+        render: (record) => (
+          <TruncatedCell value={record.currentEmployeeAssignment?.unitName} />
+        ),
       },
       {
         key: "department",
@@ -968,11 +967,70 @@ export function EmployeesPage() {
           />
         </SimpleGrid>
 
+        {/* Thanh thao tác hàng loạt: đặt sát trên bảng chứ không nhét vào
+            PageHeader. Nhét lên header thì mỗi lần tick/bỏ tick lại chèn thêm
+            nút, đẩy cả hàng nút xuống dòng và làm bảng nhảy vị trí.
+            Giữ chiều cao cố định để lúc ẩn/hiện nội dung phía dưới đứng yên. */}
+        {mayBulkSelect ? (
+          <Paper
+            withBorder
+            radius="md"
+            px="md"
+            py={8}
+            style={{
+              minHeight: 52,
+              visibility: hasSelection ? undefined : "hidden",
+            }}
+            aria-hidden={!hasSelection}
+            inert={!hasSelection}
+          >
+            <Group justify="space-between" gap="sm" wrap="wrap">
+              <Group gap="sm" wrap="nowrap">
+                <Text size="sm" fw={600}>
+                  Đã chọn {selectedIds.size} nhân sự
+                </Text>
+                <Button
+                  size="compact-xs"
+                  variant="subtle"
+                  color="gray"
+                  onClick={clearSelection}
+                >
+                  Bỏ chọn
+                </Button>
+              </Group>
+              <Group gap="xs" wrap="wrap">
+                {mayEditEmployee ? (
+                  <Button
+                    size="xs"
+                    leftSection={<IconUnlink size={16} />}
+                    variant="light"
+                    color="red"
+                    onClick={() => setBulkClearBioTimeOpen(true)}
+                  >
+                    Hủy mã chấm công
+                  </Button>
+                ) : null}
+                {mayProvisionAccounts ? (
+                  <Button
+                    size="xs"
+                    leftSection={<IconUsers size={16} />}
+                    variant="light"
+                    color="teal"
+                    onClick={() => setBulkProvisionOpen(true)}
+                  >
+                    Cấp TK hàng loạt
+                  </Button>
+                ) : null}
+              </Group>
+            </Group>
+          </Paper>
+        ) : null}
+
         <DataTable
-          data={pagedEmployees}
+          data={employees}
           columns={columns}
           rowKey={(record) => record.id}
-          meta={pagedMeta}
+          meta={employeeMeta}
           loading={isLoading}
           error={error}
           onRetry={() => void refetch()}
@@ -980,8 +1038,8 @@ export function EmployeesPage() {
           onPageChange={(page, pageSize) =>
             setParams((current) => ({ ...current, page, pageSize }))
           }
-          selectedIds={mayProvisionAccounts ? selectedIds : undefined}
-          onSelectionChange={mayProvisionAccounts ? setSelectedIds : undefined}
+          selectedIds={mayBulkSelect ? selectedIds : undefined}
+          onSelectionChange={mayBulkSelect ? handleSelectionChange : undefined}
           emptyTitle="Chưa có nhân sự"
           emptyDescription="Không tìm thấy nhân sự phù hợp với bộ lọc hiện tại."
         />
@@ -1007,7 +1065,9 @@ export function EmployeesPage() {
               <TextInput
                 label="Mã nhân sự"
                 description="Hệ thống tự sinh nếu để trống. Nhập để đặt mã thủ công (VD: HN000001)."
-                placeholder={isLoadingNextCode ? "Đang lấy mã gợi ý..." : "HN000001"}
+                placeholder={
+                  isLoadingNextCode ? "Đang lấy mã gợi ý..." : "HN000001"
+                }
                 disabled={isLoadingNextCode}
                 error={form.errors.employeeCode ?? nextCodeError}
                 {...form.getInputProps("employeeCode")}
@@ -1033,11 +1093,7 @@ export function EmployeesPage() {
               label="Email cá nhân"
               {...form.getInputProps("personalEmail")}
             />
-            <TextInput
-              label="Số điện thoại"
-              withAsterisk
-              {...form.getInputProps("phone")}
-            />
+            <TextInput label="Số điện thoại" {...form.getInputProps("phone")} />
             <Select
               label="Giới tính"
               clearable
@@ -1076,7 +1132,6 @@ export function EmployeesPage() {
                 form.setFieldValue("unitId", value ?? "");
                 form.setFieldValue("departmentId", "");
                 if (editing || !value) {
-            
                   setNextCodeError(null);
                   setIsLoadingNextCode(false);
                   return;
@@ -1093,7 +1148,6 @@ export function EmployeesPage() {
                     }
                   })
                   .catch((error) => {
-              
                     setNextCodeError(getApiErrorMessage(error));
                   })
                   .finally(() => {
@@ -1144,12 +1198,27 @@ export function EmployeesPage() {
               }
             />
             <Select
-              label="Trạng thái"
-              withAsterisk
-              data={employmentStatusOptions}
-              {...form.getInputProps("employmentStatus")}
+              label="Giới tính"
+              clearable
+              data={GENDER_OPTIONS}
+              {...form.getInputProps("gender")}
             />
-            <TextInput label="CCCD" {...form.getInputProps("citizenId")} />
+            <HrmDateInput
+              label="Ngày sinh"
+              value={form.values.dateOfBirth || null}
+              onChange={(value) =>
+                form.setFieldValue("dateOfBirth", value ?? "")
+              }
+              error={form.errors.dateOfBirth}
+            />
+            <TextInput label="CCCD/CMND" {...form.getInputProps("citizenId")} />
+            <HrmDateInput
+              label="Ngày bắt đầu làm việc"
+              withAsterisk
+              value={form.values.hireDate || null}
+              onChange={(value) => form.setFieldValue("hireDate", value ?? "")}
+              error={form.errors.hireDate}
+            />
             <Group justify="flex-end" mt="md">
               <Button variant="default" onClick={closeEmployeeDrawer}>
                 Hủy
@@ -1217,8 +1286,23 @@ export function EmployeesPage() {
           opened={bulkProvisionOpen}
           onClose={() => setBulkProvisionOpen(false)}
           onSuccess={() => {
-            setSelectedIds(new Set());
+            clearSelection();
             void queryClient.invalidateQueries({ queryKey: ["employees"] });
+          }}
+        />
+      )}
+
+      {bulkClearBioTimeOpen && (
+        <BulkClearBioTimeCodeModal
+          employees={selectedEmployees}
+          opened={bulkClearBioTimeOpen}
+          onClose={() => setBulkClearBioTimeOpen(false)}
+          onSuccess={() => {
+            clearSelection();
+            void queryClient.invalidateQueries({ queryKey: ["employees"] });
+            void queryClient.invalidateQueries({
+              queryKey: ["employee-detail"],
+            });
           }}
         />
       )}

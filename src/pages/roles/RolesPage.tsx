@@ -450,7 +450,7 @@ export function RolesPage() {
                       <Text size="xs" ff="monospace" c="var(--hacom-primary)">{g.key}</Text>
                     </Stack>
                     {canManage && (
-                      <ActionIcon variant="subtle" color="red" size="sm" loading={removeGroupMutation.isPending}
+                      <ActionIcon variant="subtle" color="red" size="sm" aria-label={`Gỡ nhóm quyền ${g.name ?? ''}`.trim()} loading={removeGroupMutation.isPending}
                         onClick={() => removeGroupMutation.mutate({ roleId: detail.id, groupId: g.id })}>
                         <IconTrash size={14} />
                       </ActionIcon>
@@ -492,7 +492,7 @@ export function RolesPage() {
                       {canReadTechnicalCatalog && <Text size="xs" ff="monospace" c="var(--hacom-primary)">{p.key}</Text>}
                     </Stack>
                     {canManage && (
-                      <ActionIcon variant="subtle" color="red" size="sm" loading={removePermMutation.isPending}
+                      <ActionIcon variant="subtle" color="red" size="sm" aria-label={`Gỡ quyền ${p.key ?? ''}`.trim()} loading={removePermMutation.isPending}
                         onClick={() => removePermMutation.mutate({ roleId: detail.id, permId: p.id })}>
                         <IconTrash size={14} />
                       </ActionIcon>

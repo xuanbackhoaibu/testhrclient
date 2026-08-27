@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { filterSelectOptions } from './filterSelectOptions.ts';
+import { normalizeSearchText } from './normalizeSearchText.ts';
 
 test('filterSelectOptions matches Vietnamese labels without mutating labels or grouped input', () => {
   const options = [
@@ -24,4 +25,9 @@ test('filterSelectOptions preserves grouping and applies a global result limit',
   const filtered = filterSelectOptions({ options, search: 'don vi', limit: 2 });
 
   assert.deepEqual(filtered, [{ group: 'Đơn vị', items: options[0].items }]);
+});
+
+test('normalizeSearchText handles punctuation and formatted phone numbers', () => {
+  assert.equal(normalizeSearchText('Công ty A-B'), 'cong ty a b');
+  assert.equal(normalizeSearchText('090-123 4567'), '0901234567');
 });

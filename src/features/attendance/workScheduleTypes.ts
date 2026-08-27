@@ -152,6 +152,9 @@ export interface ShiftAssignmentGridDay {
     /** Số công của ca: ca 12 giờ 1.5, ca 24 giờ 3. Có thể thiếu nếu API cũ. */
     dayValue?: number;
     standardMinutes?: number;
+    /** Giờ vào/ra của ca — để biết ca có kéo sang hôm sau không. API cũ có thể thiếu. */
+    startTime?: string;
+    endTime?: string;
   } | null;
   /** Có khi nguồn là mẫu Ca tuần áp cho cá nhân. */
   weeklyTemplate?: { id: string; name: string } | null;
@@ -159,6 +162,11 @@ export interface ShiftAssignmentGridDay {
 
 export interface ShiftAssignmentGridRow {
   employeeId: string;
+  /**
+   * Thứ tự HR sắp tay trong phòng ban (màn Thứ tự nhân sự). null = chưa sắp,
+   * dòng đó xuống sau và so theo mã chấm công như mặc định.
+   */
+  rowOrder?: number | null;
   includedInTimesheet: boolean;
   canInclude: boolean;
   eligibilityReason: string | null;
@@ -203,7 +211,30 @@ export interface BulkShiftAssignmentPayload {
    * false để vẫn hỗ trợ trường hợp chỉ lập kế hoạch ca.
    */
   includeInTimesheet?: boolean;
+  /**
+   * Tương thích backend cũ; backend hiện luôn để ca mới thắng phần ca cũ giao
+   * cả ngày lẫn thứ và giữ nguyên phần ngoài phạm vi.
+   */
+  overwriteExisting?: boolean;
   note?: string;
+}
+
+/** Hủy ca cá nhân của nhiều CBNV trong một khoảng ngày; BCC giữ nguyên. */
+export interface BulkCancelShiftAssignmentDaysPayload {
+  month: number;
+  year: number;
+  unitId: string;
+  employeeIds: string[];
+  effectiveFrom: string;
+  effectiveTo: string;
+}
+
+export interface BulkCancelShiftAssignmentDaysResult {
+  cancelled: number;
+  /** Ô không có ca cá nhân để hủy: ngày lễ, ngoài khoảng công, hoặc ca dùng chung. */
+  skipped: number;
+  recomputeRequired: boolean;
+  affected: Array<{ employeeId: string; date: string }>;
 }
 
 export interface BulkShiftAssignmentResult {
@@ -264,7 +295,7 @@ export interface ApplyWeeklyShiftTemplatePayload {
   effectiveFrom: string;
   effectiveTo: string;
   note?: string;
-  /** Mặc định false: không âm thầm ghi đè ca cá nhân hiện hữu. */
+  /** Tương thích backend cũ; ca tuần mới luôn thay phần ca cũ chồng khoảng. */
   overwriteExisting?: boolean;
   /** Mặc định backend là true; chỉ gửi false khi HR chủ động bỏ chọn. */
   includeInTimesheet?: boolean;
@@ -276,7 +307,7 @@ export interface ApplyWeeklyShiftTemplateResult {
   replacedWeeklyAssignments: number;
   /** Số phân ca cá nhân cũ bị thay thế trong đúng khoảng đã chọn. */
   replacedDirectAssignments: number;
-  /** Các chỉnh sửa ca đúng một ngày được giữ nguyên. */
+  /** Trường tương thích ngược; chính sách mới luôn trả 0. */
   preservedDayOverrides: number;
   affected: Array<{
     employeeId: string;
@@ -287,7 +318,6 @@ export interface ApplyWeeklyShiftTemplateResult {
   includedInTimesheet: number;
   recomputeRequired: true;
 }
-
 
 /** Snapshot Ca tuần đã áp cho một CBNV; sửa mẫu sau này không đổi bản ghi này. */
 export interface WeeklyShiftAssignment {

@@ -82,10 +82,16 @@ describe('computeShiftWorkingMinutes', () => {
     ).toBe(450);
   });
 
-  it('trả null khi giờ vào bằng giờ tan ca', () => {
+  it('giờ vào bằng giờ tan là ca 24 giờ, không phải ca rỗng', () => {
+    // VH3 07:30–07:30 và BV6 06:30–06:30 là ca trực ngày đêm có thật trong
+    // danh mục ca. Trả null thì ô "Giờ công chuẩn" không tự điền, HR phải
+    // gõ tay 1440 — dễ nhập sai thành ca 0 phút.
     expect(
-      computeShiftWorkingMinutes({ startTime: '08:00', endTime: '08:00' }),
-    ).toBeNull();
+      computeShiftWorkingMinutes({ startTime: '07:30', endTime: '07:30' }),
+    ).toBe(1440);
+    expect(
+      computeShiftWorkingMinutes({ startTime: '06:30', endTime: '06:30' }),
+    ).toBe(1440);
   });
 
   it('trả null khi giờ chưa nhập đủ hoặc sai định dạng', () => {

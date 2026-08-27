@@ -37,7 +37,6 @@ export function ImportExportToolbar({
           size="xs"
           leftSection={<IconDownload size={14} />}
           loading={isDownloadingTemplate}
-          disabled={isDownloadingTemplate}
           onClick={() => void onDownloadTemplate?.()}
           variant="default"
         >
@@ -54,7 +53,6 @@ export function ImportExportToolbar({
           size="xs"
           leftSection={<IconFileSpreadsheet size={14} />}
           loading={isExporting}
-          disabled={isExporting}
           onClick={() => void onExport?.()}
           variant="default"
         >

@@ -13,11 +13,17 @@ interface NormalizedSearchInputProps extends Omit<TextInputProps, 'onChange' | '
  */
 export function NormalizedSearchInput({ value, onChange, ...props }: NormalizedSearchInputProps) {
   const { inputProps, inputValue, clear } = useImeSafeSearch({ value, onSearch: onChange });
+  const accessibleName =
+    props['aria-label'] ??
+    (typeof props.label === 'string' ? props.label : undefined) ??
+    (typeof props.placeholder === 'string' ? props.placeholder : 'Tìm kiếm');
 
   return (
     <TextInput
       {...props}
       {...inputProps}
+      type={props.type ?? 'search'}
+      aria-label={accessibleName}
       leftSection={<IconSearch size={16} aria-hidden />}
       rightSection={inputValue ? (
         <ActionIcon

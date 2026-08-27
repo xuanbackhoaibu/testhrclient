@@ -41,8 +41,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../../features/auth/useAuth";
 import { validatePasswordPolicy } from "../../features/auth/passwordPolicy";
+import { isSuperAdmin } from "../../features/auth/routePolicies";
 import { AUTH_ADMIN_PERMISSIONS } from "../../features/auth/permissions";
-import { AccountAuthorizationModal } from "../../features/auth-admin/AccountAuthorizationModal";
 import { listAccountManagementRows } from "../../features/auth-admin/accountAuthorizationService";
 import { useAccountAuthorization } from "../../features/auth-admin/useAccountAuthorization";
 import {
@@ -170,7 +170,7 @@ export function AccountsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const { can, hasAnyPermission } = useAuth();
+  const { can, hasAnyPermission, user } = useAuth();
 
   const canReadAccounts = can(AUTH_ADMIN_PERMISSIONS.USERS_READ);
   const canResetPassword = can(AUTH_ADMIN_PERMISSIONS.USERS_UPDATE);
@@ -181,11 +181,7 @@ export function AccountsPage() {
     AUTH_ADMIN_PERMISSIONS.USERS_REVOKE_SESSIONS,
     AUTH_ADMIN_PERMISSIONS.USERS_SEND_ACTIVATION,
   ]);
-  const canAuthorizeAccounts = hasAnyPermission([
-    AUTH_ADMIN_PERMISSIONS.ROLES_ASSIGN,
-    AUTH_ADMIN_PERMISSIONS.PERMISSIONS_ASSIGN,
-    AUTH_ADMIN_PERMISSIONS.PERMISSION_GROUPS_ASSIGN,
-  ]);
+  const canAuthorizeAccounts = isSuperAdmin(user);
 
   const search = searchParams.get("q") ?? "";
   const status = searchParams.get("status") ?? "";
@@ -218,9 +214,6 @@ export function AccountsPage() {
   const [selectedRow, setSelectedRow] = useState<AccountManagementRow | null>(
     null,
   );
-  const [authorizationAccount, setAuthorizationAccount] = useState<
-    AccountManagementRow | null
-  >(null);
 
   const [confirmOpened, { open: openConfirm, close: closeConfirm }] =
     useDisclosure(false);
@@ -508,14 +501,20 @@ export function AccountsPage() {
             </ActionIcon>
           </Tooltip>
 
-          <Tooltip label={disabledTooltip(!canAuthorizeAccounts)}>
+          <Tooltip
+            label={
+              canAuthorizeAccounts
+                ? "Phân quyền tài khoản"
+                : "Chỉ Super Admin mới được phân quyền tài khoản"
+            }
+          >
             <span>
               <ActionIcon
                 variant="subtle"
                 size="sm"
                 disabled={!canAuthorizeAccounts}
                 aria-label="Quản lý phân quyền tài khoản"
-                onClick={() => setAuthorizationAccount(row)}
+                onClick={() => navigate(ROUTES.accountAuthorizations + "?accountId=" + encodeURIComponent(row.account.authUserId))}
               >
                 <IconShield size={15} />
               </ActionIcon>
@@ -1041,13 +1040,19 @@ export function AccountsPage() {
 
             <Group justify="space-between" mt="sm">
               <Text fw={600}>Quyền hiệu lực</Text>
-              <Tooltip label={disabledTooltip(!canAuthorizeAccounts)}>
+              <Tooltip
+                label={
+                  canAuthorizeAccounts
+                    ? "Phân quyền tài khoản"
+                    : "Chỉ Super Admin mới được phân quyền tài khoản"
+                }
+              >
                 <span>
                   <Button
                     size="xs"
                     leftSection={<IconShield size={14} />}
                     disabled={!canAuthorizeAccounts}
-                    onClick={() => setAuthorizationAccount(selectedRow)}
+                    onClick={() => navigate(ROUTES.accountAuthorizations + "?accountId=" + encodeURIComponent(selectedRow.account.authUserId))}
                   >
                     Phân quyền
                   </Button>
@@ -1105,15 +1110,6 @@ export function AccountsPage() {
         ) : null}
       </Drawer>
 
-      <AccountAuthorizationModal
-        accountId={authorizationAccount?.account.authUserId ?? null}
-        employee={authorizationAccount?.employee ?? null}
-        opened={Boolean(authorizationAccount)}
-        onClose={() => setAuthorizationAccount(null)}
-        onUpdated={async () => {
-          await invalidateList();
-        }}
-      />
     </Stack>
   );
 }

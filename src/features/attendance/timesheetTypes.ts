@@ -35,6 +35,12 @@ export interface TimesheetGridDay {
   hasAdjustment: boolean;
   isLocked: boolean;
   source?: string;
+  /** Ca đã dùng để tính ô này; null khi ngày đó không có ca. */
+  shiftCode?: string | null;
+  shiftName?: string | null;
+  /** Giờ vào/ra của ca — để biết ca có kéo sang hôm sau không. API cũ có thể thiếu. */
+  shiftStartTime?: string | null;
+  shiftEndTime?: string | null;
 }
 
 export interface BccSummary {
@@ -59,6 +65,11 @@ export interface TimesheetGridRow {
   fullName: string;
   /** HR bật cho lãnh đạo/nhân sự đặc thù không cần log chấm công. */
   attendanceAutoFullDay: boolean;
+  /**
+   * Thứ tự HR sắp tay trong phòng ban (màn Thứ tự nhân sự). null = chưa sắp,
+   * dòng đó xếp sau và so theo mã chấm công như mặc định.
+   */
+  rowOrder?: number | null;
   departmentId: string | null;
   /** Mã phòng ban tại thời điểm của kỳ công, dùng để nhóm/sắp xếp BCC ổn định. */
   departmentCode?: string | null;
@@ -231,6 +242,38 @@ export interface ReopenTimesheetPeriodPayload {
 }
 
 /**
+ * Chỉ hạn xác nhận sửa được. Tháng/năm và phạm vi là khóa định danh của kỳ:
+ * đổi chúng sẽ kéo các xác nhận đã có sang một kỳ khác, nên phải xóa rồi mở
+ * lại thay vì sửa tại chỗ.
+ */
+/** Một dòng trong màn sắp thứ tự nhân sự của phòng ban. */
+export interface AttendanceRowOrderMember {
+  employeeId: string;
+  fullName: string;
+  employeeCode: string;
+  attendanceCode: string | null;
+  /** Chức danh trong danh mục; dự phòng bằng tên công việc tự nhập. */
+  jobTitle: string | null;
+  /** null = chưa được sắp tay, dòng này xếp sau theo mã chấm công. */
+  sortOrder: number | null;
+}
+
+export interface AttendanceRowOrder {
+  department: { id: string; code: string; name: string };
+  members: AttendanceRowOrderMember[];
+}
+
+export interface MoveAttendanceRowPayload {
+  employeeId: string;
+  /** Vị trí mới tính từ 0. */
+  toIndex: number;
+}
+
+export interface UpdateTimesheetPeriodPayload {
+  confirmDeadline: string;
+}
+
+/**
  * Bảng sắp ca tháng là snapshot lựa chọn nhân sự trước khi mở BCC.
  * Ca thực tế vẫn được cấu hình ở WorkShift/ShiftAssignment.
  */
@@ -319,22 +362,24 @@ export const SYMBOL_OPTIONS: {
 }[] = [
   { code: "+", name: "Làm việc cả ngày", defaultPortion: 1.0 },
   { code: "-", name: "Làm việc nửa ngày", defaultPortion: 0.5 },
-  { code: "P", name: "Nghỉ phép", defaultPortion: 1.0 },
-  { code: "CL", name: "Nghỉ việc riêng có lương", defaultPortion: 1.0 },
-  { code: "KL", name: "Nghỉ không lương", defaultPortion: 0 },
-  { code: "Ô", name: "Nghỉ ốm", defaultPortion: 1.0 },
-  { code: "Cô", name: "Nghỉ con ốm", defaultPortion: 1.0 },
-  { code: "TS", name: "Thai sản", defaultPortion: 1.0 },
-  { code: "TN", name: "Tai nạn lao động", defaultPortion: 1.0 },
-  { code: "NB", name: "Nghỉ bù", defaultPortion: 1.0 },
-  { code: "L", name: "Lễ, tết", defaultPortion: 1.0 },
-  { code: "DL", name: "Du lịch", defaultPortion: 1.0 },
-  { code: "N", name: "Nghỉ ngừng việc", defaultPortion: 0 },
   { code: "CT", name: "Công tác", defaultPortion: 1.0 },
-  { code: "BP", name: "Công tác biệt phái", defaultPortion: 1.0 },
-  { code: "H", name: "Hội họp", defaultPortion: 1.0 },
-  { code: "Lđ", name: "Lao động nghĩa vụ", defaultPortion: 0 },
-  { code: "O", name: "Làm việc online", defaultPortion: 1.0 },
+  { code: "BP", name: "Biệt phái", defaultPortion: 1.0 },
+  { code: "TR", name: "Làm việc vào ngày nghỉ", defaultPortion: 0 },
+  { code: "P", name: "Nghỉ phép cả ngày", defaultPortion: 1.0 },
+  { code: "L1", name: "Nghỉ Lễ cả ngày", defaultPortion: 1.0 },
+  {
+    code: "L2",
+    name: "Nghỉ lễ nửa ngày, nửa ngày làm việc",
+    defaultPortion: 0.5,
+  },
+  { code: "VR", name: "Nghỉ việc riêng có lương cả ngày", defaultPortion: 1.0 },
+  { code: "NB", name: "Nghỉ bù", defaultPortion: 1.0 },
+  { code: "OM", name: "Nghỉ ốm", defaultPortion: 1.0 },
+  { code: "CO", name: "Nghỉ con ốm", defaultPortion: 1.0 },
+  { code: "TS", name: "Nghỉ thai sản", defaultPortion: 1.0 },
+  { code: "NT", name: "Nghỉ tuần", defaultPortion: 0 },
+  { code: "OFF", name: "Nghỉ theo ca", defaultPortion: 0 },
+  { code: "KL", name: "Nghỉ không lương cả ngày", defaultPortion: 0 },
 ];
 
 /** Màu ô theo ký hiệu — bám cách HR đang tô màu trên Excel. */

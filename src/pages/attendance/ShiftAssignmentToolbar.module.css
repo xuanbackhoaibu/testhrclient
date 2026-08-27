@@ -1,0 +1,100 @@
+/*
+ * Thanh thao tác của màn Phân ca trước đây là một Group phẳng chứa cả chọn
+ * người, cấu hình ca lẫn các nút hành động. Khi màn hình hẹp, wrap đẩy "Hủy
+ * ca" và "Mở BCC" xuống hàng riêng, rời khỏi nhóm của chúng, nên HR không còn
+ * đọc ra thứ tự thao tác.
+ *
+ * Bố cục mới bám đúng trình tự HR làm việc: chọn ai → đặt ca gì, từ ngày nào →
+ * bấm làm gì. Ba bước là ba vùng có nhãn, ngăn bằng đường kẻ mảnh; grid lo
+ * khoảng cách nên không có margin lẻ nào chồng nhau.
+ */
+.root {
+  display: grid;
+  gap: 14px;
+}
+
+.steps {
+  display: grid;
+  gap: 14px;
+  /* Đủ rộng thì ba bước nằm ngang; hẹp lại thì xuống dòng nguyên khối, không
+     vỡ vụn từng nút như bố cục cũ. */
+  grid-template-columns: minmax(210px, auto) minmax(360px, 1fr) minmax(240px, auto);
+  align-items: start;
+}
+
+@media (max-width: 1200px) {
+  .steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+.step {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  align-content: start;
+}
+
+/* Bước 2 và 3 có vạch ngăn bên trái để ba nhóm không dính vào nhau. */
+@media (min-width: 1201px) {
+  .step + .step {
+    padding-left: 18px;
+    border-left: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  }
+}
+
+@media (max-width: 1200px) {
+  .step + .step {
+    padding-top: 14px;
+    border-top: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  }
+}
+
+.stepLabel {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
+}
+
+/* Số bước là thông tin thật: thao tác phải làm theo đúng thứ tự này. */
+.stepNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  flex: none;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+  background: light-dark(var(--mantine-color-blue-1), var(--mantine-color-dark-5));
+  color: light-dark(var(--mantine-color-blue-8), var(--mantine-color-blue-2));
+}
+
+/* Các ô nhập của bước 2 nằm chung một hàng, tự xuống dòng khi chật. */
+.fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Hủy ca là hành động phá hủy — tách khỏi cụm nút thường bằng khoảng trắng,
+   không phải bằng màu đỏ đứng sát ngay cạnh nút xác nhận. */
+.destructive {
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px dashed light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+}

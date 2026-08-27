@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
@@ -25,19 +25,20 @@ import {
   IconUsers,
   IconX,
 } from '@tabler/icons-react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 
 import { PageHeader } from '../../shared/components/PageHeader';
 import { ROUTES } from '../../shared/constants/routes';
 import { HR_PERMISSIONS } from '../../features/auth/permissions';
 import { useAuth } from '../../features/auth/useAuth';
+import { getAttendanceMappingSuggestions } from '../../features/attendance/attendanceApi';
+import { showAttendanceError } from '../../features/attendance/attendanceErrorNotification';
 import {
-  getAttendanceMappingStats,
-  getUnmappedAttendance,
-  getAttendanceMappingSuggestions,
-  mapAttendanceEmployee,
-  remapAttendance,
-} from '../../features/attendance/attendanceApi';
+  useAttendanceMappingStats,
+  useMapAttendance,
+  useRemapAttendance,
+  useUnmappedAttendance,
+} from '../../features/attendance/useAttendanceSync';
 import type { MappingStats, UnmappedAttendanceItem } from '../../features/attendance/attendanceTypes';
 import { sortByCode } from '../../shared/utils/sort';
 import { NormalizedSearchInput } from '../../shared/components/NormalizedSearchInput';
@@ -265,7 +266,7 @@ function MapEmployeeModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
 
-  const { data: suggestions, isLoading: loadingSuggestions } = useQuery({
+  const suggestionsQuery = useQuery({
     queryKey: ['attendance-mapping-suggestions', item?.empCode],
     queryFn: () =>
       getAttendanceMappingSuggestions({
@@ -276,17 +277,9 @@ function MapEmployeeModal({
     enabled: Boolean(item),
     staleTime: 30_000,
   });
+  const suggestions = suggestionsQuery.data;
 
-  const mapMutation = useMutation({
-    mutationFn: () => {
-      if (!item || !selectedEmployeeId) {
-        return Promise.reject(new Error('Chưa chọn nhân sự'));
-      }
-      return mapAttendanceEmployee({
-        empCode: item.empCode,
-        employeeId: selectedEmployeeId,
-      });
-    },
+  const mapMutation = useMapAttendance({
     onSuccess: (result) => {
       notifications.show({
         color: 'green',
@@ -296,11 +289,11 @@ function MapEmployeeModal({
       onSuccess();
     },
     onError: (err) => {
-      notifications.show({
-        color: 'red',
-        title: 'Không map được',
-        message: err instanceof Error ? err.message : 'Lỗi không xác định.',
-      });
+      showAttendanceError(
+        err,
+        'Không map được mã chấm công',
+        'Kiểm tra nhân sự đã chọn rồi thử lại.',
+      );
     },
   });
 
@@ -365,7 +358,24 @@ function MapEmployeeModal({
 
           <Text size="sm" fw={500}>Gợi ý nhân sự</Text>
 
-          {loadingSuggestions ? (
+          {suggestionsQuery.isError ? (
+            <Alert
+              color="red"
+              title="Không tải được gợi ý nhân sự"
+              icon={<IconAlertTriangle size={18} />}
+            >
+              <Stack gap="xs" align="flex-start">
+                <Text size="sm">Kiểm tra kết nối rồi tải lại danh sách gợi ý.</Text>
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void suggestionsQuery.refetch()}
+                >
+                  Thử lại
+                </Button>
+              </Stack>
+            </Alert>
+          ) : suggestionsQuery.isLoading ? (
             <Text size="sm" c="dimmed">Đang tìm gợi ý...</Text>
           ) : filteredSuggestions.length === 0 ? (
             <Text size="sm" c="dimmed">Không có gợi ý phù hợp.</Text>
@@ -435,7 +445,10 @@ function MapEmployeeModal({
               leftSection={<IconLink size={16} />}
               disabled={!selectedEmployeeId}
               loading={mapMutation.isPending}
-              onClick={() => mapMutation.mutate()}
+              onClick={() => {
+                if (!item || !selectedEmployeeId) return;
+                mapMutation.mutate({ empCode: item.empCode, employeeId: selectedEmployeeId });
+              }}
             >
               Map nhân sự
             </Button>
@@ -460,13 +473,7 @@ function RemapModal({
   const [fromDate, setFromDate] = useState<string | ''>('');
   const [toDate, setToDate] = useState<string | ''>('');
 
-  const remapMutation = useMutation({
-    mutationFn: () =>
-      remapAttendance(
-        fromDate && toDate
-          ? { fromDate, toDate }
-          : undefined,
-      ),
+  const remapMutation = useRemapAttendance({
     onSuccess: (result) => {
       notifications.show({
         color: 'green',
@@ -476,11 +483,11 @@ function RemapModal({
       onSuccess();
     },
     onError: (err) => {
-      notifications.show({
-        color: 'red',
-        title: 'Lỗi remap',
-        message: err instanceof Error ? err.message : 'Lỗi không xác định.',
-      });
+      showAttendanceError(
+        err,
+        'Không chạy lại được mapping',
+        'Kiểm tra khoảng ngày và kết nối rồi thử lại.',
+      );
     },
   });
 
@@ -526,7 +533,9 @@ function RemapModal({
             color="teal"
             leftSection={<IconRefresh size={16} />}
             loading={remapMutation.isPending}
-            onClick={() => remapMutation.mutate()}
+            onClick={() =>
+              remapMutation.mutate(fromDate && toDate ? { fromDate, toDate } : undefined)
+            }
           >
             Chạy remap
           </Button>
@@ -546,26 +555,23 @@ export function AttendanceMappingPage() {
   const [mapTarget, setMapTarget] = useState<UnmappedAttendanceItem | null>(null);
   const [remapOpened, { open: openRemap, close: closeRemap }] = useDisclosure(false);
 
-  const { data: stats, isLoading: loadingStats } = useQuery({
-    queryKey: ['attendance-mapping-stats'],
-    queryFn: getAttendanceMappingStats,
-    staleTime: 30_000,
-  });
+  const statsQuery = useAttendanceMappingStats();
+  const stats = statsQuery.data;
 
-  const { data: unmapped, isLoading: loadingUnmapped } = useQuery({
-    queryKey: ['attendance-mapping', page, search],
-    queryFn: () =>
-      getUnmappedAttendance({
-        page,
-        pageSize: PAGE_SIZE,
-        search: search || undefined,
-      }),
-    staleTime: 30_000,
-    select: (result) => ({
-      ...result,
-      items: sortByCode(result.items, (item) => item.empCode),
-    }),
+  const unmappedQuery = useUnmappedAttendance({
+    page,
+    search,
   });
+  const unmappedRaw = unmappedQuery.data;
+  // Hook dùng chung nên sắp xếp theo mã chấm công ở phía màn hình này.
+  const unmapped = useMemo(
+    () =>
+      unmappedRaw && {
+        ...unmappedRaw,
+        items: sortByCode(unmappedRaw.items, (item) => item.empCode),
+      },
+    [unmappedRaw],
+  );
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
@@ -583,9 +589,9 @@ export function AttendanceMappingPage() {
   return (
     <>
       <PageHeader
-        title="Xử lý mapping chấm công"
+        title="Đối soát dữ liệu chấm công"
         subtitle="Map dữ liệu chấm công BioTime với nhân sự HRM"
-        breadcrumbs={['Chấm công', 'Xử lý mapping']}
+        breadcrumbs={['Chấm công', 'Máy chấm công', 'Đối soát dữ liệu']}
         actions={
           <>
             <Button
@@ -611,19 +617,59 @@ export function AttendanceMappingPage() {
       />
 
       <Stack gap="md">
-        <MappingStatsSection stats={stats} isLoading={loadingStats} />
+        {statsQuery.isError ? (
+          <Alert
+            color="red"
+            title="Không tải được số liệu mapping"
+            icon={<IconAlertTriangle size={18} />}
+          >
+            <Stack gap="xs" align="flex-start">
+              <Text size="sm">Không thể lấy số bản ghi đã map, chưa map và trùng mã.</Text>
+              <Button
+                size="compact-sm"
+                variant="light"
+                onClick={() => void statsQuery.refetch()}
+              >
+                Thử lại
+              </Button>
+            </Stack>
+          </Alert>
+        ) : (
+          <MappingStatsSection stats={stats} isLoading={statsQuery.isLoading} />
+        )}
 
-        <UnmappedTable
-          items={unmapped?.items ?? []}
-          total={unmapped?.total ?? 0}
-          page={page}
-          pageSize={PAGE_SIZE}
-          search={search}
-          isLoading={loadingUnmapped}
-          onPageChange={setPage}
-          onSearchChange={handleSearchChange}
-          onMap={setMapTarget}
-        />
+        {unmappedQuery.isError ? (
+          <Alert
+            color="red"
+            title="Không tải được bản ghi chưa map"
+            icon={<IconAlertTriangle size={18} />}
+          >
+            <Stack gap="xs" align="flex-start">
+              <Text size="sm">
+                Không thể lấy danh sách cần đối soát. Dữ liệu cũ không được dùng thay thế.
+              </Text>
+              <Button
+                size="compact-sm"
+                variant="light"
+                onClick={() => void unmappedQuery.refetch()}
+              >
+                Thử lại
+              </Button>
+            </Stack>
+          </Alert>
+        ) : (
+          <UnmappedTable
+            items={unmapped?.items ?? []}
+            total={unmapped?.total ?? 0}
+            page={page}
+            pageSize={PAGE_SIZE}
+            search={search}
+            isLoading={unmappedQuery.isLoading}
+            onPageChange={setPage}
+            onSearchChange={handleSearchChange}
+            onMap={setMapTarget}
+          />
+        )}
       </Stack>
 
       <MapEmployeeModal

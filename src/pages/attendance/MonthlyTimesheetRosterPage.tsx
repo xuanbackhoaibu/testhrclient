@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  Alert,
   Badge,
   Button,
   Checkbox,
@@ -27,6 +28,7 @@ import {
   useMonthlyTimesheetRoster,
   useUpdateMonthlyTimesheetRosterMembers,
 } from "../../features/attendance/useTimesheet";
+import { showAttendanceError } from "../../features/attendance/attendanceErrorNotification";
 import type {
   MonthlyTimesheetRosterQuery,
   MonthlyTimesheetRosterRow,
@@ -37,6 +39,7 @@ import {
   DataTable,
   type DataTableColumn,
 } from "../../shared/components/DataTable";
+import type { PaginationMeta } from "../../shared/types/api";
 import { HrmDateInput } from "../../shared/components/HrmDateInput";
 import { PageHeader } from "../../shared/components/PageHeader";
 import { InfoBanner } from "../../shared/components/InfoBanner";
@@ -130,6 +133,7 @@ export function MonthlyTimesheetRosterPage() {
   );
   const [departmentId, setDepartmentId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [pagination, setPagination] = useState({ page: 1, pageSize: 10 });
   const [draftState, setDraftState] = useState<{
     key: string;
     values: Record<string, RosterDraft>;
@@ -163,7 +167,10 @@ export function MonthlyTimesheetRosterPage() {
   );
 
   const searchInput = useImeSafeSearch({
-    onSearch: (value) => setSearch(value.trim()),
+    onSearch: (value) => {
+      setSearch(value.trim());
+      setPagination((current) => ({ ...current, page: 1 }));
+    },
   });
   const query = useMemo<MonthlyTimesheetRosterQuery | null>(
     () =>
@@ -220,6 +227,26 @@ export function MonthlyTimesheetRosterPage() {
     0,
   );
   const hasChanges = Object.keys(draftOverrides).length > 0;
+
+  // Phân trang ở client: giữ bộ lọc và thanh thao tác luôn nằm trong tầm nhìn
+  // thay vì phải cuộn qua toàn bộ danh sách CBNV của đơn vị.
+  const totalPages = Math.max(1, Math.ceil(rows.length / pagination.pageSize));
+  const currentPage = Math.min(pagination.page, totalPages);
+  const pagedRows = useMemo(() => {
+    const start = (currentPage - 1) * pagination.pageSize;
+    return rows.slice(start, start + pagination.pageSize);
+  }, [currentPage, pagination.pageSize, rows]);
+  const pagedMeta = useMemo<PaginationMeta>(
+    () => ({
+      page: currentPage,
+      pageSize: pagination.pageSize,
+      total: rows.length,
+      totalPages,
+      hasNextPage: currentPage < totalPages,
+      hasPreviousPage: currentPage > 1,
+    }),
+    [currentPage, pagination.pageSize, rows.length, totalPages],
+  );
 
   const updateDraft = useCallback(
     (employeeId: string, patch: Partial<RosterDraft>) => {
@@ -285,14 +312,11 @@ export function MonthlyTimesheetRosterPage() {
         message: "Chọn các CBNV đủ điều kiện rồi lưu để đưa vào BCC.",
       });
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Không khởi tạo được bảng sắp ca",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Vui lòng kiểm tra đơn vị và thử lại.",
-      });
+      showAttendanceError(
+        error,
+        "Không khởi tạo được bảng sắp ca",
+        "Kiểm tra đơn vị rồi thử lại.",
+      );
     }
   }
 
@@ -323,14 +347,11 @@ export function MonthlyTimesheetRosterPage() {
         message: "Bảng công tháng sẽ dùng các CBNV đã chọn trong đơn vị này.",
       });
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Không lưu được danh sách BCC",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Kiểm tra ngày tính công và quyền thao tác rồi thử lại.",
-      });
+      showAttendanceError(
+        error,
+        "Không lưu được danh sách BCC",
+        "Kiểm tra ngày tính công rồi thử lại.",
+      );
     }
   }
 
@@ -533,7 +554,10 @@ export function MonthlyTimesheetRosterPage() {
             data={monthOptions}
             value={String(month)}
             allowDeselect={false}
-            onChange={(value) => setMonth(Number(value ?? month))}
+            onChange={(value) => {
+              setMonth(Number(value ?? month));
+              setPagination((current) => ({ ...current, page: 1 }));
+            }}
             size="sm"
             className={filterStyles.field}
           />
@@ -542,7 +566,10 @@ export function MonthlyTimesheetRosterPage() {
             data={yearOptions}
             value={String(year)}
             allowDeselect={false}
-            onChange={(value) => setYear(Number(value ?? year))}
+            onChange={(value) => {
+              setYear(Number(value ?? year));
+              setPagination((current) => ({ ...current, page: 1 }));
+            }}
             size="sm"
             className={filterStyles.field}
           />
@@ -556,6 +583,7 @@ export function MonthlyTimesheetRosterPage() {
             onChange={(value) => {
               setRequestedUnitId(value);
               setDepartmentId(null);
+              setPagination((current) => ({ ...current, page: 1 }));
             }}
             size="sm"
             className={filterStyles.fieldWide}
@@ -568,7 +596,10 @@ export function MonthlyTimesheetRosterPage() {
             clearable
             searchable
             disabled={!selectedUnitId || departmentsQuery.isLoading}
-            onChange={setDepartmentId}
+            onChange={(value) => {
+              setDepartmentId(value);
+              setPagination((current) => ({ ...current, page: 1 }));
+            }}
             size="sm"
             className={filterStyles.fieldWide}
           />
@@ -581,6 +612,32 @@ export function MonthlyTimesheetRosterPage() {
             className={filterStyles.grow}
           />
         </FilterBar>
+
+        {unitsQuery.isError || departmentsQuery.isError ? (
+          <Alert color="red" variant="light" title="Không tải được phạm vi nhân sự">
+            <Group gap="xs" wrap="wrap">
+              <Text size="sm">Không thể lấy đầy đủ đơn vị hoặc phòng ban để lập danh sách BCC.</Text>
+              {unitsQuery.isError ? (
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void unitsQuery.refetch()}
+                >
+                  Tải lại đơn vị
+                </Button>
+              ) : null}
+              {departmentsQuery.isError ? (
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void departmentsQuery.refetch()}
+                >
+                  Tải lại phòng ban
+                </Button>
+              ) : null}
+            </Group>
+          </Alert>
+        ) : null}
 
         {!selectedUnitId ? (
           <InfoBanner>
@@ -654,9 +711,11 @@ export function MonthlyTimesheetRosterPage() {
 
         {selectedUnitId ? (
           <DataTable
-            data={rows}
+            data={pagedRows}
             columns={columns}
             rowKey={(row) => row.employeeId}
+            meta={pagedMeta}
+            onPageChange={(page, pageSize) => setPagination({ page, pageSize })}
             loading={rosterQuery.isLoading}
             error={rosterQuery.error}
             onRetry={() => void rosterQuery.refetch()}

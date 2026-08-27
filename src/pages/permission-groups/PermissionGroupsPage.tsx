@@ -384,6 +384,7 @@ export function PermissionGroupsPage() {
                       variant="subtle"
                       color="red"
                       size="sm"
+                      aria-label={`Gỡ quyền ${perm.key ?? ''}`.trim()}
                       loading={removePermMutation.isPending}
                       onClick={() => removePermMutation.mutate({ groupId: detail.id, permissionId: perm.id })}
                     >

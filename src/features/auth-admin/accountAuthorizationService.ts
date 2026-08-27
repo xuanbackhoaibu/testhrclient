@@ -57,6 +57,7 @@ function toRole(
     id: string;
     code: string;
     name: string;
+    description?: string;
     system: string;
     isSensitive: boolean;
     permissions?: Permission[];
@@ -171,6 +172,7 @@ async function buildEffectivePermissionsWithSources(
     | 'directPermissions'
     | 'directOverrides'
     | 'effectivePermissions'
+    | 'scopes'
     | 'roleCatalog'
     | 'permissionGroupCatalog'
     | 'permissionCatalog'
@@ -242,6 +244,7 @@ async function buildEffectivePermissionsWithSources(
     id: group.id,
     code: group.key,
     name: group.name,
+    description: group.description ?? undefined,
     system: group.system ?? 'unknown',
     isSensitive: group.isSensitive === true,
   }));
@@ -266,11 +269,13 @@ async function buildEffectivePermissionsWithSources(
     directPermissions,
     directOverrides: effective.directOverrides,
     effectivePermissions,
+    scopes: effective.scopes,
     roleCatalog: roleCatalog.map((role) => toRole(role)),
     permissionGroupCatalog: permissionGroupCatalog.map((group) => ({
       id: group.id,
       code: group.key,
       name: group.name,
+      description: group.description ?? undefined,
       system: group.system ?? 'unknown',
       isSensitive: group.isSensitive === true,
     })),
@@ -333,6 +338,7 @@ export async function getAccountAuthorizationDetail(
     directPermissions: authz.directPermissions,
     directOverrides: authz.directOverrides,
     effectivePermissions: authz.effectivePermissions,
+    scopes: authz.scopes,
     roleCatalog: authz.roleCatalog,
     permissionGroupCatalog: authz.permissionGroupCatalog,
     permissionCatalog: authz.permissionCatalog,

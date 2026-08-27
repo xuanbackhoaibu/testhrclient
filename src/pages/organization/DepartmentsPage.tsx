@@ -76,12 +76,9 @@ export function DepartmentsPage() {
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
-  // Lấy toàn bộ phòng ban theo bộ lọc, sắp theo mã trên toàn danh sách rồi
-  // phân trang ở client để trang 1 luôn bắt đầu từ mã nhỏ nhất.
-  const { data: allDepartments, isLoading, error, refetch } = useAllDepartments({
+  const { data: departmentsResponse, isLoading, error, refetch } = useDepartments({
+    ...params,
     search: params.search || undefined,
-    unitId: params.unitId,
-    status: params.status,
   });
   const unitsSelect = useUnitsSelect();
   const { data: employees = [] } = useAllEmployees({});

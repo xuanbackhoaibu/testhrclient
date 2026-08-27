@@ -185,7 +185,7 @@ export function DataTable<T>({
 
       {meta && onPageChange ? (
         <Group justify="space-between" gap="sm" px="md" py="sm" className="data-table-footer">
-          <Text size="sm" c="dimmed">
+          <Text size="sm" c="dimmed" role="status" aria-live="polite" aria-atomic="true">
             {meta.total} bản ghi
           </Text>
           <Group gap="xs" className="data-table-pagination-controls">

@@ -4,6 +4,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { ROUTES } from '../../shared/constants/routes';
 import { AuthStatePage } from '../../shared/components/AuthStatePage';
 import { LoadingState } from '../../shared/components/LoadingState';
+import { StatusResult } from '../../shared/components/StatusResult';
 import { useAuth } from './useAuth';
 import { getRoutePolicy, isSuperAdmin } from './routePolicies';
 
@@ -64,6 +65,16 @@ export function ProtectedRoute({
         variant="404"
         title="Dashboard chưa được mở cho tài khoản này"
         description="Không tìm thấy màn hình dashboard phù hợp với quyền hiện tại. Hệ thống chỉ hiển thị các module đã được cấp quyền."
+      />
+    );
+  }
+
+  if (route === ROUTES.accountAuthorizations && !isSuperAdmin(user)) {
+    return (
+      <StatusResult
+        status="403"
+        title="Chỉ Super Admin được phân quyền tài khoản"
+        subTitle="Tài khoản hiện tại có thể xem dữ liệu được cấp, nhưng không thể thay đổi vai trò hoặc quyền của người khác."
       />
     );
   }

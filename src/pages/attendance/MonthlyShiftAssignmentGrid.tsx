@@ -1,4 +1,11 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
@@ -23,6 +30,7 @@ import {
   IconCalendarTime,
   IconExternalLink,
   IconRefresh,
+  IconTrash,
   IconSearch,
   IconUserCheck,
   IconUsers,
@@ -30,6 +38,7 @@ import {
 } from "@tabler/icons-react";
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
+import { showAttendanceError } from "../../features/attendance/attendanceErrorNotification";
 import {
   ALL_ASSIGNMENT_WEEKDAYS,
   canOpenShiftAssignmentGridPicker,
@@ -42,15 +51,23 @@ import {
   weekdayForShiftAssignmentDate,
 } from "../../features/attendance/shiftAssignmentWeekdays";
 import { useAuth } from "../../features/auth/useAuth";
+import { ShiftPickerTable } from "./ShiftPickerTable";
+import { ConfirmActionModal } from "../../shared/components/ConfirmActionModal";
+import {
+  moveItem,
+  readWorkShiftUserOrder,
+  sortWorkShiftsByUserOrder,
+  writeWorkShiftUserOrder,
+} from "../../features/attendance/workShiftUserOrder";
 import {
   getWorkShiftCatalogOrder,
   sortWorkShiftCatalog,
 } from "../../features/attendance/workShiftCatalogOrder";
 import {
   directCellShiftDisabledReason,
-  formatShiftHoursAndWorkday,
 } from "../../features/attendance/shiftAssignmentEligibility";
 import {
+  countRosterMismatch,
   sumAssignmentTotals,
   summarizeAssignedPerDay,
   summarizeAssignmentRow,
@@ -58,6 +75,7 @@ import {
 } from "../../features/attendance/shiftAssignmentTotals";
 import {
   useBulkAssignShifts,
+  useBulkCancelShiftAssignmentDays,
   useCancelShiftAssignmentDay,
   useIncludeShiftAssignmentRowsInTimesheet,
   useReplaceShiftAssignmentDay,
@@ -82,10 +100,24 @@ import { formatDate } from "../../shared/utils/date";
 import { includesNormalizedSearch } from "../../shared/utils/normalizeSearchText";
 import { NormalizedSearchInput } from "../../shared/components/NormalizedSearchInput";
 import { WeekdayScopeField } from "./components/WeekdayScopeField";
+import {
+  isOvernightShiftTime,
+  overnightTailShiftCode,
+  shiftSpanDays,
+} from "../../features/attendance/shiftTime";
+import {
+  allSelectableEmployeeIds,
+  hasSelectedAllFiltered,
+  selectableEmployeeRows,
+} from "../../features/attendance/shiftAssignmentSelection";
+import { compareRowOrder } from "../../features/attendance/rowOrderCompare";
+import { makeDayMeta, type DayMeta } from "../../features/attendance/dayMeta";
+import { isoMonthEnd, isoMonthStart } from "../../shared/utils/date";
+import toolbarStyles from "./ShiftAssignmentToolbar.module.css";
 
 const now = new Date();
-const weekdayLabels = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-const dayColumnWidth = 48;
+// Ô phân ca chứa mã ca (HC2, BV5) nên rộng hơn ô bảng công một chút.
+const dayColumnWidth = 40;
 const rowsPerPageOptions = [20, 50, 100].map((value) => ({
   value: String(value),
   label: `${value}/trang`,
@@ -98,11 +130,12 @@ const yearOptions = Array.from({ length: 7 }, (_, index) => {
   const year = now.getFullYear() - 2 + index;
   return { value: String(year), label: String(year) };
 });
+// `left` là tổng bề rộng các cột đứng trước — sửa width phải sửa cả left.
 const fixedColumns = [
-  { key: "select", label: "", left: 0, width: 48 },
-  { key: "number", label: "TT", left: 48, width: 42 },
-  { key: "name", label: "Họ và tên", left: 90, width: 210 },
-  { key: "code", label: "MCB", left: 300, width: 104 },
+  { key: "select", label: "", left: 0, width: 34 },
+  { key: "number", label: "TT", left: 34, width: 32 },
+  { key: "name", label: "Họ và tên", left: 66, width: 160 },
+  { key: "code", label: "MCB", left: 226, width: 62 },
 ] as const;
 const fixedColumnsWidth =
   fixedColumns[fixedColumns.length - 1].left +
@@ -149,12 +182,6 @@ function formatWorkdayValue(value: number): string {
 const EMPTY_ROWS: ShiftAssignmentGridRow[] = [];
 const EMPTY_SELECTION = new Set<string>();
 
-interface DayMeta {
-  day: number;
-  label: string;
-  isSunday: boolean;
-}
-
 interface PreparedRow {
   row: ShiftAssignmentGridRow;
   daysByNumber: Map<number, ShiftAssignmentGridDay>;
@@ -177,21 +204,7 @@ interface CellShiftPicker {
 }
 
 export interface MonthlyShiftAssignmentGridProps {
-  onOpenRules: () => void;
   requestedShiftId?: string | null;
-}
-
-function isoMonthStart(year: number, month: number): string {
-  return `${year}-${String(month).padStart(2, "0")}-01`;
-}
-
-function isoMonthEnd(year: number, month: number): string {
-  return new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
-}
-
-function makeDayMeta(year: number, month: number, day: number): DayMeta {
-  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-  return { day, label: weekdayLabels[weekday], isSunday: weekday === 0 };
 }
 
 function fixedStyle(left: number, width: number, header = false) {
@@ -231,13 +244,13 @@ function groupLabel(row: ShiftAssignmentGridRow): string {
   );
 }
 
+/*
+ * Dùng chung quy tắc với Bảng công tháng và file Excel: thứ tự HR sắp tay
+ * trước, rồi mới tới mã chấm công. Trước đây màn này so sánh riêng nên khi
+ * thêm thứ tự sắp tay đã bị bỏ sót, hai màn xếp khác nhau cho cùng phòng ban.
+ */
 function compareRows(left: PreparedRow, right: PreparedRow): number {
-  const leftCode = left.row.attendanceCode ?? left.row.employeeCode;
-  const rightCode = right.row.attendanceCode ?? right.row.employeeCode;
-  return leftCode.localeCompare(rightCode, "vi", {
-    numeric: true,
-    sensitivity: "base",
-  });
+  return compareRowOrder(left.row, right.row);
 }
 
 function lifecycleText(row: ShiftAssignmentGridRow): string | null {
@@ -271,13 +284,56 @@ function sourceLabel(source: string): string {
   }
 }
 
-function cellVisual(day: ShiftAssignmentGridDay, meta: DayMeta) {
+/**
+ * Mã ca của ô, không kèm ký hiệu phụ.
+ *
+ * Ca đêm (BV5 18:30–06:30) và ca 24 giờ (VH3 07:30–07:30) trước đây hiện
+ * `BV5→`: mũi tên nói ca còn kéo dài nhưng ô hôm sau vẫn trống, HR đọc theo
+ * cột ngày phải tự suy ra ô nào đã bị ca chiếm. Nay ngày đuôi hiện chính mã
+ * ca đó (xem `tailCellVisual`) nên mũi tên không còn cần thiết.
+ */
+function shiftCellLabel(shift: ShiftAssignmentGridDay["shift"]): string {
+  if (!shift) return "—";
+  return shift.code;
+}
+
+/**
+ * Ô ngày ĐUÔI của ca qua đêm: hiện lại mã ca của ngày hôm trước.
+ *
+ * Chỉ chiếm những ô mà bản thân ngày đó chưa có ca (`UNASSIGNED`, hoặc ngày
+ * nghỉ theo lịch) — nếu HR đã phân ca riêng cho ngày hôm sau thì ca đó mới là
+ * thứ cần hiện, không được đè.
+ *
+ * Nền và chữ nhạt hơn ô ngày bắt đầu để vẫn phân biệt được đâu là ngày ca bắt
+ * đầu — nơi công được tính trọn.
+ */
+function tailCellVisual(
+  day: ShiftAssignmentGridDay,
+  previousDay: ShiftAssignmentGridDay | undefined,
+): { background: string; color: string; label: string } | null {
+  if (day.shift) return null;
+  if (day.holidayName) return null;
+  if (!day.inAttendanceWindow) return null;
+  const code = overnightTailShiftCode(previousDay?.shift);
+  if (!code) return null;
+  return { background: "#eff6ff", color: "#60a5fa", label: code };
+}
+
+function cellVisual(
+  day: ShiftAssignmentGridDay,
+  meta: DayMeta,
+  previousDay?: ShiftAssignmentGridDay,
+) {
   if (!day.inAttendanceWindow) {
     return { background: "#f8fafc", color: "#94a3b8", label: "" };
   }
   if (day.holidayName) {
     return { background: "#fff3bf", color: "#7c5c00", label: "Lễ" };
   }
+  // Ô bị ca đêm hôm trước chiếm phải hiện mã ca đó, đứng trước cả nhánh
+  // "Chưa phân ca" — ô này không trống, chỉ là công đã tính vào ngày trước.
+  const tail = tailCellVisual(day, previousDay);
+  if (tail) return tail;
   if (day.source === "UNASSIGNED") {
     return { background: "#e5e7eb", color: "#64748b", label: "—" };
   }
@@ -288,7 +344,7 @@ function cellVisual(day: ShiftAssignmentGridDay, meta: DayMeta) {
     return {
       background: "#ede9fe",
       color: "#6d28d9",
-      label: day.shift.code,
+      label: shiftCellLabel(day.shift),
     };
   }
   if (!day.isWorkingDay) {
@@ -302,39 +358,55 @@ function cellVisual(day: ShiftAssignmentGridDay, meta: DayMeta) {
     return {
       background: "#dbeafe",
       color: "#1d4ed8",
-      label: day.shift?.code ?? "—",
+      label: shiftCellLabel(day.shift),
     };
   }
   if (day.source === "ASSIGNMENT_DEPARTMENT") {
     return {
       background: "#eef6ff",
       color: "#2563eb",
-      label: day.shift?.code ?? "—",
+      label: shiftCellLabel(day.shift),
     };
   }
   if (day.source === "ASSIGNMENT_UNIT") {
     return {
       background: "#ecfdf5",
       color: "#047857",
-      label: day.shift?.code ?? "—",
+      label: shiftCellLabel(day.shift),
     };
   }
   return {
     background: undefined,
     color: "inherit",
-    label: day.shift?.code ?? "—",
+    label: shiftCellLabel(day.shift),
   };
+}
+
+/** Câu mô tả ca kéo sang hôm sau, dùng chung cho tooltip các nhánh có ca. */
+function overnightNote(shift: ShiftAssignmentGridDay["shift"]): string {
+  if (!shift || !isOvernightShiftTime(shift.startTime, shift.endTime)) {
+    return "";
+  }
+  const span = shiftSpanDays(shift.standardMinutes);
+  return ` · Ca qua ngày ${shift.startTime}–${shift.endTime} hôm sau${
+    span > 1 ? ` (${span} ngày)` : ""
+  }, công tính vào ngày bắt đầu ca`;
 }
 
 function cellDescription(
   day: ShiftAssignmentGridDay,
   hasActiveDirectShift: boolean,
+  previousDay?: ShiftAssignmentGridDay,
 ): string {
   if (!day.inAttendanceWindow) {
     return "Ngoài khoảng tính công của nhân sự trong kỳ này";
   }
   if (day.holidayName) {
     return `${day.holidayName} — không tính công theo ca`;
+  }
+  if (tailCellVisual(day, previousDay)) {
+    const shift = previousDay?.shift;
+    return `${shift?.code} — ${shift?.name} · Ca qua ngày từ hôm trước (${shift?.startTime}–${shift?.endTime}), công đã tính trọn vào ngày bắt đầu ca`;
   }
   if (day.source === "UNASSIGNED") {
     return weekdayForShiftAssignmentDate(day.date) === 0
@@ -352,13 +424,13 @@ function cellDescription(
     if (!day.shift) {
       return `Nghỉ theo ca tuần${templateName} — không kế thừa ca phòng ban, đơn vị hoặc lịch chung. Nhấn để phân ca ngoại lệ cho đúng ngày.`;
     }
-    return `${day.shift.code} — ${day.shift.name} · Theo ca tuần${templateName} · Nhấn để đổi ca cho đúng ngày.`;
+    return `${day.shift.code} — ${day.shift.name} · Theo ca tuần${templateName}${overnightNote(day.shift)} · Nhấn để đổi ca cho đúng ngày.`;
   }
   if (!day.isWorkingDay) {
     return "Ngày không làm việc theo lịch công";
   }
   return day.shift
-    ? `${day.shift.code} — ${day.shift.name} · ${sourceLabel(day.source)}`
+    ? `${day.shift.code} — ${day.shift.name} · ${sourceLabel(day.source)}${overnightNote(day.shift)}`
     : sourceLabel(day.source);
 }
 
@@ -389,21 +461,37 @@ function Legend() {
               width: 11,
             }}
           />
-          <Text fz={10} lh={1.2} c="dimmed">
+          <Text size="xs" lh={1.2} c="dimmed">
             {item.label}
           </Text>
         </Group>
       ))}
+      {/* Ô đuôi ca đêm dùng nền riêng, nhạt hơn ô ngày bắt đầu ca. */}
+      <Group gap={4} wrap="nowrap">
+        <span
+          aria-hidden
+          style={{
+            background: "#eff6ff",
+            border: "1px solid var(--mantine-color-gray-4)",
+            borderRadius: 3,
+            display: "block",
+            height: 11,
+            width: 11,
+          }}
+        />
+        <Text size="xs" lh={1.2} c="dimmed">
+          Ca qua ngày (lặp lại mã ca ở ngày kết thúc)
+        </Text>
+      </Group>
     </Group>
   );
 }
 
 export function MonthlyShiftAssignmentGrid({
-  onOpenRules,
   requestedShiftId = null,
 }: MonthlyShiftAssignmentGridProps) {
   const navigate = useNavigate();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const canEdit = can(HR_PERMISSIONS.ATTENDANCE_UPDATE);
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -421,6 +509,9 @@ export function MonthlyShiftAssignmentGrid({
   const [cellShiftCancellationError, setCellShiftCancellationError] =
     useState<string | null>(null);
   const [cellShiftSearch, setCellShiftSearch] = useState("");
+  const [workShiftOrder, setWorkShiftOrder] = useState<string[]>(() =>
+    readWorkShiftUserOrder(user?.id),
+  );
   const [cellShiftError, setCellShiftError] = useState<string | null>(null);
   const [cellShiftApplyingId, setCellShiftApplyingId] = useState<string | null>(
     null,
@@ -455,6 +546,8 @@ export function MonthlyShiftAssignmentGrid({
   const unitsQuery = useUnitsSelect();
   const shiftsQuery = useWorkShifts();
   const bulkAssign = useBulkAssignShifts();
+  const bulkCancelDays = useBulkCancelShiftAssignmentDays();
+  const [bulkCancelConfirmOpen, setBulkCancelConfirmOpen] = useState(false);
   const cancelShiftAssignmentDay = useCancelShiftAssignmentDay();
   const replaceShiftAssignmentDay = useReplaceShiftAssignmentDay();
   const includeInTimesheet = useIncludeShiftAssignmentRowsInTimesheet();
@@ -520,18 +613,72 @@ export function MonthlyShiftAssignmentGrid({
         })),
     [shiftsQuery.data],
   );
-  const cellShiftOptions = useMemo(
+  /*
+   * Ca đã tạm ngưng không còn phân được nên bị loại khỏi danh sách thay vì hiện
+   * mờ: danh mục có hàng trăm ca cũ, để lại thì phải lướt qua chúng mới tới được
+   * ca đang hoạt động. Ngoại lệ duy nhất là ca đang gán cho chính ô đang mở —
+   * giữ lại để ô vẫn cho thấy nó đang là ca gì.
+   */
+  const pickerCurrentShiftId = cellShiftPicker?.day.shift?.id ?? null;
+  const selectableShifts = useMemo(
     () =>
-      sortWorkShiftCatalog(shiftsQuery.data).filter(
+      sortWorkShiftsByUserOrder(shiftsQuery.data, workShiftOrder).filter(
         (shift) =>
           Boolean(shift.startTime && shift.endTime) &&
-          includesNormalizedSearch(
-            [shift.code, shift.name, shift.groupName ?? ""].join(" "),
-            cellShiftSearch,
-          ),
+          (shift.status === "ACTIVE" || shift.id === pickerCurrentShiftId),
       ),
-    [cellShiftSearch, shiftsQuery.data],
+    [pickerCurrentShiftId, shiftsQuery.data, workShiftOrder],
   );
+  /*
+   * Số TT bám theo danh sách đầy đủ, không theo kết quả lọc: gõ tìm kiếm rồi
+   * thấy ca số 7 vẫn là số 7 giúp HR đối chiếu nhanh, thay vì bị đánh lại từ 1.
+   */
+  const shiftDisplayNumbers = useMemo(
+    () => new Map(selectableShifts.map((shift, index) => [shift.id, index + 1])),
+    [selectableShifts],
+  );
+  const cellShiftOptions = useMemo(
+    () =>
+      selectableShifts.filter((shift) =>
+        includesNormalizedSearch(
+          [shift.code, shift.name, shift.groupName ?? ""].join(" "),
+          cellShiftSearch,
+        ),
+      ),
+    [cellShiftSearch, selectableShifts],
+  );
+
+  /*
+   * Kéo thả sắp thứ tự ca. Chỉ cho kéo khi danh sách đang không lọc: kéo trên
+   * kết quả tìm kiếm thì vị trí thả không tương ứng vị trí thật trong danh mục,
+   * HR sẽ nhận được một thứ tự khác hẳn thứ họ nhìn thấy.
+   */
+  const shiftReorderEnabled = cellShiftSearch.trim() === "";
+
+  /*
+   * Thả theo vị trí chèn chứ không hoán đổi hai dòng: kéo ca số 20 lên đầu phải
+   * đẩy cả danh sách xuống một bậc, chứ không phải tráo nó với ca số 1.
+   */
+  const handleShiftDrop = useCallback(
+    (fromCode: string, targetCode: string, edge: "top" | "bottom") => {
+      if (fromCode === targetCode) return;
+      const codes = selectableShifts.map((shift) => shift.code);
+      const from = codes.indexOf(fromCode);
+      const target = codes.indexOf(targetCode);
+      if (from === -1 || target === -1) return;
+      const insertAt = edge === "bottom" ? target + 1 : target;
+      const to = from < insertAt ? insertAt - 1 : insertAt;
+      const nextOrder = moveItem(codes, from, to);
+      setWorkShiftOrder(nextOrder);
+      writeWorkShiftUserOrder(user?.id, nextOrder);
+    },
+    [selectableShifts, user?.id],
+  );
+
+  const resetShiftOrder = useCallback(() => {
+    setWorkShiftOrder([]);
+    writeWorkShiftUserOrder(user?.id, []);
+  }, [user?.id]);
 
   const hasActiveDirectShift = useMemo(
     () =>
@@ -563,6 +710,16 @@ export function MonthlyShiftAssignmentGrid({
     );
   }, [requestedShiftId, selectedShiftUsesWeekdaySplit, shiftId]);
 
+
+  /*
+   * Ô "Ngày áp dụng" chỉ hiện với ca hành chính cả ngày. Với ca khác, phạm vi
+   * LUÔN là cả tuần — dẫn xuất tại chỗ thay vì giữ trong state, để giá trị
+   * T2–T6 của ca trước không lặng lẽ bỏ qua Thứ 7 khi ô đã bị ẩn.
+   */
+  const effectiveWeekdays = selectedShiftUsesWeekdaySplit
+    ? weekdays
+    : [...ALL_ASSIGNMENT_WEEKDAYS];
+
   const selectionScope = `${year}|${month}|${selectedUnitId ?? ""}`;
   const selectedEmployeeIds =
     selectionState.scope === selectionScope
@@ -586,6 +743,29 @@ export function MonthlyShiftAssignmentGrid({
       })),
     [rows],
   );
+  /*
+   * Hai nhóm lệch khiến bảng công đọc ra sai mà nhìn lưới không thấy ngay:
+   *
+   * - Đã phân ca nhưng chưa vào BCC: lịch ca đúng, nhưng người này không có
+   *   mặt trong bảng công tháng nên công không được tính.
+   * - Đã vào BCC nhưng chưa có ca nào: có mặt trong bảng công nhưng không có
+   *   căn cứ tính, nên hiện toàn dấu thiếu dữ liệu.
+   *
+   * Đếm trên toàn bộ danh sách chứ không theo trang đang xem, vì HR cần biết
+   * tổng số người cần xử lý.
+   */
+  const rosterMismatch = useMemo(
+    () =>
+      countRosterMismatch(
+        preparedRows.map((item) => ({
+          includedInTimesheet: item.row.includedInTimesheet,
+          canInclude: item.row.canInclude,
+          assignedDays: item.totals.assignedDays,
+        })),
+      ),
+    [preparedRows],
+  );
+
   const groupedRows = useMemo<PreparedGroup[]>(() => {
     const groups = new Map<string, { label: string; rows: PreparedRow[] }>();
     for (const item of preparedRows) {
@@ -675,7 +855,15 @@ export function MonthlyShiftAssignmentGrid({
     () => sumAssignmentTotals(pageRows.map((item) => item.totals)),
     [pageRows],
   );
+  // Toàn bộ CBNV đang lọc (mọi trang) mà được phép đưa vào BCC.
+  const selectableRows = selectableEmployeeRows(
+    preparedRows.map((item) => item.row),
+  );
   const selectablePageRows = pageRows.filter((item) => item.row.canInclude);
+  const allFilteredSelected = hasSelectedAllFiltered(
+    preparedRows.map((item) => item.row),
+    selectedEmployeeIds,
+  );
   const selectedOnPage = selectablePageRows.filter((item) =>
     selectedEmployeeIds.has(item.row.employeeId),
   ).length;
@@ -711,6 +899,27 @@ export function MonthlyShiftAssignmentGrid({
       });
       return { scope: selectionScope, employeeIds: next };
     });
+  }
+
+  /*
+   * Chọn hết CBNV đang lọc, không chỉ trang đang xem. Phân ca cho cả công ty
+   * hay cả phòng ban là việc thường xuyên; bắt HR lật từng trang 20 người
+   * rồi tick lại là thao tác thừa và rất dễ sót người.
+   *
+   * Phạm vi bám đúng bộ lọc phía trên (đơn vị + phòng ban + tìm kiếm) nên
+   * "chọn tất cả" luôn khớp với những gì HR đang nhìn thấy.
+   */
+  function selectAllFiltered() {
+    setSelectionState({
+      scope: selectionScope,
+      employeeIds: allSelectableEmployeeIds(
+        preparedRows.map((item) => item.row),
+      ),
+    });
+  }
+
+  function clearSelection() {
+    setSelectionState({ scope: selectionScope, employeeIds: new Set() });
   }
 
   function closeCellShiftPicker() {
@@ -861,6 +1070,7 @@ export function MonthlyShiftAssignmentGrid({
           shiftId: shift.id,
           ...singleDayShiftAssignmentScope(picker.day.date),
           includeInTimesheet: true,
+          overwriteExisting: true,
         });
         notifications.show({
           color: "green",
@@ -882,7 +1092,7 @@ export function MonthlyShiftAssignmentGrid({
           ? error.message
           : replacesExistingAssignment
             ? "Không thể đổi ca. Kiểm tra kỳ công hoặc phạm vi áp dụng rồi thử lại."
-            : "Không thể áp ca. Kiểm tra kỳ công hoặc ca đang chồng lấn rồi thử lại.",
+            : "Không thể áp ca. Kiểm tra kỳ công hoặc phạm vi áp dụng rồi thử lại.",
       );
     } finally {
       setCellShiftApplyingId(null);
@@ -947,7 +1157,7 @@ export function MonthlyShiftAssignmentGrid({
       });
       return;
     }
-    if (!weekdays.length) {
+    if (!effectiveWeekdays.length) {
       notifications.show({
         color: "yellow",
         title: "Chưa chọn ngày áp dụng",
@@ -957,7 +1167,7 @@ export function MonthlyShiftAssignmentGrid({
     }
 
     try {
-      const assignmentWeekdays = optionalAssignmentWeekdays(weekdays);
+      const assignmentWeekdays = optionalAssignmentWeekdays(effectiveWeekdays);
       const result = await bulkAssign.mutateAsync({
         month,
         year,
@@ -967,6 +1177,12 @@ export function MonthlyShiftAssignmentGrid({
         effectiveFrom,
         effectiveTo,
         includeInTimesheet: includeInTimesheetWithShift,
+        /*
+         * Ca vừa chọn luôn thắng ca cũ trong khoảng áp: HR chốt ca mới là ý
+         * định rõ ràng, bắt họ đi hủy từng ca cũ trước chỉ tạo thêm thao tác.
+         * Backend vẫn giữ nguyên phần ca cũ nằm ngoài khoảng áp.
+         */
+        overwriteExisting: true,
         ...(assignmentWeekdays ? { weekdays: assignmentWeekdays } : {}),
       });
       setSelectionState({ scope: selectionScope, employeeIds: new Set() });
@@ -978,14 +1194,40 @@ export function MonthlyShiftAssignmentGrid({
           : `Đã phân ca cho ${result.created} CBNV. Họ chưa vào BCC; dùng nút “Đưa vào BCC” khi đã sẵn sàng.`,
       });
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Chưa thể áp ca",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Kiểm tra khoảng ngày hoặc ca cá nhân đang chồng lấn rồi thử lại.",
+      showAttendanceError(
+        error,
+        "Chưa thể áp ca",
+        "Kiểm tra khoảng ngày rồi thử áp lại.",
+      );
+    }
+  }
+
+  async function bulkCancelSelectedDays() {
+    if (!selectedUnitId || !selectedEmployeeIds.size) return;
+    setBulkCancelConfirmOpen(false);
+    try {
+      const result = await bulkCancelDays.mutateAsync({
+        month,
+        year,
+        unitId: selectedUnitId,
+        employeeIds: [...selectedEmployeeIds],
+        effectiveFrom,
+        effectiveTo,
       });
+      setSelectionState({ scope: selectionScope, employeeIds: new Set() });
+      notifications.show({
+        color: result.cancelled ? "green" : "orange",
+        title: result.cancelled ? "Đã hủy ca" : "Không có ca nào để hủy",
+        message: result.cancelled
+          ? `Đã hủy ${result.cancelled} ngày ca cá nhân. CBNV vẫn ở trong BCC; mở Bảng công rồi bấm Cập nhật bảng công để áp lại.`
+          : "Các ngày đã chọn không có ca cá nhân nào. Ca theo phòng ban, đơn vị hoặc ca tuần phải sửa ở đúng quy tắc nguồn.",
+      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không hủy được ca",
+        "Kiểm tra khoảng ngày rồi thử lại.",
+      );
     }
   }
 
@@ -1024,14 +1266,11 @@ export function MonthlyShiftAssignmentGrid({
             : "Các CBNV đã chọn đã ở BCC; không có ca nào bị thay đổi.",
       });
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Chưa thể đưa vào BCC",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "Kiểm tra kỳ công, phạm vi đơn vị hoặc CBNV đã có ở BCC đơn vị khác rồi thử lại.",
-      });
+      showAttendanceError(
+        error,
+        "Chưa thể đưa vào BCC",
+        "Kiểm tra kỳ công và phạm vi đơn vị rồi thử lại.",
+      );
     }
   }
 
@@ -1045,30 +1284,8 @@ export function MonthlyShiftAssignmentGrid({
     navigate(`${ROUTES.timesheetGrid}?${params.toString()}`);
   }
 
-  function openMonthlyRoster() {
-    if (!selectedUnitId) return;
-    const params = new URLSearchParams({
-      month: String(month),
-      year: String(year),
-      unitId: selectedUnitId,
-    });
-    navigate(ROUTES.monthlyTimesheetRoster + "?" + params.toString());
-  }
-
   return (
     <Stack gap="md">
-      <InfoBanner title="Cách phân ca và quan hệ với BCC" collapsible>
-        Phân ca ở đây tạo <b>ca cá nhân</b> cho các CBNV được tích chọn; ca cá
-        nhân ưu tiên hơn ca phòng ban và đơn vị. Nhấn ô <b>—</b> để chọn ca trực
-        tiếp cho đúng CBNV/ngày; thao tác này luôn đưa CBNV vào BCC. Chủ nhật
-        mặc định nghỉ; HR chỉ có thể phân ca ngày này khi chủ động chọn ca tại ô
-        hoặc chọn Chủ nhật trong phần Ngày áp dụng. Ngày lễ vẫn không áp ca tại
-        đây. Mặc định, <b>Áp dụng ca</b> cũng đưa đúng các CBNV đó vào BCC. Bỏ
-        chọn “Đưa vào BCC cùng ca” khi chỉ muốn lập kế hoạch ca. Với CBNV đã có
-        ca, dùng <b>Đưa vào BCC</b> để bổ sung bảng công mà không tạo lại ca.
-        Sau đó mở đúng kỳ, bấm <b>Cập nhật bảng công</b> rồi mới xuất Excel.
-      </InfoBanner>
-
       <FilterBar>
         <Select
           aria-label="Kỳ công"
@@ -1157,143 +1374,244 @@ export function MonthlyShiftAssignmentGrid({
       ) : null}
 
       <Paper withBorder p="md" radius="md">
-        <Group justify="space-between" align="flex-end" gap="md" wrap="wrap">
-          <Group align="flex-end" gap="sm" wrap="wrap">
-            <Text size="sm" fw={600} mb={7}>
-              Đã chọn {selectedEmployeeIds.size} CBNV
-            </Text>
-            <Select
-              label="Ca làm việc"
-              placeholder="Chọn ca đã tạo"
-              data={shiftOptions}
-              value={shiftId}
-              searchable
-              w={290}
-              disabled={tableIsDisabled || shiftsQuery.isLoading}
-              nothingFoundMessage="Chưa có ca đang áp dụng"
-              onChange={handleShiftChange}
-            />
-            <HrmDateInput
-              label="Từ ngày"
-              clearable={false}
-              minDate={periodStart}
-              maxDate={periodEnd}
-              value={effectiveFrom}
-              w={150}
-              disabled={tableIsDisabled}
-              onChange={updateEffectiveFrom}
-            />
-            <HrmDateInput
-              label="Đến ngày"
-              clearable={false}
-              minDate={effectiveFrom || periodStart}
-              maxDate={periodEnd}
-              value={effectiveTo}
-              w={150}
-              disabled={tableIsDisabled}
-              onChange={updateEffectiveTo}
-            />
-            <Stack gap={2} w={294}>
-              <WeekdayScopeField
-                disabled={tableIsDisabled}
-                value={weekdays}
-                width="100%"
-                onChange={setWeekdays}
+        <div className={toolbarStyles.root}>
+          <div className={toolbarStyles.steps}>
+            {/* Bước 1 — chọn ai. */}
+            <div className={toolbarStyles.step}>
+              <div className={toolbarStyles.stepLabel}>
+                <span className={toolbarStyles.stepNumber}>1</span>
+                Chọn CBNV
+              </div>
+              <Text size="sm" fw={600}>
+                Đã chọn {selectedEmployeeIds.size} CBNV
+              </Text>
+              {/* Phân ca cả công ty / cả phòng ban trong một lần, không phải
+                  lật từng trang 20 người. Phạm vi bám đúng bộ lọc phía trên. */}
+              <Group gap={6} wrap="wrap">
+                <Button
+                  size="compact-xs"
+                  variant="light"
+                  disabled={
+                    tableIsDisabled ||
+                    !selectableRows.length ||
+                    allFilteredSelected
+                  }
+                  onClick={selectAllFiltered}
+                  title={
+                    departmentId
+                      ? "Chọn toàn bộ CBNV của phòng ban đang lọc"
+                      : "Chọn toàn bộ CBNV của đơn vị đang lọc"
+                  }
+                >
+                  Chọn tất cả {selectableRows.length} CBNV
+                </Button>
+                <Button
+                  size="compact-xs"
+                  variant="subtle"
+                  color="gray"
+                  disabled={tableIsDisabled || !selectedEmployeeIds.size}
+                  onClick={clearSelection}
+                >
+                  Bỏ chọn
+                </Button>
+              </Group>
+            </div>
+
+            {/* Bước 2 — đặt ca gì, áp từ ngày nào. */}
+            <div className={toolbarStyles.step}>
+              <div className={toolbarStyles.stepLabel}>
+                <span className={toolbarStyles.stepNumber}>2</span>
+                Chọn ca và khoảng ngày
+              </div>
+              <div className={toolbarStyles.fields}>
+                <Select
+                  label="Ca làm việc"
+                  placeholder="Chọn ca đã tạo"
+                  data={shiftOptions}
+                  value={shiftId}
+                  searchable
+                  w={250}
+                  disabled={tableIsDisabled || shiftsQuery.isLoading}
+                  nothingFoundMessage="Chưa có ca đang áp dụng"
+                  onChange={handleShiftChange}
+                />
+                <HrmDateInput
+                  label="Từ ngày"
+                  clearable={false}
+                  minDate={periodStart}
+                  maxDate={periodEnd}
+                  value={effectiveFrom}
+                  w={145}
+                  disabled={tableIsDisabled}
+                  onChange={updateEffectiveFrom}
+                />
+                <HrmDateInput
+                  label="Đến ngày"
+                  clearable={false}
+                  minDate={effectiveFrom || periodStart}
+                  maxDate={periodEnd}
+                  value={effectiveTo}
+                  w={145}
+                  disabled={tableIsDisabled}
+                  onChange={updateEffectiveTo}
+                />
+                {/*
+                  Chỉ ca hành chính CẢ NGÀY mới phải quyết T2–T6 hay T2–T7 (thứ 7
+                  làm nửa buổi bằng ca riêng HC3/HC4). Các ca khác mặc định áp cả
+                  tuần, bày ô này ra chỉ làm rối màn hình.
+                */}
+                {selectedShiftUsesWeekdaySplit ? (
+                  <WeekdayScopeField
+                    disabled={tableIsDisabled}
+                    value={weekdays}
+                    width={230}
+                    onChange={setWeekdays}
+                    hint="Ca hành chính cả ngày mặc định T2–T6. Muốn làm sáng Thứ 7 thì áp riêng ca HC3/HC4 cho Thứ 7 cùng khoảng ngày."
+                  />
+                ) : null}
+              </div>
+              <Checkbox
+                label="Đưa vào BCC cùng ca"
+                checked={includeInTimesheetWithShift}
+                disabled={
+                  tableIsDisabled ||
+                  bulkAssign.isPending ||
+                  includeInTimesheet.isPending
+                }
+                onChange={(event) =>
+                  setIncludeInTimesheetWithShift(event.currentTarget.checked)
+                }
               />
-              {selectedShiftUsesWeekdaySplit ? (
-                <Text size="xs" c="dimmed">
-                  Ca hành chính cả ngày mặc định T2–T6. Nếu làm sáng Thứ 7, áp
-                  ca Thứ 7 tương ứng (ví dụ HC3/HC4) riêng cho Thứ 7 cùng khoảng
-                  ngày, rồi Cập nhật bảng công.
-                </Text>
-              ) : null}
-            </Stack>
-            <Checkbox
-              label="Đưa vào BCC cùng ca"
-              checked={includeInTimesheetWithShift}
-              disabled={
-                tableIsDisabled ||
-                bulkAssign.isPending ||
-                includeInTimesheet.isPending
-              }
-              onChange={(event) =>
-                setIncludeInTimesheetWithShift(event.currentTarget.checked)
-              }
-            />
-            <Button
-              leftSection={<IconUsers size={17} />}
-              loading={bulkAssign.isPending}
-              disabled={
-                tableIsDisabled ||
-                bulkAssign.isPending ||
-                includeInTimesheet.isPending ||
-                !selectedEmployeeIds.size ||
-                !shiftId ||
-                !effectiveFrom ||
-                !effectiveTo
-              }
-              onClick={() => void applyShift()}
-            >
-              Áp dụng ca
-            </Button>
-            <Button
-              variant="light"
-              color="green"
-              leftSection={<IconUserCheck size={17} />}
-              loading={includeInTimesheet.isPending}
-              disabled={
-                tableIsDisabled ||
-                bulkAssign.isPending ||
-                includeInTimesheet.isPending ||
-                !selectedEmployeeIds.size
-              }
-              onClick={() => void includeSelectedInTimesheet()}
-            >
-              Đưa vào BCC
-            </Button>
-          </Group>
-          <Group gap="xs">
-            <Button
-              variant="default"
-              size="sm"
-              leftSection={<IconCalendarTime size={16} />}
-              disabled={!selectedUnitId}
-              onClick={openMonthlyRoster}
-            >
-              Sắp ca tháng
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              leftSection={<IconCalendarTime size={16} />}
-              onClick={() => navigate(ROUTES.weeklyShifts)}
-            >
-              Ca tuần
-            </Button>
-            <Button variant="default" size="sm" onClick={onOpenRules}>
-              Quy tắc PB/đơn vị
-            </Button>
-            <Button
-              variant="light"
-              size="sm"
-              leftSection={<IconExternalLink size={16} />}
-              disabled={!selectedUnitId}
-              onClick={openTimesheet}
-            >
-              Mở BCC
-            </Button>
-          </Group>
-        </Group>
-        <Group mt="sm" gap="xs" wrap="wrap">
-          <Legend />
-          <Text size="xs" c="dimmed">
-            Ca cá nhân đang chồng ngày sẽ được báo lỗi; hệ thống không tự ghi đè
-            lịch sử. Cột (1)–(6) quy số công theo danh mục ca (ca 12 giờ 1.5
-            công, ca 24 giờ 3 công) và tính trên lịch đã phân — công chốt cuối kỳ
-            vẫn lấy ở Bảng công tháng sau khi có dữ liệu chấm công.
-          </Text>
-        </Group>
+            </div>
+
+            {/* Bước 3 — hành động. Hủy ca tách riêng vì không hoàn tác được. */}
+            <div className={toolbarStyles.step}>
+              <div className={toolbarStyles.stepLabel}>
+                <span className={toolbarStyles.stepNumber}>3</span>
+                Thực hiện
+              </div>
+              <div className={toolbarStyles.actions}>
+                <Button
+                  leftSection={<IconUsers size={17} />}
+                  loading={bulkAssign.isPending}
+                  disabled={
+                    tableIsDisabled ||
+                    bulkAssign.isPending ||
+                    includeInTimesheet.isPending ||
+                    !selectedEmployeeIds.size ||
+                    !shiftId ||
+                    !effectiveFrom ||
+                    !effectiveTo
+                  }
+                  onClick={() => void applyShift()}
+                >
+                  Áp dụng ca
+                </Button>
+                <Button
+                  variant="light"
+                  color="green"
+                  leftSection={<IconUserCheck size={17} />}
+                  loading={includeInTimesheet.isPending}
+                  disabled={
+                    tableIsDisabled ||
+                    bulkAssign.isPending ||
+                    includeInTimesheet.isPending ||
+                    !selectedEmployeeIds.size
+                  }
+                  onClick={() => void includeSelectedInTimesheet()}
+                >
+                  Đưa vào BCC
+                </Button>
+                <Button
+                  variant="default"
+                  leftSection={<IconExternalLink size={16} />}
+                  disabled={!selectedUnitId}
+                  onClick={openTimesheet}
+                >
+                  Mở BCC
+                </Button>
+              </div>
+              <div
+                className={`${toolbarStyles.actions} ${toolbarStyles.destructive}`}
+              >
+                <Button
+                  variant="light"
+                  color="red"
+                  leftSection={<IconTrash size={17} />}
+                  loading={bulkCancelDays.isPending}
+                  disabled={
+                    tableIsDisabled ||
+                    bulkAssign.isPending ||
+                    includeInTimesheet.isPending ||
+                    bulkCancelDays.isPending ||
+                    !selectedEmployeeIds.size ||
+                    !effectiveFrom ||
+                    !effectiveTo
+                  }
+                  onClick={() => setBulkCancelConfirmOpen(true)}
+                >
+                  Hủy ca
+                </Button>
+              </div>
+            </div>
+          </div>
+
+        </div>
       </Paper>
+
+      {unitsQuery.isError || departmentsQuery.isError ? (
+        <Alert color="red" variant="light" title="Không tải được phạm vi phân ca">
+          <Group gap="xs" wrap="wrap">
+            <Text size="sm">Không thể lấy đầy đủ đơn vị hoặc phòng ban để phân ca.</Text>
+            {unitsQuery.isError ? (
+              <Button
+                size="compact-sm"
+                variant="light"
+                onClick={() => void unitsQuery.refetch()}
+              >
+                Tải lại đơn vị
+              </Button>
+            ) : null}
+            {departmentsQuery.isError ? (
+              <Button
+                size="compact-sm"
+                variant="light"
+                onClick={() => void departmentsQuery.refetch()}
+              >
+                Tải lại phòng ban
+              </Button>
+            ) : null}
+          </Group>
+        </Alert>
+      ) : null}
+
+      {rosterMismatch.assignedNotInTimesheet ||
+      rosterMismatch.inTimesheetWithoutShift ? (
+        <Alert
+          color="orange"
+          variant="light"
+          icon={<IconAlertTriangle size={18} />}
+          title="Lịch ca và BCC đang lệch nhau"
+        >
+          <Stack gap={4}>
+            {rosterMismatch.assignedNotInTimesheet ? (
+              <Text size="sm" inherit>
+                <b>{rosterMismatch.assignedNotInTimesheet} CBNV</b> đã phân ca
+                nhưng chưa vào BCC — bảng công tháng sẽ không có các CBNV này.
+                Tick chọn rồi bấm <b>Đưa vào BCC</b>.
+              </Text>
+            ) : null}
+            {rosterMismatch.inTimesheetWithoutShift ? (
+              <Text size="sm" inherit>
+                <b>{rosterMismatch.inTimesheetWithoutShift} CBNV</b> đã vào BCC
+                nhưng chưa có ca nào trong kỳ — bảng công không có căn cứ tính
+                nên sẽ hiện thiếu dữ liệu. Phân ca cho họ trước khi cập nhật
+                bảng công.
+              </Text>
+            ) : null}
+          </Stack>
+        </Alert>
+      ) : null}
 
       {gridQuery.isLoading ? (
         <Paper withBorder p="md" radius="md">
@@ -1606,6 +1924,11 @@ export function MonthlyShiftAssignmentGrid({
                           </Table.Td>
                           {dayMetas.map((meta) => {
                             const day = item.daysByNumber.get(meta.day);
+                            // Ca qua đêm chiếm luôn ô hôm sau, nên ô nào cũng
+                            // phải biết ngày liền trước để hiện đúng mã ca.
+                            const previousDay = item.daysByNumber.get(
+                              meta.day - 1,
+                            );
                             if (!day) {
                               return (
                                 <Table.Td
@@ -1619,7 +1942,7 @@ export function MonthlyShiftAssignmentGrid({
                                 />
                               );
                             }
-                            const visual = cellVisual(day, meta);
+                            const visual = cellVisual(day, meta, previousDay);
                             const canOpenPicker =
                               canOpenShiftAssignmentGridPicker(
                                 day,
@@ -1649,7 +1972,7 @@ export function MonthlyShiftAssignmentGrid({
                             const unavailableCellTitle =
                               tableIsDisabled && grid?.isClosed
                                 ? "Kỳ công đã chốt — mở khóa kỳ công trước khi phân ca."
-                                : cellDescription(day, hasActiveDirectShift);
+                                : cellDescription(day, hasActiveDirectShift, previousDay);
                             return (
                               <Table.Td
                                 key={meta.day}
@@ -1834,6 +2157,27 @@ export function MonthlyShiftAssignmentGrid({
                                             value={cellShiftSearch}
                                             onChange={setCellShiftSearch}
                                           />
+                                          <Group
+                                            justify="space-between"
+                                            gap="xs"
+                                            wrap="nowrap"
+                                          >
+                                            <Text size="10px" c="dimmed">
+                                              {shiftReorderEnabled
+                                                ? "Kéo biểu tượng ⠿ để đổi thứ tự ca — thứ tự này chỉ áp dụng cho tài khoản của bạn."
+                                                : "Xoá ô tìm kiếm để kéo đổi thứ tự ca."}
+                                            </Text>
+                                            {workShiftOrder.length ? (
+                                              <Button
+                                                size="compact-xs"
+                                                variant="subtle"
+                                                color="gray"
+                                                onClick={resetShiftOrder}
+                                              >
+                                                Thứ tự mặc định
+                                              </Button>
+                                            ) : null}
+                                          </Group>
                                           {cellShiftError ? (
                                             <Alert
                                               color="red"
@@ -1865,143 +2209,18 @@ export function MonthlyShiftAssignmentGrid({
                                               Đang tải danh mục ca…
                                             </Text>
                                           ) : cellShiftOptions.length ? (
-                                            <ScrollArea.Autosize
-                                              mah={280}
-                                              type="auto"
-                                            >
-                                              <Table
-                                                withTableBorder
-                                                withColumnBorders
-                                                horizontalSpacing="xs"
-                                                verticalSpacing={4}
-                                                style={{ minWidth: 620 }}
-                                              >
-                                                <Table.Thead>
-                                                  <Table.Tr>
-                                                    <Table.Th>TT</Table.Th>
-                                                    <Table.Th>Ký hiệu</Table.Th>
-                                                    <Table.Th>Loại ca</Table.Th>
-                                                    <Table.Th>Nhóm</Table.Th>
-                                                    <Table.Th>
-                                                      Giờ / Công
-                                                    </Table.Th>
-                                                  </Table.Tr>
-                                                </Table.Thead>
-                                                <Table.Tbody>
-                                                  {cellShiftOptions.map(
-                                                    (shift) => {
-                                                      const disabledReason =
-                                                        directCellShiftDisabledReason(
-                                                          shift,
-                                                        );
-                                                      const isCurrentShift =
-                                                        replacesExistingShift &&
-                                                        day.shift?.id === shift.id;
-                                                      const disabled =
-                                                        Boolean(
-                                                          disabledReason,
-                                                        ) ||
-                                                        cellShiftMutationPending ||
-                                                        isCurrentShift;
-                                                      return (
-                                                        <Table.Tr
-                                                          key={shift.id}
-                                                          style={
-                                                            isCurrentShift
-                                                              ? { background: "#eff6ff" }
-                                                              : undefined
-                                                          }
-                                                        >
-                                                          <Table.Td>
-                                                            {getWorkShiftCatalogOrder(
-                                                              shift.code,
-                                                            ) ?? "—"}
-                                                          </Table.Td>
-                                                          <Table.Td>
-                                                            <Button
-                                                              size="compact-xs"
-                                                              variant={
-                                                                isCurrentShift
-                                                                  ? "light"
-                                                                  : "subtle"
-                                                              }
-                                                              color={
-                                                                isCurrentShift
-                                                                  ? "blue"
-                                                                  : undefined
-                                                              }
-                                                              loading={
-                                                                cellShiftApplyingId ===
-                                                                shift.id
-                                                              }
-                                                              disabled={
-                                                                disabled
-                                                              }
-                                                              onClick={() =>
-                                                                void applyShiftToCell(
-                                                                  shift,
-                                                                )
-                                                              }
-                                                            >
-                                                              {shift.code}
-                                                            </Button>
-                                                            {isCurrentShift ? (
-                                                              <Badge
-                                                                size="xs"
-                                                                color="blue"
-                                                                variant="light"
-                                                              >
-                                                                Đang áp dụng
-                                                              </Badge>
-                                                            ) : null}
-                                                            {disabledReason ? (
-                                                              <Text
-                                                                size="10px"
-                                                                c="dimmed"
-                                                                lineClamp={1}
-                                                              >
-                                                                {disabledReason}
-                                                              </Text>
-                                                            ) : null}
-                                                          </Table.Td>
-                                                          <Table.Td>
-                                                            <Text
-                                                              size="xs"
-                                                              lineClamp={1}
-                                                            >
-                                                              {shift.name}
-                                                            </Text>
-                                                          </Table.Td>
-                                                          <Table.Td>
-                                                            <Text
-                                                              size="xs"
-                                                              lineClamp={1}
-                                                            >
-                                                              {shift.groupName ??
-                                                                "—"}
-                                                            </Text>
-                                                          </Table.Td>
-                                                          <Table.Td>
-                                                            <Text size="xs">
-                                                              {shift.startTime}–
-                                                              {shift.endTime}
-                                                            </Text>
-                                                            <Text
-                                                              size="10px"
-                                                              c="dimmed"
-                                                            >
-                                                              {formatShiftHoursAndWorkday(
-                                                                shift,
-                                                              )}
-                                                            </Text>
-                                                          </Table.Td>
-                                                        </Table.Tr>
-                                                      );
-                                                    },
-                                                  )}
-                                                </Table.Tbody>
-                                              </Table>
-                                            </ScrollArea.Autosize>
+                                            <ShiftPickerTable
+                                              shifts={cellShiftOptions}
+                                              displayNumbers={shiftDisplayNumbers}
+                                              currentShiftId={
+                                                replacesExistingShift ? (day.shift?.id ?? null) : null
+                                              }
+                                              applyingShiftId={cellShiftApplyingId}
+                                              mutationPending={cellShiftMutationPending}
+                                              reorderEnabled={shiftReorderEnabled}
+                                              onApply={applyShiftToCell}
+                                              onReorder={handleShiftDrop}
+                                            />
                                           ) : (
                                             <Text size="sm" c="dimmed" py="sm">
                                               Không tìm thấy ca phù hợp.
@@ -2215,6 +2434,49 @@ export function MonthlyShiftAssignmentGrid({
         </Stack>
       ) : null}
 
+      <InfoBanner
+        title="Cách phân ca và quan hệ với BCC"
+        tone="neutral"
+        collapsible
+      >
+        <Stack gap="sm">
+          <Text size="sm" inherit>
+            Phân ca ở đây tạo <b>ca cá nhân</b> cho các CBNV được tích chọn; ca
+            cá nhân ưu tiên hơn ca phòng ban và đơn vị. Nhấn ô <b>—</b> để chọn
+            ca trực tiếp cho đúng CBNV/ngày; thao tác này luôn đưa CBNV vào BCC.
+            Chủ nhật mặc định nghỉ; HR chỉ có thể phân ca ngày này khi chủ động
+            chọn ca tại ô hoặc chọn Chủ nhật trong phần Ngày áp dụng. Ngày lễ
+            vẫn không áp ca tại đây. Mặc định, <b>Áp dụng ca</b> cũng đưa đúng
+            các CBNV đó vào BCC. Bỏ chọn “Đưa vào BCC cùng ca” khi chỉ muốn lập
+            kế hoạch ca. Với CBNV đã có ca, dùng <b>Đưa vào BCC</b> để bổ sung
+            bảng công mà không tạo lại ca. Sau đó mở đúng kỳ, bấm <b>Cập nhật
+            bảng công</b> rồi mới xuất Excel.
+          </Text>
+          <Stack gap={6}>
+            <Text size="xs" fw={700} c="dimmed">
+              Chú giải bảng
+            </Text>
+            <Legend />
+            <Text size="xs" c="dimmed">
+              Ca mới thay phần ca cũ chồng ngày; phần lịch nằm ngoài khoảng áp
+              dụng vẫn được giữ nguyên. Cột (1)–(6) quy số công theo danh mục ca
+              (ca 12 giờ 1.5 công, ca 24 giờ 3 công) và tính trên lịch đã phân —
+              công chốt cuối kỳ vẫn lấy ở Bảng công tháng sau khi có dữ liệu
+              chấm công.
+            </Text>
+          </Stack>
+        </Stack>
+      </InfoBanner>
+
+      <ConfirmActionModal
+        opened={bulkCancelConfirmOpen}
+        title="Hủy ca hàng loạt"
+        message={`Hủy ca cá nhân của ${selectedEmployeeIds.size} CBNV từ ${formatDate(effectiveFrom)} đến ${formatDate(effectiveTo)}? Ca theo phòng ban, đơn vị và ca tuần vẫn giữ nguyên. CBNV vẫn ở trong BCC.`}
+        confirmLabel="Hủy ca"
+        loading={bulkCancelDays.isPending}
+        onClose={() => setBulkCancelConfirmOpen(false)}
+        onConfirm={() => void bulkCancelSelectedDays()}
+      />
     </Stack>
   );
 }

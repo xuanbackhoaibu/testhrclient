@@ -21,6 +21,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
+  IconAlertTriangle,
   IconCalendarStats,
   IconDownload,
   IconFilter,
@@ -31,6 +32,7 @@ import {
 
 import { HR_PERMISSIONS } from "../../features/auth/permissions";
 import { useAuth } from "../../features/auth/useAuth";
+import { showAttendanceError } from "../../features/attendance/attendanceErrorNotification";
 import { summarizeBccFromDays } from "../../features/attendance/bccSummary";
 import {
   compareAttendanceIdentity,
@@ -47,8 +49,11 @@ import {
   listTimesheetMonths,
   type TimesheetMonth,
 } from "../../features/attendance/timesheetRecomputeRange";
+import { clearTimesheetMonthStale } from "../../features/attendance/timesheetStaleMonths";
+import { useTimesheetMonthStale } from "../../features/attendance/useTimesheetStaleMonth";
 import {
   SYMBOL_OPTIONS,
+  type BccSummary,
   type TimesheetGridDay,
   type TimesheetGridRow,
 } from "../../features/attendance/timesheetTypes";
@@ -56,13 +61,25 @@ import {
   hasTimesheetAttendanceEvent,
   isWeeklyTemplateOffDay,
   timesheetDayDisplayValue,
+  timesheetDayShiftDisplayValue,
 } from "../../features/attendance/timesheetDayPresentation";
+import { overnightTailShiftCode } from "../../features/attendance/shiftTime";
+import {
+  useReplaceShiftAssignmentDay,
+  useWorkShifts,
+} from "../../features/attendance/useWorkSchedule";
+import {
+  isReplacingShift,
+  resolveTimesheetCellEditAction,
+} from "../../features/attendance/timesheetCellEdit";
+import { sortWorkShiftCatalog } from "../../features/attendance/workShiftCatalogOrder";
 import { formatDate } from "../../shared/utils/date";
 import { useEmployees } from "../../features/employees/useEmployees";
 import { useDepartmentsSelect } from "../../features/organization/useDepartments";
 import { useUnitsSelect } from "../../features/organization/useUnits";
 import { PageHeader } from "../../shared/components/PageHeader";
 import { InfoBanner } from "../../shared/components/InfoBanner";
+import { makeDayMeta, type DayMeta } from "../../features/attendance/dayMeta";
 
 const now = new Date();
 const earliestTimesheetYear = 2020;
@@ -70,7 +87,6 @@ const latestTimesheetYear = Math.max(
   now.getFullYear() + 4,
   earliestTimesheetYear,
 );
-const weekdayLabels = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 const monthOptions = Array.from({ length: 12 }, (_, index) => ({
   value: String(index + 1),
   label: `Tháng ${index + 1}`,
@@ -82,13 +98,15 @@ const yearOptions = Array.from(
     return { value: String(year), label: String(year) };
   },
 );
+// `left` là tổng bề rộng các cột đứng trước — sửa width phải sửa cả left.
+// Giữ cột trái gọn để dành chỗ cho 31 cột ngày, giống bố cục BCC trên Excel.
 const fixedColumns = [
-  { key: "autoFull", label: "V", left: 0, width: 34 },
-  { key: "number", label: "TT", left: 34, width: 42 },
-  { key: "name", label: "Họ và tên", left: 76, width: 210 },
-  { key: "code", label: "MCB", left: 286, width: 104 },
+  { key: "autoFull", label: "V", left: 0, width: 26 },
+  { key: "number", label: "TT", left: 26, width: 32 },
+  { key: "name", label: "Họ và tên", left: 58, width: 160 },
+  { key: "code", label: "MCB", left: 218, width: 62 },
 ] as const;
-const dayColumnWidth = 44;
+const dayColumnWidth = 32;
 const rowsPerPageOptions = [20, 50, 100].map((value) => ({
   value: String(value),
   label: `${value}/trang`,
@@ -115,9 +133,9 @@ const colorLegendItems = [
     description: "Thiếu chấm công hoặc chưa đủ điều kiện ghi công",
   },
   {
-    color: "#ffedd5",
-    label: "Đi muộn",
-    description: "Đã vượt ngưỡng đi muộn của ca",
+    color: "#ffffff",
+    label: "Đi muộn (chữ đỏ)",
+    description: "Mã ca được tô chữ đỏ khi vượt ngưỡng đi muộn của ca",
   },
   {
     color: "#e5e7eb",
@@ -151,8 +169,8 @@ const colorLegendItems = [
   },
   {
     color: "#f8bbd0",
-    label: "Lđ",
-    description: "Lao động nghĩa vụ",
+    label: "TR",
+    description: "Làm việc vào ngày nghỉ — tính riêng thành giờ làm thêm",
   },
   {
     color: "#ff7875",
@@ -161,13 +179,20 @@ const colorLegendItems = [
   },
   {
     color: "#ffd8a8",
-    label: "Ốm/TS/online",
-    description: "Ốm, con ốm, thai sản, tai nạn lao động hoặc làm việc online",
+    label: "Ốm/TS",
+    description: "Nghỉ ốm, con ốm hoặc thai sản — chế độ BHXH",
+  },
+  {
+    color: "#eff6ff",
+    label: "Ca qua ngày",
+    description:
+      "Ngày kết thúc của ca đêm — lặp lại mã ca của ngày hôm trước (VD: VH2 nằm ở cả hai ô). Công đã tính trọn vào ngày bắt đầu ca.",
   },
   {
     color: "#ffffff",
-    label: "+/- công",
-    description: "+ là đủ công (máy hoặc cờ mặc định), - là nửa công",
+    label: "Mã ca",
+    description:
+      "Ô đi làm hiện đúng mã ca như màn Phân ca (VD: HC2); phần công nằm trong các cột tổng hợp.",
   },
 ] as const;
 const bccTailColumns = [
@@ -220,12 +245,6 @@ const fixedColumnsWidth =
 interface EditingCell {
   day: TimesheetGridDay;
   row: TimesheetGridRow;
-}
-
-interface DayMeta {
-  day: number;
-  label: string;
-  isSunday: boolean;
 }
 
 interface PreparedTimesheetRow {
@@ -293,11 +312,6 @@ function recomputeJobStatusColor(
   return "blue";
 }
 
-function makeDayMeta(year: number, month: number, day: number): DayMeta {
-  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-  return { day, label: weekdayLabels[weekday], isSunday: weekday === 0 };
-}
-
 function fixedStyle(left: number, width: number, header = false) {
   return {
     position: "sticky" as const,
@@ -340,12 +354,11 @@ function organizationNameKey(
 function surfaceForSymbol(symbol: string): string | undefined {
   const symbols = symbol.split(";");
   if (symbols.includes("KL")) return "#ff7875";
-  if (symbols.some((item) => item === "P" || item === "L")) return "#fff59d";
-  if (symbols.some((item) => item === "Lđ" || item === "LĐ")) {
-    return "#f8bbd0";
-  }
+  if (symbols.some((item) => ["P", "L1", "L2"].includes(item))) return "#fff59d";
+  // Làm việc ngày nghỉ tính riêng thành giờ làm thêm, không phải công thường.
+  if (symbols.includes("TR")) return "#f8bbd0";
   if (symbols.some((item) => item === "CT" || item === "BP")) return "#c7e9b4";
-  if (symbols.some((item) => ["Ô", "Cô", "TS", "TN", "O"].includes(item))) {
+  if (symbols.some((item) => ["OM", "CO", "TS"].includes(item))) {
     return "#ffd8a8";
   }
   return undefined;
@@ -385,6 +398,7 @@ function TimesheetColorLegend() {
 function cellDescription(
   day: TimesheetGridDay | undefined,
   attendanceAutoFullDay = false,
+  previousDay?: TimesheetGridDay | undefined,
 ): string {
   if (!day) return "Chưa tạo dữ liệu ngày công";
   const weeklyTemplateOff = isWeeklyTemplateOffDay(day);
@@ -398,9 +412,27 @@ function cellDescription(
     !day.isLocked
       ? "Đủ công mặc định"
       : null,
+    // Mã ca đứng trước mọi thông tin khác: HR mở tooltip chủ yếu để đối chiếu
+    // ô này đang tính theo ca nào so với lịch ở màn Phân ca.
+    day.shiftCode ? `Ca ${day.shiftCode}` : null,
     day.holidayName,
     day.source === "HOLIDAY_UNPAID" ? "Ngày lễ không lương" : null,
+    overnightTailShiftCode({
+      code: previousDay?.shiftCode,
+      startTime: previousDay?.shiftStartTime,
+      endTime: previousDay?.shiftEndTime,
+    }) && !day.shiftCode?.trim() && !day.holidayName
+      ? `Ca qua ngày ${previousDay?.shiftCode} từ hôm trước — công đã tính trọn vào ngày bắt đầu ca`
+      : null,
     day.source === "UNASSIGNED" ? "Chưa phân ca — chưa tính công" : null,
+    /*
+     * Ô nguồn MISSING trước đây không có dòng nào trong tooltip: ô trống, hover
+     * cũng trống, nên HR dễ đọc nhầm thành lỗi phân ca. Ca vẫn được phân đúng,
+     * chỉ là chưa có dữ liệu từ máy chấm công cho ngày đó.
+     */
+    day.source === "MISSING" && !hasTimesheetAttendanceEvent(day)
+      ? "Chưa có dữ liệu chấm công cho ngày này — ca vẫn đã được phân"
+      : null,
     weeklyTemplateOff ? "Nghỉ theo ca tuần" : null,
     weeklyTemplateWork ? "Theo ca tuần" : null,
     day.firstPunch && day.lastPunch
@@ -409,7 +441,7 @@ function cellDescription(
     day.lateMinutes > 0 ? `Muộn ${day.lateMinutes}'` : null,
     day.earlyLeaveMinutes > 0 ? `Về sớm ${day.earlyLeaveMinutes}'` : null,
     day.needsExplanation && hasTimesheetAttendanceEvent(day)
-      ? "Chờ giải trình"
+      ? "Chờ giải trình — có chấm công nhưng chưa đủ căn cứ tính đủ công"
       : null,
     day.hasAdjustment ? "HR đã sửa tay" : null,
     day.isLocked ? "Đã chốt kỳ" : null,
@@ -418,8 +450,17 @@ function cellDescription(
     .join(" · ");
 }
 
-function bccTailValue(row: TimesheetGridRow, key: BccTailKey): number | string {
-  const bcc = row.summary.bcc ?? summarizeBccFromDays(row.days);
+/*
+ * Nhận sẵn `bcc` thay vì tự tính: hàm này chạy một lần cho mỗi cột đuôi, nên
+ * gọi summarizeBccFromDays ở đây có nghĩa là quét lại 31 ngày công 11 lần cho
+ * mỗi dòng. Đo trên trang 100 dòng: 28,3 ms mỗi lần render, đủ để trượt khung
+ * hình 16 ms và làm cuộn bảng giật. Tính một lần cho mỗi dòng còn 1,1 ms.
+ */
+function bccTailValue(
+  row: TimesheetGridRow,
+  bcc: BccSummary,
+  key: BccTailKey,
+): number | string {
   const values: Record<BccTailKey, number | string> = {
     actualWorkDays: bcc.actualWorkDays,
     publicHolidayDays: bcc.publicHolidayDays,
@@ -469,6 +510,12 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
   onOpenAutoFullAttendance: (row: TimesheetGridRow) => void;
 }) {
   const { row, daysByNumber } = item;
+  // Một lần cho cả dòng, dùng chung cho toàn bộ cột đuôi — xem ghi chú ở
+  // bccTailValue về chi phí khi tính lại theo từng cột.
+  const bccSummary = useMemo(
+    () => row.summary.bcc ?? summarizeBccFromDays(row.days),
+    [row.days, row.summary.bcc],
+  );
 
   return (
     <Table.Tr>
@@ -526,7 +573,22 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
       </Table.Td>
       {dayMetas.map((meta) => {
         const day = daysByNumber.get(meta.day);
+        // Ca qua đêm chiếm cả ô hôm sau: ô đuôi lấy mã ca từ ngày liền trước.
+        const previousDay = daysByNumber.get(meta.day - 1);
+        // `label` giữ ký hiệu gốc để tô màu và tra cứu (KL, P, CT...); `cellText`
+        // là phần HR nhìn thấy, đã quy ô đi làm về mã ca như màn Phân ca.
         const label = timesheetDayDisplayValue(day);
+        const cellText = timesheetDayShiftDisplayValue(day, previousDay);
+        // Ô bị ca đêm hôm trước chiếm — cùng điều kiện với phần chữ hiển thị.
+        const isOvernightTailCell = Boolean(
+          overnightTailShiftCode({
+            code: previousDay?.shiftCode,
+            startTime: previousDay?.shiftStartTime,
+            endTime: previousDay?.shiftEndTime,
+          }) &&
+            !day?.shiftCode?.trim() &&
+            !day?.holidayName,
+        );
         const weeklyTemplateOff = isWeeklyTemplateOffDay(day);
         const hasExplanationEvent = Boolean(
           day?.needsExplanation && hasTimesheetAttendanceEvent(day),
@@ -534,6 +596,10 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
         const background =
           weeklyTemplateOff
             ? "#f1f5f9"
+            // Đuôi ca đêm: nền xanh nhạt hơn ô ngày bắt đầu ca, để thấy ngay
+            // ô nào là ngày ca bắt đầu — nơi công được tính trọn.
+            : isOvernightTailCell
+            ? "#eff6ff"
             : day?.source === "UNASSIGNED"
             ? "#e5e7eb"
             : !day?.isWorkingDay
@@ -549,16 +615,18 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
                     ? "#dbeafe"
                     : hasExplanationEvent
                       ? "#fee2e2"
-                      : (day?.lateMinutes ?? 0) > 0
-                        ? "#ffedd5"
-                        : undefined));
+                      : undefined));
         const isEditable =
           canEdit && day !== undefined && !day.isLocked && !day.isDerived;
 
         return (
           <Table.Td
             key={meta.day}
-            title={cellDescription(day, Boolean(row.attendanceAutoFullDay))}
+            title={cellDescription(
+              day,
+              Boolean(row.attendanceAutoFullDay),
+              previousDay,
+            )}
             style={{
               minWidth: dayColumnWidth,
               width: dayColumnWidth,
@@ -571,15 +639,29 @@ const TimesheetDataRow = memo(function TimesheetDataRow({
             <Text
               fw={label ? 700 : undefined}
               size="xs"
-              c={label.includes("KL") ? "red.9" : undefined}
+              c={
+                label.includes("KL")
+                  ? "red.9"
+                  : (day?.lateMinutes ?? 0) > 0
+                    ? "red.7"
+                  : // Mã ca của ngày chưa có dữ liệu chấm công: hiện mờ để đọc
+                    // được là "đã phân ca này" mà không bị nhầm thành đã tính
+                    // đủ công như ô in đậm bên cạnh.
+                    !label && cellText
+                    ? "dimmed"
+                    : undefined
+              }
+              // Mã ca dài (HC-VPTCT-082026) không được xuống dòng làm cao
+              // vống cả hàng; tooltip của ô đã có mã ca đầy đủ.
+              truncate="end"
             >
-              {label}
+              {cellText}
             </Text>
           </Table.Td>
         );
       })}
       {bccTailColumns.map((column) => {
-        const value = bccTailValue(row, column.key);
+        const value = bccTailValue(row, bccSummary, column.key);
         return (
           <Table.Td
             key={column.key}
@@ -645,6 +727,12 @@ export function TimesheetGridPage() {
   const [editSymbol, setEditSymbol] = useState<string | null>(null);
   const [editPortion, setEditPortion] = useState(1);
   const [editReason, setEditReason] = useState("");
+  /*
+   * Ca đã phân của ô đang sửa. HR chốt: lệch thực tế thì SỬA CA chứ không sửa
+   * cách tính (VD phân S1 mà làm cả ngày ⇒ đổi sang HC1). Trước đây phải sang
+   * màn Phân ca mới đổi được, nên đặt luôn ở đây cho liền tay.
+   */
+  const [editShiftId, setEditShiftId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const tableViewportRef = useRef<HTMLDivElement>(null);
   const tableScrollPositionRef = useRef({ left: 0, top: 0 });
@@ -670,7 +758,11 @@ export function TimesheetGridPage() {
   const isGridPlaceholderData = gridQuery.isPlaceholderData;
   const isGridScopeLoading = gridQuery.isLoading || isGridPlaceholderData;
   const adjustDay = useAdjustTimesheetDay();
+  const replaceShiftDay = useReplaceShiftAssignmentDay();
+  // Danh mục ca cho ô chọn "Ca làm việc" trong hộp thoại sửa ô.
+  const workShiftsQuery = useWorkShifts();
   const recomputeJob = useTimesheetRecomputeJob();
+  const timesheetIsStale = useTimesheetMonthStale(year, month);
   const autoFullAttendance = useSetAutoFullAttendance();
   const rows = useMemo(
     () => (isGridPlaceholderData ? [] : (gridQuery.data?.rows ?? [])),
@@ -708,6 +800,37 @@ export function TimesheetGridPage() {
     [gridQuery.data?.daysInMonth, isGridPlaceholderData, month, year],
   );
 
+  /*
+   * Ca đang áp dụng cho ô đang mở, tra từ mã ca sang id. Dùng để biết HR có
+   * thực sự đổi ca hay chỉ mở ra rồi đóng lại — chọn trùng ca cũ thì không gọi
+   * API, tránh tạo ca cá nhân thừa cho đúng một ngày.
+   */
+  const currentShiftId = useMemo(
+    () =>
+      workShiftsQuery.data?.find(
+        (shift) => shift.code === editing?.day.shiftCode?.trim(),
+      )?.id ?? null,
+    [workShiftsQuery.data, editing],
+  );
+  /**
+   * Danh mục ca cho ô chọn, kèm giờ ca để HR nhận ra ca đêm ngay khi chọn.
+   *
+   * Sắp theo THỨ TỰ DANH MỤC của HR (HC1…HC4, S1…S6, C1…C3, VH, BV) như màn Ca
+   * làm việc và Phân ca. API trả theo mã tăng dần nên `C1` nhảy lên trước
+   * `HC1`, đọc ngược hẳn với các màn còn lại.
+   */
+  const shiftOptions = useMemo(
+    () =>
+      sortWorkShiftCatalog(
+        (workShiftsQuery.data ?? []).filter(
+          (shift) => shift.status === "ACTIVE" || shift.id === currentShiftId,
+        ),
+      ).map((shift) => ({
+        value: shift.id,
+        label: `${shift.code} — ${shift.name} (${shift.startTime}–${shift.endTime})`,
+      })),
+    [workShiftsQuery.data, currentShiftId],
+  );
   const unitNameById = useMemo(
     () => new Map((unitsQuery.data ?? []).map((unit) => [unit.id, unit.name])),
     [unitsQuery.data],
@@ -969,8 +1092,19 @@ export function TimesheetGridPage() {
       setEditSymbol(day.displaySymbol.split(";")[0] || null);
       setEditPortion(day.paidDays || 1);
       setEditReason("");
+      // Lưới chỉ trả mã ca; tra ngược sang id để gọi được API đổi ca.
+      setEditShiftId(
+        workShiftsQuery.data?.find(
+          (shift) => shift.code === day.shiftCode?.trim(),
+        )?.id ?? null,
+      );
     },
-    [canEdit, isGridScopeLoading, recomputeJob.isRunning],
+    [
+      canEdit,
+      isGridScopeLoading,
+      recomputeJob.isRunning,
+      workShiftsQuery.data,
+    ],
   );
 
   const openAutoFullAttendanceSettings = useCallback(
@@ -1029,15 +1163,47 @@ export function TimesheetGridPage() {
 
   async function handleSaveCell() {
     if (!editing || isGridScopeLoading || recomputeJob.isRunning) return;
-    if (editReason.trim().length < 3) {
+    const action = resolveTimesheetCellEditAction({
+      currentShiftId,
+      selectedShiftId: editShiftId,
+      reason: editReason,
+      unitId: editing.row.unitId,
+    });
+    if (action.kind === "BLOCKED") {
       notifications.show({
         color: "red",
-        title: "Thiếu lý do",
-        message: "Sửa tay ô chấm công bắt buộc phải nêu lý do.",
+        title:
+          action.reason === "MISSING_REASON"
+            ? "Thiếu lý do"
+            : "Không đổi được ca",
+        message:
+          action.reason === "MISSING_REASON"
+            ? "Sửa tay ô chấm công bắt buộc phải nêu lý do."
+            : "Dòng này chưa có đơn vị nên không xác định được kỳ phân ca. Đổi ca ở màn Phân ca.",
       });
       return;
     }
+    const shiftChanged = action.kind === "REPLACE_SHIFT";
     try {
+      if (action.kind === "REPLACE_SHIFT") {
+        await replaceShiftDay.mutateAsync({
+          year,
+          month,
+          unitId: editing.row.unitId as string,
+          employeeId: editing.row.employeeId,
+          shiftId: action.shiftId,
+          date: editing.day.date,
+        });
+        notifications.show({
+          color: "green",
+          title: "Đã đổi ca cho ngày này",
+          message:
+            "Bấm “Cập nhật bảng công” để tính lại số công theo ca vừa đổi.",
+        });
+        setEditing(null);
+        return;
+      }
+
       await adjustDay.mutateAsync({
         id: editing.day.id,
         payload: {
@@ -1054,12 +1220,14 @@ export function TimesheetGridPage() {
           "Thay đổi được lưu lịch sử và không bị cập nhật tự động ghi đè.",
       });
       setEditing(null);
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Không lưu được ô chấm công",
-        message: "Kiểm tra lại ký hiệu, số công và trạng thái chốt kỳ.",
-      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        shiftChanged ? "Không đổi được ca" : "Không lưu được ô chấm công",
+        shiftChanged
+          ? "Kiểm tra ca hiện tại và trạng thái kỳ công rồi thử lại."
+          : "Kiểm tra ký hiệu, số công rồi thử lại.",
+      );
     }
   }
 
@@ -1098,6 +1266,8 @@ export function TimesheetGridPage() {
         job.skippedLocked + job.skippedAdjusted + job.skippedClosed;
 
       if (job.status === "SUCCEEDED") {
+        // Bảng công của các kỳ vừa tính lại đã khớp lịch ca, gỡ cảnh báo cũ.
+        listTimesheetMonths(start, end).forEach(clearTimesheetMonthStale);
         notifications.show({
           color: "green",
           title: `Đã cập nhật bảng công: ${rangeLabel}`,
@@ -1120,15 +1290,11 @@ export function TimesheetGridPage() {
         });
       }
     } catch (error) {
-      const message =
-        error instanceof Error && error.message.trim()
-          ? error.message
-          : "Vui lòng thử lại sau.";
-      notifications.show({
-        color: "red",
-        title: "Không thể tạo job cập nhật bảng công",
-        message,
-      });
+      showAttendanceError(
+        error,
+        "Không thể tạo job cập nhật bảng công",
+        "Kiểm tra phạm vi kỳ công rồi thử lại.",
+      );
     } finally {
       // The job hook invalidates once at terminal state. Two animation frames in
       // restoreTimesheetScroll retain the HR viewport if that refetch swaps rows.
@@ -1147,14 +1313,11 @@ export function TimesheetGridPage() {
           "Máy chủ sẽ dừng an toàn sau đơn vị xử lý hiện tại; các tháng đã hoàn tất vẫn được giữ.",
       });
     } catch (error) {
-      notifications.show({
-        color: "red",
-        title: "Chưa gửi được yêu cầu dừng",
-        message:
-          error instanceof Error && error.message.trim()
-            ? error.message
-            : "Vui lòng thử lại sau.",
-      });
+      showAttendanceError(
+        error,
+        "Chưa gửi được yêu cầu dừng",
+        "Kiểm tra kết nối rồi gửi lại yêu cầu dừng.",
+      );
     }
   }
 
@@ -1196,12 +1359,12 @@ export function TimesheetGridPage() {
           message: `Không thay đổi ${result.recompute.skippedLocked} ngày đã chốt và ${result.recompute.skippedAdjusted} ngày HR đã sửa tay.`,
         });
       }
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Không lưu được đủ công mặc định",
-        message: "Kiểm tra lại quyền HR và thử lại sau.",
-      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không lưu được đủ công mặc định",
+        "Tải lại bảng công rồi thử lần nữa.",
+      );
     } finally {
       restoreTimesheetScroll();
     }
@@ -1211,30 +1374,19 @@ export function TimesheetGridPage() {
     if (isGridScopeLoading || isExporting) return;
     setIsExporting(true);
     try {
-      const result = await downloadTimesheetGridExport(query);
-      if (result.status === "cancelled") {
-        return;
-      }
-      if (result.status === "unsupported") {
-        notifications.show({
-          color: "orange",
-          title: "Chưa thể chọn nơi lưu",
-          message:
-            "Hãy mở Hacom HRM bằng Chrome hoặc Microsoft Edge để chọn thư mục và tên file Excel.",
-        });
-        return;
-      }
+      await downloadTimesheetGridExport(query);
       notifications.show({
         color: "green",
-        title: "Đã lưu Excel",
-        message: `Đã lưu ${result.filename} theo đúng phạm vi đang chọn.`,
+        title: "Đã tải Excel",
+        message:
+          "File đã được tải theo đúng phạm vi đang chọn và có trong lịch sử tải xuống của trình duyệt (Ctrl+J).",
       });
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Không xuất được Excel",
-        message: "Vui lòng thử lại sau hoặc kiểm tra quyền xuất dữ liệu.",
-      });
+    } catch (error) {
+      showAttendanceError(
+        error,
+        "Không xuất được Excel",
+        "Kiểm tra kết nối rồi thử tải lại file.",
+      );
     } finally {
       setIsExporting(false);
     }
@@ -1244,7 +1396,7 @@ export function TimesheetGridPage() {
     <>
       <PageHeader
         compact
-        title="Bảng chấm công tháng"
+        title="Bảng chấm công"
         subtitle="Theo dõi theo công ty, phòng ban và nhân viên; nhấn họ tên để thiết lập đủ công mặc định."
         actions={
           canEdit || canExport ? (
@@ -1296,6 +1448,34 @@ export function TimesheetGridPage() {
             tháng đó, kể cả nhân sự đã nghỉ hoặc chuyển đơn vị sau này.
           </Text>
         </InfoBanner>
+
+        {timesheetIsStale && !recomputeJob.isRunning ? (
+          <Alert
+            color="orange"
+            variant="light"
+            icon={<IconAlertTriangle size={18} />}
+            title="Bảng công chưa khớp lịch ca vừa đổi"
+          >
+            <Group justify="space-between" gap="sm" wrap="wrap" align="center">
+              <Text size="sm" inherit>
+                Lịch ca của kỳ này vừa thay đổi ở màn Phân ca. Bảng công dưới
+                đây vẫn là kết quả tính trước đó — bấm Cập nhật bảng công để áp
+                lại. Ngày đã chốt hoặc HR sửa tay vẫn được giữ nguyên.
+              </Text>
+              {canEdit ? (
+                <Button
+                  size="xs"
+                  color="orange"
+                  leftSection={<IconRefresh size={15} />}
+                  disabled={isGridScopeLoading || autoFullAttendance.isPending}
+                  onClick={openRecomputeRangeModal}
+                >
+                  Cập nhật bảng công
+                </Button>
+              ) : null}
+            </Group>
+          </Alert>
+        ) : null}
 
         {recomputeJob.status !== "IDLE" ? (
           <Paper withBorder radius="sm" p="sm">
@@ -1465,7 +1645,14 @@ export function TimesheetGridPage() {
                 nothingFoundMessage={
                   employeeSearchQuery.isFetching
                     ? "Đang tìm nhân sự…"
+                    : employeeSearchQuery.isError
+                      ? "Không tải được kết quả tìm kiếm"
                     : "Không tìm thấy nhân sự"
+                }
+                error={
+                  employeeSearchQuery.isError
+                    ? "Không tải được nhân sự. Thay đổi từ khóa để thử lại."
+                    : undefined
                 }
                 onSearchChange={setEmployeeSearch}
                 onChange={(value) => {
@@ -1490,11 +1677,53 @@ export function TimesheetGridPage() {
           </Group>
         </Paper>
 
+        {unitsQuery.isError || departmentsQuery.isError ? (
+          <Alert color="red" variant="light" title="Không tải được phạm vi bảng công">
+            <Group gap="xs" wrap="wrap">
+              <Text size="sm">Không thể lấy đầy đủ danh sách đơn vị hoặc phòng ban.</Text>
+              {unitsQuery.isError ? (
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void unitsQuery.refetch()}
+                >
+                  Tải lại đơn vị
+                </Button>
+              ) : null}
+              {departmentsQuery.isError ? (
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void departmentsQuery.refetch()}
+                >
+                  Tải lại phòng ban
+                </Button>
+              ) : null}
+            </Group>
+          </Alert>
+        ) : null}
+
         {isGridScopeLoading ? (
           <Alert color="blue" variant="light" title="Đang tải bảng công">
             {isGridPlaceholderData
               ? "Dữ liệu của kỳ hoặc phạm vi trước đã được ẩn để tránh nhầm lẫn."
               : "Đang tải đúng kỳ và phạm vi đã chọn."}
+          </Alert>
+        ) : gridQuery.isError ? (
+          <Alert color="red" variant="light" title="Không tải được bảng công">
+            <Stack gap="xs" align="flex-start">
+              <Text size="sm">
+                Không thể lấy dữ liệu đúng kỳ và phạm vi đang chọn; dữ liệu cũ không được hiển thị thay thế.
+              </Text>
+              <Button
+                size="compact-sm"
+                variant="light"
+                leftSection={<IconRefresh size={15} />}
+                onClick={() => void gridQuery.refetch()}
+              >
+                Thử lại
+              </Button>
+            </Stack>
           </Alert>
         ) : rows.length === 0 ? (
           <Alert
@@ -1509,8 +1738,7 @@ export function TimesheetGridPage() {
           <Stack gap="xs">
             <ScrollArea
               viewportRef={tableViewportRef}
-              type="always"
-              h="min(680px, calc(100vh - 315px))"
+              type="auto"
               offsetScrollbars
               scrollbarSize={12}
             >
@@ -1993,13 +2221,56 @@ export function TimesheetGridPage() {
               label: `${option.code} — ${option.name}`,
             }))}
             value={editSymbol}
-            disabled={isGridScopeLoading || recomputeJob.isRunning}
+            disabled={
+              isGridScopeLoading ||
+              recomputeJob.isRunning ||
+              // Đang đổi ca thì ký hiệu do hệ thống tính lại, không sửa tay.
+              isReplacingShift(currentShiftId, editShiftId)
+            }
             onChange={(value) => {
               setEditSymbol(value);
               const option = SYMBOL_OPTIONS.find((item) => item.code === value);
               if (option) setEditPortion(option.defaultPortion);
             }}
           />
+          <Select
+            label="Ca làm việc"
+            description={
+              currentShiftId
+                ? "Đổi ca khi thực tế đi làm khác ca đã phân (VD phân S1 mà làm cả ngày → chọn HC1). Hệ thống tự tính lại số công theo ca mới."
+                : "Ô này chưa có ca. Phân ca ở màn Phân ca trước khi đổi."
+            }
+            placeholder={
+              currentShiftId ? "Giữ nguyên ca hiện tại" : "Chưa có ca để đổi"
+            }
+            searchable
+            data={shiftOptions}
+            value={editShiftId}
+            disabled={
+              !currentShiftId || isGridScopeLoading || recomputeJob.isRunning
+            }
+            onChange={(value) => setEditShiftId(value)}
+          />
+          {workShiftsQuery.isError ? (
+            <Alert color="red" variant="light" title="Không tải được danh mục ca">
+              <Group justify="space-between" align="center" wrap="wrap">
+                <Text size="sm">Không thể đổi ca cho tới khi tải lại danh mục.</Text>
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => void workShiftsQuery.refetch()}
+                >
+                  Thử lại
+                </Button>
+              </Group>
+            </Alert>
+          ) : null}
+          {editShiftId && editShiftId !== currentShiftId ? (
+            <Alert color="blue" variant="light">
+              Đổi ca xong hệ thống sẽ tính lại ô này theo ca mới, nên ký hiệu và
+              số công bên dưới không được áp dụng trong lần lưu này.
+            </Alert>
+          ) : null}
           <NumberInput
             label="Số công"
             description="Ca Thứ Bảy 08:00–12:00 tính 1 công theo cấu hình ca"
@@ -2010,28 +2281,43 @@ export function TimesheetGridPage() {
             value={editPortion}
             onChange={(value) => setEditPortion(Number(value))}
             disabled={
-              !editSymbol || isGridScopeLoading || recomputeJob.isRunning
+              !editSymbol ||
+              isGridScopeLoading ||
+              recomputeJob.isRunning ||
+              isReplacingShift(currentShiftId, editShiftId)
             }
           />
           <Textarea
             label="Lý do sửa"
-            description="Bắt buộc — được lưu để đối chiếu khi có khiếu nại"
-            withAsterisk
+            description={
+              isReplacingShift(currentShiftId, editShiftId)
+                ? "Không bắt buộc khi đổi ca — thao tác đã được ghi lịch sử riêng"
+                : "Bắt buộc — được lưu để đối chiếu khi có khiếu nại"
+            }
+            withAsterisk={
+              !isReplacingShift(currentShiftId, editShiftId)
+            }
             minRows={2}
             value={editReason}
-            disabled={isGridScopeLoading || recomputeJob.isRunning}
+            disabled={
+              isGridScopeLoading ||
+              recomputeJob.isRunning ||
+              isReplacingShift(currentShiftId, editShiftId)
+            }
             onChange={(event) => setEditReason(event.currentTarget.value)}
           />
-          <Alert color="orange" variant="light" icon={<IconTrash size={16} />}>
-            Sau khi lưu, ô này sẽ không bị job cập nhật bảng công ghi đè.
-          </Alert>
+          {isReplacingShift(currentShiftId, editShiftId) ? null : (
+            <Alert color="orange" variant="light" icon={<IconTrash size={16} />}>
+              Sau khi lưu, ô này sẽ không bị job cập nhật bảng công ghi đè.
+            </Alert>
+          )}
           <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={() => setEditing(null)}>
               Hủy
             </Button>
             <Button
               disabled={isGridScopeLoading || recomputeJob.isRunning}
-              loading={adjustDay.isPending}
+              loading={adjustDay.isPending || replaceShiftDay.isPending}
               onClick={() => void handleSaveCell()}
             >
               Lưu thay đổi

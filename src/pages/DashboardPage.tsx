@@ -33,6 +33,7 @@ import { ErrorState } from "../shared/components/ErrorState";
 import { PageHeader } from "../shared/components/PageHeader";
 import { ROUTES } from "../shared/constants/routes";
 import styles from "./DashboardPage.module.css";
+import { formatNumber as formatCount } from "../shared/utils/format";
 
 type ChartItem = {
   label: string;
@@ -899,6 +900,17 @@ function ModernAttendanceRatesCard({
     attendanceRate: number;
   }>;
 }) {
+  const visible = items.slice(0, 6);
+
+  // Tỉ lệ chuyên cần luôn dồn ở vùng cao (90-100%), nên vẽ từ 0% khiến mọi
+  // phòng ban trông bằng nhau. Cắt trục ở dưới giá trị thấp nhất để phần chênh
+  // lệch thật sự nhìn thấy được, và neo đáy trục theo bội số 5 cho dễ đọc.
+  const lowest = Math.min(...visible.map((item) => item.attendanceRate), ATTENDANCE_TARGET);
+  const axisMin = Math.max(0, Math.floor((lowest - 2) / 5) * 5);
+  const axisSpan = Math.max(1, 100 - axisMin);
+  const toPercent = (value: number) =>
+    Math.min(Math.max(((value - axisMin) / axisSpan) * 100, 0), 100);
+
   return (
     <div className={styles.cardContainer}>
       <div className={styles.cardHeader}>

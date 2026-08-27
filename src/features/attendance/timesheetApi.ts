@@ -1,9 +1,8 @@
-import {
-  api,
-  type SaveLocationDownloadResult,
-} from '../../shared/api/httpClient';
+import { api } from '../../shared/api/httpClient';
 import type {
   AdjustTimesheetDayPayload,
+  AttendanceRowOrder,
+  MoveAttendanceRowPayload,
   RecomputePayload,
   RecomputeResult,
   TimesheetRecomputeJob,
@@ -19,6 +18,7 @@ import type {
   TimesheetConfirmation,
   TimesheetPeriod,
   UpdateMonthlyTimesheetRosterMembersPayload,
+  UpdateTimesheetPeriodPayload,
 } from './timesheetTypes';
 import { longRunningAttendanceMutationConfig } from './longRunningMutation';
 
@@ -47,8 +47,8 @@ export async function getTimesheetGrid(
 
 export async function downloadTimesheetGridExport(
   query: TimesheetGridQuery,
-): Promise<SaveLocationDownloadResult> {
-  return api.downloadToSelectedLocation(
+): Promise<void> {
+  return api.download(
     `${BASE}/export`,
     `bang-cham-cong-${query.year}-${String(query.month).padStart(2, '0')}.xlsx`,
     timesheetParams(query),
@@ -165,6 +165,43 @@ export async function openTimesheetPeriod(
 
 export async function closeTimesheetPeriod(id: string): Promise<TimesheetPeriod> {
   return api.post<TimesheetPeriod>(`${PERIOD_BASE}/${id}/close`);
+}
+
+const ROW_ORDER_BASE = '/attendance/row-order/departments';
+
+export async function getAttendanceRowOrder(
+  departmentId: string,
+): Promise<AttendanceRowOrder> {
+  return api.get<AttendanceRowOrder>(`${ROW_ORDER_BASE}/${departmentId}`);
+}
+
+export async function moveAttendanceRow(
+  departmentId: string,
+  payload: MoveAttendanceRowPayload,
+): Promise<AttendanceRowOrder> {
+  return api.patch<AttendanceRowOrder>(
+    `${ROW_ORDER_BASE}/${departmentId}/move`,
+    payload,
+  );
+}
+
+export async function resetAttendanceRowOrder(
+  departmentId: string,
+): Promise<AttendanceRowOrder> {
+  return api.delete<AttendanceRowOrder>(`${ROW_ORDER_BASE}/${departmentId}`);
+}
+
+export async function updateTimesheetPeriod(
+  id: string,
+  payload: UpdateTimesheetPeriodPayload,
+): Promise<TimesheetPeriod> {
+  return api.patch<TimesheetPeriod>(`${PERIOD_BASE}/${id}`, payload);
+}
+
+export async function deleteTimesheetPeriod(
+  id: string,
+): Promise<{ deleted: boolean }> {
+  return api.delete<{ deleted: boolean }>(`${PERIOD_BASE}/${id}`);
 }
 
 export async function reopenTimesheetPeriod(

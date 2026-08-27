@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import {
   Alert,
   Badge,
@@ -41,6 +42,13 @@ import { api } from '../../../shared/api/httpClient';
 import { LoadingState } from '../../../shared/components/LoadingState';
 import { ErrorState } from '../../../shared/components/ErrorState';
 import { formatDateTime } from '../../../shared/utils/date';
+import { InfoRow as InfoRowBase } from '../../../shared/components/InfoRow';
+
+/** InfoRow của màn này: cố định bề rộng nhãn để các dòng thẳng cột. */
+function InfoRow(props: Omit<ComponentProps<typeof InfoRowBase>, 'labelWidth'>) {
+  return <InfoRowBase labelWidth={160} {...props} />;
+}
+
 
 interface Props {
   employee: Employee;
@@ -54,15 +62,6 @@ function accountStatusColor(status: string): string {
     case 'DISABLED': case 'DEACTIVATED': return 'red';
     default: return 'gray';
   }
-}
-
-function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <Group gap="xs" wrap="nowrap" align="flex-start">
-      <Text size="sm" c="dimmed" w={160} style={{ flexShrink: 0 }}>{label}</Text>
-      <Text size="sm">{children}</Text>
-    </Group>
-  );
 }
 
 export function AccountTab({ employee }: Props) {

@@ -13,15 +13,13 @@ import { getCurrentUser } from '../features/auth/authApi';
 import { clearSession, getAccessToken, setSessionUser } from '../features/auth/authClient';
 import { useAuthStore } from '../features/auth/authStore';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { readHttpStatus } from '../shared/api/response';
+import { filterSelectOptions } from '../shared/utils/filterSelectOptions';
+import { isDefinitiveAuthRefreshFailure } from '../shared/api/authRefreshFailure';
 
 dayjs.locale('vi');
 
-function readHttpStatus(error: unknown): number | undefined {
-  return (
-    (error as { statusCode?: number })?.statusCode ??
-    (error as { response?: { status?: number } })?.response?.status
-  );
-}
+const authorityRecoveryIntervalMs = 10_000;
 
 function AuthBootstrap({ children }: PropsWithChildren) {
   const [ready, setReady] = useState(false);
@@ -48,7 +46,7 @@ function AuthBootstrap({ children }: PropsWithChildren) {
         useAuthStore.getState().setError(null);
       } catch (error: unknown) {
         const status = readHttpStatus(error);
-        if (status === 401) {
+        if (status === 401 && isDefinitiveAuthRefreshFailure(error)) {
           clearSession();
         } else if (status === 403) {
           useAuthStore.getState().setError('Tài khoản đã xác thực nhưng không được phép truy cập HRM.');
@@ -78,7 +76,10 @@ function AuthBootstrap({ children }: PropsWithChildren) {
         lastAuthorityRefreshAt.current = Date.now();
         useAuthStore.getState().setError(null);
       } catch (error: unknown) {
-        if (readHttpStatus(error) === 401) {
+        if (
+          readHttpStatus(error) === 401 &&
+          isDefinitiveAuthRefreshFailure(error)
+        ) {
           clearSession();
           return;
         }
@@ -89,14 +90,45 @@ function AuthBootstrap({ children }: PropsWithChildren) {
       }
     }
 
+    function recoverMissingAuthority() {
+      const { isAuthenticated, user } = useAuthStore.getState();
+      if (
+        !isAuthenticated ||
+        user ||
+        document.visibilityState !== 'visible' ||
+        !navigator.onLine
+      ) {
+        return;
+      }
+
+      void refreshAuthorityOnForeground();
+    }
+
     document.addEventListener('visibilitychange', refreshAuthorityOnForeground);
+    window.addEventListener('online', recoverMissingAuthority);
+    const recoveryInterval = window.setInterval(
+      recoverMissingAuthority,
+      authorityRecoveryIntervalMs,
+    );
     return () => {
       document.removeEventListener('visibilitychange', refreshAuthorityOnForeground);
+      window.removeEventListener('online', recoverMissingAuthority);
+      window.clearInterval(recoveryInterval);
     };
   }, []);
 
   if (!ready) {
-    return null;
+    return (
+      <Center mih="100dvh">
+        <Stack align="center" gap="sm" role="status" aria-live="polite">
+          <Image src="/logo.png" alt="" h={56} w="auto" fit="contain" />
+          <Loader color="red" size="sm" />
+          <Text c="dimmed" size="sm">
+            Đang xác minh phiên đăng nhập...
+          </Text>
+        </Stack>
+      </Center>
+    );
   }
 
   return <>{children}</>;

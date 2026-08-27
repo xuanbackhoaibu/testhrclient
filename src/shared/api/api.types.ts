@@ -17,6 +17,11 @@ export type ApiErrorResponse = {
   statusCode: number;
   message: string;
   errorCode?: string;
+  /**
+   * chat-auth-service's `x-api-contract: 2` shape nests the stable machine
+   * code here instead of at the top-level `errorCode` (used by hr-api-service).
+   */
+  error?: { code?: string; details?: unknown };
   errors?: ApiErrorDetail[];
   requestId?: string;
   requiredPermissions?: string[];
@@ -53,12 +58,16 @@ export class ApiError extends Error {
   errors: ApiErrorDetail[];
   requestId?: string;
   requiredPermissions?: string[];
+  userNotified = false;
 
   constructor(payload: ApiErrorPayload | ApiErrorResponse) {
     super(payload.message);
     this.name = 'ApiError';
     this.statusCode = payload.statusCode;
-    this.errorCode = payload.errorCode ?? 'API_ERROR';
+    this.errorCode =
+      payload.errorCode ??
+      ('error' in payload ? payload.error?.code : undefined) ??
+      'API_ERROR';
     this.errors = payload.errors ?? [];
     this.requestId = payload.requestId;
     this.requiredPermissions = payload.requiredPermissions;

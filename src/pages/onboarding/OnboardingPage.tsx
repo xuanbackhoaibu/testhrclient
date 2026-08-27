@@ -9,7 +9,7 @@ import {
   Modal,
   Progress,
   Select,
-  Space,
+  Stack,
   Table,
   Tabs,
   Typography,
@@ -36,10 +36,18 @@ import { LoadingState } from "../../shared/components/LoadingState";
 import { PageHeader } from "../../shared/components/PageHeader";
 import { StatusTag } from "../../shared/components/StatusTag";
 import { formatDate } from "../../shared/utils/date";
+import { toast } from "../../shared/utils/toast";
 
 export function OnboardingPage() {
   const queryClient = useQueryClient();
-  const [form] = Form.useForm<OnboardingInstancePayload>();
+  const form = useForm<OnboardingInstancePayload>({
+    initialValues: { employeeId: "", templateName: "", startDate: "" } as OnboardingInstancePayload,
+    validate: {
+      employeeId: (value: string) => (value ? null : "Chọn nhân viên."),
+      templateName: (value: string) => (value ? null : "Chọn mẫu."),
+      startDate: (value: string) => (value ? null : "Chọn ngày bắt đầu."),
+    },
+  });
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<OnboardingInstance | null>(null);
   const [assetItem, setAssetItem] = useState<WorkflowItem | null>(null);
@@ -85,9 +93,9 @@ export function OnboardingPage() {
   const createMutation = useMutation({
     mutationFn: createOnboardingInstance,
     onSuccess: async () => {
-      message.success("Đã tạo đợt onboarding.");
+      toast.success("Đã tạo đợt onboarding.");
       setOpen(false);
-      form.resetFields();
+      form.reset();
       await queryClient.invalidateQueries({ queryKey: ["onboarding"] });
     },
   });
@@ -158,8 +166,7 @@ export function OnboardingPage() {
         subtitle="Mẫu và đợt onboarding cho nhân viên."
         actions={
           <Button
-            type="primary"
-            icon={<PlusOutlined />}
+            leftSection={<IconPlus size={16} />}
             onClick={() => setOpen(true)}
           >
             Tạo đợt
@@ -195,116 +202,108 @@ export function OnboardingPage() {
                       title: "Trạng thái",
                       render: (_, record) => (
                         <StatusTag status={record.status} />
-                      ),
-                    },
-                    {
-                      title: "Thao tác",
-                      render: (_, record) => (
-                        <Button onClick={() => setSelected(record)}>
+                      </Table.Td>
+                      <Table.Td>
+                        <Button size="xs" variant="light" onClick={() => setSelected(record)}>
                           Xem danh sách kiểm tra
                         </Button>
-                      ),
-                    },
-                  ]}
-                />
-              </Card>
-            ),
-          },
-          {
-            key: "templates",
-            label: "Mẫu",
-            children: (
-              <Card className="page-card">
-                <Table
-                  rowKey="id"
-                  dataSource={data.templates}
-                  pagination={false}
-                  columns={[
-                    { title: "Tên", dataIndex: "name" },
-                    { title: "Số lượng mục", dataIndex: "itemCount" },
-                    {
-                      title: "Trạng thái",
-                      render: (_, record) => (
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+          </Paper>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="templates" pt="md">
+          <Paper className="page-card" p="lg" radius="md">
+            <Table.ScrollContainer minWidth={480}>
+              <Table striped highlightOnHover fz="sm">
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Tên</Table.Th>
+                    <Table.Th>Số lượng mục</Table.Th>
+                    <Table.Th>Trạng thái</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {data.templates.map((record) => (
+                    <Table.Tr key={record.id}>
+                      <Table.Td>{record.name}</Table.Td>
+                      <Table.Td>{record.itemCount}</Table.Td>
+                      <Table.Td>
                         <StatusTag status={record.status} />
-                      ),
-                    },
-                  ]}
-                />
-              </Card>
-            ),
-          },
-        ]}
-      />
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+          </Paper>
+        </Tabs.Panel>
+      </Tabs>
 
       <Drawer
         title="Tạo đợt onboarding"
-        open={open}
-        width={420}
-        destroyOnClose
+        opened={open}
+        position="right"
+        size={420}
         onClose={() => {
           setOpen(false);
-          form.resetFields();
+          form.reset();
         }}
-        extra={
-          <Button
-            type="primary"
-            loading={createMutation.isPending}
-            onClick={() => void form.submit()}
-          >
-            Lưu
-          </Button>
-        }
       >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={(values) => createMutation.mutate(values)}
-        >
-          <Form.Item
-            name="employeeId"
-            label="Nhân viên"
-            rules={[{ required: true }]}
-          >
+        <form onSubmit={form.onSubmit((values) => createMutation.mutate(values))}>
+          <Stack gap="md">
             <Select
-              options={mockEmployees.map((item) => ({
+              label="Nhân viên"
+              withAsterisk
+              searchable
+              data={mockEmployees.map((item) => ({
                 value: item.id,
                 label: item.fullName,
               }))}
+              {...form.getInputProps("employeeId")}
             />
-          </Form.Item>
-          <Form.Item
-            name="templateName"
-            label="Mẫu"
-            rules={[{ required: true }]}
-          >
             <Select
-              options={data.templates.map((item) => ({
-                value: item.name,
-                label: item.name,
-              }))}
+              label="Mẫu"
+              withAsterisk
+              data={data.templates.map((item) => item.name)}
+              {...form.getInputProps("templateName")}
             />
-          </Form.Item>
-          <Form.Item
-            name="startDate"
-            label="Ngày bắt đầu"
-            rules={[{ required: true }]}
-          >
             <Select
-              options={[
+              label="Ngày bắt đầu"
+              withAsterisk
+              data={[
                 { value: "2026-04-25", label: formatDate("2026-04-25") },
                 { value: "2026-05-01", label: formatDate("2026-05-01") },
               ]}
+              {...form.getInputProps("startDate")}
             />
-          </Form.Item>
-        </Form>
+            <Group justify="flex-end">
+              <Button
+                variant="default"
+                onClick={() => {
+                  setOpen(false);
+                  form.reset();
+                }}
+              >
+                Hủy
+              </Button>
+              <Button type="submit" loading={createMutation.isPending}>
+                Lưu
+              </Button>
+            </Group>
+          </Stack>
+        </form>
       </Drawer>
 
       <Modal
-        open={Boolean(selected)}
+        opened={Boolean(selected)}
         title="Danh sách kiểm tra onboarding"
-        footer={null}
-        width={760}
-        onCancel={() => setSelected(null)}
+        size={760}
+        onClose={() => setSelected(null)}
       >
         <Space orientation="vertical" style={{ width: "100%" }}>
           <Table
@@ -329,14 +328,16 @@ export function OnboardingPage() {
             ]}
           />
           {selected && selected.status !== "COMPLETED" ? (
-            <Button
-              type="primary"
-              onClick={() => completeMutation.mutate(selected.id)}
-            >
-              Hoàn thành đợt
-            </Button>
+            <Group justify="flex-end">
+              <Button
+                loading={completeMutation.isPending}
+                onClick={() => completeMutation.mutate(selected.id)}
+              >
+                Hoàn thành đợt
+              </Button>
+            </Group>
           ) : null}
-        </Space>
+        </Stack>
       </Modal>
 
       <Modal

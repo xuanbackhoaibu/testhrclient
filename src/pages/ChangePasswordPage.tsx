@@ -167,6 +167,8 @@ export function ChangePasswordPage() {
             label="Mật khẩu hiện tại"
             placeholder="Mật khẩu hiện tại"
             leftSection={<IconLock size={18} />}
+            size="md"
+            radius="lg"
             autoComplete="current-password"
             disabled={submitting}
             {...form.getInputProps('currentPassword')}
@@ -176,6 +178,8 @@ export function ChangePasswordPage() {
             label="Mật khẩu mới"
             placeholder={`Tối thiểu ${PASSWORD_MIN_LENGTH} ký tự`}
             leftSection={<IconLock size={18} />}
+            size="md"
+            radius="lg"
             autoComplete="new-password"
             disabled={submitting}
             {...form.getInputProps('newPassword')}
@@ -219,6 +223,8 @@ export function ChangePasswordPage() {
             label="Xác nhận mật khẩu mới"
             placeholder="Nhập lại mật khẩu mới"
             leftSection={<IconLock size={18} />}
+            size="md"
+            radius="lg"
             autoComplete="new-password"
             disabled={submitting}
             className={
@@ -241,6 +247,8 @@ export function ChangePasswordPage() {
           <Button
             type="submit"
             size="md"
+            radius="lg"
+            fullWidth
             loading={submitting}
             disabled={submitting || (showPolicy && policyChecks.some((check) => !check.pass))}
           >

@@ -64,13 +64,16 @@ export function AttendanceSyncRunsTable() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
 
-  const { data, isLoading } = useAttendanceSyncRuns({ page, pageSize: PAGE_SIZE });
+  const { data, error, isLoading, refetch } = useAttendanceSyncRuns({
+    page,
+    pageSize: PAGE_SIZE,
+  });
   const runs = (data?.data ?? []) as SyncRun[];
   const pagination = data?.pagination;
 
   return (
     <Stack gap="sm">
-      {runs.length === 0 && !isLoading ? (
+      {runs.length === 0 && !isLoading && !error ? (
         <EmptyState
           title="Chưa có lịch sử đồng bộ"
           description="Lịch sử đồng bộ sẽ xuất hiện sau khi chạy sync."
@@ -170,6 +173,8 @@ export function AttendanceSyncRunsTable() {
           rowKey={(run) => run.id}
           meta={pagination}
           loading={isLoading}
+          error={error}
+          onRetry={() => void refetch()}
           onPageChange={(newPage: number) => setPage(newPage)}
         />
       )}

@@ -35,10 +35,9 @@ export function computeShiftWorkingMinutes(
   const rawEnd = toMinutes(input.endTime);
   if (start === null || rawEnd === null) return null;
 
-  // Giờ vào bằng giờ tan là ca rỗng, không phải ca dài 24 tiếng.
-  if (rawEnd === start) return null;
-
-  const overnight = rawEnd < start;
+  // Giờ vào bằng giờ tan là ca 24 giờ (VH3 07:30–07:30, BV6 06:30–06:30 —
+  // ca trực ngày đêm có thật trong danh mục), không phải ca rỗng.
+  const overnight = rawEnd <= start;
   const end = overnight ? rawEnd + MINUTES_PER_DAY : rawEnd;
 
   let total = end - start;

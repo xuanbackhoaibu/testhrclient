@@ -28,6 +28,7 @@ body,
 body {
   background: var(--hrm-bg);
   font-family:
+    'Inter Variable',
     Inter,
     -apple-system,
     BlinkMacSystemFont,
@@ -2715,19 +2716,33 @@ table th {
 }
 
 .timesheet-bcc-table {
-  border-color: #d9e0e8;
-  color: #1f2937;
+  border-color: light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  color: light-dark(var(--mantine-color-gray-8), var(--mantine-color-dark-0));
   font-size: 12px;
 }
 
 .timesheet-bcc-table th,
 .timesheet-bcc-table td {
-  height: 34px;
-  padding: 4px 6px;
+  height: 28px;
+  padding: 2px 4px;
+}
+
+/* Kẻ ô như Excel: mỗi ngày là một ô rõ ranh giới. Không có đường kẻ dọc thì
+   các ô trống liền nhau (nghỉ, chưa phân ca) dính thành một mảng xám lớn,
+   HR không đếm được ngày nào là ngày nào. */
+.timesheet-bcc-table th,
+.timesheet-bcc-table td {
+  border-right: 1px solid
+    light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+}
+
+.timesheet-bcc-table th:last-child,
+.timesheet-bcc-table td:last-child {
+  border-right: none;
 }
 
 .timesheet-bcc-table th {
-  color: #334155;
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
   font-size: 11px;
   font-weight: 650;
   line-height: 1.15;
@@ -3528,4 +3543,18 @@ table th {
   text-overflow: ellipsis;
   vertical-align: bottom;
   white-space: nowrap;
+}
+
+/*
+ * Tiêu đề: Inter ở cỡ lớn giãn mặc định trông rời rạc, siết tracking để tiêu đề
+ * đọc thành một khối. Craft floor dừng ở -0.04em; -0.02 tới -0.025em đọc tốt hơn.
+ */
+:where(h1, h2, h3, .mantine-Title-root) {
+  letter-spacing: -0.021em;
+}
+
+/* Số liệu trong bảng và thẻ chỉ số căn cột thẳng hàng khi đọc lướt. */
+.mantine-Table-root,
+.tileValue {
+  font-variant-numeric: tabular-nums;
 }

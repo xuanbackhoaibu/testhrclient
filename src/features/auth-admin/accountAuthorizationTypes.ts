@@ -1,6 +1,7 @@
 import type { AuthAdminUser } from './authAdminTypes';
 import type { Employee } from '../employees/employeeTypes';
 import type {
+  AuthorizationScope,
   EffectivePermissionDeny,
   EffectivePermissionGrantSource,
   UserPermissionOverride,
@@ -24,6 +25,7 @@ export type PermissionGroup = {
   id: string;
   code: string;
   name: string;
+  description?: string;
   system: string;
   permissions?: Permission[];
   isSensitive: boolean;
@@ -67,6 +69,7 @@ export type AccountAuthorizationDetail = {
   directPermissions: Permission[];
   directOverrides: UserPermissionOverride[];
   effectivePermissions: EffectivePermission[];
+  scopes: AuthorizationScope[];
   roleCatalog: Role[];
   permissionGroupCatalog: PermissionGroup[];
   permissionCatalog: Permission[];

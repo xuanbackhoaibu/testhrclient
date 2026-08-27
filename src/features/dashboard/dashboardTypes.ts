@@ -3,16 +3,6 @@ export interface DashboardMetric {
   value: number;
 }
 
-export interface DashboardLateEmployee {
-  employeeId: string;
-  employeeCode?: string | null;
-  fullName?: string | null;
-  unitName?: string | null;
-  departmentName?: string | null;
-  lateCount: number;
-  totalLateMinutes: number;
-}
-
 export interface DashboardAttendanceRate {
   unitName?: string;
   departmentName?: string;
@@ -24,7 +14,6 @@ export interface DashboardAttendanceRate {
 export interface DashboardAttendanceThisMonth {
   month: number;
   year: number;
-  topLateEmployees: DashboardLateEmployee[];
   byUnit: DashboardAttendanceRate[];
   byDepartment: DashboardAttendanceRate[];
   annualLeaveDaysUsed: number;

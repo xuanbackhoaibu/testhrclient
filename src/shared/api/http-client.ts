@@ -11,14 +11,11 @@ import { useAuthStore } from '../../features/auth/authStore';
 import { ApiError, type ApiEnvelope } from './api.types';
 import { handleAxiosResponseError } from './errorHandler';
 import { isDefinitiveAuthRefreshFailure } from './authRefreshFailure';
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+import { isPlainRecord } from '../utils/isPlainRecord';
 
 function isApiEnvelope<T>(body: unknown): body is ApiEnvelope<T> {
   return (
-    isObject(body) &&
+    isPlainRecord(body) &&
     typeof body.success === 'boolean' &&
     typeof body.statusCode === 'number'
   );
@@ -37,7 +34,7 @@ export function unwrapApiEnvelope<T>(body: unknown): T {
     throw new ApiError({
       message: body.message || 'Yêu cầu thất bại',
       statusCode: body.statusCode,
-      errorCode: body.errorCode,
+      errorCode: body.errorCode ?? body.error?.code,
       requestId: body.requestId,
       errors: body.errors,
     });

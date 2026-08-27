@@ -124,32 +124,42 @@ export function useUnmappedAttendance(params: { page: number; search: string }) 
   });
 }
 
-export function useMapAttendance() {
+export function useMapAttendance(options?: {
+  onSuccess?: (result: Awaited<ReturnType<typeof mapAttendanceEmployee>>) => void;
+  onError?: (error: unknown) => void;
+}) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (payload: { empCode: string; employeeId: string }) =>
       mapAttendanceEmployee(payload),
-    onSuccess: () => {
+    onError: options?.onError,
+    onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: attendanceKeys.all });
       void queryClient.invalidateQueries({ queryKey: attendanceKeys.mappingStats() });
       void queryClient.invalidateQueries({ queryKey: ['attendance-mapping'] });
       void queryClient.invalidateQueries({ queryKey: ['employees'] });
       void queryClient.invalidateQueries({ queryKey: ['employee-detail'] });
+      options?.onSuccess?.(result);
     },
   });
 }
 
-export function useRemapAttendance() {
+export function useRemapAttendance(options?: {
+  onSuccess?: (result: Awaited<ReturnType<typeof remapAttendance>>) => void;
+  onError?: (error: unknown) => void;
+}) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (payload?: { fromDate?: string; toDate?: string }) =>
       remapAttendance(payload),
-    onSuccess: () => {
+    onError: options?.onError,
+    onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: attendanceKeys.all });
       void queryClient.invalidateQueries({ queryKey: attendanceKeys.mappingStats() });
       void queryClient.invalidateQueries({ queryKey: ['attendance-mapping'] });
+      options?.onSuccess?.(result);
     },
   });
 }
